@@ -487,11 +487,64 @@ const LIGA_ALIASES = {
     'super league':                 'Super Liga Sul-Americana',
 };
 
+// Mapeamento de nomes de times em inglês → português (PT-BR)
+const TEAM_ALIASES = {
+    'albania':     'Albânia',
+    'australia':   'Austrália',
+    'austria':     'Áustria',
+    'belgium':     'Bélgica',
+    'brazil':      'Brasil',
+    'cameroon':    'Camarões',
+    'canada':      'Canadá',
+    'croatia':     'Croácia',
+    'czechia':     'República Tcheca',
+    'czech republic': 'República Tcheca',
+    'denmark':     'Dinamarca',
+    'ecuador':     'Equador',
+    'england':     'Inglaterra',
+    'france':      'França',
+    'georgia':     'Geórgia',
+    'germany':     'Alemanha',
+    'ghana':       'Gana',
+    'hungary':     'Hungria',
+    'iran':        'Irã',
+    'italy':       'Itália',
+    'japan':       'Japão',
+    'mexico':      'México',
+    'morocco':     'Marrocos',
+    'netherlands': 'Países Baixos',
+    'poland':      'Polônia',
+    'romania':     'Romênia',
+    'scotland':    'Escócia',
+    'senegal':     'Senegal',
+    'serbia':      'Sérvia',
+    'slovakia':    'Eslováquia',
+    'slovenia':    'Eslovênia',
+    'south korea': 'Coreia do Sul',
+    'spain':       'Espanha',
+    'switzerland': 'Suíça',
+    'tunisia':     'Tunísia',
+    'turkey':      'Turquia',
+    'ukraine':     'Ucrânia',
+    'uruguay':     'Uruguai',
+    'usa':         'EUA',
+    'wales':       'País de Gales',
+};
+
 // Bet365 BR usa UTC+1 para horários virtuais — somamos 1h ao agora do grid
 const BET365_OFFSET_MS = 1 * 3600 * 1000;
 
 function normalizarLiga(nome) {
-    return LIGA_ALIASES[(nome || '').toLowerCase()] || null;
+    // Retorna o nome canônico (seja via alias ou se já é canônico)
+    const key = (nome || '').toLowerCase().trim();
+    if (LIGA_ALIASES[key]) return LIGA_ALIASES[key];
+    if (LIGAS_CANONICAS.includes(nome)) return nome;
+    return null;
+}
+
+function normalizarTime(nome) {
+    if (!nome) return nome;
+    return TEAM_ALIASES[nome.toLowerCase().trim()] || nome;
 }
 
 // ============================================================
@@ -513,6 +566,7 @@ const S = {
     grafico:       null,
     grafTopo:      null,
     view:          'analise',
+    showNomes:     false,   // exibe nome dos clubes dentro das células do grid
 };
 
 Object.values(FILTROS).flat().forEach(f => { S.linhas[f.id] = true; });
@@ -628,7 +682,10 @@ async function carregarHistorico() {
         S.todasPartidas = (d.partidas || [])
             .map(p => {
                 const canon = normalizarLiga(p.liga);
-                return canon ? { ...p, liga: canon } : null;
+                if (!canon) return null;
+                return { ...p, liga: canon,
+                    time_casa: normalizarTime(p.time_casa),
+                    time_fora: normalizarTime(p.time_fora) };
             })
             .filter(Boolean);
 
@@ -689,7 +746,12 @@ function renderAnalise() {
     }
 
     c.innerHTML = '';
-    S.sugestoes.forEach(liga => {
+    // Filtra e renomeia para exibir apenas as 4 ligas canônicas
+    const sugestoesCanon = S.sugestoes
+        .map(l => ({ ...l, liga: normalizarLiga(l.liga) || null }))
+        .filter(l => l.liga !== null)
+        .filter((l, i, arr) => arr.findIndex(x => x.liga === l.liga) === i); // deduplica
+    sugestoesCanon.forEach(liga => {
         const melhor = liga.melhor;
         if (!melhor) return;
 
@@ -870,6 +932,9 @@ function renderFiltros() {
     div.innerHTML = `
         <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
         <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
+        <button class="acao-btn${S.showNomes ? ' ativo' : ''}" id="btn-show-nomes"
+            onclick="S.showNomes=!S.showNomes;renderFiltros();renderTabela()"
+            title="Mostrar/ocultar nomes dos clubes nas células">🏷️ Clubes</button>
     `;
     c.appendChild(div);
 }
@@ -961,20 +1026,20 @@ function serieFlat() {
 }
 
 // ============================================================
-// PRÓXIMOS JOGOS — carrega de /api/bet365/eventos
+// PRÓXIMOS JOGOS — carrega de /api/bet365/eventos-completos (com todos os mercados)
 // ============================================================
 async function renderProximosJogos() {
     const el = document.getElementById('proximos-jogos');
     if (!el) return;
     try {
-        const r = await fetch('/api/bet365/eventos');
+        const r = await fetch('/api/bet365/eventos-completos');
         const d = await r.json();
         if (!d.success || !d.data?.length) {
             el.innerHTML = '<div style="color:#334155;font-size:11px;padding:8px">Nenhum jogo agendado encontrado</div>';
             return;
         }
 
-        // Filtrar por liga ativa e só AGENDADOS
+        // Filtrar por liga ativa e só AGENDADOS com odds
         let jogos = (d.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
         if (S.ligaAtiva) jogos = jogos.filter(j => j.liga === S.ligaAtiva);
         jogos = jogos.slice(0, 12).sort((a, b) => (a.seconds_to_start||999) - (b.seconds_to_start||999));
@@ -984,33 +1049,68 @@ async function renderProximosJogos() {
             return;
         }
 
-        // Para cada jogo, calcular probabilidade histórica
-        const histCasa = (time, liga) => {
+        // Estatísticas históricas
+        const histCasa = time => {
             const part = S.partidas.filter(p => p.time_casa === time);
             if (!part.length) return null;
-            const v = part.filter(p => p.resultado === 'CASA').length;
-            return (v / part.length * 100).toFixed(0);
+            return (part.filter(p => p.resultado === 'CASA').length / part.length * 100).toFixed(0);
         };
-        const histFora = (time, liga) => {
+        const histFora = time => {
             const part = S.partidas.filter(p => p.time_fora === time);
             if (!part.length) return null;
-            const v = part.filter(p => p.resultado === 'FORA').length;
-            return (v / part.length * 100).toFixed(0);
+            return (part.filter(p => p.resultado === 'FORA').length / part.length * 100).toFixed(0);
         };
-        const histOver15 = (liga) => {
+        const histOver15 = liga => {
             const part = S.todasPartidas.filter(p => !liga || p.liga === liga);
             if (!part.length) return null;
-            const v = part.filter(p => (p.gol_casa||0)+(p.gol_fora||0) >= 2).length;
-            return (v / part.length * 100).toFixed(0);
+            return (part.filter(p => (p.gol_casa||0)+(p.gol_fora||0) >= 2).length / part.length * 100).toFixed(0);
         };
 
-        el.innerHTML = jogos.map(j => {
+        // Renderiza odds expandíveis de todos os mercados
+        const renderMercadoOdds = (mercados) => {
+            if (!mercados?.length) return '';
+            return mercados.map(m => {
+                const sels = m.selecoes || [];
+                // Layout em grid: até 2 colunas para mercados com 2-4 seleções
+                const useGrid = sels.length >= 2 && sels.length <= 6;
+                const selHtml = useGrid
+                    ? `<div style="display:grid;grid-template-columns:repeat(${Math.min(sels.length,3)},1fr);gap:3px">${
+                        sels.map(s => {
+                            const odd = parseFloat(s.odd||0);
+                            const cor = odd < 1.8 ? '#4ade80' : odd < 2.5 ? '#fbbf24' : '#f87171';
+                            return `<div style="background:#060d1a;border:1px solid #1e293b;border-radius:4px;padding:4px 3px;text-align:center">
+                                <div style="font-size:8px;color:#64748b;line-height:1.2;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.nome}">${s.nome}</div>
+                                <div style="font-size:11px;font-weight:800;color:${cor}">${odd.toFixed(2)}</div>
+                            </div>`;
+                        }).join('')
+                    }</div>`
+                    : `<div style="display:flex;flex-direction:column;gap:2px">${
+                        sels.map(s => {
+                            const odd = parseFloat(s.odd||0);
+                            const cor = odd < 1.8 ? '#4ade80' : odd < 2.5 ? '#fbbf24' : '#f87171';
+                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 4px;background:#060d1a;border-radius:3px">
+                                <span style="font-size:9px;color:#94a3b8;flex:1">${s.nome}</span>
+                                <span style="font-size:10px;font-weight:800;color:${cor};min-width:34px;text-align:right">${odd.toFixed(2)}</span>
+                            </div>`;
+                        }).join('')
+                    }</div>`;
+                return `
+                <div style="margin-bottom:7px">
+                    <div style="font-size:8px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #0d1526">${m.nome}</div>
+                    ${selHtml}
+                </div>`;
+            }).join('');
+        };
+
+        el.innerHTML = jogos.map((j, idx) => {
             const mins = Math.round((j.seconds_to_start || 0) / 60);
             const tempo = mins <= 0 ? 'Ao vivo' : mins < 60 ? `em ${mins}min` : `${Math.floor(mins/60)}h${mins%60}m`;
-            const hC  = histCasa(j.time_casa, j.liga);
-            const hF  = histFora(j.time_fora, j.liga);
+            const hC  = histCasa(j.time_casa);
+            const hF  = histFora(j.time_fora);
             const hO  = histOver15(j.liga);
             const liga = (j.liga||'').replace(/virtual/gi,'').trim();
+            const idPanel = `odds-panel-${idx}`;
+            const hasMercados = j.mercados?.length > 0;
             return `
             <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:7px;padding:9px 11px;min-width:200px;flex:1">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
@@ -1025,11 +1125,19 @@ async function renderProximosJogos() {
                     <span style="flex:1;text-align:center;background:#1e293b;border:1px solid #334155;border-radius:4px;padding:3px 0;font-size:11px;font-weight:800;color:#94a3b8">${parseFloat(j.odd_empate||0).toFixed(2)}</span>
                     <span style="flex:1;text-align:center;background:#45090920;border:1px solid #45090940;border-radius:4px;padding:3px 0;font-size:11px;font-weight:800;color:#f87171">${parseFloat(j.odd_fora||0).toFixed(2)}</span>
                 </div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:${hasMercados?'6px':'0'}">
                     ${hC !== null ? `<span style="font-size:9px;color:#94a3b8">Casa hist: <b style="color:#4ade80">${hC}%</b></span>` : ''}
                     ${hF !== null ? `<span style="font-size:9px;color:#94a3b8">Fora hist: <b style="color:#f87171">${hF}%</b></span>` : ''}
                     ${hO !== null ? `<span style="font-size:9px;color:#94a3b8">O1.5 liga: <b style="color:#60a5fa">${hO}%</b></span>` : ''}
                 </div>
+                ${hasMercados ? `
+                <button onclick="(function(btn,panel){panel.style.display=panel.style.display==='none'?'block':'none';btn.textContent=panel.style.display==='none'?'▼ Ver todas as odds (${j.mercados.length})':'▲ Ocultar odds'})(this,document.getElementById('${idPanel}'))"
+                    style="width:100%;background:#0d1526;border:1px solid #1e293b;border-radius:4px;padding:4px;font-size:9px;color:#60a5fa;cursor:pointer;font-weight:700">
+                    ▼ Ver todas as odds (${j.mercados.length})
+                </button>
+                <div id="${idPanel}" style="display:none;margin-top:6px;max-height:320px;overflow-y:auto;scrollbar-width:thin">
+                    ${renderMercadoOdds(j.mercados)}
+                </div>` : ''}
             </div>`;
         }).join('');
     } catch (e) {
@@ -1300,7 +1408,12 @@ function renderTabela() {
             const tt = `${minStr} ${j.time_casa} ${score} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]`;
             colHits[ci]  += hit ? 1 : 0;
             colTotal[ci] += 1;
-            return `<td class="${hit ? 'c-verde' : 'c-verm'}" data-tt="${tt}">${score}</td>`;
+            const abbrev = n => (n||'').split(' ')[0].slice(0,8);
+            const cellContent = S.showNomes
+                ? `<span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_casa)}</span><span style="display:block;font-size:9px;font-weight:800">${score}</span><span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_fora)}</span>`
+                : score;
+            const cellStyle = S.showNomes ? ' style="padding:2px 3px;line-height:1;min-width:44px"' : '';
+            return `<td class="${hit ? 'c-verde' : 'c-verm'}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
         }).join('');
 
         tr.innerHTML = `
