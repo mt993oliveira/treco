@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="grad-receita-tech" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo circular -->
+  <circle cx="16" cy="16" r="15" fill="url(#grad-receita-tech)" />
+
+  <!-- Linha de fluxo (receita e despesa alternadas) -->
+  <path d="M6,21 L10,15 L14,21 L18,13 L22,21 L26,15" 
+        fill="none" 
+        stroke="white" 
+        stroke-width="2" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+
+  <!-- Destaque: Receitas (picos altos) -->
+  <circle cx="10" cy="15" r="1.8" fill="white"/>
+  <circle cx="18" cy="13" r="1.8" fill="white"/>
+
+  <!-- Destaque: Despesas (vales baixos) -->
+  <circle cx="14" cy="21" r="1.2" fill="white" opacity="0.7"/>
+  <circle cx="22" cy="21" r="1.2" fill="white" opacity="0.7"/>
+
+  <!-- Sinal de "pulso" tecnológico (opcional, sutil) -->
+  <circle cx="6" cy="21" r="1" fill="white" opacity="0.5"/>
+  <circle cx="26" cy="15" r="1" fill="white" opacity="0.5"/>
+</svg>

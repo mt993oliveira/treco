@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futebol Virtual — Dashboard</title>
+<style>
+  /* ===================== RESET & BASE ===================== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #161b26;
+    --surface2:  #1e2535;
+    --border:    #2a3246;
+    --accent:    #00d4ff;
+    --green:     #00e676;
+    --red:       #ff1744;
+    --yellow:    #ffd740;
+    --orange:    #ff6d00;
+    --purple:    #ce93d8;
+    --text:      #e8eaf0;
+    --muted:     #7986a0;
+    --live:      #ff1744;
+    --radius:    10px;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  button { cursor: pointer; border: none; outline: none; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ===================== LAYOUT ===================== */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ===================== HEADER ===================== */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .logo span { color: var(--green); }
+  .header-stats {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+  }
+  .hstat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .hstat strong { font-size: 16px; color: var(--text); }
+  .hstat.live strong { color: var(--live); }
+  .ws-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .ws-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+    transition: background 0.3s;
+  }
+  .ws-dot.conectado { background: var(--green); animation: pulsar 2s infinite; }
+  @keyframes pulsar { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .ultima-coleta { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+  /* ===================== TOOLBAR ===================== */
+  .toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .filtro-liga {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    min-width: 180px;
+  }
+  .filtro-status {
+    display: flex;
+    gap: 6px;
+  }
+  .btn-status {
+    padding: 5px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .btn-status.ativo { background: var(--accent); color: #000; border-color: var(--accent); }
+  .btn-status.live { background: var(--live); color: #fff; border-color: var(--live); }
+  .search-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    width: 180px;
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .btn-refresh {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: auto;
+    transition: all 0.2s;
+  }
+  .btn-refresh:hover { background: var(--accent); color: #000; }
+
+  /* ===================== MAIN ===================== */
+  .main {
+    flex: 1;
+    display: flex;
+    gap: 0;
+  }
+
+  /* ===================== LISTA DE EVENTOS ===================== */
+  .eventos-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .secao-titulo {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 4px 0 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge-count {
+    background: var(--surface2);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: 10px;
+  }
+
+  /* ===================== CARD EVENTO ===================== */
+  .card-evento {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-evento:hover { border-color: var(--accent); transform: translateX(2px); }
+  .card-evento.selecionado { border-color: var(--accent); background: #1a2535; }
+  .card-evento.ao-vivo { border-left: 3px solid var(--live); }
+  .card-evento.ao-vivo::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--live), transparent);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .liga-tag {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .status-badge.vivo { background: var(--live); color: #fff; animation: blink 1.5s infinite; }
+  .status-badge.agendado { background: var(--surface2); color: var(--muted); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+  .placar-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .time-nome {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .placar {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    min-width: 60px;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+  .placar.vivo { color: var(--live); }
+  .minuto {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--yellow);
+    text-align: center;
+    margin-top: -6px;
+    margin-bottom: 4px;
+    min-height: 14px;
+  }
+
+  .odds-row {
+    display: flex;
+    gap: 6px;
+  }
+  .odd-box {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 4px;
+    text-align: center;
+    transition: background 0.2s;
+  }
+  .odd-box:hover { background: #2a3550; }
+  .odd-label {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .odd-valor {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .odd-valor.subiu { color: var(--green); }
+  .odd-valor.desceu { color: var(--red); }
+
+  .stats-mini {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .stat-mini {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .stat-mini svg { width: 12px; height: 12px; opacity: 0.6; }
+
+  .horario-tag {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 6px;
+  }
+
+  /* ===================== PAINEL DETALHE ===================== */
+  .detalhe-panel {
+    width: 400px;
+    min-width: 400px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .detalhe-panel.oculto { display: none; }
+
+  .detalhe-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 10;
+  }
+  .detalhe-header h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .btn-fechar {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-fechar:hover { color: var(--text); }
+
+  .detalhe-body { padding: 16px; flex: 1; }
+
+  .detalhe-placar {
+    text-align: center;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+  }
+  .detalhe-times {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .detalhe-time-nome {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .detalhe-placar-num {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 4px;
+  }
+  .detalhe-minuto {
+    font-size: 13px;
+    color: var(--yellow);
+    font-weight: 600;
+  }
+
+  /* Barra de estatísticas */
+  .stats-section { margin-bottom: 16px; }
+  .stats-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .stat-barra {
+    margin-bottom: 8px;
+  }
+  .stat-barra-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .stat-barra-header .stat-nome { color: var(--text); font-weight: 500; }
+  .stat-barra-track {
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    display: flex;
+    overflow: hidden;
+    gap: 2px;
+  }
+  .stat-barra-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s;
+  }
+  .stat-barra-fill.casa { background: var(--accent); }
+  .stat-barra-fill.fora { background: var(--orange); }
+
+  /* Mercados */
+  .mercado-grupo { margin-bottom: 12px; }
+  .mercado-nome {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mercado-odds {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 6px;
+  }
+  .mercado-odd {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 6px;
+    text-align: center;
+    cursor: default;
+  }
+  .mercado-odd-nome {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mercado-odd-valor {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Probabilidades */
+  .prob-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .prob-col {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .prob-col.valor-positivo { border-color: var(--green); }
+  .prob-col.valor-negativo { border-color: var(--red); }
+  .prob-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+  .prob-hist {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .prob-hist.alto { color: var(--green); }
+  .prob-hist.medio { color: var(--yellow); }
+  .prob-hist.baixo { color: var(--muted); }
+  .prob-impl {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .prob-valor-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .prob-valor-badge.valor { background: rgba(0,230,118,0.15); color: var(--green); }
+  .prob-valor-badge.overpriced { background: rgba(255,23,68,0.15); color: var(--red); }
+  .prob-valor-badge.neutro { background: var(--surface); color: var(--muted); }
+
+  .sem-dados-badge {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* Forma recente */
+  .forma-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .forma-badge {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .forma-badge.V { background: var(--green); color: #000; }
+  .forma-badge.E { background: var(--yellow); color: #000; }
+  .forma-badge.D { background: var(--red); color: #fff; }
+
+  /* Stats times */
+  .times-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .time-stat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .time-stat-nome {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .time-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .time-stat-row strong { color: var(--text); }
+
+  /* H2H */
+  .h2h-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .h2h-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  .h2h-placar {
+    font-weight: 700;
+    font-size: 13px;
+    min-width: 36px;
+    text-align: center;
+    color: var(--accent);
+  }
+  .h2h-res {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+    min-width: 40px;
+    text-align: center;
+  }
+  .h2h-res.CASA { background: rgba(0,212,255,0.15); color: var(--accent); }
+  .h2h-res.EMPATE { background: rgba(255,215,64,0.15); color: var(--yellow); }
+  .h2h-res.FORA { background: rgba(255,109,0,0.15); color: var(--orange); }
+
+  /* Histórico de odds (mantido compacto) */
+  .historico-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  .historico-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  .variacao.up { color: var(--green); font-weight: 700; }
+  .variacao.down { color: var(--red); font-weight: 700; }
+
+  /* ===================== LOADING E EMPTY ===================== */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .loading-overlay.ativo { display: flex; }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+  }
+  .empty .icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* ===================== TOAST ===================== */
+  .toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    max-width: 280px;
+    animation: slideIn 0.3s ease;
+    pointer-events: auto;
+  }
+  .toast.sucesso { border-color: var(--green); }
+  .toast.erro { border-color: var(--red); }
+  .toast.info { border-color: var(--accent); }
+  @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:none;opacity:1} }
+
+  /* ===================== TENDÊNCIAS ===================== */
+  .tendencias-panel {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: none;
+  }
+  .tendencias-panel.visivel { display: block; }
+  .tendencias-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .tendencias-titulo {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tendencias-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+  }
+  .tendencia-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tendencia-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .tendencia-card.valor-positivo {
+    border-color: var(--green);
+    box-shadow: 0 0 10px rgba(0,230,118,0.2);
+  }
+  .tendencia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .tendencia-liga {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tendencia-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .tendencia-badge.valor { background: rgba(0,230,118,0.2); color: var(--green); }
+  .tendencia-teams {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .tendencia-placar {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--accent);
+    text-align: center;
+    min-width: 50px;
+  }
+  .tendencia-info {
+    display: flex;
+    gap: 12px;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .tendencia-seta {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .tendencia-seta.subindo { color: var(--red); }
+  .tendencia-seta.caindo { color: var(--green); }
+  .tendencia-seta.estavel { color: var(--muted); }
+
+  /* ===================== FILTROS AVANÇADOS ===================== */
+  .filtros-avancados-panel {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: none;
+  }
+  .filtros-avancados-panel.visivel { display: block; }
+  .filtros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    align-items: end;
+  }
+  .filtro-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .filtro-field label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .filtro-field input,
+  .filtro-field select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .filtro-field input:focus,
+  .filtro-field select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .btn-filtrar {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: 32px;
+  }
+  .btn-filtrar:hover {
+    background: #00b8e6;
+  }
+  .btn-limpar {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: 32px;
+  }
+  .btn-limpar:hover {
+    color: var(--text);
+    border-color: var(--muted);
+  }
+
+  /* ===================== ODDS COM TENDÊNCIA ===================== */
+  .odd-valor-com-seta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .odd-seta {
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .odd-seta.subiu { color: var(--green); }
+  .odd-seta.desceu { color: var(--red); }
+
+  /* ===================== RESPONSIVE ===================== */
+  @media (max-width: 900px) {
+    .detalhe-panel { display: none; }
+    .detalhe-panel.mobile-ativo {
+      display: flex;
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      width: 100%;
+      min-width: 0;
+    }
+    .header-stats { gap: 10px; }
+    .hstat strong { font-size: 13px; }
+    .tendencias-grid { grid-template-columns: 1fr; }
+    .filtros-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">⚽ VIRTUAL<span>LIVE</span></div>
+    <div class="header-stats">
+      <div class="hstat">
+        <strong id="stat-total">—</strong>
+        Eventos
+      </div>
+      <div class="hstat live">
+        <strong id="stat-vivo">—</strong>
+        Ao Vivo
+      </div>
+      <div class="hstat">
+        <strong id="stat-agendado">—</strong>
+        Agendados
+      </div>
+      <div class="hstat">
+        <strong id="stat-ligas">—</strong>
+        Ligas
+      </div>
+    </div>
+    <div class="ultima-coleta" id="ultima-coleta">Carregando...</div>
+    <div class="ws-badge">
+      <div class="ws-dot" id="ws-dot"></div>
+      <span id="ws-status">Desconectado</span>
+    </div>
+  </header>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <select class="filtro-liga" id="filtro-liga" onchange="aplicarFiltros()">
+      <option value="">Todas as ligas</option>
+    </select>
+    <div class="filtro-status">
+      <button class="btn-status ativo" id="btn-todos" onclick="setFiltroStatus('todos')">Todos</button>
+      <button class="btn-status" id="btn-vivo" onclick="setFiltroStatus('vivo')">🔴 Ao Vivo</button>
+      <button class="btn-status" id="btn-agendado" onclick="setFiltroStatus('agendado')">📅 Agendados</button>
+    </div>
+    <input type="text" class="search-input" id="search-input" placeholder="Buscar time..." oninput="aplicarFiltros()">
+    <button class="btn-refresh" onclick="toggleTendencias()" title="Ver tendências">📈</button>
+    <button class="btn-refresh" onclick="toggleFiltrosAvancados()" title="Filtros avançados">⚙️</button>
+    <button class="btn-refresh" onclick="carregarDados()">⟳ Atualizar</button>
+  </div>
+
+  <!-- PAINEL DE TENDÊNCIAS -->
+  <div class="tendencias-panel" id="tendencias-panel">
+    <div class="tendencias-header">
+      <div class="tendencias-titulo">
+        📈 Tendências de Odds
+        <span style="font-size:10px;font-weight:400;color:var(--muted);text-transform:none">— Oportunidades de valor em tempo real</span>
+      </div>
+      <button class="btn-limpar" onclick="toggleTendencias()" style="height:28px;padding:4px 10px;font-size:11px">✕ Fechar</button>
+    </div>
+    <div class="tendencias-grid" id="tendencias-grid">
+      <div style="color:var(--muted);font-size:12px">Carregando tendências...</div>
+    </div>
+  </div>
+
+  <!-- FILTROS AVANÇADOS -->
+  <div class="filtros-avancados-panel" id="filtros-avancados-panel">
+    <div class="filtros-grid">
+      <div class="filtro-field">
+        <label>Liga</label>
+        <input type="text" id="filtro-advanced-liga" placeholder="Nome da liga" onchange="aplicarFiltrosAvancados()">
+      </div>
+      <div class="filtro-field">
+        <label>Status</label>
+        <select id="filtro-advanced-status" onchange="aplicarFiltrosAvancados()">
+          <option value="">Todos</option>
+          <option value="EM_ANDAMENTO">Ao Vivo</option>
+          <option value="AGENDADO">Agendados</option>
+        </select>
+      </div>
+      <div class="filtro-field">
+        <label>Gols (mín)</label>
+        <input type="number" id="filtro-advanced-gols-min" placeholder="0" min="0" onchange="aplicarFiltrosAvancados()">
+      </div>
+      <div class="filtro-field">
+        <label>Gols (máx)</label>
+        <input type="number" id="filtro-advanced-gols-max" placeholder="10" min="0" onchange="aplicarFiltrosAvancados()">
+      </div>
+      <div class="filtro-field">
+        <label>Odd (mín)</label>
+        <input type="number" id="filtro-advanced-odd-min" placeholder="1.01" min="1" step="0.01" onchange="aplicarFiltrosAvancados()">
+      </div>
+      <div class="filtro-field">
+        <label>Posse Casa (mín)</label>
+        <input type="number" id="filtro-advanced-posse-min" placeholder="0" min="0" max="100" onchange="aplicarFiltrosAvancados()">
+      </div>
+      <div class="filtro-field">
+        <label>Ordenar</label>
+        <select id="filtro-advanced-ordenar" onchange="aplicarFiltrosAvancados()">
+          <option value="horario">Horário</option>
+          <option value="gols">Total Gols</option>
+          <option value="odds">Maior Odds</option>
+          <option value="posse">Posse Bola</option>
+          <option value="chutes">Chutes Gol</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-filtrar" onclick="aplicarFiltrosAvancados()">Filtrar</button>
+        <button class="btn-limpar" onclick="limparFiltrosAvancados()">Limpar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- LISTA DE EVENTOS -->
+    <div class="eventos-panel" id="eventos-panel">
+      <div class="empty">
+        <div class="icon">📡</div>
+        <div>Carregando eventos...</div>
+      </div>
+    </div>
+
+    <!-- PAINEL DETALHE -->
+    <div class="detalhe-panel oculto" id="detalhe-panel">
+      <div class="detalhe-header">
+        <h3 id="detalhe-titulo">Detalhes do Evento</h3>
+        <div id="detalhe-liga-tag" style="font-size:11px;color:var(--muted)"></div>
+        <button class="btn-fechar" onclick="fecharDetalhe()">✕</button>
+      </div>
+      <div class="detalhe-body" id="detalhe-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div style="color:var(--muted);font-size:13px">Carregando dados...</div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+const API = '';  // mesmo servidor
+let todosEventos = [];
+let eventoSelecionadoId = null;
+let filtroStatus = 'todos';
+let ws = null;
+let wsReconnectTimer = null;
+let intervaloPoll = null;
+
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  carregarDados();
+  conectarWS();
+  // Polling de backup a cada 60s caso WS falhe
+  intervaloPoll = setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) carregarDados();
+  }, 60000);
+});
+
+// ============================================================
+// WEBSOCKET
+// ============================================================
+function conectarWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url = `${proto}://${location.host}/ws`;
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    document.getElementById('ws-dot').classList.add('conectado');
+    document.getElementById('ws-status').textContent = 'Ao Vivo';
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    toast('Conexão WebSocket estabelecida', 'sucesso');
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.tipo === 'coleta' && msg.success) {
+        carregarDados(true); // silencioso
+      }
+    } catch {}
+  };
+
+  ws.onclose = () => {
+    document.getElementById('ws-dot').classList.remove('conectado');
+    document.getElementById('ws-status').textContent = 'Desconectado';
+    wsReconnectTimer = setTimeout(conectarWS, 5000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+// ============================================================
+// CARREGAR DADOS
+// ============================================================
+async function carregarDados(silencioso = false) {
+  if (!silencioso) mostrarLoading(true);
+  try {
+    const res = await fetch(`${API}/api/betano/eventos-completos`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+
+    if (json.success) {
+      todosEventos = json.data || [];
+      atualizarHeader();
+      atualizarFiltroLigas();
+      renderizarEventos();
+      document.getElementById('ultima-coleta').textContent =
+        'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+
+      // Atualizar detalhe aberto
+      if (eventoSelecionadoId) {
+        const ev = todosEventos.find(e => e.evento_id == eventoSelecionadoId);
+        if (ev) renderizarDetalhe(ev);
+      }
+    }
+  } catch (err) {
+    if (!silencioso) toast('Erro ao carregar dados: ' + err.message, 'erro');
+  } finally {
+    mostrarLoading(false);
+  }
+}
+
+// ============================================================
+// FILTROS
+// ============================================================
+function setFiltroStatus(s) {
+  filtroStatus = s;
+  ['todos','vivo','agendado'].forEach(id => {
+    document.getElementById('btn-' + id).classList.remove('ativo', 'live');
+  });
+  const btn = document.getElementById('btn-' + s);
+  btn.classList.add('ativo');
+  if (s === 'vivo') btn.classList.add('live');
+  aplicarFiltros();
+}
+
+function estaAoVivo(ev) {
+  if (ev.status === 'EM_ANDAMENTO') return true;
+  // Fallback: se o horário já passou há menos de 5 minutos, provavelmente está ao vivo
+  if (ev.horario) {
+    const diff = (Date.now() - new Date(ev.horario).getTime()) / 1000;
+    if (diff >= 0 && diff < 300) return true;
+  }
+  // Fallback: seconds_to_start <= 0
+  if (ev.seconds_to_start !== undefined && ev.seconds_to_start !== null && ev.seconds_to_start <= 0) return true;
+  return false;
+}
+
+function aplicarFiltros() {
+  const liga = document.getElementById('filtro-liga').value;
+  const busca = document.getElementById('search-input').value.toLowerCase().trim();
+
+  const filtrados = todosEventos.filter(ev => {
+    if (filtroStatus === 'vivo' && !estaAoVivo(ev)) return false;
+    if (filtroStatus === 'agendado' && estaAoVivo(ev)) return false;
+    if (liga && ev.liga !== liga) return false;
+    if (busca && !ev.time_casa?.toLowerCase().includes(busca) && !ev.time_fora?.toLowerCase().includes(busca)) return false;
+    return true;
+  });
+
+  renderizarEventos(filtrados);
+}
+
+// ============================================================
+// ATUALIZAR HEADER
+// ============================================================
+function atualizarHeader() {
+  const vivos = todosEventos.filter(e => estaAoVivo(e)).length;
+  const agendados = todosEventos.filter(e => !estaAoVivo(e)).length;
+  const ligas = new Set(todosEventos.map(e => e.liga)).size;
+
+  document.getElementById('stat-total').textContent = todosEventos.length;
+  document.getElementById('stat-vivo').textContent = vivos;
+  document.getElementById('stat-agendado').textContent = agendados;
+  document.getElementById('stat-ligas').textContent = ligas;
+}
+
+function atualizarFiltroLigas() {
+  const sel = document.getElementById('filtro-liga');
+  const atual = sel.value;
+  const ligas = [...new Set(todosEventos.map(e => e.liga).filter(Boolean))].sort();
+
+  sel.innerHTML = '<option value="">Todas as ligas</option>';
+  ligas.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l; opt.textContent = l;
+    sel.appendChild(opt);
+  });
+  sel.value = atual;
+}
+
+// ============================================================
+// RENDERIZAR EVENTOS
+// ============================================================
+function renderizarEventos(lista) {
+  lista = lista || obterListaFiltrada();
+  const panel = document.getElementById('eventos-panel');
+
+  if (lista.length === 0) {
+    const msg = filtroStatus === 'vivo'
+      ? '⏱ Nenhum jogo ao vivo agora.<br><small style="color:var(--muted)">Os jogos virtuais duram ~3 minutos. Aguarde a próxima partida iniciar.</small>'
+      : '🔍 Nenhum evento encontrado com os filtros aplicados.';
+    panel.innerHTML = `<div class="empty"><div style="font-size:32px;margin-bottom:10px">${filtroStatus === 'vivo' ? '🔴' : '🔍'}</div><div>${msg}</div></div>`;
+    return;
+  }
+
+  const vivos = lista.filter(e => estaAoVivo(e));
+  const agendados = lista.filter(e => !estaAoVivo(e));
+
+  let html = '';
+
+  if (vivos.length > 0) {
+    html += `<div class="secao-titulo">🔴 Ao Vivo <span class="badge-count">${vivos.length}</span></div>`;
+    html += vivos.map(e => cardEvento(e)).join('');
+  }
+
+  if (agendados.length > 0) {
+    html += `<div class="secao-titulo" style="margin-top:${vivos.length?'16px':'0'}">📅 Agendados <span class="badge-count">${agendados.length}</span></div>`;
+    html += agendados.map(e => cardEvento(e)).join('');
+  }
+
+  panel.innerHTML = html;
+}
+
+function obterListaFiltrada() {
+  const liga = document.getElementById('filtro-liga').value;
+  const busca = document.getElementById('search-input').value.toLowerCase().trim();
+
+  return todosEventos.filter(ev => {
+    if (filtroStatus === 'vivo' && !estaAoVivo(ev)) return false;
+    if (filtroStatus === 'agendado' && estaAoVivo(ev)) return false;
+    if (liga && ev.liga !== liga) return false;
+    if (busca && !ev.time_casa?.toLowerCase().includes(busca) && !ev.time_fora?.toLowerCase().includes(busca)) return false;
+    return true;
+  });
+}
+
+function cardEvento(ev) {
+  const vivo = estaAoVivo(ev);
+  const selecionado = ev.evento_id == eventoSelecionadoId;
+  const temOdds = ev.odd_casa > 0;
+
+  let statsMini = '';
+  if (vivo) {
+    const partes = [];
+    if (ev.posse_bola_casa || ev.posse_bola_fora) partes.push(`🔵 ${ev.posse_bola_casa||0}% — ${ev.posse_bola_fora||0}%`);
+    if (ev.chutes_casa || ev.chutes_fora) partes.push(`⚽ ${ev.chutes_casa||0}/${ev.chutes_fora||0}`);
+    if (ev.escanteios_casa || ev.escanteios_fora) partes.push(`🚩 ${ev.escanteios_casa||0}/${ev.escanteios_fora||0}`);
+    if (partes.length) statsMini = `<div class="stats-mini">${partes.map(p=>`<span class="stat-mini">${p}</span>`).join('')}</div>`;
+  }
+
+  const horario = ev.horario
+    ? new Date(ev.horario).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
+    : (ev.seconds_to_start > 0 ? `em ${formatarTempo(ev.seconds_to_start)}` : '');
+
+  const mercadosCount = (ev.mercados || []).length;
+
+  return `
+    <div class="card-evento${vivo?' ao-vivo':''}${selecionado?' selecionado':''}" onclick="selecionarEvento(${ev.evento_id})" data-id="${ev.evento_id}">
+      <div class="card-header">
+        <span class="liga-tag" title="${escHtml(ev.liga)}">${escHtml(ev.liga) || 'Liga Desconhecida'}</span>
+        ${mercadosCount > 0 ? `<span style="font-size:10px;color:var(--muted)">${mercadosCount} mercados</span>` : ''}
+        <span class="status-badge ${vivo?'vivo':'agendado'}">${vivo?'● AO VIVO':'Agendado'}</span>
+      </div>
+      <div class="placar-container">
+        <div class="time-nome">${escHtml(ev.time_casa) || '—'}</div>
+        <div>
+          <div class="placar${vivo?' vivo':''}">${vivo ? `${ev.gol_casa||0} : ${ev.gol_fora||0}` : 'vs'}</div>
+          ${ev.minuto_jogo ? `<div class="minuto">${escHtml(ev.minuto_jogo)}'</div>` : '<div class="minuto"></div>'}
+        </div>
+        <div class="time-nome">${escHtml(ev.time_fora) || '—'}</div>
+      </div>
+      ${temOdds ? `
+      <div class="odds-row">
+        <div class="odd-box"><div class="odd-label">1 Casa</div><div class="odd-valor">${fmtOdd(ev.odd_casa)}</div></div>
+        <div class="odd-box"><div class="odd-label">X Empate</div><div class="odd-valor">${fmtOdd(ev.odd_empate)}</div></div>
+        <div class="odd-box"><div class="odd-label">2 Fora</div><div class="odd-valor">${fmtOdd(ev.odd_fora)}</div></div>
+      </div>` : ''}
+      ${statsMini}
+      ${horario ? `<div class="horario-tag">${horario}</div>` : ''}
+    </div>
+  `;
+}
+
+// ============================================================
+// SELECIONAR EVENTO — DETALHE
+// ============================================================
+async function selecionarEvento(id) {
+  eventoSelecionadoId = id;
+  const ev = todosEventos.find(e => e.evento_id == id);
+
+  // Highlight card
+  document.querySelectorAll('.card-evento').forEach(c => c.classList.remove('selecionado'));
+  document.querySelector(`.card-evento[data-id="${id}"]`)?.classList.add('selecionado');
+
+  if (!ev) return;
+
+  document.getElementById('detalhe-panel').classList.remove('oculto');
+  renderizarDetalhe(ev);
+
+  // Buscar probabilidades e histórico de odds em paralelo
+  const [probRes, oddsRes] = await Promise.allSettled([
+    fetch(`${API}/api/betano/probabilidades/${id}`).then(r => r.json()),
+    fetch(`${API}/api/betano/historico-odds/${id}?limite=20`).then(r => r.json())
+  ]);
+
+  if (probRes.status === 'fulfilled' && probRes.value?.success) {
+    renderizarProbabilidades(probRes.value.data);
+  } else {
+    const el = document.getElementById('prob-conteudo');
+    if (el) el.innerHTML = `<div class="sem-dados-badge">⚠️ Não foi possível carregar a análise. Verifique se o servidor está rodando.</div>`;
+  }
+
+  if (oddsRes.status === 'fulfilled' && oddsRes.value?.success) {
+    renderizarHistoricoOdds(oddsRes.value.data);
+  } else {
+    const el = document.getElementById('historico-lista');
+    if (el) el.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12px;padding:12px">Sem movimentação de odds registrada ainda.</div>`;
+  }
+}
+
+function fecharDetalhe() {
+  eventoSelecionadoId = null;
+  document.getElementById('detalhe-panel').classList.add('oculto');
+  document.querySelectorAll('.card-evento').forEach(c => c.classList.remove('selecionado'));
+}
+
+function renderizarDetalhe(ev) {
+  const vivo = estaAoVivo(ev);
+  document.getElementById('detalhe-titulo').textContent = `${ev.time_casa || '—'} × ${ev.time_fora || '—'}`;
+  document.getElementById('detalhe-liga-tag').textContent = ev.liga || '';
+
+  let html = '';
+
+  // Placar
+  html += `
+    <div class="detalhe-placar">
+      <div class="detalhe-times">
+        <div class="detalhe-time-nome">${escHtml(ev.time_casa||'—')}</div>
+        <div style="text-align:center">
+          <div class="detalhe-placar-num" style="color:${vivo?'var(--live)':'var(--accent)'}">
+            ${vivo ? `${ev.gol_casa||0} — ${ev.gol_fora||0}` : 'VS'}
+          </div>
+          ${ev.minuto_jogo ? `<div class="detalhe-minuto">⏱ ${escHtml(ev.minuto_jogo)}'</div>` : ''}
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">
+            <span class="status-badge ${vivo?'vivo':'agendado'}">${vivo?'● AO VIVO':'Agendado'}</span>
+          </div>
+        </div>
+        <div class="detalhe-time-nome">${escHtml(ev.time_fora||'—')}</div>
+      </div>
+      ${ev.horario ? `<div style="font-size:11px;color:var(--muted)">${new Date(ev.horario).toLocaleString('pt-BR')}</div>` : ''}
+    </div>
+  `;
+
+  // Estatísticas
+  if (vivo) {
+    const stats = [
+      { nome: 'Posse de Bola', casa: ev.posse_bola_casa, fora: ev.posse_bola_fora, sufixo: '%' },
+      { nome: 'Chutes', casa: ev.chutes_casa, fora: ev.chutes_fora },
+      { nome: 'Chutes no Gol', casa: ev.chutes_gol_casa, fora: ev.chutes_gol_fora },
+      { nome: 'Escanteios', casa: ev.escanteios_casa, fora: ev.escanteios_fora },
+      { nome: 'Cartões Amarelos', casa: ev.cartoes_amarelos_casa, fora: ev.cartoes_amarelos_fora },
+      { nome: 'Cartões Vermelhos', casa: ev.cartoes_vermelhos_casa, fora: ev.cartoes_vermelhos_fora },
+    ].filter(s => s.casa || s.fora);
+
+    if (stats.length > 0) {
+      html += `<div class="stats-section"><div class="stats-section-title">📊 Estatísticas</div>`;
+      stats.forEach(s => {
+        const total = (s.casa || 0) + (s.fora || 0) || 1;
+        const pctCasa = Math.round(((s.casa||0) / total) * 100);
+        const pctFora = 100 - pctCasa;
+        html += `
+          <div class="stat-barra">
+            <div class="stat-barra-header">
+              <span>${s.casa||0}${s.sufixo||''}</span>
+              <span class="stat-nome">${s.nome}</span>
+              <span>${s.fora||0}${s.sufixo||''}</span>
+            </div>
+            <div class="stat-barra-track">
+              <div class="stat-barra-fill casa" style="width:${pctCasa}%"></div>
+              <div class="stat-barra-fill fora" style="width:${pctFora}%;margin-left:auto"></div>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+  }
+
+  // Mercados e odds
+  const mercados = ev.mercados || [];
+  if (mercados.length > 0) {
+    html += `<div class="stats-section"><div class="stats-section-title">🎰 Mercados (${mercados.length})</div>`;
+    mercados.forEach(m => {
+      const odds = m.odds || [];
+      if (odds.length === 0) return;
+      html += `
+        <div class="mercado-grupo">
+          <div class="mercado-nome">${escHtml(m.nome || m.mercado_nome || '')}</div>
+          <div class="mercado-odds">
+            ${odds.map(o => `
+              <div class="mercado-odd">
+                <div class="mercado-odd-nome" title="${escHtml(o.full_name||o.nome||'')}">
+                  ${escHtml(o.nome || o.odd_nome || '')}
+                </div>
+                <div class="mercado-odd-valor">${fmtOdd(o.valor || o.odd_valor)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+  }
+
+  // Placeholder probabilidades (preenchido após requisição)
+  html += `
+    <div class="stats-section" id="prob-section">
+      <div class="stats-section-title">🎯 Análise de Probabilidades</div>
+      <div id="prob-conteudo" style="text-align:center;color:var(--muted);font-size:12px;padding:12px">
+        Carregando análise histórica...
+      </div>
+    </div>
+    <div class="stats-section" id="historico-odds-section">
+      <div class="stats-section-title">📈 Movimento de Odds</div>
+      <div class="historico-lista" id="historico-lista">
+        <div style="text-align:center;color:var(--muted);font-size:12px;padding:12px">Carregando...</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('detalhe-body').innerHTML = html;
+}
+
+function renderizarProbabilidades(dados) {
+  const el = document.getElementById('prob-conteudo');
+  if (!el) return;
+
+  const { probabilidades, stats_time_casa, stats_time_fora, confronto_direto, evento } = dados;
+  const { implicita, historica, valor } = probabilidades;
+
+  const temHistorico = historica.casa !== null;
+  const MIN = 5;
+
+  let html = '';
+
+  // ── GRADE DE PROBABILIDADES ──────────────────────────
+  if (temHistorico) {
+    const fonte = historica.fonte === 'confronto_direto'
+      ? `📊 Confronto direto (${historica.amostras} jogos)`
+      : `📊 Dados individuais (${stats_time_casa.total}/${stats_time_fora.total} jogos)`;
+
+    html += `<div style="font-size:10px;color:var(--muted);margin-bottom:8px;text-align:center">${fonte}</div>`;
+    html += `<div class="prob-grid">`;
+
+    const cols = [
+      { key: 'casa',   label: `1 ${escHtml(evento.time_casa)}` },
+      { key: 'empate', label: 'X Empate' },
+      { key: 'fora',   label: `2 ${escHtml(evento.time_fora)}` }
+    ];
+
+    cols.forEach(({ key, label }) => {
+      const hist  = historica[key];
+      const impl  = implicita[key];
+      const val   = valor[key];
+
+      const intensidade = hist >= 50 ? 'alto' : hist >= 33 ? 'medio' : 'baixo';
+      let colCls = '';
+      let valBadge = '';
+
+      if (val !== null) {
+        if (val >= 3) {
+          colCls = 'valor-positivo';
+          valBadge = `<span class="prob-valor-badge valor">▲ VALOR +${val}%</span>`;
+        } else if (val <= -3) {
+          colCls = 'valor-negativo';
+          valBadge = `<span class="prob-valor-badge overpriced">▼ ${val}%</span>`;
+        } else {
+          valBadge = `<span class="prob-valor-badge neutro">≈ ${val > 0 ? '+' : ''}${val}%</span>`;
+        }
+      }
+
+      html += `
+        <div class="prob-col ${colCls}">
+          <div class="prob-label">${label}</div>
+          <div class="prob-hist ${intensidade}">${hist !== null ? hist + '%' : '—'}</div>
+          ${impl !== null ? `<div class="prob-impl">Odd implica ${impl}%</div>` : ''}
+          ${valBadge}
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+
+    // Legenda
+    html += `
+      <div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:12px">
+        % histórico vs probabilidade implícita pelas odds &nbsp;|&nbsp;
+        <span style="color:var(--green)">▲ VALOR</span> = histórico &gt; odds (oportunidade)
+      </div>
+    `;
+  } else {
+    const totalJogos = (stats_time_casa?.total || 0) + (stats_time_fora?.total || 0);
+    const jCasa = stats_time_casa?.total || 0;
+    const jFora = stats_time_fora?.total || 0;
+    const melhor = Math.max(jCasa, jFora);
+    html += `
+      <div class="sem-dados-badge">
+        ${melhor === 0
+          ? `⏳ <strong>Histórico em construção.</strong><br>
+             O sistema acumula resultados automaticamente a cada coleta (~2 min).<br>
+             Após ${MIN} partidas por time, a análise de probabilidades será exibida aqui.`
+          : `⚠️ Histórico insuficiente para análise combinada.<br>
+             <span style="color:var(--accent)">${escHtml(stats_time_casa?.nome||'')}</span>: ${jCasa} jogo(s) como mandante &nbsp;|&nbsp;
+             <span style="color:var(--orange)">${escHtml(stats_time_fora?.nome||'')}</span>: ${jFora} jogo(s) como visitante.<br>
+             Mínimo necessário: ${MIN} por time.`
+        }
+      </div>
+    `;
+  }
+
+  // ── STATS DOS TIMES ──────────────────────────────────
+  if (stats_time_casa.total > 0 || stats_time_fora.total > 0) {
+    html += `<div class="times-stats-grid">`;
+
+    [
+      { s: stats_time_casa, lado: 'Casa', cor: 'var(--accent)' },
+      { s: stats_time_fora, lado: 'Fora', cor: 'var(--orange)' }
+    ].forEach(({ s, lado, cor }) => {
+      const pctV = s.total > 0 ? Math.round((s.vitorias / s.total) * 100) : 0;
+      html += `
+        <div class="time-stat-card">
+          <div class="time-stat-nome" style="color:${cor}">${escHtml(s.nome)} <span style="color:var(--muted);font-weight:400">(${lado})</span></div>
+          <div class="time-stat-row"><span>Jogos:</span><strong>${s.total}</strong></div>
+          <div class="time-stat-row"><span>V/E/D:</span><strong style="color:var(--green)">${s.vitorias}</strong>/<strong style="color:var(--yellow)">${s.empates}</strong>/<strong style="color:var(--red)">${s.derrotas}</strong></div>
+          <div class="time-stat-row"><span>% Vitória:</span><strong>${pctV}%</strong></div>
+          <div class="time-stat-row"><span>Média Gols:</span><strong>${s.media_gols_marcados} / ${s.media_gols_sofridos}</strong></div>
+          ${s.forma.length > 0 ? `
+            <div style="margin-top:6px;font-size:10px;color:var(--muted);margin-bottom:3px">Forma recente:</div>
+            <div class="forma-row">
+              ${s.forma.slice(0,8).map(r => `<div class="forma-badge ${r}">${r}</div>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+  }
+
+  // ── CONFRONTO DIRETO ────────────────────────────────
+  if (confronto_direto.total > 0) {
+    html += `
+      <div class="stats-section-title" style="margin-bottom:8px">
+        ⚔️ Confronto Direto (${confronto_direto.total} jogos)
+        ${(() => {
+          const hist = confronto_direto.historico;
+          const vCasa = hist.filter(r=>r.resultado==='CASA').length;
+          const vEmp  = hist.filter(r=>r.resultado==='EMPATE').length;
+          const vFora = hist.filter(r=>r.resultado==='FORA').length;
+          return `<span style="font-size:10px;font-weight:400;color:var(--muted)"> — ${escHtml(evento.time_casa)}: ${vCasa}V | Emp: ${vEmp} | ${escHtml(evento.time_fora)}: ${vFora}V</span>`;
+        })()}
+      </div>
+      <div class="h2h-lista">
+        ${confronto_direto.historico.map(r => `
+          <div class="h2h-item">
+            <span class="h2h-res ${r.resultado}">${r.resultado === 'CASA' ? escHtml(evento.time_casa) : r.resultado === 'FORA' ? escHtml(evento.time_fora) : 'Empate'}</span>
+            <span class="h2h-placar">${r.placar}</span>
+            <span style="color:var(--muted);font-size:10px;margin-left:auto">
+              ${r.data ? new Date(r.data).toLocaleDateString('pt-BR') : ''}
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  el.innerHTML = html;
+}
+
+function renderizarHistoricoOdds(historico) {
+  const el = document.getElementById('historico-lista');
+  if (!el) return;
+
+  if (historico.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:12px">Sem histórico</div>';
+    return;
+  }
+
+  el.innerHTML = historico.slice(0, 20).map(h => {
+    const v = parseFloat(h.variacao_percentual) || 0;
+    const cls = v > 0 ? 'up' : v < 0 ? 'down' : '';
+    const seta = v > 0 ? '▲' : v < 0 ? '▼' : '▶';
+    const hora = new Date(h.data_coleta).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    return `
+      <div class="historico-item">
+        <span style="color:var(--muted);font-size:10px">${hora}</span>
+        <span>${escHtml(h.nome_selecao||'')} — ${escHtml(h.mercado_nome||'')}</span>
+        <span style="font-weight:600">${fmtOdd(h.valor_odd)}</span>
+        <span class="variacao ${cls}">${seta} ${Math.abs(v).toFixed(1)}%</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function fmtOdd(v) {
+  const n = parseFloat(v);
+  return n > 0 ? n.toFixed(2) : '—';
+}
+
+function formatarTempo(segundos) {
+  if (segundos < 60) return `${segundos}s`;
+  const m = Math.floor(segundos / 60);
+  const s = segundos % 60;
+  return `${m}m${s > 0 ? s + 's' : ''}`;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function mostrarLoading(s) {
+  document.getElementById('loading').classList.toggle('ativo', s);
+}
+
+function toast(msg, tipo = 'info') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${tipo}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ============================================================
+// TENDÊNCIAS DE ODDS
+// ============================================================
+let tendenciasData = [];
+let refreshTendenciasInterval = null;
+
+function toggleTendencias() {
+  const panel = document.getElementById('tendencias-panel');
+  const visivel = panel.classList.toggle('visivel');
+  
+  if (visivel) {
+    carregarTendencias();
+    // Auto-refresh a cada 30s
+    if (refreshTendenciasInterval) clearInterval(refreshTendenciasInterval);
+    refreshTendenciasInterval = setInterval(carregarTendencias, 30000);
+  } else {
+    if (refreshTendenciasInterval) {
+      clearInterval(refreshTendenciasInterval);
+      refreshTendenciasInterval = null;
+    }
+  }
+}
+
+async function carregarTendencias() {
+  try {
+    const res = await fetch(`${API}/api/betano/tendencias`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    
+    if (json.success && json.data) {
+      tendenciasData = json.data;
+      renderizarTendencias(json.data);
+    }
+  } catch (err) {
+    console.error('Erro ao carregar tendências:', err);
+  }
+}
+
+function renderizarTendencias(data) {
+  const grid = document.getElementById('tendencias-grid');
+  if (!grid) return;
+  
+  if (data.length === 0) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Nenhuma tendência disponível no momento</div>';
+    return;
+  }
+  
+  grid.innerHTML = data.map(t => {
+    const temValor = parseFloat(t.valor.casa) > 2 || parseFloat(t.valor.fora) > 2;
+    return `
+      <div class="tendencia-card${temValor ? ' valor-positivo' : ''}" 
+           onclick="selecionarEventoPorLiga('${escHtml(t.time_casa)}', '${escHtml(t.time_fora)}')">
+        <div class="tendencia-header">
+          <span class="tendencia-liga" title="${escHtml(t.liga)}">${escHtml(t.liga)}</span>
+          ${temValor ? '<span class="tendencia-badge valor">VALOR</span>' : ''}
+        </div>
+        <div class="tendencia-teams">
+          <span>${escHtml(t.time_casa)}</span>
+          <span class="tendencia-placar">${t.placar}</span>
+          <span>${escHtml(t.time_fora)}</span>
+        </div>
+        <div class="tendencia-info">
+          <span>⏱ ${t.minuto || '—'}'</span>
+          <span>📊 Posse: ${t.estatisticas?.posse?.casa || 0}% — ${t.estatisticas?.posse?.fora || 0}%</span>
+        </div>
+        <div class="tendencia-info" style="border-top:none;padding-top:4px;margin-top:0">
+          <span>Casa: <strong style="color:${t.tendencias?.casa === 'caindo' ? 'var(--green)' : t.tendencias?.casa === 'subindo' ? 'var(--red)' : 'var(--muted)'}">
+            ${t.odds?.casa?.toFixed(2) || '—'} 
+            ${t.tendencias?.casa === 'caindo' ? '↓' : t.tendencias?.casa === 'subindo' ? '↑' : '•'}
+          </strong></span>
+          <span>Fora: <strong style="color:${t.tendencias?.fora === 'caindo' ? 'var(--green)' : t.tendencias?.fora === 'subindo' ? 'var(--red)' : 'var(--muted)'}">
+            ${t.odds?.fora?.toFixed(2) || '—'}
+            ${t.tendencias?.fora === 'caindo' ? '↓' : t.tendencias?.fora === 'subindo' ? '↑' : '•'}
+          </strong></span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selecionarEventoPorLiga(timeCasa, timeFora) {
+  const ev = todosEventos.find(e => 
+    e.time_casa?.toLowerCase() === timeCasa.toLowerCase() && 
+    e.time_fora?.toLowerCase() === timeFora.toLowerCase()
+  );
+  if (ev) {
+    selecionarEvento(ev.evento_id);
+  } else {
+    toast('Evento não encontrado na lista atual', 'info');
+  }
+}
+
+// ============================================================
+// FILTROS AVANÇADOS
+// ============================================================
+function toggleFiltrosAvancados() {
+  const panel = document.getElementById('filtros-avancados-panel');
+  panel.classList.toggle('visivel');
+}
+
+function aplicarFiltrosAvancados() {
+  const liga = document.getElementById('filtro-advanced-liga').value;
+  const status = document.getElementById('filtro-advanced-status').value;
+  const golsMin = document.getElementById('filtro-advanced-gols-min').value;
+  const golsMax = document.getElementById('filtro-advanced-gols-max').value;
+  const oddMin = document.getElementById('filtro-advanced-odd-min').value;
+  const posseMin = document.getElementById('filtro-advanced-posse-min').value;
+  const ordenar = document.getElementById('filtro-advanced-ordenar').value;
+  
+  // Construir query string
+  const params = new URLSearchParams();
+  if (liga) params.append('liga', liga);
+  if (status) params.append('status', status);
+  if (golsMin) params.append('golsMin', golsMin);
+  if (golsMax) params.append('golsMax', golsMax);
+  if (oddMin) params.append('oddMin', oddMin);
+  if (posseMin) params.append('posseMin', posseMin);
+  if (ordenar) params.append('ordenar', ordenar);
+  params.append('limite', '100');
+  
+  fetch(`${API}/api/betano/filtro-avancado?${params.toString()}`)
+    .then(res => res.json())
+    .then(json => {
+      if (json.success) {
+        todosEventos = json.data || [];
+        atualizarHeader();
+        atualizarFiltroLigas();
+        renderizarEventos();
+        toast(`${todosEventos.length} evento(s) encontrado(s)`, 'sucesso');
+      }
+    })
+    .catch(err => toast('Erro ao filtrar: ' + err.message, 'erro'));
+}
+
+function limparFiltrosAvancados() {
+  document.getElementById('filtro-advanced-liga').value = '';
+  document.getElementById('filtro-advanced-status').value = '';
+  document.getElementById('filtro-advanced-gols-min').value = '';
+  document.getElementById('filtro-advanced-gols-max').value = '';
+  document.getElementById('filtro-advanced-odd-min').value = '';
+  document.getElementById('filtro-advanced-posse-min').value = '';
+  document.getElementById('filtro-advanced-ordenar').value = 'horario';
+  
+  // Recarregar dados completos
+  carregarDados();
+  toast('Filtros limpos', 'info');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+## Qwen Added Memories
+- Projeto Controle Financeiro Avançado - Aplicação em Node.js + SQL Server + Frontend HTML/CSS/JS. Domínio: controlfinance.com.br. Banco de dados: mt993oliveira_ControlFinance. Usuário MASTER com senha kvb@4sJ2 (armazenada como base64 no banco). Atualmente hospedado na Locaweb via FTP. Arquivo .env configurado com DB_SERVER=127.0.0.1 (localhost) precisa ser atualizado com credenciais do SQL Server da Locaweb. Backend em backend/server.js, frontend em frontend/index.html. Porta configurada para uso via variável process.env.PORT || 3000.

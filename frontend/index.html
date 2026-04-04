@@ -1,0 +1,3050 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Gestão Financeira Avançada</title>
+    <link rel="icon" type="image/svg+xml" href="./images/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1a2a6c;
+            --secondary: #b21f1f;
+            --accent: #fdbb2d;
+            --success: #28a745;
+            --info: #17a2b8;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --dark: #343a40;
+            --light: #f8f9fa;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        header:hover::before {
+            transform: translateX(100%);
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .month-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 15px 25px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .month-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .month-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .month-btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        .current-month {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            min-width: 200px;
+            text-align: center;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .current-month-display {
+            display: inline-block;
+            padding: 0 20px;
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.2em;
+            min-width: 200px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .year-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 20px;
+        }
+
+        .year-select {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .year-select option {
+            background: var(--primary);
+            color: white;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.3);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .card:nth-child(2)::before {
+            background: var(--secondary);
+        }
+
+        .card:nth-child(3)::before {
+            background: var(--accent);
+        }
+
+        .card:nth-child(4)::before {
+            background: var(--success);
+        }
+
+        .card:nth-child(5)::before {
+            background: var(--info);
+        }
+
+        .card h3 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .card .description {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        .section {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .section-title {
+            color: white;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-add {
+            background: var(--success);
+        }
+
+        .btn-add:hover {
+            background: #218838;
+        }
+
+        .btn-chart {
+            background: var(--info);
+        }
+
+        .btn-chart:hover {
+            background: #138496;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-align: left;
+            padding: 12px 15px;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .valor {
+            text-align: right;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+            color: white;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-edit, .btn-delete {
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+        }
+
+        .btn-edit {
+            background: var(--warning);
+            color: #212529;
+        }
+
+        .btn-edit:hover {
+            background: #e0a800;
+        }
+
+        .btn-delete {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+        }
+
+        .total-row {
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.1);
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .obs {
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+        }
+
+        .copy-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.2);
+            display: flex;
+            gap: 10px;
+        }
+
+        .history-navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .page-btn {
+            padding: 8px 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: var(--secondary);
+        }
+
+        .page-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .items-per-page {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+            color: #333;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .modal-title {
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        .close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+        }
+
+        .btn-cancel:hover {
+            background: #5a6268;
+        }
+
+        .btn-save {
+            background: var(--success);
+        }
+
+        .btn-save:hover {
+            background: #218838;
+        }
+
+        .chart-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        .close-chart {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid rgba(40, 167, 69, 0.5);
+            color: #d4edda;
+        }
+
+        .message.error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid rgba(220, 53, 69, 0.5);
+            color: #f8d7da;
+        }
+
+        /* Estilos responsivos para histórico */
+        #history-content {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: var(--history-item-bg, rgba(255, 255, 255, 0.1));
+            border: 1px solid var(--history-item-border, rgba(255, 255, 255, 0.2));
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: var(--history-item-hover-bg, rgba(255, 255, 255, 0.15));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .history-date {
+            font-weight: bold;
+            color: var(--history-date-color, #4CAF50);
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .history-details {
+            color: var(--history-details-color, #ddd);
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        /* Estilos responsivos para o histórico */
+        @media (max-width: 768px) {
+            .history-item {
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            .history-date {
+                font-size: 13px;
+            }
+
+            .history-details {
+                font-size: 13px;
+                line-height: 1.4;
+            }
+
+            #history-content {
+                max-height: 50vh;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .history-item {
+                padding: 10px;
+            }
+
+            .history-date, .history-details {
+                font-size: 12px;
+            }
+        }
+
+        /* Melhorias para os gráficos */
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            width: 90%;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                width: 95%;
+                padding: 15px;
+            }
+        }
+
+        /* Estilos para a canvas dos gráficos */
+        #chart-canvas {
+            width: 100% !important;
+            height: auto !important;
+            max-height: 60vh;
+        }
+
+        /* Estilos para dropdowns */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-toggle::after {
+            display: inline-block;
+            margin-left: 0.255em;
+            vertical-align: 0.255em;
+            content: "";
+            border-top: 0.3em solid;
+            border-right: 0.3em solid transparent;
+            border-bottom: 0;
+            border-left: 0.3em solid transparent;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            display: none;
+            float: left;
+            min-width: 10rem;
+            padding: 0.5rem 0;
+            margin: 0.125rem 0 0;
+            font-size: 1rem;
+            color: #212529;
+            text-align: left;
+            list-style: none;
+            background-clip: padding-box;
+            border: 1px solid rgba(0,0,0,.15);
+            border-radius: 0.25rem;
+            background-color: white;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,.175);
+        }
+
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 0.25rem 1rem;
+            clear: both;
+            font-weight: 400;
+            color: #212529;
+            text-align: inherit;
+            white-space: nowrap;
+            background-color: transparent;
+            border: 0;
+            cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .dropdown:hover .dropdown-menu {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="main-container">
+        <header>
+            <h1>
+                <i class="fas fa-chart-line"></i>
+                <span>Controle de Gestão Financeira Avançada</span>
+            </h1>
+            <p class="subtitle">
+                <span>Painel interativo de gestão financeira com análise histórica</span>
+            </p>
+            <div style="margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 15px;">
+                <span style="color: rgba(255, 255, 255, 0.8);">Olá, <span id="logged-user" style="font-weight: bold; cursor: pointer;" title="Clique para editar seu perfil">Usuário</span></span>
+                <button class="btn" id="logout-btn" style="padding: 5px 10px; font-size: 0.8rem; background: var(--secondary);">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+                <button class="btn" id="contact-btn-header" style="padding: 5px 10px; font-size: 0.8rem; background: #7B2CBF;">
+                    <i class="fas fa-envelope"></i> Contato
+                </button>
+                <button class="btn" id="portfolio-btn-header" style="padding: 5px 10px; font-size: 0.8rem; background: #28a745;">
+                    <i class="fas fa-briefcase"></i> Portifólio
+                </button>
+                <!-- Seletor de temas -->
+                <select id="theme-selector" style="
+                    background: var(--glass);
+                    color: white;
+                    border: 1px solid var(--glass-border);
+                    border-radius: 8px;
+                    padding: 5px 10px;
+                    cursor: pointer;
+                    font-size: 0.8rem;
+                    backdrop-filter: blur(5px);
+                " onchange="applyTheme(this.value)">
+                    <option value="financeiro" style="background: #1a2a6c; color: white;">Tema Financeiro</option>
+                    <option value="profissional" style="background: #2c3e50; color: white;">Tema Profissional</option>
+                    <option value="moderno" style="background: #7b68ee; color: white;">Tema Moderno</option>
+                    <option value="empresarial" style="background: #0e4b97; color: white;">Tema Empresarial</option>
+                    <option value="neutro" style="background: #7f8c8d; color: white;">Tema Neutro</option>
+                    <option value="escuro" style="background: #2c3639; color: white;">Tema Escuro</option>
+                    <option value="minimalista" style="background: #2c5530; color: white;">Tema Minimalista</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="month-navigation">
+            <div class="month-selector">
+                <button class="month-btn" id="prev-month">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span id="current-month" class="current-month-display"></span>
+                <button class="month-btn" id="next-month">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <div class="year-selector">
+                <select class="year-select" id="year-select">
+                    <!-- Anos serão preenchidos dinamicamente -->
+                </select>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h3>
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>Despesas</span>
+                </h3>
+                <div class="value" id="total-mensal">R$ 0,00</div>
+                <div class="description">
+                    <span>Total de despesas do mês</span>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Receitas</span>
+                </h3>
+                <div class="value" id="saldo-receber">R$ 0,00</div>
+                <div class="description">
+                    <span>Total de receitas a receber</span>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>
+                    <i class="fas fa-balance-scale"></i>
+                    <span>Saldo Líquido</span>
+                </h3>
+                <div class="value" id="saldo-total">R$ 0,00</div>
+                <div class="description">
+                    <span>Receitas - Despesas</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <span>Despesas</span>
+                    </h2>
+                    <div>
+                        <button class="btn btn-add" id="add-mensal">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-chart dropdown-toggle" type="button" id="chart-mensal" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-chart-pie"></i> Gráfico
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="openChart('mensal', 'default')">Por Descrição</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="openChart('mensal', 'category')">Por Categoria</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <table id="table-mensal">
+                    <thead>
+                        <tr>
+                            <th>Descrição</th>
+                            <th>Valor (R$)</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dados serão inseridos dinamicamente -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td>Total</td>
+                            <td class="valor" id="total-mensal-valor">0,00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="copy-section">
+                    <button class="btn" id="copy-prev-month">
+                        <i class="fas fa-copy"></i> Copiar do Mês Anterior
+                    </button>
+                </div>
+            </div>
+
+            <!-- Seção: Contas a Receber -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Receitas</span>
+                    </h2>
+                    <div>
+                        <button class="btn btn-add" id="add-receber">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-chart dropdown-toggle" type="button" id="chart-receber" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-chart-pie"></i> Gráfico
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="openChart('receber', 'default')">Por Descrição</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="openChart('receber', 'category')">Por Categoria</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <table id="table-receber">
+                    <thead>
+                        <tr>
+                            <th>Descrição</th>
+                            <th>Valor (R$)</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dados serão inseridos dinamicamente -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td>Total</td>
+                            <td class="valor" id="total-receber-valor">0,00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="copy-section">
+                    <button class="btn" id="copy-prev-month-receber">
+                        <i class="fas fa-copy"></i> Copiar do Mês Anterior
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sistema de histórico expandido -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-history"></i>
+                    <span>Histórico Completo</span>
+                </h2>
+                <div class="history-controls">
+                    <button class="btn" id="show-all-history">
+                        <i class="fas fa-sync-alt"></i> Atualizar histórico
+                    </button>
+                </div>
+            </div>
+            <div class="history-navigation">
+                <button class="btn" id="prev-history">
+                    <i class="fas fa-chevron-left"></i> Mês Anterior
+                </button>
+                <button class="btn" id="next-history">
+                    Próximo Mês <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div id="history-content">
+                <!-- Conteúdo do histórico será inserido aqui -->
+            </div>
+            <div class="pagination" id="history-pagination">
+                <!-- Paginação será inserida aqui -->
+            </div>
+            <div class="items-per-page">
+                <span>Itens por página:</span>
+                <select id="history-items-per-page">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Gerenciamento de Usuários (apenas para MASTER) -->
+        <div class="section" id="user-management-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-users"></i>
+                    <span>Gerenciamento de Usuários</span>
+                </h2>
+                <button class="btn btn-add" id="add-user">
+                    <i class="fas fa-plus"></i> Adicionar Usuário
+                </button>
+            </div>
+
+            <table id="users-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Usuário</th>
+                        <th>Email</th>
+                        <th>Tipo</th>
+                        <th>Data Início Licença</th>
+                        <th>Data Fim Licença</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dados serão inseridos dinamicamente -->
+                </tbody>
+            </table>
+
+            <div class="pagination" id="users-pagination">
+                <!-- Paginação será inserida aqui -->
+            </div>
+            <div class="items-per-page">
+                <span>Itens por página:</span>
+                <select id="users-items-per-page">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+        </div> 
+    </div>
+
+    <!-- Modal para adicionar/editar despesas -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Adicionar Despesa</h3>
+                <button class="close" id="close-modal">&times;</button>
+            </div>
+            <form id="expense-form">
+                <input type="hidden" id="expense-id">
+                <input type="hidden" id="expense-type">
+
+                <div class="form-group">
+                    <label for="description">Descrição</label>
+                    <input type="text" id="description" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="value">Valor (R$)</label>
+                    <input type="number" id="value" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group" id="obs-group">
+                    <label for="observations">Observações</label>
+                    <textarea id="observations" rows="3"></textarea>
+                </div>
+
+                <div class="form-group" id="movimento-group">
+                    <label for="movimento">Categoria *</label>
+                    <select id="movimento" required style="background: rgba(255, 255, 255, 0.1); color: #333; padding: 10px; border-radius: 8px; width: 100%; border: 1px solid rgba(255, 255, 255, 0.3); font-weight: 500;">
+                        <option value="">Selecione uma categoria</option>
+                    </select>
+                    <small style="color: #6c757d;">Campo obrigatório</small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" id="cancel-btn">Cancelar</button>
+                    <button type="submit" class="btn btn-save">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para histórico -->
+    <div class="modal" id="history-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Histórico de Alterações</h3>
+                <button class="close" id="close-history-modal">&times;</button>
+            </div>
+            <div id="history-modal-content">
+                <!-- Conteúdo do histórico será inserido aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gerenciamento de usuários -->
+    <div class="modal" id="user-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="user-modal-title">Adicionar Usuário</h3>
+                <button class="close" id="close-user-modal">&times;</button>
+            </div>
+            <form id="user-form">
+                <input type="hidden" id="user-id">
+
+                <div class="form-group">
+                    <label for="user-fullname">Nome Completo</label>
+                    <input type="text" id="user-fullname" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="user-username">Usuário</label>
+                    <input type="text" id="user-username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="user-email">E-mail</label>
+                    <input type="email" id="user-email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="user-password">Senha</label>
+                    <input type="password" id="user-password">
+                    <small style="color: #6c757d;">Deixe em branco para manter a senha atual</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="user-type">Tipo de Usuário</label>
+                    <select id="user-type" required>
+                        <option value="user">Usuário</option>
+                        <option value="admin">Administrador</option>
+                        <option value="master">Master</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="user-license-start">Data Início Licença</label>
+                    <input type="date" id="user-license-start">
+                </div>
+
+                <div class="form-group">
+                    <label for="user-license-end">Data Fim Licença</label>
+                    <input type="date" id="user-license-end">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" id="cancel-user-btn">Cancelar</button>
+                    <button type="submit" class="btn btn-save">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para configurações do perfil -->
+    <div class="modal" id="profile-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Configurações de Perfil</h3>
+                <button class="close" id="close-profile-modal">&times;</button>
+            </div>
+            <form id="profile-form">
+                <div class="form-group">
+                    <label for="profile-fullname">Nome Completo</label>
+                    <input type="text" id="profile-fullname" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-email">E-mail</label>
+                    <input type="email" id="profile-email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-password">Nova Senha</label>
+                    <input type="password" id="profile-password">
+                    <small style="color: #6c757d;">Deixe em branco para manter a senha atual</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile-password-confirm">Confirmar Nova Senha</label>
+                    <input type="password" id="profile-password-confirm">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" id="cancel-profile-btn">Cancelar</button>
+                    <button type="submit" class="btn btn-save">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Overlay de gráficos -->
+    <div class="chart-overlay" id="chart-overlay">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title" id="chart-title">Gráfico de Despesas</h3>
+                <button class="close-chart" id="close-chart">&times;</button>
+            </div>
+            <canvas id="chart-canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis globais do sistema
+        let currentUser = null;
+        
+        // Verificar se o usuário está autenticado via localStorage
+        const storedUser = localStorage.getItem('currentUser');
+        if (storedUser) {
+            currentUser = JSON.parse(storedUser);
+        }
+        
+        // Se não estiver autenticado ou o currentUser estiver incompleto, redirecionar para o portfólio
+        if (!currentUser || !currentUser.Id) {
+            window.location.href = '/';
+			exit();
+           // return; // Interrompe a execução do script
+        }
+
+        // Configuração padrão do SQL (será obtida via makeRequest com base nas configurações do servidor)
+        let sqlConfig = null;
+
+        // Elementos DOM
+        const mainContainer = document.getElementById('main-container');
+        const loggedUserEl = document.getElementById('logged-user');
+        const logoutBtn = document.getElementById('logout-btn');
+        const contactBtnHeader = document.getElementById('contact-btn-header');
+        const portfolioBtnHeader = document.getElementById('portfolio-btn-header');
+        const prevMonthBtn = document.getElementById('prev-month');
+        const nextMonthBtn = document.getElementById('next-month');
+        const currentMonthEl = document.getElementById('current-month');
+        const yearSelect = document.getElementById('year-select');
+        const copyPrevMonthBtn = document.getElementById('copy-prev-month');
+        const copyPrevMonthReceberBtn = document.getElementById('copy-prev-month-receber');
+        
+        // Seções
+        const userManagementSection = document.getElementById('user-management-section');
+        const sqlConfigSection = document.getElementById('sql-config-section');
+        
+        // Tabelas
+        const tableMensal = document.getElementById('table-mensal');
+        const tableReceber = document.getElementById('table-receber');
+        const usersTable = document.getElementById('users-table');
+        
+        // Modais
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const expenseForm = document.getElementById('expense-form');
+        const expenseId = document.getElementById('expense-id');
+        const expenseType = document.getElementById('expense-type');
+        const descriptionInput = document.getElementById('description');
+        const valueInput = document.getElementById('value');
+        const observationsInput = document.getElementById('observations');
+        const closeModal = document.getElementById('close-modal');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const historyModal = document.getElementById('history-modal');
+        const historyModalContent = document.getElementById('history-modal-content');
+        const closeHistoryModal = document.getElementById('close-history-modal');
+        
+        // Botões
+        const addMensalBtn = document.getElementById('add-mensal');
+        const addReceberBtn = document.getElementById('add-receber');
+
+        // Elementos de gráfico
+        const chartOverlay = document.getElementById('chart-overlay');
+        const chartCanvas = document.getElementById('chart-canvas');
+        const chartTitle = document.getElementById('chart-title');
+        const closeChart = document.getElementById('close-chart');
+        const chartMensalBtn = document.getElementById('chart-mensal');
+        const chartReceberBtn = document.getElementById('chart-receber');
+
+        // Outros elementos
+        const totalMensalEl = document.getElementById('total-mensal');
+        const totalReceberEl = document.getElementById('saldo-receber');
+        const totalGeralEl = document.getElementById('saldo-total');
+        const totalMensalValorEl = document.getElementById('total-mensal-valor');
+        const totalReceberValorEl = document.getElementById('total-receber-valor');
+        const obsGroup = document.getElementById('obs-group');
+        const movimentoGroup = document.getElementById('movimento-group');
+        const movimentoSelect = document.getElementById('movimento');
+
+        // Variáveis de histórico e gerenciamento de usuários
+        const showAllHistoryBtn = document.getElementById('show-all-history');
+        const prevHistoryBtn = document.getElementById('prev-history');
+        const nextHistoryBtn = document.getElementById('next-history');
+        const historyItemsPerPageSelect = document.getElementById('history-items-per-page');
+        const addUserBtn = document.getElementById('add-user');
+        const historyPagination = document.getElementById('history-pagination');
+        const historyContent = document.getElementById('history-content');
+
+        // Estado atual
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+
+        // Sistema de navegação por meses e anos ilimitados
+        function updateCurrentMonthDisplay() {
+            if (currentMonthEl) {
+                const date = new Date(currentYear, currentMonth, 1);
+                currentMonthEl.textContent = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            }
+        }
+
+        function renderYearSelect() {
+            yearSelect.innerHTML = '';
+            const currentYear = new Date().getFullYear();
+            
+            // Gerar opções de ano de 2025 até 2035
+            for (let year = 2025; year <= 2035; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                option.selected = year === currentYear;
+                yearSelect.appendChild(option);
+            }
+        }
+
+        // Eventos de navegação
+        prevMonthBtn.addEventListener('click', () => {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            updateCurrentMonthDisplay();
+            loadAndRenderData();
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            updateCurrentMonthDisplay();
+            loadAndRenderData();
+        });
+
+        yearSelect.addEventListener('change', (e) => {
+            currentYear = parseInt(e.target.value);
+            updateCurrentMonthDisplay();
+            loadAndRenderData();
+        });
+
+        // Função para formatar valores monetários
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        // Função para fazer requisições para o backend
+        async function makeRequest(endpoint, data = {}) {
+            try {
+                // Garantir que o endpoint comece com /api/
+                const url = endpoint.startsWith('/api/') ? endpoint : `/api${endpoint}`;
+                console.log(`Fazendo requisição para: ${url}`);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ...data,
+                        sqlConfig: sqlConfig,
+                        usuarioId: currentUser ? currentUser.Id : null
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log(`Resposta de ${endpoint}:`, result);
+                return result;
+
+            } catch (error) {
+                console.error(`Erro na requisição ${endpoint}:`, error);
+                throw error;
+            }
+        }
+
+        // Funções para carregar dados
+        async function loadDespesasMensais(mes, ano) {
+            try {
+                const result = await makeRequest('/despesas/mensais', { mes, ano });
+                return result.success ? result.data : [];
+            } catch (error) {
+                console.error('Erro ao carregar despesas mensais:', error);
+                return [];
+            }
+        }
+
+        async function loadContasReceber(mes, ano) {
+            try {
+                const result = await makeRequest('/contas/receber', { mes, ano });
+                return result.success ? result.data : [];
+            } catch (error) {
+                console.error('Erro ao carregar contas a receber:', error);
+                return [];
+            }
+        }
+
+        // Funções para histórico
+        async function loadHistorico(mes, ano) {
+            try {
+                const result = await makeRequest('/historico', { mes, ano });
+                return result.success ? result.data : [];
+            } catch (error) {
+                console.error('Erro ao carregar histórico:', error);
+                return [];
+            }
+        }
+
+        async function loadHistoricoPaginado(mes, ano, pagina, itensPorPagina) {
+            try {
+                const result = await makeRequest('/historico/paginado', {
+                    mes,
+                    ano,
+                    pagina,
+                    itensPorPagina
+                });
+                return result.success ? result : { data: [], paginacao: {} };
+            } catch (error) {
+                console.error('Erro ao carregar histórico paginado:', error);
+                return { data: [], paginacao: {} };
+            }
+        }
+
+        async function loadTodosHistoricos() {
+            try {
+                const result = await makeRequest('/historico/todos', {});
+                return result.success ? result.data : [];
+            } catch (error) {
+                console.error('Erro ao carregar todos os históricos:', error);
+                return [];
+            }
+        }
+
+        // Função para renderizar o histórico
+        function renderHistorico(data) {
+            const historyContent = document.getElementById('history-content');
+            historyContent.innerHTML = '';
+
+            if (data && data.length > 0) {
+                data.forEach(item => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerHTML = `
+                        <div class="history-date">${new Date(item.DataAlteracao).toLocaleString('pt-BR')}</div>
+                        <div class="history-details">
+                            <div>${item.Acao}</div>
+                            <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">Usuário: ${item.Usuario} - Nome: ${item.NomeCompleto}</div>
+                        </div>
+                    `;
+                    historyContent.appendChild(historyItem);
+                });
+            } else {
+                historyContent.innerHTML = '<div class="history-item">Nenhuma alteração registrada para este período.</div>';
+            }
+        }
+
+        // Função para renderizar o histórico com paginação
+        function renderHistoricoPaginado(data, paginacao) {
+            const historyContent = document.getElementById('history-content');
+            historyContent.innerHTML = '';
+
+            if (data && data.length > 0) {
+                data.forEach(item => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerHTML = `
+                        <div class="history-date">${new Date(item.DataAlteracao).toLocaleString('pt-BR')}</div>
+                        <div class="history-details">
+                            <div>${item.Acao}</div>
+                            <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">Usuário: ${item.Usuario} - Nome: ${item.NomeCompleto}</div>
+                        </div>
+                    `;
+                    historyContent.appendChild(historyItem);
+                });
+            } else {
+                historyContent.innerHTML = '<div class="history-item">Nenhuma alteração registrada para este período.</div>';
+            }
+
+            // Renderizar paginação
+            renderPagination(paginacao, loadAndRenderHistory);
+        }
+
+        // Função para renderizar paginação
+        function renderPagination(paginacao, loadFunction) {
+            if (!paginacao || !historyPagination) return;
+
+            historyPagination.innerHTML = '';
+
+            const { paginaAtual, totalPaginas, itensPorPagina, totalItens } = paginacao;
+
+            // Botão "Anterior"
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'page-btn';
+            prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Anterior';
+            prevBtn.disabled = paginaAtual <= 1;
+            prevBtn.addEventListener('click', () => {
+                if (paginaAtual > 1) loadFunction(paginaAtual - 1);
+            });
+            historyPagination.appendChild(prevBtn);
+
+            // Páginas
+            const startPage = Math.max(1, paginaAtual - 2);
+            const endPage = Math.min(totalPaginas, paginaAtual + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `page-btn ${i === paginaAtual ? 'active' : ''}`;
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', () => loadFunction(i));
+                historyPagination.appendChild(pageBtn);
+            }
+
+            // Botão "Próxima"
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'page-btn';
+            nextBtn.innerHTML = 'Próxima <i class="fas fa-chevron-right"></i>';
+            nextBtn.disabled = paginaAtual >= totalPaginas;
+            nextBtn.addEventListener('click', () => {
+                if (paginaAtual < totalPaginas) loadFunction(paginaAtual + 1);
+            });
+            historyPagination.appendChild(nextBtn);
+
+            // Atualizar range
+            const startItem = (paginaAtual - 1) * itensPorPagina + 1;
+            const endItem = Math.min(paginaAtual * itensPorPagina, totalItens);
+            const historyRangeElement = document.getElementById('history-range');
+            if (historyRangeElement) {
+                historyRangeElement.textContent = `Mostrando: ${startItem}-${endItem} de ${totalItens} registros`;
+            }
+        }
+
+        // Funções para salvar dados
+        async function saveDespesaMensal(despesa) {
+            try {
+                const result = await makeRequest('/despesas/mensais/save', despesa);
+                return result;
+            } catch (error) {
+                console.error('Erro ao salvar despesa mensal:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        async function saveContaReceber(conta) {
+            try {
+                const result = await makeRequest('/contas/receber/save', conta);
+                return result;
+            } catch (error) {
+                console.error('Erro ao salvar conta a receber:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        // Funções para excluir dados
+        async function deleteDespesaMensal(id, mes, ano) {
+            try {
+                const result = await makeRequest('/despesas/mensais/delete', { id, mes, ano });
+                return result;
+            } catch (error) {
+                console.error('Erro ao excluir despesa mensal:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        async function deleteContaReceber(id, mes, ano) {
+            try {
+                const result = await makeRequest('/contas/receber/delete', { id, mes, ano });
+                return result;
+            } catch (error) {
+                console.error('Erro ao excluir conta a receber:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        // Funções para renderizar tabelas
+        function renderMensalTable(despesas) {
+            const tbody = document.querySelector('#table-mensal tbody');
+            tbody.innerHTML = '';
+
+            despesas.forEach(despesa => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div>${despesa.Descricao}</div>
+                        ${despesa.Observacoes ? `<div class="obs">${despesa.Observacoes}</div>` : ''}
+                        ${despesa.MovimentoDescricao ? `<div class="obs"><i class="fas fa-tag"></i> ${despesa.MovimentoDescricao}</div>` : ''}
+                    </td>
+                    <td class="valor">${formatCurrency(despesa.Valor)}</td>
+                    <td class="actions">
+                        <button class="btn-edit" onclick="openModal('mensal', ${despesa.Id})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn-delete" onclick="deleteExpense('mensal', ${despesa.Id})">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderReceberTable(contas) {
+            const tbody = document.querySelector('#table-receber tbody');
+            tbody.innerHTML = '';
+
+            contas.forEach(conta => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div>${conta.Descricao}</div>
+                        ${conta.Observacoes ? `<div class="obs">${conta.Observacoes}</div>` : ''}
+                        ${conta.MovimentoDescricao ? `<div class="obs"><i class="fas fa-tag"></i> ${conta.MovimentoDescricao}</div>` : ''}
+                    </td>
+                    <td class="valor">${formatCurrency(conta.Valor)}</td>
+                    <td class="actions">
+                        <button class="btn-edit" onclick="openReceberModal(${conta.Id})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn-delete" onclick="deleteReceberFromTable(${conta.Id})">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Função para atualizar totais
+        function updateTotals(despesasMensais, contasReceber) {
+            const totalMensal = despesasMensais.reduce((sum, expense) => sum + expense.Valor, 0);
+            const totalReceber = contasReceber.reduce((sum, conta) => sum + conta.Valor, 0);
+            const saldoTotal = totalReceber - totalMensal;
+
+            totalMensalEl.textContent = formatCurrency(totalMensal);
+            totalMensalValorEl.textContent = formatCurrency(totalMensal);
+            totalReceberEl.textContent = formatCurrency(totalReceber);
+            totalReceberValorEl.textContent = formatCurrency(totalReceber);
+            document.getElementById('saldo-total').textContent = formatCurrency(saldoTotal);
+        }
+
+        // Função para atualizar o total geral (despesas + receitas)
+        function updateTotalGeral() {
+            // Atualizar o total geral exibido no dashboard
+            const totalMensal = parseFloat(document.getElementById('total-mensal-valor').textContent.replace(/[^\d,]/g, '').replace(',', '.') || 0);
+            const totalReceber = parseFloat(document.getElementById('total-receber-valor').textContent.replace(/[^\d,]/g, '').replace(',', '.') || 0);
+
+            const totalGeral = totalMensal; // Total geral é despesas mensais (funcionalidades anuais e Nubank removidas)
+            if (totalGeralEl) {
+                totalGeralEl.textContent = formatCurrency(totalGeral);
+            }
+        }
+
+        // Funções para cópia do mês anterior
+        async function copyDespesasMensais(fromMes, fromAno, toMes, toAno) {
+            try {
+                // Carregar despesas do mês anterior
+                const despesas = await loadDespesasMensais(fromMes, fromAno);
+
+                // Limpar despesas atuais do mês destino
+                const currentDespesas = await loadDespesasMensais(toMes, toAno);
+                for (const despesa of currentDespesas) {
+                    await deleteDespesaMensal(despesa.Id, toMes, toAno);
+                }
+
+                // Copiar despesas do mês anterior para o mês atual
+                for (const despesa of despesas) {
+                    await saveDespesaMensal({
+                        descricao: despesa.Descricao,
+                        valor: despesa.Valor,
+                        observacoes: despesa.Observacoes,
+                        movimentoId: despesa.MovimentoId,
+                        mes: toMes,
+                        ano: toAno
+                    });
+                }
+
+                return { success: true, message: 'Despesas mensais copiadas com sucesso!' };
+            } catch (error) {
+                console.error('Erro ao copiar despesas mensais:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        async function copyContasReceber(fromMes, fromAno, toMes, toAno) {
+            try {
+                // Carregar contas do mês anterior
+                const contas = await loadContasReceber(fromMes, fromAno);
+
+                // Limpar contas atuais do mês destino
+                const currentContas = await loadContasReceber(toMes, toAno);
+                for (const conta of currentContas) {
+                    await deleteContaReceber(conta.Id, toMes, toAno);
+                }
+
+                // Copiar contas do mês anterior para o mês atual
+                for (const conta of contas) {
+                    await saveContaReceber({
+                        descricao: conta.Descricao,
+                        valor: conta.Valor,
+                        observacoes: conta.Observacoes,
+                        movimentoId: conta.MovimentoId,
+                        mes: toMes,
+                        ano: toAno
+                    });
+                }
+
+                return { success: true, message: 'Contas a receber copiadas com sucesso!' };
+            } catch (error) {
+                console.error('Erro ao copiar contas a receber:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        // Função para copiar dados do mês anterior
+        async function copyFromPreviousMonth(type) {
+            // Calcular mês e ano anterior
+            let prevMes = currentMonth; // currentMonth é 0-11, então estamos no mês atual
+            let prevAno = currentYear;
+
+            if (prevMes === 0) { // Se janeiro (0), anterior é dezembro (11) do ano anterior
+                prevMes = 11;
+                prevAno--;
+            } else {
+                prevMes--; // Subtrai 1 para obter o mês anterior
+            }
+
+            const currentMes = currentMonth + 1; // Converter para formato 1-12
+
+            try {
+                let result;
+
+                if (type === 'mensal') {
+                    result = await copyDespesasMensais(prevMes + 1, prevAno, currentMes, currentYear);
+                } else if (type === 'receber') {
+                    result = await copyContasReceber(prevMes + 1, prevAno, currentMes, currentYear);
+                }
+
+                if (result.success) {
+                    // Recarregar dados após cópia bem-sucedida
+                    loadAndRenderData();
+                    alert(result.message);
+                } else {
+                    alert('Erro ao copiar dados: ' + result.message);
+                }
+            } catch (error) {
+                alert('Erro ao copiar dados do mês anterior: ' + error.message);
+            }
+        }
+
+        // Variáveis para controle do histórico
+        let currentHistoryMonth = currentMonth;
+        let currentHistoryYear = currentYear;
+        let currentHistoryPage = 1;
+        let historyItemsPerPage = 10;
+
+        // Função para carregar e renderizar dados
+        async function loadAndRenderData() {
+            const mes = currentMonth + 1;
+            const ano = currentYear;
+
+            try {
+                // Carregar todos os dados simultaneamente
+                const [despesasMensais, contasReceber] = await Promise.all([
+                    loadDespesasMensais(mes, ano),
+                    loadContasReceber(mes, ano)
+                ]);
+
+                // Renderizar tabelas
+                renderMensalTable(despesasMensais);
+                renderReceberTable(contasReceber);
+
+                // Atualizar totais
+                updateTotals(despesasMensais, contasReceber);
+
+                // Atualizar total geral imediatamente
+                updateTotalGeral();
+
+            } catch (error) {
+                console.error('Erro ao carregar e renderizar dados:', error);
+            }
+        }
+
+        // Função para carregar e renderizar o histórico
+        async function loadAndRenderHistory(pagina = 1) {
+            const mes = currentMonth + 1;  // Usando o mês atual
+            const ano = currentYear;       // Usando o ano atual
+
+            try {
+                const result = await loadHistoricoPaginado(mes, ano, pagina, historyItemsPerPage);
+
+                if (result.data) {
+                    renderHistoricoPaginado(result.data, result.paginacao);
+                } else {
+                    document.getElementById('history-content').innerHTML = '<div class="history-item">Erro ao carregar histórico: ' + (result.message || 'Sem dados') + '</div>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar e renderizar histórico:', error);
+                document.getElementById('history-content').innerHTML = '<div class="history-item">Erro ao carregar histórico.</div>';
+            }
+        }
+
+        // Função para renderizar conteúdo do histórico
+        function renderHistoryContent(historico) {
+            const historyContent = document.getElementById('history-content');
+            historyContent.innerHTML = '';
+
+            if (historico && historico.length > 0) {
+                historico.forEach(item => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerHTML = `
+                        <div class="history-date">${new Date(item.DataAlteracao).toLocaleString('pt-BR')}</div>
+                        <div class="history-details">
+                            <div>${item.Acao}</div>
+                            <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">Usuário: ${item.Usuario} - Nome: ${item.NomeCompleto}</div>
+                        </div>
+                    `;
+                    historyContent.appendChild(historyItem);
+                });
+            } else {
+                historyContent.innerHTML = '<div class="history-item">Nenhuma alteração registrada para este período.</div>';
+            }
+        }
+
+        // Função para renderizar paginação do histórico
+        function renderHistoryPagination(paginacao) {
+            if (!paginacao) return;
+
+            const paginationDiv = document.getElementById('history-pagination');
+            paginationDiv.innerHTML = '';
+
+            const totalPages = paginacao.TotalPaginas || 1;
+            const currentPage = paginacao.PaginaAtual || 1;
+
+            // Botão Anterior
+            const prevButton = document.createElement('button');
+            prevButton.className = 'page-btn';
+            prevButton.textContent = 'Anterior';
+            prevButton.disabled = currentPage <= 1;
+            prevButton.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    loadAndRenderHistory(currentPage - 1);
+                }
+            });
+            paginationDiv.appendChild(prevButton);
+
+            // Botões de página
+            for (let i = 1; i <= totalPages; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                pageButton.textContent = i;
+                pageButton.addEventListener('click', () => {
+                    loadAndRenderHistory(i);
+                });
+                paginationDiv.appendChild(pageButton);
+            }
+
+            // Botão Próxima
+            const nextButton = document.createElement('button');
+            nextButton.className = 'page-btn';
+            nextButton.textContent = 'Próxima';
+            nextButton.disabled = currentPage >= totalPages;
+            nextButton.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    loadAndRenderHistory(currentPage + 1);
+                }
+            });
+            paginationDiv.appendChild(nextButton);
+        }
+
+        // Função para carregar meses disponíveis para histórico
+        async function loadAvailableHistoryMonths() {
+            try {
+                const result = await makeRequest('/historico/todos', {});
+                // Atualizar o range de histórico
+                if (result.success && result.data && result.data.length > 0) {
+                    // Obter primeiro e último mês/ano
+                    const sortedMonths = result.data.sort((a, b) =>
+                        new Date(b.Ano, b.Mes - 1) - new Date(a.Ano, a.Mes - 1)
+                    );
+                    const last = sortedMonths[0];
+                    const first = sortedMonths[sortedMonths.length - 1];
+
+                    const historyRangeElement = document.getElementById('history-range');
+                    if (historyRangeElement) {
+                        historyRangeElement.textContent =
+                            `Mostrando: ${new Date(first.Ano, first.Mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} a ${new Date(last.Ano, last.Mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`;
+                    }
+                } else {
+                    const historyRangeElement = document.getElementById('history-range');
+                    if (historyRangeElement) {
+                        historyRangeElement.textContent = 'Mostrando: Nenhum histórico disponível';
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar meses de histórico disponíveis:', error);
+            }
+        }
+
+        // Sistema de modal para despesas
+        function openModal(type, id = null) {
+            expenseType.value = type;
+
+            if (id) {
+                if (type === 'receber') {
+                    modalTitle.textContent = 'Editar Receita';
+                } else {
+                    modalTitle.textContent = 'Editar Despesa';
+                }
+                // Carregar dados existentes
+                loadExpenseData(type, id);
+            } else {
+                if (type === 'receber') {
+                    modalTitle.textContent = 'Adicionar Receita';
+                } else {
+                    modalTitle.textContent = 'Adicionar Despesa';
+                }
+                expenseId.value = '';
+                expenseForm.reset();
+            }
+
+            // Definir visibilidade dos grupos de campos
+            obsGroup.style.display = (type === 'mensal' || type === 'receber') ? 'block' : 'none';
+            movimentoGroup.style.display = 'block';
+
+            // Carregar categorias de movimento
+            if (type === 'receber') {
+                populateMovimentoSelect('C'); // Crédito
+            } else {
+                populateMovimentoSelect('D'); // Débito
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        async function loadExpenseData(type, id) {
+            const mes = currentMonth + 1;
+            const ano = currentYear;
+
+            try {
+                let data;
+                if (type === 'mensal') {
+                    const result = await loadDespesasMensais(mes, ano);
+                    data = result.find(item => item.Id === id);
+                } else if (type === 'receber') {
+                    const result = await loadContasReceber(mes, ano);
+                    data = result.find(item => item.Id === id);
+                }
+
+                if (data) {
+                    expenseId.value = data.Id;
+                    descriptionInput.value = data.Descricao;
+                    valueInput.value = type === 'receber' ? data.Valor : data.Valor;
+                    if (type === 'mensal' && data.Observacoes) {
+                        observationsInput.value = data.Observacoes;
+                    }
+                    // Carregar categoria de movimento se disponível
+                    if (data.MovimentoId) {
+                        populateMovimentoSelect(
+                            (type === 'receber') ? 'C' : 'D',
+                            data.MovimentoId
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados da despesa:', error);
+            }
+        }
+
+        async function saveExpense(e) {
+            e.preventDefault();
+
+            const type = expenseType.value;
+            const id = expenseId.value ? parseInt(expenseId.value) : null;
+            const descricao = descriptionInput.value;
+            const valor = parseFloat(valueInput.value);
+            const observacoes = (type === 'mensal' || type === 'receber') ? observationsInput.value : '';
+            const mes = currentMonth + 1;
+            const ano = currentYear;
+            
+            // Obter ID da categoria de movimento selecionada
+            const movimentoId = movimentoSelect.value ? parseInt(movimentoSelect.value) : null;
+
+            // Validar se movimento foi selecionado
+            if (!movimentoId) {
+                alert('Por favor, selecione uma categoria de movimento');
+                return;
+            }
+
+            const expenseData = {
+                id,
+                descricao,
+                valor,
+                observacoes,
+                mes,
+                ano,
+                movimentoId
+            };
+
+            try {
+                let result;
+                if (type === 'mensal') {
+                    result = await saveDespesaMensal(expenseData);
+                } else if (type === 'receber') {
+                    result = await saveContaReceber(expenseData);
+                }
+
+                if (result.success) {
+                    closeModalFunc();
+                    loadAndRenderData();
+                    if (type === 'receber') {
+                        alert('Conta a receber salva com sucesso!');
+                    } else {
+                        alert('Despesa salva com sucesso!');
+                    }
+                } else {
+                    alert('Erro ao salvar: ' + result.message);
+                }
+            } catch (error) {
+                alert('Erro ao salvar: ' + error.message);
+            }
+        }
+
+        async function deleteExpense(type, id) {
+            if (confirm('Tem certeza que deseja excluir este item?')) {
+                const mes = currentMonth + 1;
+                const ano = currentYear;
+
+                try {
+                    let result;
+                    if (type === 'mensal') {
+                        result = await deleteDespesaMensal(id, mes, ano);
+                    } else if (type === 'receber') {
+                        result = await deleteContaReceber(id, mes, ano);
+                    }
+
+                    if (result.success) {
+                        loadAndRenderData();
+                        if (type === 'receber') {
+                            alert('Conta a receber excluída com sucesso!');
+                        } else {
+                            alert('Despesa excluída com sucesso!');
+                        }
+                    } else {
+                        alert('Erro ao excluir: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Erro ao excluir: ' + error.message);
+                }
+            }
+        }
+
+        // Funções auxiliares para modal
+        function closeModalFunc() {
+            modal.style.display = 'none';
+        }
+
+        // Abrir modal para contas a receber
+        function openReceberModal(id = null) {
+            openModal('receber', id);
+        }
+
+        // Excluir conta a receber
+        function deleteReceberFromTable(id) {
+            deleteExpense('receber', id);
+        }
+
+        // Event listeners para formulários e modais
+        expenseForm.addEventListener('submit', saveExpense);
+        closeModal.addEventListener('click', closeModalFunc);
+        cancelBtn.addEventListener('click', closeModalFunc);
+
+        addMensalBtn.addEventListener('click', () => openModal('mensal'));
+        addReceberBtn.addEventListener('click', openReceberModal);
+
+        // Event listeners para botões de logout e navegação
+        logoutBtn.addEventListener('click', () => {
+            if (confirm('Tem certeza que deseja sair?')) {
+                localStorage.removeItem('currentUser');
+                window.location.href = '/';
+            }
+        });
+
+        portfolioBtnHeader.addEventListener('click', () => {
+            window.location.href = '/';
+        });
+
+        // Inicializar o sistema
+        function initializeSystem() {
+            // Definir mês e ano atuais se ainda não estiverem definidos
+            if (typeof currentMonth === 'undefined' || typeof currentYear === 'undefined') {
+                const currentDate = new Date();
+                currentMonth = currentDate.getMonth();
+                currentYear = currentDate.getFullYear();
+            }
+
+            // Atualizar nome do usuário no cabeçalho
+            if (loggedUserEl && currentUser) {
+                // Usar nome completo se disponível, senão o nome de usuário
+                loggedUserEl.textContent = currentUser.NomeCompleto || currentUser.Usuario;
+            }
+
+            updateCurrentMonthDisplay();
+            renderYearSelect();
+            loadAndRenderData();
+            loadAvailableHistoryMonths();
+            loadAndRenderHistory(1);
+
+            // Verificar tipo de usuário para exibir recursos apropriados
+            if (currentUser && currentUser.TipoUsuario === 'master') {
+                userManagementSection.style.display = 'block';
+                loadAndRenderUsers();
+
+                // Ocultar permanentemente a seção de configuração do banco de dados
+                const sqlConfigSection = document.getElementById('sql-config-section');
+                if (sqlConfigSection) {
+                    sqlConfigSection.style.display = 'none';
+                }
+            } else {
+                userManagementSection.style.display = 'none';
+
+                // Ocultar a seção de configuração do banco de dados para não masters
+                const sqlConfigSection = document.getElementById('sql-config-section');
+                if (sqlConfigSection) {
+                    sqlConfigSection.style.display = 'none';
+                }
+            }
+        }
+
+        // Função para abrir o overlay de gráficos
+        function openChart(type, chartType = 'default') {
+            const mes = currentMonth + 1;
+            const ano = currentYear;
+
+            let chartTitleText;
+            if (type === 'mensal') {
+                chartTitleText = chartType === 'category' ? 'Gráfico de Despesas por Categoria' : 'Gráfico de Despesas Mensais';
+            } else if (type === 'receber') {
+                chartTitleText = chartType === 'category' ? 'Gráfico de Receitas por Categoria' : 'Gráfico de Receitas';
+            }
+
+            chartTitle.textContent = chartTitleText;
+            chartOverlay.style.display = 'flex';
+
+            if (chartType === 'category') {
+                renderChartByCategory(type, mes, ano);
+            } else {
+                renderChart(type, mes, ano);
+            }
+        }
+
+        function closeChartFunc() {
+            chartOverlay.style.display = 'none';
+        }
+
+        // Funções para renderizar gráficos
+
+        // Gráfico padrão (despesas ou receitas por descrição)
+        async function renderChart(type, mes, ano) {
+            const ctx = chartCanvas.getContext('2d');
+
+            try {
+                // Limpar o gráfico anterior
+                if (window.currentChart) {
+                    window.currentChart.destroy();
+                }
+
+                let data, labels, title, typeLabel;
+
+                if (type === 'mensal') {
+                    // Carregar despesas mensais para o gráfico
+                    const despesas = await loadDespesasMensais(mes, ano);
+                    data = despesas.map(d => d.Valor);
+                    labels = despesas.map(d => d.Descricao);
+                    title = 'Despesas Mensais';
+                    typeLabel = 'Despesas';
+                } else if (type === 'receber') {
+                    // Carregar contas a receber para o gráfico
+                    const contas = await loadContasReceber(mes, ano);
+                    data = contas.map(c => c.Valor);
+                    labels = contas.map(c => c.Descricao);
+                    title = 'Receitas';
+                    typeLabel = 'Receitas';
+                }
+
+                // Determinar o tipo de gráfico com base na quantidade de dados
+                let chartType = 'bar';
+                if (data.length <= 5) {
+                    chartType = 'pie';
+                } else if (data.length > 10) {
+                    chartType = 'line';  // Para muitos dados, usar gráfico de linha
+                }
+
+                // Criar novo gráfico
+                window.currentChart = new Chart(ctx, {
+                    type: chartType,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: typeLabel,
+                            data: data,
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                                '#4BC0C0', '#FF6384', '#36A2EB', '#FFCE56'
+                            ].slice(0, labels ? labels.length : 0),
+                            borderColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                                '#4BC0C0', '#FF6384', '#36A2EB', '#FFCE56'
+                            ].slice(0, labels ? labels.length : 0),
+                            borderWidth: 2,
+                            fill: chartType === 'line' ? true : false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `${title} - ${new Date(ano, mes - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}`,
+                                color: '#333',
+                                font: {
+                                    size: 16
+                                }
+                            },
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#333',
+                                    font: {
+                                        size: 12
+                                    },
+                                    padding: 15
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += 'R$ ' + context.parsed.y.toLocaleString('pt-BR');
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: chartType === 'bar' || chartType === 'line' ? {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'R$ ' + value.toLocaleString('pt-BR');
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        } : {},
+                        elements: {
+                            arc: {
+                                borderWidth: 1
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Erro ao renderizar gráfico:', error);
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = 'red';
+                ctx.textAlign = 'center';
+                ctx.fillText('Erro ao carregar dados para o gráfico', ctx.canvas.width / 2, ctx.canvas.height / 2);
+            }
+        }
+
+        // Função para renderizar gráfico por categorias (movimentos)
+        async function renderChartByCategory(type, mes, ano) {
+            const ctx = chartCanvas.getContext('2d');
+
+            try {
+                // Limpar o gráfico anterior
+                if (window.currentChart) {
+                    window.currentChart.destroy();
+                }
+
+                let data = [];
+                let labels = [];
+                let title = '';
+                let tipoMovimento = '';
+
+                if (type === 'mensal') {
+                    // Carregar despesas mensais para o gráfico
+                    const despesas = await loadDespesasMensais(mes, ano);
+                    // Agrupar por MovimentoId
+                    const grouped = despesas.reduce((acc, item) => {
+                        const movimento = item.MovimentoDescricao || 'Sem categoria';
+                        if (!acc[movimento]) {
+                            acc[movimento] = 0;
+                        }
+                        acc[movimento] += item.Valor;
+                        return acc;
+                    }, {});
+
+                    labels = Object.keys(grouped);
+                    data = Object.values(grouped);
+                    title = 'Despesas por Categoria';
+                    tipoMovimento = 'Débitos (D)';
+                } else if (type === 'receber') {
+                    // Carregar contas a receber para o gráfico
+                    const contas = await loadContasReceber(mes, ano);
+                    // Agrupar por MovimentoId
+                    const grouped = contas.reduce((acc, item) => {
+                        const movimento = item.MovimentoDescricao || 'Sem categoria';
+                        if (!acc[movimento]) {
+                            acc[movimento] = 0;
+                        }
+                        acc[movimento] += item.Valor;
+                        return acc;
+                    }, {});
+
+                    labels = Object.keys(grouped);
+                    data = Object.values(grouped);
+                    title = 'Receitas por Categoria';
+                    tipoMovimento = 'Créditos (C)';
+                }
+
+                // Determinar o tipo de gráfico com base na quantidade de dados
+                let chartType = 'pie';
+                if (data.length > 8) {
+                    chartType = 'bar';  // Para muitas categorias, usar gráfico de barras
+                }
+
+                // Criar novo gráfico
+                window.currentChart = new Chart(ctx, {
+                    type: chartType,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Valor (R$)',
+                            data: data,
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                                '#4BC0C0', '#FF6384', '#36A2EB', '#FFCE56'
+                            ].slice(0, labels ? labels.length : 0),
+                            borderColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                                '#4BC0C0', '#FF6384', '#36A2EB', '#FFCE56'
+                            ].slice(0, labels ? labels.length : 0),
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `${title} - ${new Date(ano, mes - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })} (${tipoMovimento})`,
+                                color: '#333',
+                                font: {
+                                    size: 16
+                                }
+                            },
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#333',
+                                    font: {
+                                        size: 12
+                                    },
+                                    padding: 15
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += 'R$ ' + context.parsed.y.toLocaleString('pt-BR');
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: chartType === 'bar' ? {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'R$ ' + value.toLocaleString('pt-BR');
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        } : {},
+                        elements: {
+                            arc: {
+                                borderWidth: 1
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Erro ao renderizar gráfico por categorias:', error);
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = 'red';
+                ctx.textAlign = 'center';
+                ctx.fillText('Erro ao carregar dados para o gráfico por categorias', ctx.canvas.width / 2, ctx.canvas.height / 2);
+            }
+        }
+
+        // Carregar categorias de movimento
+        async function populateMovimentoSelect(tipo = null, selectedValue = '') {
+            try {
+                const result = await makeRequest('/movimento', { tipo });
+
+                movimentoSelect.innerHTML = '<option value="">Selecione uma categoria</option>';
+
+                if (result.success) {
+                    result.data.forEach(categoria => {
+                        const option = document.createElement('option');
+                        option.value = categoria.Id;
+                        option.textContent = categoria.Descricao;
+                        if (categoria.Id == selectedValue) {
+                            option.selected = true;
+                        }
+                        movimentoSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar categorias de movimento:', error);
+            }
+        }
+
+        // Funções para perfil do usuário
+        function openProfileModal() {
+            if (currentUser) {
+                document.getElementById('profile-fullname').value = currentUser.NomeCompleto || '';
+                document.getElementById('profile-email').value = currentUser.Email || '';
+                document.getElementById('profile-password').value = '';
+                document.getElementById('profile-password-confirm').value = '';
+
+                document.getElementById('profile-modal').style.display = 'flex';
+            }
+        }
+
+        function closeProfileModalFunc() {
+            document.getElementById('profile-modal').style.display = 'none';
+        }
+
+        async function saveProfile(e) {
+            e.preventDefault();
+
+            const nome = document.getElementById('profile-fullname').value;
+            const email = document.getElementById('profile-email').value;
+            const senha = document.getElementById('profile-password').value;
+            const confirmacaoSenha = document.getElementById('profile-password-confirm').value;
+
+            if (senha && senha !== confirmacaoSenha) {
+                alert('As senhas não coincidem!');
+                return;
+            }
+
+            try {
+                const result = await makeRequest('/usuarios/save', {
+                    id: currentUser.Id,
+                    nomeCompleto: nome,
+                    email,
+                    senha: senha || undefined // Só enviar se estiver preenchida
+                });
+
+                if (result.success) {
+                    // Atualizar dados locais
+                    currentUser.NomeCompleto = nome;
+                    currentUser.Email = email;
+
+                    // Atualizar nome do usuário no cabeçalho
+                    if (loggedUserEl) {
+                        loggedUserEl.textContent = currentUser.NomeCompleto || currentUser.Usuario;
+                    }
+
+                    closeProfileModalFunc();
+                    alert('Perfil atualizado com sucesso!');
+                } else {
+                    alert('Erro ao salvar perfil: ' + result.message);
+                }
+            } catch (error) {
+                alert('Erro ao salvar perfil: ' + error.message);
+            }
+        }
+
+        // Funções para gerenciamento de usuários
+        async function loadAndRenderUsers() {
+            try {
+                const result = await makeRequest('/usuarios');
+                if (result.success) {
+                    renderUsersTable(result.data);
+                } else {
+                    console.error('Erro ao carregar usuários:', result.message);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar e renderizar usuários:', error);
+            }
+        }
+
+        function renderUsersTable(usuarios) {
+            const tbody = document.querySelector('#users-table tbody');
+            tbody.innerHTML = '';
+
+            if (usuarios && usuarios.length > 0) {
+                usuarios.forEach(usuario => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${usuario.Id}</td>
+                        <td>${usuario.NomeCompleto}</td>
+                        <td>${usuario.Usuario}</td>
+                        <td>${usuario.Email}</td>
+                        <td>${usuario.TipoUsuario}</td>
+                        <td>${usuario.DataInicioLicenca ? new Date(usuario.DataInicioLicenca).toLocaleDateString('pt-BR') : ''}</td>
+                        <td>${usuario.DataFimLicenca ? new Date(usuario.DataFimLicenca).toLocaleDateString('pt-BR') : ''}</td>
+                        <td>${usuario.Ativo ? 'Ativo' : 'Inativo'}</td>
+                        <td class="actions">
+                            <button class="btn-edit" onclick="editUser(${usuario.Id})">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="btn-delete" onclick="deleteUser(${usuario.Id})">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        function editUser(id) {
+            loadUserData(id);
+        }
+
+        async function loadUserData(id) {
+            try {
+                const result = await makeRequest('/usuarios');
+
+                if (result.success) {
+                    const usuario = result.data.find(u => u.Id === id);
+                    if (usuario) {
+                        document.getElementById('user-id').value = usuario.Id;
+                        document.getElementById('user-fullname').value = usuario.NomeCompleto;
+                        document.getElementById('user-username').value = usuario.Usuario;
+                        document.getElementById('user-email').value = usuario.Email;
+                        document.getElementById('user-type').value = usuario.TipoUsuario;
+                        if (usuario.DataInicioLicenca) document.getElementById('user-license-start').value = new Date(usuario.DataInicioLicenca).toISOString().split('T')[0];
+                        if (usuario.DataFimLicenca) document.getElementById('user-license-end').value = new Date(usuario.DataFimLicenca).toISOString().split('T')[0];
+
+                        document.getElementById('user-password').value = '';
+                        document.getElementById('user-modal-title').textContent = 'Editar Usuário';
+                        document.getElementById('user-modal').style.display = 'flex';
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do usuário:', error);
+            }
+        }
+
+        function openAddUser() {
+            document.getElementById('user-id').value = '';
+            document.getElementById('user-fullname').value = '';
+            document.getElementById('user-username').value = '';
+            document.getElementById('user-email').value = '';
+            document.getElementById('user-password').value = '';
+            document.getElementById('user-type').value = 'user';
+            document.getElementById('user-license-start').value = '';
+            document.getElementById('user-license-end').value = '';
+            document.getElementById('user-modal-title').textContent = 'Adicionar Usuário';
+            document.getElementById('user-modal').style.display = 'flex';
+        }
+
+        async function saveUser(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('user-id').value ? parseInt(document.getElementById('user-id').value) : null;
+            const nomeCompleto = document.getElementById('user-fullname').value;
+            const usuario = document.getElementById('user-username').value;
+            const email = document.getElementById('user-email').value;
+            const senha = document.getElementById('user-password').value;
+            const tipoUsuario = document.getElementById('user-type').value;
+            const dataInicioLicenca = document.getElementById('user-license-start').value || null;
+            const dataFimLicenca = document.getElementById('user-license-end').value || null;
+
+            try {
+                const result = await makeRequest('/usuarios/save', {
+                    id, nomeCompleto, usuario, email, senha, tipoUsuario,
+                    dataInicioLicenca, dataFimLicenca
+                });
+
+                if (result.success) {
+                    document.getElementById('user-modal').style.display = 'none';
+                    loadAndRenderUsers();
+                    alert(id ? 'Usuário atualizado com sucesso!' : 'Usuário adicionado com sucesso!');
+                } else {
+                    alert('Erro ao salvar usuário: ' + result.message);
+                }
+            } catch (error) {
+                alert('Erro ao salvar usuário: ' + error.message);
+            }
+        }
+
+        async function deleteUser(id) {
+            if (confirm('Tem certeza que deseja excluir este usuário?')) {
+                try {
+                    const result = await makeRequest('/usuarios/delete', { id });
+
+                    if (result.success) {
+                        loadAndRenderUsers();
+                        alert('Usuário excluído com sucesso!');
+                    } else {
+                        alert('Erro ao excluir usuário: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Erro ao excluir usuário: ' + error.message);
+                }
+            }
+        }
+
+        function closeUserModal() {
+            document.getElementById('user-modal').style.display = 'none';
+        }
+
+        // Inicializar o sistema quando a página carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Carregado - Iniciando configuração...');
+
+            // Definir mês e ano atuais
+            const currentDate = new Date();
+            currentMonth = currentDate.getMonth(); // Janeiro = 0, Fevereiro = 1, etc.
+            currentYear = currentDate.getFullYear();
+
+            // Carregar tema salvo
+            loadSavedTheme();
+
+            // Event listeners para botões de gráfico - agora são dropdowns com onclick no HTML
+
+            // Event listener para fechar gráfico
+            if (closeChart) closeChart.addEventListener('click', closeChartFunc);
+
+            // Event listeners para histórico
+            if (historyModal) {
+                if (closeHistoryModal) {
+                    closeHistoryModal.addEventListener('click', () => {
+                        historyModal.style.display = 'none';
+                    });
+                }
+            }
+
+            // Controles de histórico
+            if (showAllHistoryBtn) {
+                showAllHistoryBtn.addEventListener('click', () => {
+                    currentHistoryPage = 1;
+                    loadAndRenderHistory(1);
+                });
+            }
+
+            if (prevHistoryBtn) {
+                prevHistoryBtn.addEventListener('click', () => {
+                    if (currentMonth === 0) {
+                        currentMonth = 11;
+                        currentYear--;
+                    } else {
+                        currentMonth--;
+                    }
+                    updateCurrentMonthDisplay();
+                    loadAndRenderData();
+                });
+            }
+
+            if (nextHistoryBtn) {
+                nextHistoryBtn.addEventListener('click', () => {
+                    if (currentMonth === 11) {
+                        currentMonth = 0;
+                        currentYear++;
+                    } else {
+                        currentMonth++;
+                    }
+                    updateCurrentMonthDisplay();
+                    loadAndRenderData();
+                });
+            }
+
+            if (historyItemsPerPageSelect) {
+                historyItemsPerPageSelect.addEventListener('change', function() {
+                    historyItemsPerPage = parseInt(this.value);
+                    currentHistoryPage = 1;
+                    loadAndRenderHistory(1);
+                });
+            }
+
+            // Event listeners para botões de cópia do mês anterior
+            if (copyPrevMonthBtn) {
+                copyPrevMonthBtn.addEventListener('click', () => copyFromPreviousMonth('mensal'));
+            }
+
+            if (copyPrevMonthReceberBtn) {
+                copyPrevMonthReceberBtn.addEventListener('click', () => copyFromPreviousMonth('receber'));
+            }
+
+            // Event listener para seletor de ano
+            if (yearSelect) yearSelect.addEventListener('change', function() {
+                currentYear = parseInt(this.value);
+                updateCurrentMonthDisplay();
+                loadAndRenderData();
+            });
+
+            // Listener para o botão de adicionar usuário
+            if (addUserBtn) {
+                addUserBtn.addEventListener('click', function() {
+                    document.getElementById('user-id').value = '';
+                    document.getElementById('user-fullname').value = '';
+                    document.getElementById('user-username').value = '';
+                    document.getElementById('user-email').value = '';
+                    document.getElementById('user-password').value = '';
+                    document.getElementById('user-type').value = 'user';
+                    document.getElementById('user-license-start').value = '';
+                    document.getElementById('user-license-end').value = '';
+                    document.getElementById('user-modal-title').textContent = 'Adicionar Usuário';
+                    document.getElementById('user-modal').style.display = 'flex';
+                });
+            }
+
+            // Listener para o nome do usuário (abrir modal de perfil)
+            if (loggedUserEl) {
+                loggedUserEl.addEventListener('click', openProfileModal);
+            }
+
+            // Event listeners para o modal de perfil
+            const closeProfileModal = document.getElementById('close-profile-modal');
+            const cancelProfileBtn = document.getElementById('cancel-profile-btn');
+            const profileForm = document.getElementById('profile-form');
+
+            if (closeProfileModal) {
+                closeProfileModal.addEventListener('click', closeProfileModalFunc);
+            }
+
+            if (cancelProfileBtn) {
+                cancelProfileBtn.addEventListener('click', closeProfileModalFunc);
+            }
+
+            if (profileForm) {
+                profileForm.addEventListener('submit', saveProfile);
+            }
+
+            // Event listeners para o modal de usuário
+            const closeUserModal = document.getElementById('close-user-modal');
+            const cancelUserBtn = document.getElementById('cancel-user-btn');
+            const userForm = document.getElementById('user-form');
+
+            if (closeUserModal) {
+                closeUserModal.addEventListener('click', closeUserModal);
+            }
+
+            if (cancelUserBtn) {
+                cancelUserBtn.addEventListener('click', closeUserModal);
+            }
+
+            if (userForm) {
+                userForm.addEventListener('submit', saveUser);
+            }
+
+            initializeSystem();
+        });
+
+        // Funções para gerenciamento de usuários
+        async function loadUsuarios() {
+            try {
+                const result = await makeRequest('/usuarios');
+                return result.success ? result.data : [];
+            } catch (error) {
+                console.error('Erro ao carregar usuários:', error);
+                return [];
+            }
+        }
+
+        async function saveUsuario(usuario) {
+            try {
+                const result = await makeRequest('/usuarios/save', usuario);
+                return result;
+            } catch (error) {
+                console.error('Erro ao salvar usuário:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        async function deleteUsuario(id) {
+            try {
+                const result = await makeRequest('/usuarios/delete', { id });
+                return result;
+            } catch (error) {
+                console.error('Erro ao excluir usuário:', error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        function renderUsuarios(usuarios) {
+            const tbody = document.querySelector('#users-table tbody');
+            tbody.innerHTML = '';
+
+            if (usuarios && usuarios.length > 0) {
+                usuarios.forEach(usuario => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${usuario.Id}</td>
+                        <td>${usuario.NomeCompleto}</td>
+                        <td>${usuario.Usuario}</td>
+                        <td>${usuario.Email}</td>
+                        <td>${usuario.TipoUsuario}</td>
+                        <td>${usuario.DataInicioLicenca ? new Date(usuario.DataInicioLicenca).toLocaleDateString('pt-BR') : ''}</td>
+                        <td>${usuario.DataFimLicenca ? new Date(usuario.DataFimLicenca).toLocaleDateString('pt-BR') : ''}</td>
+                        <td>${usuario.Ativo ? 'Ativo' : 'Inativo'}</td>
+                        <td class="actions">
+                            <button class="btn-edit" onclick="editUser(${usuario.Id})">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="btn-delete" onclick="deleteUser(${usuario.Id})">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+
+        function editUser(id) {
+            loadUserData(id);
+        }
+
+        async function loadUserData(id) {
+            try {
+                const usuarios = await loadUsuarios();
+                const usuario = usuarios.find(u => u.Id === id);
+
+                if (usuario) {
+                    document.getElementById('user-id').value = usuario.Id;
+                    document.getElementById('user-fullname').value = usuario.NomeCompleto;
+                    document.getElementById('user-username').value = usuario.Usuario;
+                    document.getElementById('user-email').value = usuario.Email;
+                    document.getElementById('user-type').value = usuario.TipoUsuario;
+                    if (usuario.DataInicioLicenca) document.getElementById('user-license-start').value = new Date(usuario.DataInicioLicenca).toISOString().split('T')[0];
+                    if (usuario.DataFimLicenca) document.getElementById('user-license-end').value = new Date(usuario.DataFimLicenca).toISOString().split('T')[0];
+
+                    document.getElementById('user-password').value = '';
+                    document.getElementById('user-modal-title').textContent = 'Editar Usuário';
+                    document.getElementById('user-modal').style.display = 'flex';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do usuário:', error);
+            }
+        }
+
+        async function deleteUser(id) {
+            if (confirm('Tem certeza que deseja excluir este usuário?')) {
+                try {
+                    const result = await deleteUsuario(id);
+
+                    if (result.success) {
+                        loadAndRenderUsers();
+                        alert('Usuário excluído com sucesso!');
+                    } else {
+                        alert('Erro ao excluir: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Erro ao excluir usuário: ' + error.message);
+                }
+            }
+        }
+
+        // SISTEMA DE TEMAS DINÂMICOS - EXPANDIDO
+        // =============================================
+
+        // Temas pré-definidos com layouts mais variados
+        const themes = {
+            financeiro: {
+                primary: '#1a2a6c',
+                secondary: '#b21f1f',
+                accent: '#fdbb2d',
+                bgGradient: 'linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d)',
+                fontFamily: '"Segoe UI", system-ui, sans-serif',
+                fontSize: '16px'
+            },
+            profissional: {
+                primary: '#2c3e50',
+                secondary: '#34495e',
+                accent: '#3498db',
+                bgGradient: 'linear-gradient(135deg, #2c3e50, #34495e, #3498db)',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '15px'
+            },
+            moderno: {
+                primary: '#7b68ee',
+                secondary: '#9370db',
+                accent: '#ba55d3',
+                bgGradient: 'linear-gradient(135deg, #7b68ee, #9370db, #ba55d3)',
+                fontFamily: '"Roboto", sans-serif',
+                fontSize: '17px'
+            },
+            empresarial: {
+                primary: '#0e4b97',
+                secondary: '#2094f3',
+                accent: '#ffbc3c',
+                bgGradient: 'linear-gradient(135deg, #0e4b97, #2094f3, #ffbc3c)',
+                fontFamily: '"Open Sans", sans-serif',
+                fontSize: '16px'
+            },
+            neutro: {
+                primary: '#7f8c8d',
+                secondary: '#95a5a6',
+                accent: '#bdc3c7',
+                bgGradient: 'linear-gradient(135deg, #7f8c8d, #95a5a6, #bdc3c7)',
+                fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+                fontSize: '16px'
+            },
+            escuro: {
+                primary: '#2c3639',
+                secondary: '#3e4446',
+                accent: '#a27b5c',
+                bgGradient: 'linear-gradient(135deg, #2c3639, #3e4446, #a27b5c)',
+                fontFamily: '"Segoe UI", system-ui, sans-serif',
+                fontSize: '16px'
+            },
+            minimalista: {
+                primary: '#2c5530',
+                secondary: '#4a7c59',
+                accent: '#8fae8f',
+                bgGradient: 'linear-gradient(135deg, #2c5530, #4a7c59, #8fae8f)',
+                fontFamily: '"Inter", sans-serif',
+                fontSize: '15px'
+            }
+        };
+
+        // Aplicar tema
+        function applyTheme(themeName) {
+            const theme = themes[themeName];
+            if (!theme) return;
+
+            document.documentElement.style.setProperty('--primary', theme.primary);
+            document.documentElement.style.setProperty('--secondary', theme.secondary);
+            document.documentElement.style.setProperty('--accent', theme.accent);
+            document.documentElement.style.setProperty('--bg-gradient', theme.bgGradient);
+
+            // Definir cores específicas para o histórico com base no tema
+            // Para temas mais escuros, usamos cores mais claras; para temas mais claros, usamos cores mais escuras
+            const isDarkTheme = themeName === 'escuro' || ['financeiro', 'profissional', 'moderno', 'empresarial'].includes(themeName);
+
+            if (isDarkTheme) {
+                // Temas escuros - usar cores mais claras para o histórico
+                document.documentElement.style.setProperty('--history-item-bg', 'rgba(255, 255, 255, 0.1)');
+                document.documentElement.style.setProperty('--history-item-border', 'rgba(255, 255, 255, 0.2)');
+                document.documentElement.style.setProperty('--history-item-hover-bg', 'rgba(255, 255, 255, 0.15)');
+                document.documentElement.style.setProperty('--history-date-color', '#4CAF50'); // Verde claro
+                document.documentElement.style.setProperty('--history-details-color', '#ddd'); // Cinza claro
+            } else {
+                // Temas claros - usar cores mais escuras para o histórico
+                document.documentElement.style.setProperty('--history-item-bg', 'rgba(0, 0, 0, 0.05)');
+                document.documentElement.style.setProperty('--history-item-border', 'rgba(0, 0, 0, 0.1)');
+                document.documentElement.style.setProperty('--history-item-hover-bg', 'rgba(0, 0, 0, 0.1)');
+                document.documentElement.style.setProperty('--history-date-color', '#2E7D32'); // Verde escuro
+                document.documentElement.style.setProperty('--history-details-color', '#333'); // Preto suave
+            }
+
+            // Aplicar fonte e tamanho do tema
+            document.body.style.fontFamily = theme.fontFamily;
+            document.body.style.fontSize = theme.fontSize;
+
+            // Atualizar cor de fundo da página
+            document.body.style.background = theme.bgGradient;
+
+            // Salvar preferência do usuário
+            localStorage.setItem('selectedTheme', themeName);
+        }
+
+        // Carregar tema salvo
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('selectedTheme');
+            if (savedTheme && themes[savedTheme]) {
+                applyTheme(savedTheme);
+            }
+        }
+
+        // Função para atualizar o range do histórico
+        function updateHistoryRange() {
+            const date = new Date(currentHistoryYear, currentHistoryMonth, 1);
+            if (document.getElementById('history-range')) {
+                document.getElementById('history-range').textContent = `Mostrando: ${date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`;
+            }
+        }
+
+        // Funções globais (disponíveis para eventos inline do HTML)
+        window.editExpense = openModal;
+        window.deleteExpense = deleteExpense;
+        window.editReceber = openReceberModal;
+        window.deleteReceber = deleteReceberFromTable;
+    </script>
+</body>
+</html>

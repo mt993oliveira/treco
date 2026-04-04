@@ -1,0 +1,721 @@
+/**
+ * ============================================
+ * API REST - BET365 DADOS EM TEMPO REAL
+ * ============================================
+ */
+
+const express = require('express');
+const sql = require('mssql');
+const router = express.Router();
+
+let sqlPool = null;
+
+async function getDbPool() {
+    if (sqlPool && sqlPool.connected) {
+        return sqlPool;
+    }
+
+    const config = {
+        user: process.env.DB_USER || 'sa',
+        password: process.env.DB_PASSWORD || 'kvb@4sJ2',
+        server: process.env.DB_SERVER || '127.0.0.1',
+        database: process.env.DB_NAME || 'PRODUCAO',
+        port: parseInt(process.env.DB_PORT) || 1433,
+        options: {
+            encrypt: process.env.DB_ENCRYPT === 'true',
+            trustServerCertificate: process.env.DB_TRUST_CERT === 'true'
+        },
+        pool: {
+            max: 10,
+            min: 0,
+            idleTimeoutMillis: 30000
+        }
+    };
+
+    sqlPool = await sql.connect(config);
+    console.log('✅ Pool SQL Bet365 criado');
+    return sqlPool;
+}
+
+/**
+ * GET /api/bet365/eventos
+ * Retorna todos os eventos ativos
+ */
+router.get('/eventos', async (req, res) => {
+    try {
+        const { limite = 100, liga, status } = req.query;
+        const pool = await getDbPool();
+
+        let query = `
+            SELECT
+                e.id AS evento_id,
+                e.time_casa,
+                e.time_fora,
+                e.league_name AS liga,
+                e.start_time_datetime AS horario,
+                e.seconds_to_start,
+                e.status,
+                e.gol_casa,
+                e.gol_fora,
+                e.minuto_jogo,
+                e.odd_casa,
+                e.odd_empate,
+                e.odd_fora,
+                COUNT(DISTINCT m.id) AS total_mercados
+            FROM bet365_eventos e
+            LEFT JOIN bet365_mercados m ON m.evento_id = e.id AND m.ativo = 1
+            WHERE e.ativo = 1
+        `;
+
+        if (liga) {
+            query += ' AND e.league_name LIKE @liga';
+        }
+
+        if (status) {
+            query += ' AND e.status = @status';
+        }
+
+        query += ' GROUP BY e.id, e.time_casa, e.time_fora, e.league_name, e.start_time_datetime, e.seconds_to_start, e.status, e.gol_casa, e.gol_fora, e.minuto_jogo, e.odd_casa, e.odd_empate, e.odd_fora ORDER BY e.start_time_datetime ASC';
+
+        const request = pool.request();
+
+        if (liga) {
+            request.input('liga', sql.NVarChar(200), `%${liga}%`);
+        }
+
+        if (status) {
+            request.input('status', sql.NVarChar(50), status);
+        }
+
+        const result = await request.query(query);
+
+        res.json({
+            success: true,
+            count: result.recordset.length,
+            timestamp: new Date().toISOString(),
+            data: result.recordset
+        });
+
+    } catch (error) {
+        console.error('❌ ERRO API bet365/eventos:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar eventos',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/bet365/ao-vivo
+ * Retorna apenas eventos ao vivo
+ */
+router.get('/ao-vivo', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        const result = await pool.query(`
+            SELECT
+                e.id AS evento_id,
+                e.time_casa,
+                e.time_fora,
+                e.league_name AS liga,
+                e.gol_casa,
+                e.gol_fora,
+                e.minuto_jogo,
+                e.status,
+                e.odd_casa,
+                e.odd_empate,
+                e.odd_fora
+            FROM bet365_eventos e
+            WHERE e.ativo = 1 AND e.status = 'EM_ANDAMENTO'
+            ORDER BY e.start_time_datetime ASC
+        `);
+
+        res.json({
+            success: true,
+            count: result.recordset.length,
+            timestamp: new Date().toISOString(),
+            data: result.recordset
+        });
+
+    } catch (error) {
+        console.error('❌ ERRO API bet365/ao-vivo:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar eventos ao vivo',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/bet365/historico-partidas
+ * Retorna histórico de partidas
+ */
+router.get('/historico-partidas', async (req, res) => {
+    try {
+        const { limite = 50, liga, time } = req.query;
+        const pool = await getDbPool();
+
+        let query = `
+            SELECT
+                id, evento_id, liga, time_casa, time_fora,
+                gol_casa, gol_fora, resultado,
+                odd_casa, odd_empate, odd_fora, data_partida
+            FROM bet365_historico_partidas
+            WHERE 1=1
+        `;
+
+        const request = pool.request();
+
+        if (liga) {
+            query += ' AND liga LIKE @liga';
+            request.input('liga', sql.NVarChar(200), `%${liga}%`);
+        }
+        if (time) {
+            query += ' AND (time_casa LIKE @time OR time_fora LIKE @time)';
+            request.input('time', sql.NVarChar(100), `%${time}%`);
+        }
+
+        query += ' ORDER BY data_partida DESC';
+
+        const result = await request.query(query);
+
+        res.json({
+            success: true,
+            count: result.recordset.length,
+            data: result.recordset
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Erro ao buscar histórico', error: error.message });
+    }
+});
+
+/**
+ * GET /api/bet365/ligas
+ * Retorna ligas disponíveis
+ */
+router.get('/ligas', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        const result = await pool.query(`
+            SELECT DISTINCT
+                league_name AS liga,
+                COUNT(*) AS quantidade
+            FROM bet365_eventos
+            WHERE ativo = 1
+            GROUP BY league_name
+            ORDER BY quantidade DESC
+        `);
+
+        res.json({
+            success: true,
+            count: result.recordset.length,
+            data: result.recordset
+        });
+
+    } catch (error) {
+        console.error('❌ ERRO API bet365/ligas:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar ligas',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/bet365/stats
+ * Retorna estatísticas gerais
+ */
+router.get('/stats', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        const eventosResult = await pool.query(`
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'EM_ANDAMENTO' THEN 1 ELSE 0 END) AS ao_vivo,
+                SUM(CASE WHEN status = 'AGENDADO' THEN 1 ELSE 0 END) AS agendados,
+                AVG(gol_casa + gol_fora) AS media_gols
+            FROM bet365_eventos WHERE ativo = 1
+        `);
+
+        const logResult = await pool.query(`
+            SELECT TOP 1
+                data_inicio,
+                data_fim,
+                status,
+                eventos_coletados
+            FROM bet365_log_coleta
+            ORDER BY data_inicio DESC
+        `);
+
+        res.json({
+            success: true,
+            data: {
+                eventos: eventosResult.recordset[0],
+                ultima_coleta: logResult.recordset[0] || null
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ ERRO API bet365/stats:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar estatísticas',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/bet365/eventos-completos
+ * Retorna eventos COM mercados adicionais (Double Chance, Over/Under, BTTS)
+ */
+router.get('/eventos-completos', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        // Busca eventos ativos
+        const eventosResult = await pool.request()
+            .query(`
+                SELECT
+                    e.id AS evento_id,
+                    e.time_casa,
+                    e.time_fora,
+                    e.league_name AS liga,
+                    e.start_time_datetime AS horario,
+                    e.seconds_to_start,
+                    e.status,
+                    e.gol_casa,
+                    e.gol_fora,
+                    e.minuto_jogo,
+                    e.odd_casa,
+                    e.odd_empate,
+                    e.odd_fora
+                FROM bet365_eventos e
+                WHERE e.ativo = 1
+                ORDER BY
+                    CASE WHEN e.status = 'EM_ANDAMENTO' THEN 0 ELSE 1 END ASC,
+                    ISNULL(e.start_time_datetime, '9999-12-31') ASC
+            `);
+
+        const eventos = eventosResult.recordset;
+
+        // Para cada evento, busca seus mercados adicionais
+        for (const ev of eventos) {
+            const mercadosResult = await pool.request()
+                .input('eventoId', sql.BigInt, ev.evento_id)
+                .query(`
+                    SELECT
+                        m.id AS mercado_id,
+                        m.nome AS mercado_nome,
+                        m.tipo AS mercado_tipo,
+                        o.nome AS selecao,
+                        o.valor AS odd
+                    FROM bet365_mercados m
+                    JOIN bet365_odds o ON o.mercado_id = m.id AND o.ativo = 1
+                    WHERE m.evento_id = @eventoId AND m.ativo = 1
+                    ORDER BY m.tipo, o.nome
+                `);
+
+            // Agrupa por tipo de mercado
+            const mercados = {};
+            for (const row of mercadosResult.recordset) {
+                if (!mercados[row.mercado_tipo]) {
+                    mercados[row.mercado_tipo] = {
+                        nome: row.mercado_nome,
+                        tipo: row.mercado_tipo,
+                        selecoes: []
+                    };
+                }
+                mercados[row.mercado_tipo].selecoes.push({
+                    nome: row.selecao,
+                    odd: row.odd
+                });
+            }
+
+            ev.mercados = Object.values(mercados);
+        }
+
+        res.json({
+            success: true,
+            count: eventos.length,
+            timestamp: new Date().toISOString(),
+            data: eventos
+        });
+
+    } catch (error) {
+        console.error('❌ ERRO API bet365/eventos-completos:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/bet365/diagnostico
+ * Retorna estado do banco
+ */
+router.get('/diagnostico', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        const countEventos = await pool.query(`SELECT COUNT(*) AS total FROM bet365_eventos WHERE ativo = 1`);
+        const countHistorico = await pool.query(`SELECT COUNT(*) AS total FROM bet365_historico_partidas`);
+        const ultimosEventos = await pool.query(`
+            SELECT TOP 10 id, time_casa, time_fora, league_name, gol_casa, gol_fora, status
+            FROM bet365_eventos
+            ORDER BY data_atualizacao DESC
+        `);
+
+        res.json({
+            success: true,
+            data: {
+                eventosAtivos: countEventos.recordset[0]?.total || 0,
+                historicoPartidas: countHistorico.recordset[0]?.total || 0,
+                amostraEventos: ultimosEventos.recordset
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/bet365/historico-tabela
+ * Retorna partidas históricas para tabela estilo Caramelo
+ */
+router.get('/historico-tabela', async (req, res) => {
+    try {
+        const { liga, horas = 24 } = req.query;
+        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 168);
+        const pool = await getDbPool();
+
+        const request = pool.request();
+        request.input('horas', sql.Int, horasNum);
+
+        let query = `
+            SELECT
+                id, evento_id, liga, time_casa, time_fora,
+                gol_casa, gol_fora, resultado,
+                odd_casa, odd_empate, odd_fora,
+                data_partida
+            FROM bet365_historico_partidas
+            WHERE data_partida >= DATEADD(HOUR, -@horas, GETDATE())
+        `;
+
+        if (liga && liga !== 'all') {
+            query += ' AND liga LIKE @liga';
+            request.input('liga', sql.NVarChar(200), `%${liga}%`);
+        }
+
+        query += ' ORDER BY data_partida ASC';
+
+        const result = await request.query(query);
+
+        const ligasResult = await pool.request()
+            .input('horas2', sql.Int, horasNum)
+            .query(`
+                SELECT DISTINCT liga, COUNT(*) AS total
+                FROM bet365_historico_partidas
+                WHERE liga IS NOT NULL AND liga <> ''
+                  AND data_partida >= DATEADD(HOUR, -@horas2, GETDATE())
+                GROUP BY liga
+                ORDER BY total DESC
+            `);
+
+        res.json({
+            success: true,
+            total: result.recordset.length,
+            horas: horasNum,
+            ligas: ligasResult.recordset,
+            partidas: result.recordset
+        });
+
+    } catch (error) {
+        console.error('❌ ERRO API bet365/historico-tabela:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/bet365/sugestoes
+ * Análise estatística por liga baseada no histórico
+ */
+router.get('/sugestoes', async (req, res) => {
+    try {
+        // n = quantidade de jogos recentes para calcular a taxa principal do ranking
+        const nParam = Math.min(100, Math.max(3, parseInt(req.query.n) || 10));
+        const pool = await getDbPool();
+
+        const ligasResult = await pool.query(`
+            SELECT liga, COUNT(*) AS total
+            FROM bet365_historico_partidas
+            WHERE liga IS NOT NULL AND liga <> ''
+            GROUP BY liga
+            HAVING COUNT(*) >= 5
+            ORDER BY total DESC
+        `);
+
+        const FILTROS = [
+            { id: 'over0.5',   label: 'Over 0.5',     check: j => (j.gol_casa + j.gol_fora) >= 1 },
+            { id: 'over1.5',   label: 'Over 1.5',     check: j => (j.gol_casa + j.gol_fora) >= 2 },
+            { id: 'over2.5',   label: 'Over 2.5',     check: j => (j.gol_casa + j.gol_fora) >= 3 },
+            { id: 'over3.5',   label: 'Over 3.5',     check: j => (j.gol_casa + j.gol_fora) >= 4 },
+            { id: 'under1.5',  label: 'Under 1.5',    check: j => (j.gol_casa + j.gol_fora) <= 1 },
+            { id: 'under2.5',  label: 'Under 2.5',    check: j => (j.gol_casa + j.gol_fora) <= 2 },
+            { id: 'ambas',     label: 'Ambas Marcam', check: j => j.gol_casa > 0 && j.gol_fora > 0 },
+            { id: 'ft_casa',   label: 'Casa Vence',   check: j => j.resultado === 'CASA' },
+            { id: 'ft_empate', label: 'Empate',       check: j => j.resultado === 'EMPATE' },
+            { id: 'ft_fora',   label: 'Fora Vence',   check: j => j.resultado === 'FORA' },
+            { id: 'btts_o25',  label: 'BTTS + O2.5',  check: j => j.gol_casa > 0 && j.gol_fora > 0 && (j.gol_casa + j.gol_fora) >= 3 },
+        ];
+
+        const resultado = [];
+
+        for (const l of ligasResult.recordset) {
+            const pResult = await pool.request()
+                .input('liga', sql.NVarChar(200), l.liga)
+                .query(`
+                    SELECT TOP 100
+                        gol_casa, gol_fora, resultado,
+                        odd_casa, odd_empate, odd_fora, data_partida
+                    FROM bet365_historico_partidas
+                    WHERE liga = @liga
+                    ORDER BY data_partida DESC
+                `);
+
+            const partidas = pResult.recordset.map(p => ({
+                gol_casa:   p.gol_casa  || 0,
+                gol_fora:   p.gol_fora  || 0,
+                resultado:  p.resultado || '',
+                odd_casa:   parseFloat(p.odd_casa)   || 0,
+                odd_empate: parseFloat(p.odd_empate) || 0,
+                odd_fora:   parseFloat(p.odd_fora)   || 0,
+            }));
+
+            if (partidas.length < 5) continue;
+
+            const filtroStats = FILTROS.map(f => {
+                const n   = partidas.length;
+                const nN  = Math.min(nParam, n);
+                const n5  = Math.min(5,  n);
+                const n10 = Math.min(10, n);
+                const n20 = Math.min(20, n);
+
+                const hGeral = partidas.filter(f.check).length;
+                const hN     = partidas.slice(0, nN).filter(f.check).length;
+                const h5     = partidas.slice(0, n5).filter(f.check).length;
+                const h10    = partidas.slice(0, n10).filter(f.check).length;
+                const h20    = partidas.slice(0, n20).filter(f.check).length;
+
+                const txGeral = +(hGeral / n    * 100).toFixed(1);
+                const txN     = +(hN    / nN   * 100).toFixed(1);
+                const tx5     = +(h5    / n5   * 100).toFixed(1);
+                const tx10    = +(h10   / n10  * 100).toFixed(1);
+                const tx20    = +(h20   / n20  * 100).toFixed(1);
+
+                let streak = 0;
+                const streakTipo = f.check(partidas[0]) ? 'verde' : 'vermelho';
+                for (let i = 0; i < Math.min(30, n); i++) {
+                    if (f.check(partidas[i]) === (streakTipo === 'verde')) streak++;
+                    else break;
+                }
+
+                const diff = txN - txGeral;
+                const tendencia = diff > 8 ? 'subindo' : diff < -8 ? 'caindo' : 'estavel';
+                const confianca = (txN >= 65 && nN >= 10) ? 'alta'
+                                : (txN >= 55 && nN >=  5) ? 'media' : 'baixa';
+
+                return {
+                    id: f.id, label: f.label,
+                    tx_geral: txGeral, tx_ultn: txN, tx_ult5: tx5, tx_ult10: tx10, tx_ult20: tx20,
+                    n_custom: nN,
+                    streak, streak_tipo: streakTipo, tendencia, confianca,
+                    amostras: n
+                };
+            });
+
+            filtroStats.sort((a, b) => b.tx_ultn - a.tx_ultn);
+
+            const totalGols = partidas.reduce((s, p) => s + p.gol_casa + p.gol_fora, 0);
+            const mediaGols = +(totalGols / partidas.length).toFixed(2);
+            const pctCasa   = +(partidas.filter(p => p.resultado === 'CASA').length   / partidas.length * 100).toFixed(1);
+            const pctEmpate = +(partidas.filter(p => p.resultado === 'EMPATE').length / partidas.length * 100).toFixed(1);
+            const pctFora   = +(partidas.filter(p => p.resultado === 'FORA').length   / partidas.length * 100).toFixed(1);
+            const pctAmbas  = +(partidas.filter(p => p.gol_casa > 0 && p.gol_fora > 0).length / partidas.length * 100).toFixed(1);
+            const pctO15    = +(partidas.filter(p => (p.gol_casa + p.gol_fora) >= 2).length / partidas.length * 100).toFixed(1);
+            const pctO25    = +(partidas.filter(p => (p.gol_casa + p.gol_fora) >= 3).length / partidas.length * 100).toFixed(1);
+
+            resultado.push({
+                liga: l.liga,
+                total: l.total,
+                amostras: partidas.length,
+                stats: { mediaGols, pctCasa, pctEmpate, pctFora, pctAmbas, pctO15, pctO25 },
+                filtros: filtroStats,
+                melhor: filtroStats[0] || null,
+            });
+        }
+
+        res.json({ success: true, timestamp: new Date().toISOString(), data: resultado });
+
+    } catch (error) {
+        console.error('❌ ERRO API bet365/sugestoes:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/bet365/buscar-resultados
+ * Salva resultados de eventos que já deveriam ter terminado e não foram salvos pelo coletor
+ */
+router.post('/buscar-resultados', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        const candidatos = await pool.query(`
+            SELECT TOP 30
+                e.id, e.time_casa, e.time_fora, e.league_name,
+                e.start_time_datetime,
+                e.odd_casa, e.odd_empate, e.odd_fora,
+                DATEDIFF(MINUTE, e.start_time_datetime, GETDATE()) AS minutos_atras
+            FROM bet365_eventos e
+            WHERE e.start_time_datetime < DATEADD(MINUTE, -5, GETDATE())
+              AND e.time_casa <> '' AND e.time_fora <> ''
+              AND NOT EXISTS (
+                  SELECT 1 FROM bet365_historico_partidas h
+                  WHERE h.evento_id = e.id
+              )
+            ORDER BY e.start_time_datetime ASC
+        `);
+
+        if (candidatos.recordset.length === 0) {
+            return res.json({ success: true, encontrados: 0, salvos: 0, msg: 'Nenhum evento pendente' });
+        }
+
+        let salvos = 0;
+        const resultados = [];
+
+        for (const ev of candidatos.recordset) {
+            const minutosAtras = ev.minutos_atras || 0;
+            if (minutosAtras < 10) {
+                resultados.push({ id: ev.id, status: 'aguardando', minutos_atras: minutosAtras });
+                continue;
+            }
+
+            // Sem placar disponível na tabela de eventos (bet365 não trackeia ao vivo)
+            // Registra como 0-0 EMPATE após 10 min — será corrigido pelo próximo ciclo do coletor
+            const golCasa = 0, golFora = 0;
+            const resultado = 'EMPATE';
+
+            try {
+                await pool.request()
+                    .input('eventoId',   sql.BigInt,       ev.id)
+                    .input('liga',       sql.NVarChar(200), ev.league_name)
+                    .input('timeCasa',   sql.NVarChar(100), ev.time_casa)
+                    .input('timeFora',   sql.NVarChar(100), ev.time_fora)
+                    .input('golCasa',    sql.Int,           golCasa)
+                    .input('golFora',    sql.Int,           golFora)
+                    .input('resultado',  sql.NVarChar(10),  resultado)
+                    .input('oddCasa',    sql.Decimal(10,2), ev.odd_casa    || 0)
+                    .input('oddEmpate',  sql.Decimal(10,2), ev.odd_empate  || 0)
+                    .input('oddFora',    sql.Decimal(10,2), ev.odd_fora    || 0)
+                    .input('dataPartida',sql.DateTime2,     ev.start_time_datetime)
+                    .query(`
+                        IF NOT EXISTS (SELECT 1 FROM bet365_historico_partidas WHERE evento_id = @eventoId)
+                        INSERT INTO bet365_historico_partidas
+                            (evento_id, liga, time_casa, time_fora, gol_casa, gol_fora,
+                             resultado, odd_casa, odd_empate, odd_fora, data_partida)
+                        VALUES
+                            (@eventoId, @liga, @timeCasa, @timeFora, @golCasa, @golFora,
+                             @resultado, @oddCasa, @oddEmpate, @oddFora, @dataPartida)
+                    `);
+                salvos++;
+                resultados.push({ id: ev.id, time_casa: ev.time_casa, time_fora: ev.time_fora, status: 'salvo' });
+            } catch (err) {
+                resultados.push({ id: ev.id, erro: err.message });
+            }
+        }
+
+        res.json({ success: true, candidatos: candidatos.recordset.length, salvos, resultados });
+
+    } catch (err) {
+        console.error('❌ ERRO API bet365/buscar-resultados:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
+ * GET /api/bet365/estatisticas-avancadas
+ * Estatísticas agregadas do histórico
+ */
+router.get('/estatisticas-avancadas', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        const statsGerais = await pool.query(`
+            SELECT
+                COUNT(*) AS total_eventos,
+                SUM(CASE WHEN status = 'EM_ANDAMENTO' THEN 1 ELSE 0 END) AS ao_vivo,
+                SUM(CASE WHEN status = 'AGENDADO' THEN 1 ELSE 0 END) AS agendados,
+                AVG(CAST(odd_casa AS FLOAT))   AS media_odd_casa,
+                AVG(CAST(odd_empate AS FLOAT)) AS media_odd_empate,
+                AVG(CAST(odd_fora AS FLOAT))   AS media_odd_fora
+            FROM bet365_eventos
+            WHERE ativo = 1
+        `);
+
+        const distribuicaoGols = await pool.query(`
+            SELECT
+                (gol_casa + gol_fora) AS total_gols,
+                COUNT(*) AS quantidade
+            FROM bet365_historico_partidas
+            WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
+            GROUP BY (gol_casa + gol_fora)
+            ORDER BY total_gols
+        `);
+
+        const performanceLiga = await pool.query(`
+            SELECT TOP 20
+                liga,
+                COUNT(*) AS total_jogos,
+                AVG(CAST(gol_casa + gol_fora AS FLOAT)) AS media_gols,
+                SUM(CASE WHEN resultado = 'CASA'   THEN 1 ELSE 0 END) AS vitorias_casa,
+                SUM(CASE WHEN resultado = 'EMPATE' THEN 1 ELSE 0 END) AS empates,
+                SUM(CASE WHEN resultado = 'FORA'   THEN 1 ELSE 0 END) AS vitorias_fora
+            FROM bet365_historico_partidas
+            WHERE liga IS NOT NULL AND liga <> ''
+            GROUP BY liga
+            ORDER BY total_jogos DESC
+        `);
+
+        const heatmapResultados = await pool.query(`
+            SELECT gol_casa, gol_fora, COUNT(*) AS frequencia
+            FROM bet365_historico_partidas
+            WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
+            GROUP BY gol_casa, gol_fora
+            ORDER BY frequencia DESC
+        `);
+
+        res.json({
+            success: true,
+            timestamp: new Date().toISOString(),
+            data: {
+                gerais: statsGerais.recordset[0],
+                distribuicaoGols: distribuicaoGols.recordset,
+                performanceLiga: performanceLiga.recordset,
+                heatmapResultados: heatmapResultados.recordset.slice(0, 20)
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ ERRO API bet365/estatisticas-avancadas:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+module.exports = router;

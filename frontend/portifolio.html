@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão Financeira Avançada - Portfólio</title>
+    <link rel="icon" type="image/svg+xml" href="./images/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1a2a6c;
+            --secondary: #b21f1f;
+            --accent: #fdbb2d;
+            --success: #28a745;
+            --dark: #343a40;
+            --light: #f8f9fa;
+            --nubank: #7B2CBF;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #333;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header */
+        header {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
+            padding: 15px 0;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+        
+        /* Hero Section */
+        .hero {
+            padding: 150px 0 100px;
+            text-align: center;
+            color: white;
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 30px;
+            opacity: 0.9;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:hover {
+            background: var(--secondary);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .btn-accent {
+            background: var(--accent);
+            color: #333;
+        }
+        
+        /* Features Section */
+        .features {
+            padding: 100px 0;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            margin: 0 20px;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .section-title h2 {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        
+        .section-title p {
+            color: #666;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+        
+        .feature-icon {
+            width: 70px;
+            height: 70px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 1.8rem;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+        
+        .feature-card p {
+            color: #666;
+        }
+        
+        /* Screenshots Section */
+        .screenshots {
+            padding: 100px 0;
+            color: white;
+        }
+        
+        .screenshots .section-title h2,
+        .screenshots .section-title p {
+            color: white;
+        }
+        
+        .screenshot-container {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: var(--shadow);
+        }
+        
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .screenshot-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .screenshot-item:hover {
+            transform: scale(1.03);
+        }
+        
+        .screenshot-img {
+            height: 200px;
+            background: linear-gradient(45deg, #1a2a6c, #b21f1f);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .screenshot-info {
+            padding: 15px;
+        }
+        
+        .screenshot-info h4 {
+            margin-bottom: 10px;
+            color: white;
+        }
+        
+        .screenshot-info p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        
+        /* Pricing Section */
+        .pricing {
+            padding: 100px 0;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            margin: 0 20px;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .pricing-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+        
+        .pricing-header {
+            background: var(--primary);
+            color: white;
+            padding: 30px;
+        }
+        
+        .pricing-header h3 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .pricing-price {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .pricing-period {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        
+        .pricing-features {
+            padding: 30px;
+        }
+        
+        .pricing-features ul {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+        
+        .pricing-features li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            color: #666;
+        }
+        
+        .pricing-features li:last-child {
+            border-bottom: none;
+        }
+        
+        .pricing-features li i {
+            color: var(--success);
+            margin-right: 10px;
+        }
+        
+        /* Testimonials */
+        .testimonials {
+            padding: 100px 0;
+            color: white;
+        }
+        
+        .testimonials .section-title h2,
+        .testimonials .section-title p {
+            color: white;
+        }
+        
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .testimonial-card {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+        }
+        
+        .testimonial-text {
+            font-style: italic;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .author-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .author-info h4 {
+            color: white;
+            margin-bottom: 5px;
+        }
+        
+        .author-info p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+        
+        /* Contact Section */
+        .contact {
+            padding: 100px 0;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            margin: 0 20px 50px;
+        }
+        
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 50px;
+        }
+        
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .contact-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .contact-details h4 {
+            margin-bottom: 5px;
+            color: var(--primary);
+        }
+        
+        .contact-form {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--dark);
+            color: white;
+            padding: 50px 0 20px;
+            text-align: center;
+        }
+        
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .social-links {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .social-links a {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .social-links a:hover {
+            background: var(--primary);
+            transform: translateY(-3px);
+        }
+        
+        .copyright {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .features,
+            .pricing,
+            .contact {
+                margin: 0 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-chart-line"></i>
+                    <span>ControlFinancePro</span>
+                </div>
+                <nav class="nav-links">
+                    <a href="#features">Funcionalidades</a>
+                    <a href="#screenshots">Screenshots</a>
+                    <a href="#pricing">Planos</a>
+                    <a href="#testimonials">Depoimentos</a>
+                    <a href="#contact">Contato</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>Sistema de Gestão Financeira Avançada</h1>
+            <p>Controle completo das suas finanças com dashboard interativo, análises estatísticas e histórico completo. Ideal para empresas e profissionais que precisam de controle financeiro preciso.</p>
+            <div>
+                <a href="#contact" class="btn">Solicitar Demonstração</a>
+                <a href="#features" class="btn btn-accent">Conhecer Funcionalidades</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-title">
+                <h2>Principais Funcionalidades</h2>
+                <p>Descubra todas as ferramentas que tornam nosso sistema a melhor escolha para sua gestão financeira</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h3>Dashboard Interativo</h3>
+                    <p>Visualize todos os seus dados financeiros em um painel intuitivo com gráficos e indicadores em tempo real.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <h3>Controle de Cartões</h3>
+                    <p>Gerencie despesas de cartão de crédito com separação entre cobranças fixas e variáveis.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h3>Histórico Completo</h3>
+                    <p>Acesse o histórico completo de todas as transações com filtros avançados por período.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-export"></i>
+                    </div>
+                    <h3>Relatórios Detalhados</h3>
+                    <p>Gere relatórios personalizados para análise de desempenho financeiro.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3>Backup Automático</h3>
+                    <p>Seus dados são protegidos com backup automático e criptografia avançada.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Design Responsivo</h3>
+                    <p>Acesse o sistema de qualquer dispositivo com interface adaptável para mobile e desktop.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots Section -->
+    <section class="screenshots" id="screenshots">
+        <div class="container">
+            <div class="section-title">
+                <h2>Interface do Sistema</h2>
+                <p>Conheça a interface intuitiva e moderna do nosso sistema de gestão financeira</p>
+            </div>
+            <div class="screenshot-container">
+                <div class="screenshot-grid">
+                    <div class="screenshot-item">
+                        <div class="screenshot-img">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </div>
+                        <div class="screenshot-info">
+                            <h4>Dashboard Principal</h4>
+                            <p>Visão geral de todas as métricas financeiras com gráficos interativos.</p>
+                        </div>
+                    </div>
+                    <div class="screenshot-item">
+                        <div class="screenshot-img">
+                            <i class="fas fa-table"></i>
+                        </div>
+                        <div class="screenshot-info">
+                            <h4>Controle Mensal</h4>
+                            <p>Gestão detalhada de despesas mensais com categorização e observações.</p>
+                        </div>
+                    </div>
+                    <div class="screenshot-item">
+                        <div class="screenshot-img">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="screenshot-info">
+                            <h4>Despesas Anuais</h4>
+                            <p>Controle de despesas anuais com projeção de custos mensais.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div class="section-title">
+                <h2>Planos e Preços</h2>
+                <p>Escolha o plano ideal para o seu negócio</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3>Básico</h3>
+                        <div class="pricing-price">R$ 9,90<span class="pricing-period">/mês</span></div>
+                    </div>
+                    <div class="pricing-features">
+                        <ul>
+                            <li><i class="fas fa-check"></i> Controle de Receitas e Despesas</li>
+                            <li><i class="fas fa-check"></i> Dashboard básico</li>
+                            <li><i class="fas fa-check"></i> Relatórios simples</li>
+							<li><i class="fas fa-check"></i> Suporte por e-mail</li>
+                            <li><i class="fas fa-times"></i> Histórico avançado</li>
+                        </ul>
+                        <a href="#contact" class="btn">Contratar</a>
+                    </div>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-header" style="background: var(--secondary);">
+                        <h3>Profissional</h3>
+                        <div class="pricing-price">R$ 19,90<span class="pricing-period">/mês</span></div>
+                    </div>
+                    <div class="pricing-features">
+                        <ul>
+                            <li><i class="fas fa-check"></i> Todas as funcionalidades do Básico</li>
+                            <li><i class="fas fa-check"></i> Controle de cartões de crédito</li>
+                            <li><i class="fas fa-check"></i> Histórico completo e detalhado</li>
+                            <li><i class="fas fa-check"></i> Relatórios avançados</li>
+                            <li><i class="fas fa-check"></i> Suporte WhatsApp</li>
+                            <li><i class="fas fa-check"></i> Backup automático</li>
+                        </ul>
+                        <a href="#contact" class="btn">Contratar</a>
+                    </div>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-header" style="background: var(--nubank);">
+                        <h3>Empresarial</h3>
+                        <div class="pricing-price">R$ 49,90<span class="pricing-period">/mês</span></div>
+                    </div>
+                    <div class="pricing-features">
+                        <ul>
+                            <li><i class="fas fa-check"></i> Todas as funcionalidades do Profissional</li>
+                            <li><i class="fas fa-check"></i> Múltiplos usuários (até 10)</li>
+                            <li><i class="fas fa-check"></i> Treinamento da equipe</li>
+							<li><i class="fas fa-check"></i> Integração com bancos (Requer cobrança adicional)</li>
+                            <li><i class="fas fa-check"></i> API personalizada (Requer cobrança adicional)</li>
+                        </ul>
+                        <a href="#contact" class="btn">Contratar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <div class="section-title">
+                <h2>O que nossos clientes dizem</h2>
+                <p>Depoimentos de empresas que já utilizam nosso sistema</p>
+            </div>
+            <div class="testimonial-grid">
+                <div class="testimonial-card">
+                    <div class="testimonial-text">
+                        "Implementamos o sistema há 6 meses e já percebemos uma redução de 30% em despesas desnecessárias. A interface é intuitiva e os relatórios nos ajudam a tomar decisões mais assertivas."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">RC</div>
+                        <div class="author-info">
+                            <h4>Ricardo Costa</h4>
+                            <p>Diretor Financeiro - Empresa XYZ</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-text">
+                        "Como consultor financeiro, preciso de ferramentas confiáveis para meus clientes. Este sistema superou todas as expectativas, especialmente o controle detalhado de cartões de crédito."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">AS</div>
+                        <div class="author-info">
+                            <h4>Amanda Silva</h4>
+                            <p>Consultora Financeira - Silva & Associados</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-text">
+                        "A migração foi simples e o suporte esteve disponível a todo momento. Agora temos visibilidade completa do nosso fluxo de caixa e podemos projetar com mais precisão."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">MF</div>
+                        <div class="author-info">
+                            <h4>Marcos Ferreira</h4>
+                            <p>CEO - TechSolutions Ltda</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <div class="section-title">
+                <h2>Entre em Contato</h2>
+                <p>Solicite uma demonstração gratuita ou tire suas dúvidas</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="contact-details">
+                            <h4>Nome Completo</h4>
+                            <p>Mateus de Oliveira Fonseca</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div class="contact-details">
+                            <h4>Telefone</h4>
+                            <p>(48) 99935-9690</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="contact-details">
+                            <h4>E-mail</h4>
+                            <p>mt993.oliveira@gmail.com</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="contact-details">
+                            <h4>Horário de Atendimento</h4>
+                            <p>Segunda a Sexta, 9h às 18h</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="contact-form">
+                    <form id="contactForm">
+                        <div class="form-group">
+                            <label for="name">Nome Completo</label>
+                            <input type="text" id="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">E-mail</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Telefone</label>
+                            <input type="tel" id="phone">
+                        </div>
+                        <div class="form-group">
+                            <label for="company">Empresa</label>
+                            <input type="text" id="company">
+                        </div>
+                        <div class="form-group">
+                            <label for="message">Mensagem</label>
+                            <textarea id="message" rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn" style="width: 100%;">Enviar Mensagem</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="logo">
+                    <i class="fas fa-chart-line"></i>
+                    <span>ControlFinancePro</span>
+                </div>
+                <p>Sistema de Gestão Financeira Avançada</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-whatsapp"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2025 ControlFinancePro. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Button -->
+    <div style="position: fixed; top: 20px; right: 20px; z-index: 10000;">
+        <button class="btn" id="login-btn-header" style="background: var(--primary); padding: 12px 24px; font-size: 1rem; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: all 0.3s ease;">
+            <i class="fas fa-sign-in-alt"></i> Entrar
+        </button>
+    </div>
+
+    <!-- Login Screen (Initially Hidden) -->
+    <div class="login-screen" id="login-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 1000;">
+        <div class="login-container" style="background: var(--glass); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 15px; padding: 30px; width: 90%; max-width: 400px; box-shadow: var(--shadow); color: white;">
+            <h2 style="text-align: center; margin-bottom: 20px; color: white;">Acesso ao Sistema</h2>
+            <form id="login-form">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="username" style="display: block; margin-bottom: 5px;">Usuário</label>
+                    <input type="text" id="username" required style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ced4da; background: rgba(255,255,255,0.1); color: white;">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="password" style="display: block; margin-bottom: 5px;">Senha</label>
+                    <input type="password" id="password" required style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ced4da; background: rgba(255,255,255,0.1); color: white;">
+                </div>
+                <div id="login-message" class="message" style="display: none; padding: 10px; border-radius: 5px; margin-bottom: 15px;"></div>
+                <button type="submit" class="btn" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Entrar</button>
+                <div id="login-loading" class="loading" style="display: none; text-align: center; margin-top: 10px;">
+                    <i class="fas fa-spinner fa-spin"></i> Autenticando...
+                </div>
+            </form>
+            <div style="margin-top: 15px; text-align: center;">
+                <button id="back-to-portfolio" class="btn" style="background: var(--secondary); padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; color: white;">Voltar a página inicial</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                const targetId = this.getAttribute('href');
+                if(targetId === '#') return;
+
+                const targetElement = document.querySelector(targetId);
+                if(targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Form submission
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Obrigado pelo seu interesse! Entraremos em contato em breve.');
+            this.reset();
+        });
+
+        // Header background on scroll
+        window.addEventListener('scroll', function() {
+            const header = document.querySelector('header');
+            if(window.scrollY > 50) {
+                header.style.background = 'rgba(26, 42, 108, 0.95)';
+                header.style.backdropFilter = 'blur(10px)';
+            } else {
+                header.style.background = 'var(--glass)';
+                header.style.backdropFilter = 'blur(10px)';
+            }
+        });
+
+        // Login functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginBtn = document.getElementById('login-btn-header');
+            const loginScreen = document.getElementById('login-screen');
+            const loginForm = document.getElementById('login-form');
+            const backToPortfolio = document.getElementById('back-to-portfolio');
+            const loginMessage = document.getElementById('login-message');
+            const loginLoading = document.getElementById('login-loading');
+
+            // Show login screen
+            loginBtn.addEventListener('click', function() {
+                loginScreen.style.display = 'flex';
+            });
+
+            // Hide login screen
+            backToPortfolio.addEventListener('click', function() {
+                loginScreen.style.display = 'none';
+            });
+
+            // Login form submission
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                const submitBtn = loginForm.querySelector('button[type="submit"]');
+
+                submitBtn.disabled = true;
+                loginLoading.style.display = 'block';
+                loginMessage.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Armazenar informações do usuário para manter a sessão
+                        localStorage.setItem('currentUser', JSON.stringify({...result.user, TipoUsuario: result.user.TipoUsuario || 'user'}));
+
+                        // Redirecionar para o dashboard após login bem-sucedido
+                        window.location.href = '/dashboard';
+                    } else {
+                        showLoginMessage(result.message || 'Credenciais inválidas', 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro no login:', error);
+                    showLoginMessage('Erro ao conectar com o servidor', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    loginLoading.style.display = 'none';
+                }
+            });
+
+            function showLoginMessage(message, type) {
+                loginMessage.textContent = message;
+                loginMessage.className = 'message ' + type;
+                loginMessage.style.display = 'block';
+
+                setTimeout(() => {
+                    loginMessage.style.display = 'none';
+                }, 5000);
+            }
+        });
+
+        // Função para carregar o conteúdo do dashboard
+        async function loadDashboardContent() {
+            try {
+                // Ocultar seções do portfólio
+                document.querySelector('.hero').style.display = 'none';
+                document.querySelector('.features').style.display = 'none';
+                document.querySelector('.pricing').style.display = 'none';
+                document.querySelector('.testimonials').style.display = 'none';
+                document.querySelector('.contact').style.display = 'none';
+
+                // Alterar o título da página
+                document.querySelector('h1').textContent = 'Controle de Gestão Financeira Avançada';
+
+                // Adicionar o conteúdo do dashboard (simulado como uma div temporária)
+                const mainContainer = document.querySelector('.container');
+                if (mainContainer) {
+                    mainContainer.innerHTML = `
+                    <div id="main-container" style="background: var(--glass); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 15px; padding: 20px; color: white;">
+                        <header>
+                            <h1 id="main-title">
+                                <span>Controle de Gestão Financeira Avançada</span>
+                            </h1>
+                            <p class="subtitle" id="main-subtitle">
+                                <span>Dashboard interativo com análises estatísticas e histórico completo</span>
+                            </p>
+                            <div style="margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 15px;">
+                                <span style="color: rgba(255, 255, 255, 0.8);">Olá, <span id="logged-user" style="font-weight: bold; cursor: pointer;" title="Clique para editar seu perfil">${JSON.parse(localStorage.getItem('currentUser')).Usuario}</span></span>
+                                <button class="btn" id="logout-btn" style="padding: 5px 10px; font-size: 0.8rem; background: var(--secondary);">
+                                    <i class="fas fa-sign-out-alt"></i> Sair
+                                </button>
+                                <button class="btn" id="back-to-portfolio" style="padding: 5px 10px; font-size: 0.8rem; background: var(--primary);">
+                                    <i class="fas fa-arrow-left"></i> Voltar ao Portfólio
+                                </button>
+                            </div>
+                        </header>
+
+                        <div class="month-navigation">
+                            <div class="month-selector">
+                                <button class="month-btn" id="prev-month">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div class="current-month" id="current-month">Carregando...</div>
+                                <button class="month-btn" id="next-month">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+
+                            <div class="year-selector">
+                                <select class="year-select" id="year-select">
+                                    <!-- Anos serão preenchidos dinamicamente -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="dashboard">
+                            <div class="card">
+                                <h3 id="card-title-1">
+                                    <span>Despesas mensais</span>
+                                </h3>
+                                <div class="value" id="total-mensal">R$ 0,00</div>
+                                <div class="description" id="card-desc-1">
+                                    <span>Total de despesas mensal</span>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <h3 id="card-title-4">
+                                    <span>Receitas</span>
+                                </h3>
+                                <div class="value" id="saldo-receber">R$ 0,00</div>
+                                <div class="description" id="card-desc-4">
+                                    <span>Total de receitas a receber</span>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <h3 id="card-title-5">
+                                    <span>Total de Despesas</span>
+                                </h3>
+                                <div class="value" id="total-geral">R$ 0,00</div>
+                                <div class="description" id="card-desc-5">
+                                    <span>Saldo - TOTAL</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="main-content">
+                            <div class="section">
+                                <div class="section-header">
+                                    <h2 class="section-title" id="section-title-1">
+                                        <i class="fas fa-file-invoice-dollar"></i>
+                                        <span>Despesas Mensais</span>
+                                    </h2>
+                                    <div>
+                                        <button class="btn btn-add" id="add-mensal">
+                                            <i class="fas fa-plus"></i> Adicionar
+                                        </button>
+                                        <button class="btn btn-chart" id="chart-mensal">
+                                            <i class="fas fa-chart-pie"></i> Gráfico
+                                        </button>
+                                    </div>
+                                </div>
+                                <table id="table-mensal">
+                                    <thead>
+                                        <tr>
+                                            <th>Descrição</th>
+                                            <th>Valor (R$)</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dados serão inseridos dinamicamente -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="total-row">
+                                            <td>Total</td>
+                                            <td class="valor" id="total-mensal-valor">0,00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+
+                                <div class="copy-section">
+                                    <button class="btn" id="copy-prev-month">
+                                        <i class="fas fa-copy"></i> Copiar do Mês Anterior
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Nova seção: Contas a Receber -->
+                            <div class="section">
+                                <div class="section-header">
+                                    <h2 class="section-title" id="section-title-receber">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                        <span>Receitas</span>
+                                    </h2>
+                                    <div>
+                                        <button class="btn btn-add" id="add-receber">
+                                            <i class="fas fa-plus"></i> Adicionar
+                                        </button>
+                                        <button class="btn btn-chart" id="chart-receber">
+                                            <i class="fas fa-chart-pie"></i> Gráfico
+                                        </button>
+                                    </div>
+                                </div>
+                                <table id="table-receber">
+                                    <thead>
+                                        <tr>
+                                            <th>Descrição</th>
+                                            <th>Valor (R$)</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dados serão inseridos dinamicamente -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="total-row">
+                                            <td>Total</td>
+                                            <td class="valor" id="total-receber-valor">0,00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+
+                                <div class="copy-section">
+                                    <button class="btn" id="copy-prev-month-receber">
+                                        <i class="fas fa-copy"></i> Copiar do Mês Anterior
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sistema de histórico expandido -->
+                        <div class="section">
+                            <div class="section-header">
+                                <h2 class="section-title" id="section-title-4">
+                                    <i class="fas fa-history"></i>
+                                    <span>Histórico Completo</span>
+                                </h2>
+                                <div class="history-controls">
+                                    <button class="btn" id="show-all-history">
+                                        <i class="fas fa-sync-alt"></i> Atualizar histórico
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="history-navigation">
+                                <button class="btn" id="prev-history">
+                                    <i class="fas fa-chevron-left"></i> Mês Anterior
+                                </button>
+                                <div class="history-range" id="history-range">Mostrando: Carregando...</div>
+                                <button class="btn" id="next-history">
+                                    Próximo Mês <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div id="history-content">
+                                <!-- Conteúdo do histórico será inserido aqui -->
+                            </div>
+                            <div class="pagination" id="history-pagination">
+                                <!-- Paginação será inserida aqui -->
+                            </div>
+                            <div class="items-per-page">
+                                <span style="color: white;">Itens por página:</span>
+                                <select id="history-items-per-page">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }
+
+                // Adicionar eventos de logout e voltar ao portfólio
+                const logoutBtn = document.getElementById('logout-btn');
+                const backToPortfolio = document.getElementById('back-to-portfolio');
+
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', function() {
+                        if (confirm('Tem certeza que deseja sair?')) {
+                            localStorage.removeItem('currentUser');
+                            location.reload(); // Recarregar a página para voltar ao estado inicial
+                        }
+                    });
+                }
+
+                if (backToPortfolio) {
+                    backToPortfolio.addEventListener('click', function() {
+                        // Voltar para o layout original do portfólio
+                        location.reload(); // Simplesmente recarregar a página para voltar ao estado original
+                    });
+                }
+
+                // Agora carregar o conteúdo real do sistema
+                loadDashboardApp();
+            } catch (error) {
+                console.error('Erro ao carregar o dashboard:', error);
+                alert('Erro ao carregar o sistema. Atualize a página e tente novamente.');
+            }
+        }
+
+        // Função para carregar o aplicativo de dashboard
+        function loadDashboardApp() {
+            // Carregar o conteúdo do sistema de finanças
+            // Este código simula a inclusão do conteúdo do index.html
+
+            // Criar um elemento script para carregar as funcionalidades
+            const script = document.createElement('script');
+            script.textContent = `
+                // Código simulado para carregar as funcionalidades do sistema
+                // Este código replicaria as funcionalidades do index.html
+
+                // Carregar dados iniciais
+                function loadAndRenderData() {
+                    // Esta função simula o carregamento dos dados do sistema
+                    console.log('Carregando dados do sistema...');
+
+                    // Simular carregamento de despesas e receitas
+                    document.getElementById('total-mensal').textContent = 'R$ 3.250,00';
+                    document.getElementById('total-mensal-valor').textContent = '3.250,00';
+                    document.getElementById('saldo-receber').textContent = 'R$ 5.800,00';
+                    document.getElementById('total-geral').textContent = 'R$ 3.250,00';
+                    document.getElementById('total-receber-valor').textContent = '5.800,00';
+
+                    // Simular carregamento das tabelas
+                    const mensalTable = document.querySelector('#table-mensal tbody');
+                    mensalTable.innerHTML = '';
+                    for (let i = 0; i < 3; i++) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = \`
+                            <td>Exemplo de Despesa \${i+1}</td>
+                            <td class="valor">R\$ \${(Math.random() * 1000).toFixed(2)}</td>
+                            <td class="actions">
+                                <button class="btn-edit" onclick="alert('Editar despesa')">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn-delete" onclick="alert('Excluir despesa')">
+                                    <i class="fas fa-trash"></i> Excluir
+                                </button>
+                            </td>
+                        \`;
+                        mensalTable.appendChild(row);
+                    }
+
+                    const receberTable = document.querySelector('#table-receber tbody');
+                    receberTable.innerHTML = '';
+                    for (let i = 0; i < 2; i++) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = \`
+                            <td>Exemplo de Receita \${i+1}</td>
+                            <td class="valor">R\$ \${(Math.random() * 2000).toFixed(2)}</td>
+                            <td class="actions">
+                                <button class="btn-edit" onclick="alert('Editar receita')">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn-delete" onclick="alert('Excluir receita')">
+                                    <i class="fas fa-trash"></i> Excluir
+                                </button>
+                            </td>
+                        \`;
+                        receberTable.appendChild(row);
+                    }
+                }
+
+                // Iniciar o sistema
+                loadAndRenderData();
+
+                // Adicionar eventos básicos
+                document.querySelectorAll('.btn-add, .btn-chart').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        alert('Função não implementada nesta versão simulada');
+                    });
+                });
+
+                document.querySelectorAll('.btn-edit, .btn-delete').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        alert('Operação simulada');
+                    });
+                });
+            `;
+            document.head.appendChild(script);
+        }
+    </script>
+</body>
+</html>
