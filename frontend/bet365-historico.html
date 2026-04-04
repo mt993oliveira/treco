@@ -175,6 +175,44 @@
             border-radius: 3px;
         }
 
+        /* HEATMAP V2 + IA CARDS */
+        .heatmap-cell-v2 {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            padding: 4px 2px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid #1e293b;
+            min-width: 44px;
+            min-height: 44px;
+            position: relative;
+        }
+        .heatmap-cell-v2:hover { transform: scale(1.08); z-index: 10; }
+        .ia-card {
+            background: #0a0f1e;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .ia-best-bet {
+            background: #052e16;
+            border: 1px solid #166534;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-top: 8px;
+        }
+        .ia-risky-bet {
+            background: #1c1003;
+            border: 1px solid #92400e;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-top: 6px;
+        }
+
         /* ESTATÍSTICAS AVANÇADAS */
         .stats-avancadas-grid {
             display: grid;
@@ -257,14 +295,12 @@
         </div>
     </div>
 
-    <!-- Heatmap de Resultados -->
-    <div style="margin-bottom:14px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">🔥 HEATMAP DE RESULTADOS (Últimas 24h)</div>
-        <div class="heatmap-container" id="heatmap-container" style="display:none">
-            <div class="heatmap-grid" id="heatmap-grid"></div>
-            <div class="heatmap-legend" id="heatmap-legend"></div>
+    <!-- Heatmap de Resultados V2 + IA -->
+    <div style="margin-bottom:14px" id="heatmap-ia-section">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">🔥 HEATMAP DE RESULTADOS — ANÁLISE IA</div>
+        <div id="heatmap-ia-container">
+            <div id="heatmap-ia-loading" style="color:#334155;font-size:12px;padding:24px;text-align:center">Carregando heatmap...</div>
         </div>
-        <div id="heatmap-loading" style="color:#334155;font-size:12px;padding:24px;text-align:center">Carregando heatmap...</div>
     </div>
 
     <!-- Estatísticas Avançadas -->
@@ -628,10 +664,11 @@ async function carregarTudo() {
     await Promise.all([
         carregarHistorico(),
         carregarSugestoes(),
-        carregarHeatmap(),
         carregarEstatisticasAvancadas(),
         renderProximosJogos(),
     ]);
+    // Render heatmap IA after historico is loaded (S.todasPartidas populated)
+    renderHeatmapIA();
 }
 
 // ============================================================
@@ -904,7 +941,7 @@ function renderLigas() {
             S.partidas  = filtrarPartidas();
             document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
             b.classList.add('ativo');
-            renderTabela(); renderGrafico(); renderProximosJogos();
+            renderTabela(); renderGrafico(); renderProximosJogos(); renderHeatmapIA();
             document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
         };
         c.appendChild(b);
@@ -1920,103 +1957,393 @@ function conectarWS() {
 }
 
 // ============================================================
-// HEATMAP DE RESULTADOS
+// HEATMAP V2 + IA — ANÁLISE COM S.todasPartidas
 // ============================================================
-async function carregarHeatmap() {
-    try {
-        const res = await fetch(`/api/bet365/estatisticas-avancadas`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        
-        if (json.success && json.data?.heatmapResultados) {
-            renderizarHeatmap(json.data.heatmapResultados);
-            document.getElementById('heatmap-container').style.display = 'block';
-            document.getElementById('heatmap-loading').style.display = 'none';
-        }
-    } catch (err) {
-        console.error('Erro ao carregar heatmap:', err);
-        document.getElementById('heatmap-loading').textContent = 'Erro ao carregar heatmap';
-    }
-}
 
-function renderizarHeatmap(dados) {
-    const grid = document.getElementById('heatmap-grid');
-    const legend = document.getElementById('heatmap-legend');
-    
-    if (!dados || dados.length === 0) {
-        grid.innerHTML = '<div style="color:#334155;font-size:12px;padding:20px;text-align:center">Sem dados de heatmap</div>';
-        return;
-    }
-    
-    // Criar matriz de heatmap (0-0 até 5-5+)
+function _hmComputeMatriz(partidas) {
     const maxGols = 5;
     const matriz = {};
+    let totalGeral = 0;
+    // Também acumula odds para calcular implied probability histórica
+    let somaOddCasa = 0, somaOddEmp = 0, somaOddFora = 0, nOdds = 0;
+
     for (let c = 0; c <= maxGols; c++) {
         for (let f = 0; f <= maxGols; f++) {
-            const key = `${c}-${f}`;
-            matriz[key] = { casa: 0, empate: 0, fora: 0, total: 0 };
+            matriz[`${c}-${f}`] = { total: 0, tipo: null };
         }
     }
-    
-    // Preencher matriz
-    let totalGeral = 0;
-    dados.forEach(d => {
-        const c = Math.min(d.gol_casa || 0, maxGols);
-        const f = Math.min(d.gol_fora || 0, maxGols);
+
+    partidas.forEach(p => {
+        const c = Math.min(parseInt(p.gol_casa) || 0, maxGols);
+        const f = Math.min(parseInt(p.gol_fora) || 0, maxGols);
         const key = `${c}-${f}`;
-        if (matriz[key]) {
-            const freq = d.frequencia || 1;
-            if (c > f) matriz[key].casa += freq;
-            else if (c === f) matriz[key].empate += freq;
-            else matriz[key].fora += freq;
-            matriz[key].total += freq;
-            totalGeral += freq;
+        if (matriz[key] !== undefined) {
+            matriz[key].total++;
+            totalGeral++;
+            if (c > f) matriz[key].tipo = 'casa';
+            else if (c === f) matriz[key].tipo = 'empate';
+            else matriz[key].tipo = 'fora';
+        }
+        if (p.odd_casa && p.odd_empate && p.odd_fora) {
+            somaOddCasa += parseFloat(p.odd_casa);
+            somaOddEmp  += parseFloat(p.odd_empate);
+            somaOddFora += parseFloat(p.odd_fora);
+            nOdds++;
         }
     });
-    
-    // Renderizar células
-    let html = '';
+
+    const avgOdds = nOdds > 0
+        ? { casa: somaOddCasa/nOdds, emp: somaOddEmp/nOdds, fora: somaOddFora/nOdds }
+        : { casa: 2, emp: 3.2, fora: 4 };
+
+    return { matriz, totalGeral, avgOdds };
+}
+
+function _hmRenderGrid(partidas) {
+    const { matriz, totalGeral, avgOdds } = _hmComputeMatriz(partidas);
+    const maxGols = 5;
+
+    // Find max cell count for intensity scaling
+    let maxCell = 0;
+    Object.values(matriz).forEach(c => { if (c.total > maxCell) maxCell = c.total; });
+
+    // Compute aggregate frequencies for edge calculation
+    let nCasa = 0, nEmp = 0, nFora = 0;
+    partidas.forEach(p => {
+        const r = p.resultado || (parseInt(p.gol_casa) > parseInt(p.gol_fora) ? 'CASA' :
+                   parseInt(p.gol_casa) === parseInt(p.gol_fora) ? 'EMPATE' : 'FORA');
+        if (r === 'CASA') nCasa++; else if (r === 'EMPATE') nEmp++; else nFora++;
+    });
+
+    // Build header row (gols fora 0-5)
+    let headerCells = '<div style="min-width:44px;min-height:22px"></div>';
+    for (let f = 0; f <= maxGols; f++) {
+        headerCells += `<div style="min-width:44px;text-align:center;font-size:9px;color:#475569;font-weight:700">${f}</div>`;
+    }
+
+    let gridRows = `<div style="display:grid;grid-template-columns:44px repeat(6,44px);gap:3px;margin-bottom:4px">${headerCells}</div>`;
+
     for (let c = maxGols; c >= 0; c--) {
+        let rowHtml = `<div style="display:flex;align-items:center;justify-content:center;min-width:44px;font-size:9px;color:#475569;font-weight:700">${c}</div>`;
         for (let f = 0; f <= maxGols; f++) {
             const key = `${c}-${f}`;
             const cell = matriz[key];
-            const total = cell.total;
-            
-            let cls = 'vazio';
-            let conteudo = '-';
-            let titulo = `${c}-${f}`;
-            
-            if (total > 0) {
-                if (cell.casa > cell.fora && cell.casa > cell.empate) {
-                    cls = 'casa';
-                    conteudo = 'C';
-                } else if (cell.fora > cell.casa && cell.fora > cell.empate) {
-                    cls = 'fora';
-                    conteudo = 'F';
-                } else if (cell.empate > 0) {
-                    cls = 'empate';
-                    conteudo = 'E';
-                }
-                titulo = `${c}-${f}: ${total}x (${cell.casa}C/${cell.empate}E/${cell.fora}F)`;
+            const count = cell.total;
+            const pct = totalGeral > 0 ? (count / totalGeral * 100) : 0;
+
+            // Implied probability from avg historical odds
+            let impliedPct = 0;
+            if (c > f) impliedPct = (1 / avgOdds.casa) * 100 * (pct > 0 ? 1 : 0);
+            else if (c === f) impliedPct = (1 / avgOdds.emp) * 100 * (pct > 0 ? 1 : 0);
+            else impliedPct = (1 / avgOdds.fora) * 100 * (pct > 0 ? 1 : 0);
+
+            // Distribute implied evenly across cells of same result type
+            const nSameType = Object.values(matriz).filter(m => m.tipo === cell.tipo && m.total > 0).length || 1;
+            const cellImplied = impliedPct / nSameType;
+            const edge = count > 0 ? (pct - cellImplied) : 0;
+
+            // Colors
+            let baseColor, textColor;
+            if (count === 0) {
+                baseColor = '#0c1220'; textColor = '#334155';
+            } else if (c > f) {
+                // Casa win — green tones
+                const intensity = maxCell > 0 ? count / maxCell : 0;
+                const g = Math.round(40 + intensity * 80);
+                baseColor = `rgba(20,${g + 43},45,${0.4 + intensity * 0.6})`;
+                textColor = '#4ade80';
+            } else if (c === f) {
+                // Empate — purple/blue tones
+                const intensity = maxCell > 0 ? count / maxCell : 0;
+                baseColor = `rgba(30,27,${Math.round(75 + intensity * 100)},${0.4 + intensity * 0.6})`;
+                textColor = '#a5b4fc';
+            } else {
+                // Fora win — red tones
+                const intensity = maxCell > 0 ? count / maxCell : 0;
+                const r = Math.round(59 + intensity * 80);
+                baseColor = `rgba(${r},10,10,${0.4 + intensity * 0.6})`;
+                textColor = '#f87171';
             }
-            
-            html += `<div class="heatmap-cell ${cls}" title="${titulo}">
-                <span>${conteudo}</span>
-                ${total > 0 ? `<span style="font-size:8px;opacity:0.7">${total}</span>` : ''}
+
+            const borderColor = count > 0 ? (edge >= 0 ? '#166534' : '#7f1d1d') : '#1e293b';
+            const edgeBadge = count > 0 ? (edge >= 0 ? '▲' : '▼') : '';
+            const edgeBadgeColor = edge >= 0 ? '#4ade80' : '#f87171';
+
+            rowHtml += `<div class="heatmap-cell-v2" style="background:${baseColor};border-color:${borderColor};color:${textColor}"
+                title="${c}-${f}: ${count}x | ${pct.toFixed(1)}% | Edge: ${edge >= 0 ? '+' : ''}${edge.toFixed(1)}%">
+                <span style="font-size:10px;font-weight:700">${c}-${f}</span>
+                <span style="font-size:8px;opacity:0.85">${count > 0 ? `${count} (${pct.toFixed(0)}%)` : '—'}</span>
+                ${edgeBadge ? `<span style="position:absolute;top:2px;right:3px;font-size:7px;color:${edgeBadgeColor}">${edgeBadge}</span>` : ''}
             </div>`;
         }
+        gridRows += `<div style="display:grid;grid-template-columns:44px repeat(6,44px);gap:3px;margin-bottom:3px">${rowHtml}</div>`;
     }
-    
-    grid.innerHTML = html;
-    
-    // Legenda
-    legend.innerHTML = `
-        <div class="legend-item"><div class="legend-color" style="background:#14532d"></div>Casa vence</div>
-        <div class="legend-item"><div class="legend-color" style="background:#1e1b4b"></div>Empate</div>
-        <div class="legend-item"><div class="legend-color" style="background:#3b0a0a"></div>Fora vence</div>
-        <div class="legend-item"><div class="legend-color" style="background:#0c1220;border:1px dashed #334155"></div>Sem dados</div>
-        <div style="margin-left:auto;font-size:10px;color:#475569">Total: ${totalGeral} jogos</div>
+
+    // Summary stats
+    const over15 = partidas.filter(p => (parseInt(p.gol_casa)||0) + (parseInt(p.gol_fora)||0) > 1.5).length;
+    const over15Pct = totalGeral > 0 ? (over15/totalGeral*100).toFixed(1) : '—';
+    const totalGols = partidas.reduce((a, p) => a + (parseInt(p.gol_casa)||0) + (parseInt(p.gol_fora)||0), 0);
+    const mediaGols = totalGeral > 0 ? (totalGols/totalGeral).toFixed(2) : '—';
+    const pctCasa = totalGeral > 0 ? (nCasa/totalGeral*100).toFixed(1) : '—';
+    const pctEmp  = totalGeral > 0 ? (nEmp/totalGeral*100).toFixed(1) : '—';
+    const pctFora = totalGeral > 0 ? (nFora/totalGeral*100).toFixed(1) : '—';
+
+    let maisFreqRes = '—';
+    if (nCasa >= nEmp && nCasa >= nFora) maisFreqRes = `CASA (${pctCasa}%)`;
+    else if (nEmp >= nCasa && nEmp >= nFora) maisFreqRes = `EMPATE (${pctEmp}%)`;
+    else maisFreqRes = `FORA (${pctFora}%)`;
+
+    // Most frequent placar
+    let maisFreqPlacar = '—';
+    let mfCount = 0;
+    Object.entries(matriz).forEach(([k, v]) => { if (v.total > mfCount) { mfCount = v.total; maisFreqPlacar = k; } });
+
+    const summaryHtml = `
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding:10px;background:#0f172a;border:1px solid #1e293b;border-radius:7px">
+            <div class="stat-pill"><b>${totalGeral}</b>&nbsp;jogos analisados</div>
+            <div class="stat-pill">Resultado mais freq.: <b style="margin-left:4px">${maisFreqRes}</b></div>
+            <div class="stat-pill">Placar mais freq.: <b style="margin-left:4px">${maisFreqPlacar} (${mfCount}x)</b></div>
+            <div class="stat-pill">Over 1.5: <b style="margin-left:4px;color:#fbbf24">${over15Pct}%</b></div>
+            <div class="stat-pill">Média gols: <b style="margin-left:4px;color:#60a5fa">${mediaGols}</b></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+            <div class="legend-item"><div class="legend-color" style="background:#14532d"></div>Casa vence</div>
+            <div class="legend-item"><div class="legend-color" style="background:#1e1b4b"></div>Empate</div>
+            <div class="legend-item"><div class="legend-color" style="background:#3b0a0a"></div>Fora vence</div>
+            <div class="legend-item"><div style="width:10px;height:10px;border:1px solid #166534;border-radius:2px;margin-right:2px"></div>Edge positivo ▲</div>
+            <div class="legend-item"><div style="width:10px;height:10px;border:1px solid #7f1d1d;border-radius:2px;margin-right:2px"></div>Edge negativo ▼</div>
+        </div>
     `;
+
+    return `
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;overflow-x:auto">
+            <div style="font-size:10px;color:#475569;margin-bottom:8px">← Gols Fora / Gols Casa ↓</div>
+            ${gridRows}
+            ${summaryHtml}
+        </div>
+    `;
+}
+
+function _hmTopPlacares(partidas, minOcorrencias = 3, top = 5) {
+    const freq = {};
+    partidas.forEach(p => {
+        const c = Math.min(parseInt(p.gol_casa)||0, 5);
+        const f = Math.min(parseInt(p.gol_fora)||0, 5);
+        const k = `${c}-${f}`;
+        freq[k] = (freq[k] || 0) + 1;
+    });
+    return Object.entries(freq)
+        .filter(([, v]) => v >= minOcorrencias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, top)
+        .map(([placar, count]) => {
+            const [c, f] = placar.split('-').map(Number);
+            const tipo = c > f ? 'CASA' : c === f ? 'EMPATE' : 'FORA';
+            const pct = partidas.length > 0 ? (count/partidas.length*100).toFixed(1) : '0';
+            return { placar, count, pct, tipo };
+        });
+}
+
+function _hmComputeFreqsLiga(partidasLiga) {
+    let nCasa = 0, nEmp = 0, nFora = 0;
+    let somaOddC = 0, somaOddE = 0, somaOddF = 0, nOdds = 0;
+    partidasLiga.forEach(p => {
+        const r = p.resultado || (parseInt(p.gol_casa) > parseInt(p.gol_fora) ? 'CASA' :
+                   parseInt(p.gol_casa) === parseInt(p.gol_fora) ? 'EMPATE' : 'FORA');
+        if (r === 'CASA') nCasa++; else if (r === 'EMPATE') nEmp++; else nFora++;
+        if (p.odd_casa && p.odd_empate && p.odd_fora) {
+            somaOddC += parseFloat(p.odd_casa);
+            somaOddE += parseFloat(p.odd_empate);
+            somaOddF += parseFloat(p.odd_fora);
+            nOdds++;
+        }
+    });
+    const n = partidasLiga.length || 1;
+    return {
+        n,
+        freqCasa: nCasa/n, freqEmp: nEmp/n, freqFora: nFora/n,
+        avgOddCasa: nOdds > 0 ? somaOddC/nOdds : 2,
+        avgOddEmp:  nOdds > 0 ? somaOddE/nOdds : 3.2,
+        avgOddFora: nOdds > 0 ? somaOddF/nOdds : 4,
+    };
+}
+
+function _hmBlendTeamFreqs(ligaFreqs, todasPartidas, timeCasa, timeFora, liga) {
+    // Team-specific stats for casa team
+    const casaGames = todasPartidas.filter(p => p.liga === liga &&
+        (normalizarTime(p.time_casa) === timeCasa || p.time_casa === timeCasa));
+    const foraGames = todasPartidas.filter(p => p.liga === liga &&
+        (normalizarTime(p.time_fora) === timeFora || p.time_fora === timeFora));
+
+    let freqCasa = ligaFreqs.freqCasa;
+    let freqEmp  = ligaFreqs.freqEmp;
+    let freqFora = ligaFreqs.freqFora;
+
+    if (casaGames.length >= 5) {
+        const tf = _hmComputeFreqsLiga(casaGames);
+        freqCasa = 0.5 * ligaFreqs.freqCasa + 0.5 * tf.freqCasa;
+        freqEmp  = 0.5 * ligaFreqs.freqEmp  + 0.5 * tf.freqEmp;
+        freqFora = 0.5 * ligaFreqs.freqFora + 0.5 * tf.freqFora;
+    }
+    if (foraGames.length >= 5) {
+        const tf = _hmComputeFreqsLiga(foraGames);
+        freqCasa = 0.5 * freqCasa + 0.5 * tf.freqCasa;
+        freqEmp  = 0.5 * freqEmp  + 0.5 * tf.freqEmp;
+        freqFora = 0.5 * freqFora + 0.5 * tf.freqFora;
+    }
+
+    // Normalize
+    const soma = freqCasa + freqEmp + freqFora || 1;
+    return { freqCasa: freqCasa/soma, freqEmp: freqEmp/soma, freqFora: freqFora/soma };
+}
+
+function _hmRenderIACards(jogos, todasPartidas) {
+    if (!jogos || jogos.length === 0) return '';
+
+    let html = `<div style="margin-top:16px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">🤖 ANÁLISE IA — PRÓXIMOS JOGOS</div>`;
+
+    jogos.forEach(jogo => {
+        const liga = normalizarLiga(jogo.liga) || jogo.liga || '';
+        const partidasLiga = todasPartidas.filter(p => p.liga === liga);
+        const ligaFreqs = _hmComputeFreqsLiga(partidasLiga);
+        const timeCasa = normalizarTime(jogo.time_casa || '');
+        const timeFora = normalizarTime(jogo.time_fora || '');
+        const blended = _hmBlendTeamFreqs(ligaFreqs, todasPartidas, timeCasa, timeFora, liga);
+
+        const oddC = parseFloat(jogo.odd_casa)   || ligaFreqs.avgOddCasa;
+        const oddE = parseFloat(jogo.odd_empate)  || ligaFreqs.avgOddEmp;
+        const oddF = parseFloat(jogo.odd_fora)    || ligaFreqs.avgOddFora;
+
+        const implC = 1/oddC, implE = 1/oddE, implF = 1/oddF;
+        const edgeC = blended.freqCasa - implC;
+        const edgeE = blended.freqEmp  - implE;
+        const edgeF = blended.freqFora - implF;
+        const evC   = blended.freqCasa * oddC;
+        const evE   = blended.freqEmp  * oddE;
+        const evF   = blended.freqFora * oddF;
+
+        // Best bet
+        const evs = [
+            { label: 'Casa',   freq: blended.freqCasa, odd: oddC, impl: implC, edge: edgeC, ev: evC },
+            { label: 'Empate', freq: blended.freqEmp,  odd: oddE, impl: implE, edge: edgeE, ev: evE },
+            { label: 'Fora',   freq: blended.freqFora, odd: oddF, impl: implF, edge: edgeF, ev: evF },
+        ];
+        const bestBet = evs.reduce((a, b) => b.ev > a.ev ? b : a);
+        const riskyBet = evs.find(e => e.edge > 0 && e.odd > 3.0) || null;
+
+        // Top placares
+        const topPlacares = _hmTopPlacares(partidasLiga, 3, 3);
+
+        // Confidence
+        const n = ligaFreqs.n;
+        const confianca = n < 20 ? '⚠️ Baixa confiança (poucas amostras)'
+                        : n < 50 ? '🔶 Média confiança'
+                        : '✅ Alta confiança';
+
+        // Minutes to start
+        let tempoLabel = '';
+        if (jogo.tempo !== undefined && jogo.tempo !== null) {
+            const mins = parseInt(jogo.tempo);
+            tempoLabel = isNaN(mins) ? '' : ` · ${mins}min para início`;
+        }
+
+        // Result rows
+        const mkRow = (r) => {
+            const edgeColor = r.edge >= 0 ? '#4ade80' : '#f87171';
+            const isBest = r.label === bestBet.label;
+            return `<tr style="${isBest ? 'background:#052e16;' : ''}">
+                <td style="padding:4px 7px;font-size:11px;font-weight:700;color:#e2e8f0">${isBest ? '★ ' : ''}${r.label}</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#94a3b8">${(r.freq*100).toFixed(1)}%</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#fbbf24">${r.odd.toFixed(2)}</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#64748b">${(r.impl*100).toFixed(1)}%</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;font-weight:700;color:${edgeColor}">${r.edge >= 0 ? '+' : ''}${(r.edge*100).toFixed(1)}%</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#60a5fa">${r.ev.toFixed(2)}</td>
+            </tr>`;
+        };
+
+        const placaresHtml = topPlacares.length > 0
+            ? topPlacares.map(p => {
+                const cor = p.tipo === 'CASA' ? '#4ade80' : p.tipo === 'EMPATE' ? '#a5b4fc' : '#f87171';
+                return `<span style="background:#1e293b;border-radius:4px;padding:3px 8px;font-size:11px;color:${cor};font-weight:700">${p.placar} <span style="color:#64748b;font-weight:400">${p.pct}%</span></span>`;
+            }).join(' ')
+            : '<span style="color:#475569;font-size:11px">Sem dados suficientes</span>';
+
+        const riskyHtml = riskyBet ? `
+            <div class="ia-risky-bet">
+                <div style="font-size:9px;font-weight:700;color:#f59e0b;letter-spacing:.08em;margin-bottom:4px">⚡ APOSTA ARRISCADA</div>
+                <div style="font-size:12px;color:#e2e8f0">${riskyBet.label} · Odd <b style="color:#fbbf24">${riskyBet.odd.toFixed(2)}</b> · Edge <b style="color:#4ade80">+${(riskyBet.edge*100).toFixed(1)}%</b></div>
+            </div>` : '';
+
+        html += `<div class="ia-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+                <div>
+                    <div style="font-size:12px;font-weight:700;color:#e2e8f0">${timeCasa} <span style="color:#475569">vs</span> ${timeFora}</div>
+                    <div style="font-size:10px;color:#475569;margin-top:2px">${liga}${tempoLabel}</div>
+                </div>
+                <div style="font-size:9px;color:#64748b;text-align:right">${confianca}<br><span style="color:#334155">${n} amostras</span></div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:5px;overflow:hidden">
+                <thead>
+                    <tr style="background:#0c1220">
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:left">Resultado</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Freq%</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Odd</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Implied%</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Edge</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">EV</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${evs.map(mkRow).join('')}
+                </tbody>
+            </table>
+            <div style="margin-top:8px">
+                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">TOP PLACARES NA LIGA</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">${placaresHtml}</div>
+            </div>
+            ${riskyHtml}
+        </div>`;
+    });
+
+    html += '</div>';
+    return html;
+}
+
+async function renderHeatmapIA() {
+    const container = document.getElementById('heatmap-ia-container');
+    if (!container) return;
+
+    const partidas = S.ligaAtiva
+        ? S.todasPartidas.filter(p => p.liga === S.ligaAtiva)
+        : S.todasPartidas;
+
+    if (!partidas || partidas.length === 0) {
+        container.innerHTML = '<div style="color:#475569;font-size:12px;padding:20px;text-align:center">Sem dados de partidas para heatmap</div>';
+        return;
+    }
+
+    // Render grid synchronously from S.todasPartidas
+    let html = _hmRenderGrid(partidas);
+
+    // Fetch upcoming games for IA suggestions
+    try {
+        const res = await fetch('/api/bet365/eventos-completos');
+        if (res.ok) {
+            const json = await res.json();
+            const eventos = (json.data || json.eventos || json || []);
+            let agendados = Array.isArray(eventos) ? eventos : [];
+            agendados = agendados.filter(j => j.status === 'AGENDADO' || j.status === 'agendado');
+            if (S.ligaAtiva) agendados = agendados.filter(j => normalizarLiga(j.liga) === S.ligaAtiva);
+            if (agendados.length > 0) {
+                html += _hmRenderIACards(agendados.slice(0, 6), S.todasPartidas);
+            }
+        }
+    } catch (e) {
+        console.warn('[HeatmapIA] Não foi possível buscar eventos-completos:', e);
+    }
+
+    container.innerHTML = html;
 }
 
 // ============================================================
