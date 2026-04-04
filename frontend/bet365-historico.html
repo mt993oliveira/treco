@@ -594,7 +594,9 @@ const LIGA_ALIASES = {
     'premiership':                  'Premier League',
     'super liga sul-americana':     'Super Liga Sul-Americana',
     'south american super league':  'Super Liga Sul-Americana',
-    'super league':                 'Super Liga Sul-Americana',
+    // NOTA: 'super league' (times europeus: Leeds, City, Everton) é uma liga
+    // DIFERENTE da 'Super Liga Sul-Americana' (times sul-americanos).
+    // NÃO mapeamos aqui para evitar contaminação de slots na tabela.
 };
 
 // Mapeamento de nomes de times em inglês → português (PT-BR)
