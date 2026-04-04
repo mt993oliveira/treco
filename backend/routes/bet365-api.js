@@ -23,7 +23,7 @@ async function getDbPool() {
         port: parseInt(process.env.DB_PORT) || 1433,
         options: {
             encrypt: process.env.DB_ENCRYPT === 'true',
-            trustServerCertificate: process.env.DB_TRUST_CERT === 'true'
+            trustServerCertificate: process.env.DB_TRUST_CERT !== 'false'
         },
         pool: {
             max: 10,
@@ -35,6 +35,25 @@ async function getDbPool() {
     sqlPool = await sql.connect(config);
     console.log('✅ Pool SQL Bet365 criado');
     return sqlPool;
+}
+
+// ─── Garante coluna resultado_estimado em bet365_historico_partidas ───
+let _schemaOk = false;
+async function garantirSchema(pool) {
+    if (_schemaOk) return;
+    try {
+        await pool.query(`
+            IF NOT EXISTS (
+                SELECT 1 FROM sys.columns
+                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
+                AND name = 'resultado_estimado'
+            )
+            ALTER TABLE bet365_historico_partidas ADD resultado_estimado BIT NOT NULL DEFAULT 0
+        `);
+        _schemaOk = true;
+    } catch (e) {
+        console.warn('⚠️ garantirSchema bet365_historico_partidas:', e.message);
+    }
 }
 
 /**
@@ -306,40 +325,38 @@ router.get('/eventos-completos', async (req, res) => {
 
         const eventos = eventosResult.recordset;
 
-        // Para cada evento, busca seus mercados adicionais
-        for (const ev of eventos) {
-            const mercadosResult = await pool.request()
-                .input('eventoId', sql.BigInt, ev.evento_id)
-                .query(`
-                    SELECT
-                        m.id AS mercado_id,
-                        m.nome AS mercado_nome,
-                        m.tipo AS mercado_tipo,
-                        o.nome AS selecao,
-                        o.valor AS odd
-                    FROM bet365_mercados m
-                    JOIN bet365_odds o ON o.mercado_id = m.id AND o.ativo = 1
-                    WHERE m.evento_id = @eventoId AND m.ativo = 1
-                    ORDER BY m.tipo, o.nome
-                `);
+        // Busca mercados de todos os eventos em uma única query (evita N+1)
+        if (eventos.length > 0) {
+            const ids = eventos.map(e => String(BigInt(e.evento_id))).join(',');
+            const allMkts = await pool.request().query(`
+                SELECT
+                    m.evento_id,
+                    m.nome AS mercado_nome,
+                    m.tipo AS mercado_tipo,
+                    o.nome AS selecao,
+                    o.valor AS odd
+                FROM bet365_mercados m
+                JOIN bet365_odds o ON o.mercado_id = m.id AND o.ativo = 1
+                WHERE m.evento_id IN (${ids}) AND m.ativo = 1
+                ORDER BY m.evento_id, m.tipo, o.nome
+            `);
 
-            // Agrupa por tipo de mercado
-            const mercados = {};
-            for (const row of mercadosResult.recordset) {
-                if (!mercados[row.mercado_tipo]) {
-                    mercados[row.mercado_tipo] = {
+            const mktMap = {};
+            for (const row of allMkts.recordset) {
+                const evId = String(row.evento_id);
+                if (!mktMap[evId]) mktMap[evId] = {};
+                if (!mktMap[evId][row.mercado_tipo]) {
+                    mktMap[evId][row.mercado_tipo] = {
                         nome: row.mercado_nome,
                         tipo: row.mercado_tipo,
                         selecoes: []
                     };
                 }
-                mercados[row.mercado_tipo].selecoes.push({
-                    nome: row.selecao,
-                    odd: row.odd
-                });
+                mktMap[evId][row.mercado_tipo].selecoes.push({ nome: row.selecao, odd: row.odd });
             }
-
-            ev.mercados = Object.values(mercados);
+            for (const ev of eventos) {
+                ev.mercados = Object.values(mktMap[String(ev.evento_id)] || {});
+            }
         }
 
         res.json({
@@ -398,12 +415,15 @@ router.get('/historico-tabela', async (req, res) => {
         const request = pool.request();
         request.input('horas', sql.Int, horasNum);
 
+        await garantirSchema(pool);
+
         let query = `
             SELECT
                 id, evento_id, liga, time_casa, time_fora,
                 gol_casa, gol_fora, resultado,
                 odd_casa, odd_empate, odd_fora,
-                data_partida
+                data_partida,
+                ISNULL(resultado_estimado, 0) AS resultado_estimado
             FROM bet365_historico_partidas
             WHERE data_partida >= DATEADD(HOUR, -@horas, GETDATE())
         `;
@@ -452,10 +472,13 @@ router.get('/sugestoes', async (req, res) => {
         const nParam = Math.min(100, Math.max(3, parseInt(req.query.n) || 10));
         const pool = await getDbPool();
 
+        await garantirSchema(pool);
+
         const ligasResult = await pool.query(`
             SELECT liga, COUNT(*) AS total
             FROM bet365_historico_partidas
             WHERE liga IS NOT NULL AND liga <> ''
+              AND ISNULL(resultado_estimado, 0) = 0
             GROUP BY liga
             HAVING COUNT(*) >= 5
             ORDER BY total DESC
@@ -486,6 +509,7 @@ router.get('/sugestoes', async (req, res) => {
                         odd_casa, odd_empate, odd_fora, data_partida
                     FROM bet365_historico_partidas
                     WHERE liga = @liga
+                      AND ISNULL(resultado_estimado, 0) = 0
                     ORDER BY data_partida DESC
                 `);
 
@@ -576,6 +600,7 @@ router.get('/sugestoes', async (req, res) => {
 router.post('/buscar-resultados', async (req, res) => {
     try {
         const pool = await getDbPool();
+        await garantirSchema(pool);
 
         const candidatos = await pool.query(`
             SELECT TOP 30
@@ -629,16 +654,21 @@ router.post('/buscar-resultados', async (req, res) => {
                         IF NOT EXISTS (SELECT 1 FROM bet365_historico_partidas WHERE evento_id = @eventoId)
                         INSERT INTO bet365_historico_partidas
                             (evento_id, liga, time_casa, time_fora, gol_casa, gol_fora,
-                             resultado, odd_casa, odd_empate, odd_fora, data_partida)
+                             resultado, odd_casa, odd_empate, odd_fora, data_partida, resultado_estimado)
                         VALUES
                             (@eventoId, @liga, @timeCasa, @timeFora, @golCasa, @golFora,
-                             @resultado, @oddCasa, @oddEmpate, @oddFora, @dataPartida)
+                             @resultado, @oddCasa, @oddEmpate, @oddFora, @dataPartida, 1)
                     `);
                 salvos++;
                 resultados.push({ id: ev.id, time_casa: ev.time_casa, time_fora: ev.time_fora, status: 'salvo' });
             } catch (err) {
                 resultados.push({ id: ev.id, erro: err.message });
             }
+        }
+
+        // Notifica clientes WebSocket se novos resultados foram salvos
+        if (salvos > 0 && typeof global.wsBroadcast === 'function') {
+            global.wsBroadcast({ tipo: 'coleta', fonte: 'bet365', novos: 0, resultadosSalvos: salvos });
         }
 
         res.json({ success: true, candidatos: candidatos.recordset.length, salvos, resultados });
@@ -715,6 +745,28 @@ router.get('/estatisticas-avancadas', async (req, res) => {
     } catch (error) {
         console.error('❌ ERRO API bet365/estatisticas-avancadas:', error.message);
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/bet365/log-coleta
+ * Retorna os últimos logs de coleta para o painel de diagnóstico
+ */
+router.get('/log-coleta', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const result = await pool.request().query(`
+            SELECT TOP 20
+                data_inicio, data_fim, status,
+                eventos_coletados, mercados_coletados,
+                odds_coletadas, resultados_salvos, erro_mensagem,
+                DATEDIFF(SECOND, data_inicio, ISNULL(data_fim, data_inicio)) AS duracao_seg
+            FROM bet365_log_coleta
+            ORDER BY data_inicio DESC
+        `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

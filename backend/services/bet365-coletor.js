@@ -85,6 +85,15 @@ class Bet365Coletor {
             pool: { max: 10, min: 0, idleTimeoutMillis: 30000 }
         });
         console.log('✅ Bet365 - Banco conectado');
+        // Garante coluna resultado_estimado (idempotente)
+        await this.pool.query(`
+            IF NOT EXISTS (
+                SELECT 1 FROM sys.columns
+                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
+                AND name = 'resultado_estimado'
+            )
+            ALTER TABLE bet365_historico_partidas ADD resultado_estimado BIT NOT NULL DEFAULT 0
+        `).catch(e => console.warn('⚠️ Schema histórico:', e.message));
         return this.pool;
     }
 
@@ -775,11 +784,21 @@ class Bet365Coletor {
             try {
                 const eventoId = this._gerarId(res.liga, res.timeCasa, res.timeFora, res.horario || '');
 
+                // Verifica se já existe E se o score ainda é 0-0 (jogo capturado durante o início)
                 const existe = await pool.request()
                     .input('evId', sql.BigInt, eventoId)
-                    .query(`SELECT id FROM bet365_historico_partidas WHERE evento_id = @evId`);
+                    .query(`SELECT id, gol_casa, gol_fora FROM bet365_historico_partidas WHERE evento_id = @evId`);
 
-                if (existe.recordset.length === 0) {
+                const jaExiste   = existe.recordset.length > 0;
+                const scoreZero  = jaExiste && existe.recordset[0].gol_casa === 0 && existe.recordset[0].gol_fora === 0;
+                const temScore   = (res.golCasa || 0) + (res.golFora || 0) > 0;
+
+                // Pula se já existe com score real, ou se não há nada novo para atualizar
+                if (jaExiste && !scoreZero) continue;
+                // Pula se já existe com 0-0 mas o score ainda não mudou
+                if (jaExiste && scoreZero && !temScore) continue;
+
+                if (true) { // mantém indentação original
                     // 1. Tenta pegar as 3 odds do evento coletado no mesmo ciclo (memória)
                     const evMemoria = eventos.find(e => e.eventoId === eventoId);
                     let oddCasa   = evMemoria?.oddCasa   || 0;
@@ -849,13 +868,26 @@ class Bet365Coletor {
                         .input('oddFora',   sql.Decimal(10,2), oddFora)
                         .input('dataPart',  sql.DateTime2,     dataPart)
                         .query(`
-                            INSERT INTO bet365_historico_partidas
+                            MERGE bet365_historico_partidas AS t
+                            USING (SELECT @evId AS evento_id) AS s ON t.evento_id = s.evento_id
+                            WHEN MATCHED AND t.gol_casa = 0 AND t.gol_fora = 0 THEN UPDATE SET
+                                t.gol_casa            = @golCasa,
+                                t.gol_fora            = @golFora,
+                                t.resultado           = @resultado,
+                                t.resultado_estimado  = 0,
+                                t.odd_casa   = CASE WHEN t.odd_casa   = 0 THEN @oddCasa   ELSE t.odd_casa   END,
+                                t.odd_empate = CASE WHEN t.odd_empate = 0 THEN @oddEmpate ELSE t.odd_empate END,
+                                t.odd_fora   = CASE WHEN t.odd_fora   = 0 THEN @oddFora   ELSE t.odd_fora   END
+                            WHEN NOT MATCHED THEN INSERT
                                 (evento_id, liga, time_casa, time_fora, gol_casa, gol_fora,
-                                 resultado, odd_casa, odd_empate, odd_fora, data_partida)
+                                 resultado, odd_casa, odd_empate, odd_fora, data_partida, resultado_estimado)
                             VALUES
                                 (@evId, @liga, @timeCasa, @timeFora, @golCasa, @golFora,
-                                 @resultado, @oddCasa, @oddEmpate, @oddFora, @dataPart)
+                                 @resultado, @oddCasa, @oddEmpate, @oddFora, @dataPart, 0);
                         `);
+                    if (jaExiste && scoreZero) {
+                        console.log(`   🔄 Score atualizado: ${res.timeCasa} ${res.golCasa}-${res.golFora} ${res.timeFora}`);
+                    }
                     histOk++;
                 }
             } catch (e) {
@@ -928,6 +960,16 @@ class Bet365Coletor {
             const dados = await this._extrairDados();
             const contadores = await this.salvarNoBanco(dados);
             await this._logColeta(inicio, 'SUCESSO', contadores, null);
+
+            // Notifica clientes WebSocket
+            if (typeof global.wsBroadcast === 'function') {
+                global.wsBroadcast({
+                    tipo: 'coleta', fonte: 'bet365',
+                    novos: contadores.eventosOk,
+                    resultadosSalvos: contadores.histOk,
+                    timestamp: new Date().toISOString()
+                });
+            }
 
             console.log(`✅ Bet365 - Coleta concluída`);
         } catch (err) {

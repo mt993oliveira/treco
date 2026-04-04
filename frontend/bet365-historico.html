@@ -278,6 +278,7 @@
     <button class="view-btn ativo" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
     <button class="view-btn" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
+    <button class="view-btn" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
     <div style="width:1px;height:20px;background:#1e293b;margin:0 4px"></div>
     <button class="view-btn" id="btn-buscar-resultados" onclick="buscarResultados()" title="Forçar busca de resultados finalizados"
         style="background:#14532d;border-color:#14532d;color:#4ade80">🔍 Buscar Resultados</button>
@@ -429,6 +430,79 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- ========== VIEW: DIAGNÓSTICO ========== -->
+<div id="view-diagnostico-content" style="display:none;padding:12px 16px">
+
+    <!-- Status rápido: WS + última coleta -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+
+        <!-- Card: conexão WebSocket -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">STATUS WEBSOCKET</div>
+            <div style="display:flex;align-items:center;gap:8px">
+                <span class="sdot idle" id="diag-ws-dot"></span>
+                <span id="diag-ws-txt" style="font-size:12px;color:#64748b">Verificando...</span>
+            </div>
+            <div id="diag-ws-msg" style="font-size:10px;color:#334155;margin-top:5px">—</div>
+        </div>
+
+        <!-- Card: última coleta -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">ÚLTIMA COLETA</div>
+            <div id="diag-ultima-coleta" style="font-size:12px;color:#64748b">Carregando...</div>
+        </div>
+
+        <!-- Card: contagens -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">BANCO DE DADOS</div>
+            <div id="diag-contagens" style="font-size:12px;color:#64748b">Carregando...</div>
+        </div>
+
+        <!-- Card: resultados estimados -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">RESULTADOS ESTIMADOS</div>
+            <div id="diag-estimados" style="font-size:12px;color:#64748b">Carregando...</div>
+            <div style="font-size:9px;color:#334155;margin-top:4px">Gerados por "Buscar Resultados" quando o coletor falhou. Excluídos das sugestões.</div>
+        </div>
+    </div>
+
+    <!-- Ações rápidas -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="acao-btn" onclick="buscarResultados()" style="background:#14532d;border-color:#14532d;color:#4ade80">
+            🔍 Buscar Resultados Pendentes
+        </button>
+        <button class="acao-btn" onclick="carregarDiagnostico()">↻ Atualizar Diagnóstico</button>
+        <button class="acao-btn" onclick="limparEstimados()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171"
+            title="Remove resultados estimados (0-0 gerados automaticamente)">🗑 Limpar Estimados</button>
+    </div>
+
+    <!-- Tabela de logs de coleta -->
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+        <div style="padding:8px 12px;background:#0c1220;font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">
+            HISTÓRICO DE COLETAS — ÚLTIMAS 20
+        </div>
+        <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:11px" id="diag-logs-table">
+                <thead>
+                    <tr style="background:#0c1220">
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left">Início</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Status</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Duração</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Eventos</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Mercados</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Odds</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Resultados</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left">Erro</th>
+                    </tr>
+                </thead>
+                <tbody id="diag-logs-tbody">
+                    <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando logs...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -647,14 +721,16 @@ function checa(j, fid) {
 // ============================================================
 function setView(v) {
     S.view = v;
-    document.getElementById('view-analise-content').style.display   = v === 'analise'   ? '' : 'none';
-    document.getElementById('view-historico-content').style.display  = v === 'historico' ? '' : 'none';
-    document.getElementById('view-clubes-content').style.display     = v === 'clubes'    ? '' : 'none';
-    ['analise','historico','clubes'].forEach(id =>
+    document.getElementById('view-analise-content').style.display      = v === 'analise'      ? '' : 'none';
+    document.getElementById('view-historico-content').style.display     = v === 'historico'    ? '' : 'none';
+    document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
+    document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
+    ['analise','historico','clubes','diagnostico'].forEach(id =>
         document.getElementById('view-' + id).className = 'view-btn' + (v === id ? ' ativo' : ''));
-    if (v === 'historico') { carregarHistorico(); renderProximosJogos(); }
-    if (v === 'analise')   { renderAnalise(); }
-    if (v === 'clubes')    { renderClubes(); }
+    if (v === 'historico')   { carregarHistorico(); renderProximosJogos(); }
+    if (v === 'analise')     { renderAnalise(); }
+    if (v === 'clubes')      { renderClubes(); }
+    if (v === 'diagnostico') { carregarDiagnostico(); }
 }
 
 // ============================================================
@@ -1442,14 +1518,21 @@ function renderTabela() {
                 ? `${j.gol_casa}-${j.gol_fora}` : '–';
             const _d = j.data_partida ? new Date(j.data_partida) : null;
             const minStr = _d ? `${pad2(_d.getUTCHours())}:${pad2(_d.getUTCMinutes())}` : '';
-            const tt = `${minStr} ${j.time_casa} ${score} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]`;
-            colHits[ci]  += hit ? 1 : 0;
-            colTotal[ci] += 1;
+            const isEstimado = j.resultado_estimado === 1 || j.resultado_estimado === true;
+            const ttSuffix = isEstimado ? ' [estimado]' : '';
+            const tt = `${minStr} ${j.time_casa} ${score} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]${ttSuffix}`;
+            // Células estimadas não entram no footer de % (dados não confiáveis)
+            if (!isEstimado) {
+                colHits[ci]  += hit ? 1 : 0;
+                colTotal[ci] += 1;
+            }
             const abbrev = n => (n||'').split(' ')[0].slice(0,8);
             const cellContent = S.showNomes
                 ? `<span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_casa)}</span><span style="display:block;font-size:9px;font-weight:800">${score}</span><span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_fora)}</span>`
                 : score;
-            const cellStyle = S.showNomes ? ' style="padding:2px 3px;line-height:1;min-width:44px"' : '';
+            const opacityStyle = isEstimado ? 'opacity:0.35;' : '';
+            const baseStyle = S.showNomes ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
+            const cellStyle = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
             return `<td class="${hit ? 'c-verde' : 'c-verm'}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
         }).join('');
 
@@ -1937,22 +2020,168 @@ async function renderDetalheClube(nomeTime) {
 }
 
 // ============================================================
+// DIAGNÓSTICO
+// ============================================================
+
+let _wsConectado = false;
+
+async function carregarDiagnostico() {
+    await Promise.all([
+        _diagCarregarLogs(),
+        _diagCarregarStats(),
+    ]);
+    _diagAtualizarWS();
+}
+
+function _diagAtualizarWS() {
+    const dot = document.getElementById('diag-ws-dot');
+    const txt = document.getElementById('diag-ws-txt');
+    const msg = document.getElementById('diag-ws-msg');
+    if (!dot || !txt) return;
+    if (_wsConectado) {
+        dot.className = 'sdot ok';
+        txt.textContent = 'Conectado';
+        msg.textContent = 'Recebendo atualizações em tempo real';
+    } else {
+        dot.className = 'sdot err';
+        txt.textContent = 'Desconectado';
+        msg.textContent = 'Tentando reconectar... (auto a cada 12s)';
+    }
+}
+
+async function _diagCarregarLogs() {
+    const tbody = document.getElementById('diag-logs-tbody');
+    try {
+        const r = await fetch('/api/bet365/log-coleta');
+        const d = await r.json();
+        if (!d.success || !d.data?.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Nenhum log encontrado</td></tr>';
+            const el = document.getElementById('diag-ultima-coleta');
+            if (el) el.innerHTML = '<span style="color:#334155">Nenhuma coleta registrada</span>';
+            return;
+        }
+        const rows = d.data.map((l, i) => {
+            const inicio = l.data_inicio ? new Date(l.data_inicio).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+            const dur    = l.duracao_seg != null ? `${l.duracao_seg}s` : '—';
+            const cor    = l.status === 'SUCESSO' ? '#4ade80' : '#f87171';
+            const bgRow  = i === 0 ? 'background:#0c1833' : '';
+            const erroTxt = l.erro_mensagem
+                ? `<span title="${escHtml(l.erro_mensagem)}" style="color:#f87171;cursor:help;max-width:200px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(l.erro_mensagem.substring(0,60))}…</span>`
+                : '<span style="color:#1e293b">—</span>';
+            return `<tr style="${bgRow}">
+                <td style="padding:5px 10px;color:#e2e8f0;white-space:nowrap">${inicio}</td>
+                <td style="padding:5px 10px;text-align:center"><span style="color:${cor};font-weight:700">${l.status}</span></td>
+                <td style="padding:5px 10px;text-align:center;color:#94a3b8">${dur}</td>
+                <td style="padding:5px 10px;text-align:center;color:#60a5fa;font-weight:700">${l.eventos_coletados ?? '—'}</td>
+                <td style="padding:5px 10px;text-align:center;color:#a78bfa">${l.mercados_coletados ?? '—'}</td>
+                <td style="padding:5px 10px;text-align:center;color:#94a3b8">${l.odds_coletadas ?? '—'}</td>
+                <td style="padding:5px 10px;text-align:center;color:#1fcc59;font-weight:700">${l.resultados_salvos ?? '—'}</td>
+                <td style="padding:5px 10px;font-size:10px">${erroTxt}</td>
+            </tr>`;
+        }).join('');
+        tbody.innerHTML = rows;
+
+        // Atualiza card última coleta
+        const el = document.getElementById('diag-ultima-coleta');
+        if (el && d.data[0]) {
+            const u = d.data[0];
+            const cor = u.status === 'SUCESSO' ? '#4ade80' : '#f87171';
+            const inicio = u.data_inicio ? new Date(u.data_inicio).toLocaleString('pt-BR') : '—';
+            el.innerHTML = `
+                <div><span style="color:${cor};font-weight:800">${u.status}</span></div>
+                <div style="font-size:10px;color:#94a3b8;margin-top:3px">${inicio}</div>
+                <div style="font-size:10px;color:#475569;margin-top:3px">
+                    ${u.eventos_coletados ?? 0} eventos · ${u.resultados_salvos ?? 0} resultados · ${u.duracao_seg ?? '—'}s
+                </div>
+            `;
+        }
+    } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="padding:16px;text-align:center;color:#ef4444">Erro: ${e.message}</td></tr>`;
+    }
+}
+
+async function _diagCarregarStats() {
+    try {
+        const [diag, stats] = await Promise.all([
+            fetch('/api/bet365/diagnostico').then(r => r.json()),
+            fetch('/api/bet365/stats').then(r => r.json()),
+        ]);
+
+        const elC = document.getElementById('diag-contagens');
+        if (elC && diag.success) {
+            const d = diag.data;
+            elC.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:5px">
+                    <div style="font-size:11px"><span style="color:#475569">Eventos ativos:</span> <b style="color:#60a5fa">${d.eventosAtivos ?? '—'}</b></div>
+                    <div style="font-size:11px"><span style="color:#475569">Histórico total:</span> <b style="color:#1fcc59">${d.historicoPartidas ?? '—'}</b></div>
+                </div>
+            `;
+        }
+
+        // Estima estimados via diagnostico
+        const elE = document.getElementById('diag-estimados');
+        if (elE) {
+            try {
+                const res2 = await fetch('/api/bet365/historico-partidas?limite=5000');
+                const d2 = await res2.json();
+                if (d2.success) {
+                    const total = d2.data?.length ?? 0;
+                    // Conta 0-0 EMPATE como proxy de estimados (coluna pode não existir ainda)
+                    const estimados = (d2.data || []).filter(p =>
+                        p.resultado_estimado === 1 || p.resultado_estimado === true ||
+                        (p.gol_casa === 0 && p.gol_fora === 0 && p.resultado === 'EMPATE')
+                    ).length;
+                    const pct = total > 0 ? (estimados / total * 100).toFixed(1) : 0;
+                    const cor = estimados > 0 ? '#f87171' : '#4ade80';
+                    elE.innerHTML = `
+                        <div style="font-size:18px;font-weight:800;color:${cor}">${estimados}</div>
+                        <div style="font-size:10px;color:#475569">${pct}% do total de ${total} partidas</div>
+                    `;
+                }
+            } catch {}
+        }
+    } catch (e) {
+        console.warn('[Diagnóstico] Erro stats:', e.message);
+    }
+}
+
+async function limparEstimados() {
+    if (!confirm('Remover todos os resultados estimados (0-0 gerados automaticamente)?\n\nIsso limpará registros falsos que poluem as estatísticas.')) return;
+    try {
+        const pool_r = await fetch('/api/bet365/diagnostico');
+        // Não temos endpoint direto — informa usuário
+        alert('Para limpar estimados, execute no SQL Server:\n\nDELETE FROM bet365_historico_partidas WHERE resultado_estimado = 1\n\nOu: DELETE FROM bet365_historico_partidas WHERE gol_casa=0 AND gol_fora=0 AND resultado=\'EMPATE\'');
+    } catch {}
+}
+
+// ============================================================
 // WEBSOCKET
 // ============================================================
 function conectarWS() {
     try {
         const prot = location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(`${prot}//${location.host}/ws`);
+        ws.onopen = () => {
+            _wsConectado = true;
+            const dot = document.getElementById('sdot');
+            if (dot) { dot.className = 'sdot ok'; document.getElementById('s-txt').textContent = 'Conectado (WS)'; }
+            if (S.view === 'diagnostico') _diagAtualizarWS();
+        };
         ws.onmessage = e => {
             try {
                 const m = JSON.parse(e.data);
                 if (m.tipo === 'coleta') {
                     if (m.resultadosSalvos > 0 || m.novos > 0) setTimeout(carregarTudo, 2000);
                     else setTimeout(carregarHistorico, 1000);
+                    if (S.view === 'diagnostico') setTimeout(carregarDiagnostico, 2500);
                 }
             } catch {}
         };
-        ws.onclose = () => setTimeout(conectarWS, 12000);
+        ws.onclose = () => {
+            _wsConectado = false;
+            if (S.view === 'diagnostico') _diagAtualizarWS();
+            setTimeout(conectarWS, 12000);
+        };
     } catch {}
 }
 
