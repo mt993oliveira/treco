@@ -33,7 +33,9 @@ class Bet365Coletor {
     constructor() {
         this.url       = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
         this.browser   = null;
-        this.page      = null;
+        this.page      = null;   // aba de login/referência
+        this.pageLogin = null;
+        this.pagesLiga = [];     // [{page, liga: {idx, nome}}] — uma por liga
         this.pool      = null;
         this.coletando = false;
         this._coletas  = 0;
@@ -387,10 +389,11 @@ class Bet365Coletor {
         }
     }
 
-    async _aguardarMercados(maxMs) {
+    async _aguardarMercados(maxMs, pg) {
+        const p = pg || this.page;
         const inicio = Date.now();
         while (Date.now() - inicio < maxMs) {
-            const ok = await this.page.evaluate(() =>
+            const ok = await p.evaluate(() =>
                 document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length > 0
             ).catch(() => false);
             if (ok) return true;
@@ -404,8 +407,9 @@ class Bet365Coletor {
     // Seletores confirmados no HTML real
     // ─────────────────────────────────────────────────────────────
 
-    async _extrairMercadosDoPagina() {
-        return await this.page.evaluate(() => {
+    async _extrairMercadosDoPagina(pg) {
+        const p = pg || this.page;
+        return await p.evaluate(() => {
             const mercados = [];
 
             // Informações do countdown / encerramento
@@ -537,8 +541,9 @@ class Bet365Coletor {
     // EXTRAÇÃO: Jogo atual (times e horário)
     // ─────────────────────────────────────────────────────────────
 
-    async _extrairInfoJogo(liga) {
-        return await this.page.evaluate((liga) => {
+    async _extrairInfoJogo(liga, pg) {
+        const p = pg || this.page;
+        return await p.evaluate((liga) => {
             // Time selecionado (o botão ativo)
             const timeBtn = document.querySelector('.vr-EventTimesNavBarButton-selected .vr-EventTimesNavBarButton_Text');
             const horario = timeBtn ? timeBtn.textContent.trim() : null;
@@ -574,8 +579,9 @@ class Bet365Coletor {
     // EXTRAÇÃO: Resultados (aba "Resultados")
     // ─────────────────────────────────────────────────────────────
 
-    async _extrairResultados(liga) {
-        return await this.page.evaluate((liga) => {
+    async _extrairResultados(liga, pg) {
+        const p = pg || this.page;
+        return await p.evaluate((liga) => {
             const resultados = [];
 
             // Cada partida de resultado
@@ -645,14 +651,11 @@ class Bet365Coletor {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // COLETA PRINCIPAL — itera ligas × horários × resultados
+    // ABAS PERSISTENTES — inicializa uma aba por liga
     // ─────────────────────────────────────────────────────────────
 
-    async _extrairDados() {
-        const todosEventos    = [];
-        const todosResultados = [];
-
-        // 1. Lê as ligas disponíveis na página atual
+    async _prepararAbas() {
+        // Lê ligas disponíveis na página atual
         const ligas = await this.page.evaluate(() => {
             const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
             return [...tabs].map((el, idx) => {
@@ -661,128 +664,183 @@ class Bet365Coletor {
             });
         });
 
-        // Ligas ignoradas (muito rápidas ou irrelevantes)
         const LIGAS_IGNORAR = ['express cup'];
-
         const ligasFiltradas = ligas.filter(l =>
             !LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))
         );
 
         if (ligasFiltradas.length === 0) {
-            console.log('   ⚠️  Nenhuma liga encontrada na página');
-            return { eventos: todosEventos, resultados: todosResultados };
+            console.log('   ⚠️  Nenhuma liga para preparar');
+            return;
         }
 
-        console.log(`   📋 ${ligasFiltradas.length} liga(s): ${ligasFiltradas.map(l => l.nome).join(', ')}`);
-
-        // 2. Para cada liga: seleciona aba (sem F5 para ser mais rápido), coleta
-        let primeiraLiga = true;
-        for (const liga of ligasFiltradas) {
-            console.log(`\n   🏆 ${liga.nome}`);
-
-            if (primeiraLiga) {
-                // Na primeira liga: aguarda tabs estarem disponíveis
-                try {
-                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 12000 });
-                } catch(e) {
-                    console.log(`   ⚠️  Tabs não apareceram — tentando F5`);
-                    await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-                    await this._delay(2000);
-                    try {
-                        await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 10000 });
-                    } catch(e2) {
-                        console.log(`   ❌ Tabs não apareceram após F5 — pulando liga`);
-                        continue;
-                    }
-                }
-                primeiraLiga = false;
+        // Fecha abas antigas
+        for (const entry of this.pagesLiga) {
+            if (entry.page !== this.page && !entry.page.isClosed()) {
+                await entry.page.close().catch(() => {});
             }
+        }
+        this.pagesLiga = [];
 
-            // Clica na aba da liga
-            const clicou = await this.page.evaluate((idx) => {
+        console.log(`   🗂️  Abrindo ${ligasFiltradas.length} aba(s) (uma por liga)...`);
+
+        for (let i = 0; i < ligasFiltradas.length; i++) {
+            const liga = ligasFiltradas[i];
+            let pg;
+            if (i === 0) {
+                pg = this.page; // reutiliza aba atual
+            } else {
+                // Abre nova aba mantendo as anteriores como referência
+                pg = await this.browser.newPage();
+                pg.on('pageerror', () => {});
+                pg.on('requestfailed', () => {});
+                await pg.goto(this.url, { waitUntil: 'load', timeout: 60000 });
+                await this._delay(4000);
+                // Aguarda tabs carregarem
+                await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 }).catch(() => {});
+            }
+            // Seleciona a aba da liga nesta página
+            await pg.evaluate((idx) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-                if (tabs[idx]) { tabs[idx].click(); return true; }
-                return false;
+                if (tabs[idx]) tabs[idx].click();
             }, liga.idx);
-            if (!clicou) continue;
             await this._delay(1500);
 
-            // ── Resultados ──
-            const temBtnResultados = await this.page.evaluate(() =>
-                !!document.querySelector('.vr-ResultsNavBarButton')
-            );
-            if (temBtnResultados) {
-                await this.page.evaluate(() => {
-                    const b = document.querySelector('.vr-ResultsNavBarButton');
-                    if (b) b.click();
-                });
-                await this._delay(2000);
-
-                await this.page.evaluate(() => {
-                    const b = document.querySelector('.vrr-ShowMoreButton_Link');
-                    if (b) b.click();
-                });
-                await this._delay(1000);
-
-                const resultados = await this._extrairResultados(liga.nome);
-                todosResultados.push(...resultados);
-                console.log(`   📋 ${resultados.length} resultado(s)`);
-
-                // Volta para próximos jogos
-                await this.page.evaluate((idx) => {
-                    const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-                    if (tabs[idx]) tabs[idx].click();
-                }, liga.idx);
-                await this._delay(2000);
-            }
-
-            // ── Próximos jogos ──
-            const numHorarios = await this.page.evaluate(() =>
-                document.querySelectorAll('.vr-EventTimesNavBarButton').length
-            );
-            console.log(`   ⏰ ${numHorarios} horário(s)`);
-
-            for (let i = 0; i < numHorarios; i++) {
-                const clicou = await this.page.evaluate((idx) => {
-                    const btns = document.querySelectorAll('.vr-EventTimesNavBarButton');
-                    if (btns[idx]) { btns[idx].click(); return true; }
-                    return false;
-                }, i);
-                if (!clicou) continue;
-                await this._delay(1500);
-
-                const temMercados = await this._aguardarMercados(8000);
-                if (!temMercados) { console.log(`      ⚠️  Sem mercados ${i + 1}`); continue; }
-
-                const infoJogo = await this._extrairInfoJogo(liga.nome);
-                if (!infoJogo.timeCasa || !infoJogo.timeFora) {
-                    console.log(`      ⚠️  Times não identificados ${i + 1}`);
-                    continue;
-                }
-
-                const { mercados, countdown } = await this._extrairMercadosDoPagina();
-                const ftMkt = mercados.find(m =>
-                    m.nome === 'Fulltime Result' || m.nome === 'Resultado Final'
-                );
-                let oddCasa = 0, oddEmpate = 0, oddFora = 0;
-                if (ftMkt) {
-                    oddCasa   = ftMkt.selecoes[0]?.odd || 0;
-                    oddEmpate = ftMkt.selecoes[1]?.odd || 0;
-                    oddFora   = ftMkt.selecoes[2]?.odd || 0;
-                }
-
-                const horario  = infoJogo.horario || countdown;
-                const eventoId = this._gerarId(liga.nome, infoJogo.timeCasa, infoJogo.timeFora, horario);
-
-                todosEventos.push({
-                    eventoId, liga: liga.nome,
-                    timeCasa: infoJogo.timeCasa, timeFora: infoJogo.timeFora,
-                    horario, countdown, oddCasa, oddEmpate, oddFora, mercados
-                });
-
-                console.log(`      ✅ ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
-            }
+            this.pagesLiga.push({ page: pg, liga });
+            console.log(`   ✅ Aba ${i + 1}/${ligasFiltradas.length}: ${liga.nome}`);
         }
+        // Atualiza this.page para a primeira aba de liga
+        this.page = this.pagesLiga[0].page;
+        console.log(`   ✅ ${this.pagesLiga.length} aba(s) prontas`);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // COLETA DE UMA LIGA em sua aba dedicada
+    // ─────────────────────────────────────────────────────────────
+
+    async _coletarLiga(pg, liga) {
+        const eventos    = [];
+        const resultados = [];
+
+        // F5 na aba desta liga
+        await pg.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+        await this._delay(3000);
+
+        // Aguarda tabs aparecerem após reload
+        try {
+            await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
+        } catch(e) {
+            console.log(`   ⚠️  [${liga.nome}] Tabs não apareceram após F5`);
+            return { eventos, resultados };
+        }
+
+        // Clica na aba desta liga específica
+        const clicou = await pg.evaluate((idx) => {
+            const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+            if (tabs[idx]) { tabs[idx].click(); return true; }
+            return false;
+        }, liga.idx);
+        if (!clicou) {
+            console.log(`   ⚠️  [${liga.nome}] Não encontrou aba idx=${liga.idx}`);
+            return { eventos, resultados };
+        }
+        await this._delay(1500);
+
+        // ── Resultados ──
+        const temBtnResultados = await pg.evaluate(() =>
+            !!document.querySelector('.vr-ResultsNavBarButton')
+        );
+        if (temBtnResultados) {
+            await pg.evaluate(() => {
+                document.querySelector('.vr-ResultsNavBarButton')?.click();
+            });
+            await this._delay(2000);
+            await pg.evaluate(() => {
+                document.querySelector('.vrr-ShowMoreButton_Link')?.click();
+            });
+            await this._delay(1000);
+
+            const res = await this._extrairResultados(liga.nome, pg);
+            resultados.push(...res);
+            console.log(`   📋 [${liga.nome}] ${res.length} resultado(s)`);
+
+            // Volta para próximos jogos
+            await pg.evaluate((idx) => {
+                document.querySelectorAll('.vrl-MeetingsHeaderButton')[idx]?.click();
+            }, liga.idx);
+            await this._delay(2000);
+        }
+
+        // ── Próximos jogos ──
+        const numHorarios = await pg.evaluate(() =>
+            document.querySelectorAll('.vr-EventTimesNavBarButton').length
+        );
+        console.log(`   ⏰ [${liga.nome}] ${numHorarios} horário(s)`);
+
+        for (let i = 0; i < numHorarios; i++) {
+            const ok = await pg.evaluate((idx) => {
+                const btns = document.querySelectorAll('.vr-EventTimesNavBarButton');
+                if (btns[idx]) { btns[idx].click(); return true; }
+                return false;
+            }, i);
+            if (!ok) continue;
+            await this._delay(1500);
+
+            const temMercados = await this._aguardarMercados(8000, pg);
+            if (!temMercados) continue;
+
+            const infoJogo = await this._extrairInfoJogo(liga.nome, pg);
+            if (!infoJogo.timeCasa || !infoJogo.timeFora) continue;
+
+            const { mercados, countdown } = await this._extrairMercadosDoPagina(pg);
+            const ftMkt = mercados.find(m =>
+                m.nome === 'Fulltime Result' || m.nome === 'Resultado Final'
+            );
+            let oddCasa = 0, oddEmpate = 0, oddFora = 0;
+            if (ftMkt) {
+                oddCasa   = ftMkt.selecoes[0]?.odd || 0;
+                oddEmpate = ftMkt.selecoes[1]?.odd || 0;
+                oddFora   = ftMkt.selecoes[2]?.odd || 0;
+            }
+
+            const horario  = infoJogo.horario || countdown;
+            const eventoId = this._gerarId(liga.nome, infoJogo.timeCasa, infoJogo.timeFora, horario);
+
+            eventos.push({
+                eventoId, liga: liga.nome,
+                timeCasa: infoJogo.timeCasa, timeFora: infoJogo.timeFora,
+                horario, countdown, oddCasa, oddEmpate, oddFora, mercados
+            });
+            console.log(`      ✅ [${liga.nome}] ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
+        }
+
+        return { eventos, resultados };
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // COLETA PRINCIPAL — todas as ligas em paralelo
+    // ─────────────────────────────────────────────────────────────
+
+    async _extrairDados() {
+        if (this.pagesLiga.length === 0) {
+            console.log('   ⚠️  Nenhuma aba de liga — verifique a navegação inicial');
+            return { eventos: [], resultados: [] };
+        }
+
+        console.log(`   🔄 Coletando ${this.pagesLiga.length} liga(s) em paralelo (F5 + coleta)...`);
+
+        // Coleta todas as ligas simultaneamente
+        const resultados = await Promise.all(
+            this.pagesLiga.map(({ page: pg, liga }) =>
+                this._coletarLiga(pg, liga).catch(err => {
+                    console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
+                    return { eventos: [], resultados: [] };
+                })
+            )
+        );
+
+        const todosEventos    = resultados.flatMap(r => r.eventos);
+        const todosResultados = resultados.flatMap(r => r.resultados);
 
         console.log(`\n   ✅ Total: ${todosEventos.length} evento(s), ${todosResultados.length} resultado(s)`);
         return { eventos: todosEventos, resultados: todosResultados };
@@ -1098,16 +1156,21 @@ class Bet365Coletor {
         console.log(`============================================`);
 
         try {
-            // Reinicia browser a cada 20 coletas para evitar vazamento de memória
-            if (this._coletas % 20 === 0) {
+            // Reinicia browser a cada 30 coletas para evitar vazamento de memória
+            if (this._coletas % 30 === 0 && this._coletas > 0) {
                 console.log('   🔄 Reiniciando navegador (manutenção periódica)...');
                 await this.fecharBrowser();
+                this.pagesLiga = [];
             }
 
             await this.iniciarBrowser();
 
-            // Recarrega a página a cada coleta
-            await this.navegarParaPagina();
+            // Primeira vez ou após reinício: login + navegação + abre abas por liga
+            if (this.pagesLiga.length === 0) {
+                await this.navegarParaPagina();
+                await this._prepararAbas();
+            }
+            // Nas demais coletas: _coletarLiga() faz F5 individualmente em cada aba
 
             const dados = await this._extrairDados();
             const contadores = await this.salvarNoBanco(dados);
@@ -1138,6 +1201,7 @@ class Bet365Coletor {
                 err.message.includes('Execution context')) {
                 console.log('   🔄 Reiniciando navegador após erro...');
                 await this.fecharBrowser();
+                this.pagesLiga = [];
             }
         } finally {
             this.coletando = false;
