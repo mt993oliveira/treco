@@ -1076,10 +1076,15 @@ server.listen(PORT, () => {
         const cron = require('node-cron');
         const Bet365Coletor = require('./services/bet365-coletor');
         const coletor365 = new Bet365Coletor();
-        const intervalo = parseInt(process.env.BET365_INTERVALO) || 1;
-        const expressao = intervalo === 1 ? '* * * * *' : `*/${intervalo} * * * *`;
+        const intervaloSeg = parseInt(process.env.BET365_INTERVALO_SEG) || 0;
+        const intervalo    = parseInt(process.env.BET365_INTERVALO) || 1;
+        // BET365_INTERVALO_SEG=30 → a cada 30s  |  BET365_INTERVALO=1 → a cada 1min
+        const expressao = intervaloSeg > 0
+            ? `*/${intervaloSeg} * * * * *`
+            : intervalo === 1 ? '* * * * *' : `*/${intervalo} * * * *`;
+        const descIntervalo = intervaloSeg > 0 ? `${intervaloSeg}s` : `${intervalo}min`;
 
-        console.log(`\n📡 Bet365 - Agendador iniciado (a cada ${intervalo} min)\n`);
+        console.log(`\n📡 Bet365 - Agendador iniciado (a cada ${descIntervalo})\n`);
 
         coletor365.coletar().catch(e => console.error('Bet365 coleta inicial:', e.message));
         cron.schedule(expressao, () => coletor365.coletar().catch(e => console.error('Bet365 cron:', e.message)));
