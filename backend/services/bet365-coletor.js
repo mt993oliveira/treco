@@ -147,35 +147,195 @@ class Bet365Coletor {
     // NAVEGAÇÃO E ESPERA
     // ─────────────────────────────────────────────────────────────
 
-    async _fazerLogin() {
-        // Verifica se já está logado pelos cookies salvos no perfil
-        const jaLogado = await this.page.evaluate(() =>
-            ![...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Login')
+    // Digita texto simulando humano (delays aleatórios entre teclas)
+    async _typeHuman(selector, texto) {
+        await this.page.focus(selector);
+        await this._delay(300 + Math.random() * 300);
+        for (const char of texto) {
+            await this.page.type(selector, char, { delay: 40 + Math.random() * 60 });
+        }
+        await this._delay(200 + Math.random() * 200);
+    }
+
+    // Verifica se o botão "Login" ainda está visível na página
+    async _botaoLoginVisivel() {
+        return this.page.evaluate(() =>
+            [...document.querySelectorAll('button, .hm-LoginButtonMobile, .hm-MainHeaderMobile_Login, [class*="Login"]')]
+                .some(el => {
+                    const txt = el.textContent.trim();
+                    return txt === 'Login' || txt === 'Log In' || txt === 'Entrar';
+                })
         );
+    }
+
+    async _fazerLogin() {
+        // ── 1. Já está logado? ──────────────────────────────────────
+        const jaLogado = !(await this._botaoLoginVisivel());
         if (jaLogado) {
             console.log('   ✅ Já está logado (cookies do perfil)');
             return true;
         }
 
-        // Não está logado — aguarda login manual na janela aberta
+        const usuario = process.env.BET365_USERNAME;
+        const senha   = process.env.BET365_PASSWORD;
+
+        // ── 2. Tenta login automático se credenciais disponíveis ────
+        if (usuario && senha) {
+            console.log('   🤖 Tentando login automático...');
+            const ok = await this._loginAutomatico(usuario, senha);
+            if (ok) return true;
+            console.log('   ⚠️  Login automático falhou — caindo para modo manual');
+        }
+
+        // ── 3. Fallback: aguarda login manual ──────────────────────
         console.log('');
         console.log('   ══════════════════════════════════════════════');
         console.log('   🔐 FAÇA LOGIN MANUALMENTE NA JANELA DO EDGE');
-        console.log(`   👤 Usuário: ${process.env.BET365_USERNAME || '(ver .env)'}`);
+        console.log(`   👤 Usuário: ${usuario || '(ver .env)'}`);
         console.log('   ⏳ Aguardando até 3 minutos...');
         console.log('   ══════════════════════════════════════════════');
         console.log('');
 
-        // Aguarda até 3 minutos para o botão Login sumir (= logado)
         try {
-            await this.page.waitForFunction(() =>
-                ![...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Login'),
+            await this.page.waitForFunction(
+                () => ![...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Login'),
                 { timeout: 180000, polling: 1000 }
             );
             console.log('   ✅ Login detectado! Continuando...');
             return true;
         } catch(e) {
             console.log('   ❌ Timeout — login não realizado em 3 minutos');
+            return false;
+        }
+    }
+
+    async _loginAutomatico(usuario, senha) {
+        try {
+            // ── Passo 1: clicar no botão Login ───────────────────────
+            const clicouLogin = await this.page.evaluate(() => {
+                const candidatos = [...document.querySelectorAll('button, a, [role="button"], [class*="Login"]')];
+                for (const el of candidatos) {
+                    const txt = el.textContent.trim();
+                    if (txt === 'Login' || txt === 'Log In' || txt === 'Entrar') {
+                        el.click();
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            if (!clicouLogin) {
+                console.log('   ❌ Botão Login não encontrado na página');
+                return false;
+            }
+            console.log('   🖱️  Clicou em Login');
+            await this._delay(1500 + Math.random() * 1000);
+
+            // ── Passo 2: aguarda o formulário de login aparecer ──────
+            const seletoresUsuario = [
+                'input[name="username"]',
+                'input[type="text"][placeholder*="suário"]',
+                'input[type="text"][placeholder*="mail"]',
+                'input[type="email"]',
+                'input[autocomplete="username"]',
+                '.lpLoginInner input[type="text"]',
+                'input[placeholder*="Username"]',
+                'input[placeholder*="Email"]'
+            ];
+
+            let campoUsuario = null;
+            for (let tentativa = 0; tentativa < 15; tentativa++) {
+                for (const sel of seletoresUsuario) {
+                    try {
+                        const el = await this.page.$(sel);
+                        if (el) { campoUsuario = sel; break; }
+                    } catch(_) {}
+                }
+                if (campoUsuario) break;
+                await this._delay(500);
+            }
+
+            if (!campoUsuario) {
+                console.log('   ❌ Campo de usuário não encontrado após aguardar formulário');
+                return false;
+            }
+            console.log(`   📝 Formulário encontrado (${campoUsuario})`);
+
+            // ── Passo 3: preenche usuário ────────────────────────────
+            await this._typeHuman(campoUsuario, usuario);
+            console.log('   ✅ Usuário digitado');
+
+            // ── Passo 4: campo senha ─────────────────────────────────
+            const seletoresSenha = [
+                'input[name="password"]',
+                'input[type="password"]',
+                'input[autocomplete="current-password"]'
+            ];
+
+            let campoSenha = null;
+            for (const sel of seletoresSenha) {
+                try {
+                    const el = await this.page.$(sel);
+                    if (el) { campoSenha = sel; break; }
+                } catch(_) {}
+            }
+
+            if (!campoSenha) {
+                // Tenta Tab para ir ao próximo campo
+                await this.page.keyboard.press('Tab');
+                await this._delay(500);
+                campoSenha = 'input[type="password"]';
+            }
+
+            await this._typeHuman(campoSenha, senha);
+            console.log('   ✅ Senha digitada');
+
+            // ── Passo 5: submeter formulário ─────────────────────────
+            // Pequena pausa humana antes de clicar
+            await this._delay(800 + Math.random() * 600);
+
+            const submeteu = await this.page.evaluate(() => {
+                // Procura botão de submit no formulário
+                const botoes = [...document.querySelectorAll('button[type="submit"], input[type="submit"], .lpLoginBtn, [class*="SubmitBtn"], [class*="submit"]')];
+                for (const btn of botoes) {
+                    const txt = btn.textContent.trim().toLowerCase();
+                    if (!txt || txt === 'login' || txt === 'entrar' || txt === 'log in' || txt === 'sign in' || btn.type === 'submit') {
+                        btn.click();
+                        return true;
+                    }
+                }
+                // Fallback: Enter no form
+                const form = document.querySelector('form');
+                if (form) { form.submit(); return true; }
+                return false;
+            });
+
+            if (!submeteu) {
+                // Último recurso: Enter no campo senha
+                await this.page.keyboard.press('Enter');
+                console.log('   ⌨️  Enter pressionado como submit');
+            } else {
+                console.log('   🖱️  Botão submit clicado');
+            }
+
+            // ── Passo 6: aguarda login confirmar ─────────────────────
+            console.log('   ⏳ Aguardando confirmação de login (até 20s)...');
+            try {
+                await this.page.waitForFunction(
+                    () => ![...document.querySelectorAll('button')].some(b =>
+                        b.textContent.trim() === 'Login' || b.textContent.trim() === 'Log In'),
+                    { timeout: 20000, polling: 500 }
+                );
+                console.log('   ✅ Login automático bem-sucedido!');
+                return true;
+            } catch(_) {
+                // Pode ter aparecido verificação (CAPTCHA, 2FA)
+                console.log('   ⚠️  Login não confirmado em 20s (CAPTCHA ou 2FA?)');
+                return false;
+            }
+
+        } catch(e) {
+            console.log(`   ❌ Erro no login automático: ${e.message}`);
             return false;
         }
     }
