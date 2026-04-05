@@ -22,8 +22,12 @@
 const puppeteer = require('puppeteer');
 const sql = require('mssql');
 const dotenv = require('dotenv');
+const fs   = require('fs');
+const path = require('path');
 
 dotenv.config();
+
+const COOKIES_FILE = path.join(__dirname, '../../cookies-bet365.json');
 
 class Bet365Coletor {
     constructor() {
@@ -163,18 +167,6 @@ class Bet365Coletor {
     // NAVEGAÇÃO E ESPERA
     // ─────────────────────────────────────────────────────────────
 
-    // Digita texto simulando humano — usa teclado puro (funciona com React/autofill)
-    async _typeHuman(selector, texto) {
-        await this.page.click(selector, { clickCount: 3 }); // triplo-clique = seleciona tudo
-        await this._delay(150);
-        await this.page.keyboard.press('Backspace');         // apaga seleção
-        await this._delay(100);
-        for (const char of texto) {
-            await this.page.type(selector, char, { delay: 45 + Math.random() * 55 });
-        }
-        await this._delay(200 + Math.random() * 200);
-    }
-
     // Verifica se o usuário NÃO está logado (detecta botão Login ou "Registre-se" no header)
     async _botaoLoginVisivel() {
         // Aguarda o header da Bet365 renderizar completamente (SPA demora)
@@ -202,226 +194,79 @@ class Bet365Coletor {
         });
     }
 
+    // ─── Salva cookies da sessão em arquivo JSON ──────────────────
+    async _salvarCookies() {
+        try {
+            const cookies = await this.page.cookies();
+            if (cookies && cookies.length > 0) {
+                fs.writeFileSync(COOKIES_FILE, JSON.stringify(cookies, null, 2));
+                console.log(`   💾 Cookies salvos (${cookies.length})`);
+            }
+        } catch(e) { console.log('   ⚠️  Erro ao salvar cookies:', e.message); }
+    }
+
+    // ─── Carrega cookies do arquivo e injeta na página ────────────
+    async _carregarCookies() {
+        try {
+            if (!fs.existsSync(COOKIES_FILE)) return false;
+            const stat = fs.statSync(COOKIES_FILE);
+            const idadeHoras = (Date.now() - stat.mtimeMs) / 3600000;
+            if (idadeHoras > 48) {
+                console.log('   ⚠️  Cookies expirados (>48h), ignorando');
+                return false;
+            }
+            const cookies = JSON.parse(fs.readFileSync(COOKIES_FILE, 'utf8'));
+            if (!cookies || cookies.length === 0) return false;
+            await this.page.setCookie(...cookies);
+            console.log(`   🍪 Cookies carregados do arquivo (${cookies.length})`);
+            return true;
+        } catch(e) { console.log('   ⚠️  Erro ao carregar cookies:', e.message); return false; }
+    }
+
     async _fazerLogin() {
         // ── 1. Já está logado? ──────────────────────────────────────
         const jaLogado = !(await this._botaoLoginVisivel());
         if (jaLogado) {
-            console.log('   ✅ Já está logado (cookies do perfil)');
+            console.log('   ✅ Já está logado (sessão ativa)');
+            await this._salvarCookies();
             return true;
         }
 
+        // ── 2. Aguarda login manual (30 minutos) ───────────────────
+        // Login automático desabilitado (Bet365 detecta bot e bloqueia conta)
         const usuario = process.env.BET365_USERNAME;
-        const senha   = process.env.BET365_PASSWORD;
-
-        // ── 2. Tenta login automático se credenciais disponíveis ────
-        if (usuario && senha) {
-            console.log('   🤖 Tentando login automático...');
-            const ok = await this._loginAutomatico(usuario, senha);
-            if (ok) return true;
-            console.log('   ⚠️  Login automático falhou — caindo para modo manual');
-        }
-
-        // ── 3. Fallback: aguarda login manual ──────────────────────
         console.log('');
         console.log('   ══════════════════════════════════════════════');
         console.log('   🔐 FAÇA LOGIN MANUALMENTE NA JANELA DO EDGE');
         console.log(`   👤 Usuário: ${usuario || '(ver .env)'}`);
-        console.log('   ⏳ Aguardando até 3 minutos...');
+        console.log('   ⏳ Aguardando até 30 minutos...');
         console.log('   ══════════════════════════════════════════════');
         console.log('');
 
         try {
-            await this.page.waitForFunction(
-                () => ![...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Login'),
-                { timeout: 180000, polling: 1000 }
-            );
-            console.log('   ✅ Login detectado! Continuando...');
+            await this.page.waitForFunction(() => {
+                const txt = document.body?.innerText || '';
+                // Logado quando NÃO há "Registre-se" e NÃO há botão Login visível
+                if (txt.includes('Registre-se') || txt.includes('Register')) return false;
+                return ![...document.querySelectorAll('button, a, [role="button"]')]
+                    .some(b => {
+                        const t = b.textContent.trim();
+                        return (t === 'Login' || t === 'Log In') && b.offsetParent !== null;
+                    });
+            }, { timeout: 1800000, polling: 2000 }); // 30 min
+            console.log('   ✅ Login detectado! Salvando cookies...');
+            await this._salvarCookies();
             return true;
         } catch(e) {
-            console.log('   ❌ Timeout — login não realizado em 3 minutos');
+            console.log('   ❌ Timeout — login não realizado em 30 minutos');
             return false;
         }
     }
 
-    async _loginAutomatico(usuario, senha) {
+    // Aceita popup de política de cookies
+    async _aceitarCookiesPopup() {
         try {
-            // ── Estratégia 1: nova aba com autofill do Edge ──────────
-            // Abre segunda aba, navega para bet365, deixa Edge preencher
-            // credenciais salvas automaticamente e clica no submit.
-            // Mais difícil de detectar pois usa o autofill nativo do browser.
-            const loginOkNovaAba = await this._loginViaNovaAba();
-            if (loginOkNovaAba) return true;
-            console.log('   ⚠️  Nova aba não funcionou, tentando na aba principal...');
-
-            // ── Estratégia 2: aba principal — clicar no botão Login ──
-            const clicouLogin = await this.page.evaluate(() => {
-                const candidatos = [...document.querySelectorAll('button, a, [role="button"], [class*="Login"]')];
-                for (const el of candidatos) {
-                    const txt = el.textContent.trim();
-                    if (txt === 'Login' || txt === 'Log In' || txt === 'Entrar') {
-                        el.click();
-                        return true;
-                    }
-                }
-                return false;
-            });
-
-            if (!clicouLogin) {
-                console.log('   ❌ Botão Login não encontrado na página');
-                return false;
-            }
-            console.log('   🖱️  Clicou em Login');
-            await this._delay(1500 + Math.random() * 1000);
-
-            // ── Passo 2: aguarda o formulário de login aparecer ──────
-            const seletoresUsuario = [
-                'input[name="username"]',
-                'input[type="text"][placeholder*="suário"]',
-                'input[type="text"][placeholder*="mail"]',
-                'input[type="email"]',
-                'input[autocomplete="username"]',
-                '.lpLoginInner input[type="text"]',
-                'input[placeholder*="Username"]',
-                'input[placeholder*="Email"]'
-            ];
-
-            let campoUsuario = null;
-            for (let tentativa = 0; tentativa < 15; tentativa++) {
-                for (const sel of seletoresUsuario) {
-                    try {
-                        const el = await this.page.$(sel);
-                        if (el) { campoUsuario = sel; break; }
-                    } catch(_) {}
-                }
-                if (campoUsuario) break;
-                await this._delay(500);
-            }
-
-            if (!campoUsuario) {
-                console.log('   ❌ Campo de usuário não encontrado após aguardar formulário');
-                return false;
-            }
-            console.log(`   📝 Formulário encontrado (${campoUsuario})`);
-
-            // ── Passo 3: preenche usuário ────────────────────────────
-            await this._typeHuman(campoUsuario, usuario);
-            console.log('   ✅ Usuário digitado');
-
-            // ── Passo 4: campo senha ─────────────────────────────────
-            const seletoresSenha = [
-                'input[name="password"]',
-                'input[type="password"]',
-                'input[autocomplete="current-password"]'
-            ];
-
-            let campoSenha = null;
-            for (const sel of seletoresSenha) {
-                try {
-                    const el = await this.page.$(sel);
-                    if (el) { campoSenha = sel; break; }
-                } catch(_) {}
-            }
-
-            if (!campoSenha) {
-                // Tenta Tab para ir ao próximo campo
-                await this.page.keyboard.press('Tab');
-                await this._delay(500);
-                campoSenha = 'input[type="password"]';
-            }
-
-            await this._typeHuman(campoSenha, senha);
-            console.log('   ✅ Senha digitada');
-
-            // ── Passo 5: submeter formulário ─────────────────────────
-            await this._delay(600 + Math.random() * 400);
-
-            // Localiza o botão submit geometricamente: o botão ABAIXO do campo senha
-            // (Tab pode pular para fora do modal; busca por posição é mais confiável)
-            const btnRect = await this.page.evaluate((senhaSelector) => {
-                const pwd = document.querySelector(senhaSelector || 'input[type="password"]');
-                if (!pwd) return null;
-                const pwdR = pwd.getBoundingClientRect();
-
-                // Todos os botões visíveis abaixo do campo de senha
-                const candidatos = [];
-                for (const btn of document.querySelectorAll('button, input[type="submit"], [role="button"]')) {
-                    const r = btn.getBoundingClientRect();
-                    if (r.width < 30 || r.height < 15) continue;       // muito pequeno
-                    if (r.top <= pwdR.bottom) continue;                  // não está abaixo da senha
-                    if (r.top > pwdR.bottom + 300) continue;             // muito longe
-                    const cx = r.left + r.width / 2;
-                    const cy = r.top  + r.height / 2;
-                    const dist = Math.abs(cx - (pwdR.left + pwdR.width/2));
-                    candidatos.push({ x: cx, y: cy, dist,
-                        txt: btn.textContent.trim().substring(0,30), tipo: btn.type || '' });
-                }
-                // Pega o mais próximo horizontalmente do campo senha
-                if (!candidatos.length) return null;
-                candidatos.sort((a,b) => a.dist - b.dist);
-                return candidatos[0];
-            }, campoSenha);
-
-            if (btnRect) {
-                console.log(`   🎯 Submit abaixo da senha: "${btnRect.txt}" @ (${Math.round(btnRect.x)},${Math.round(btnRect.y)})`);
-                await this.page.mouse.move(btnRect.x - 30, btnRect.y - 15, { steps: 8 });
-                await this._delay(120);
-                await this.page.mouse.move(btnRect.x, btnRect.y, { steps: 5 });
-                await this._delay(80);
-                await this.page.mouse.click(btnRect.x, btnRect.y);
-                console.log('   🖱️  Click com mouse no botão submit');
-            } else {
-                // Fallback: Enter no campo senha
-                await this.page.focus(campoSenha || 'input[type="password"]');
-                await this.page.keyboard.press('Enter');
-                console.log('   ⌨️  Fallback: Enter no campo senha');
-            }
-
-            // ── Passo 6: aguarda login confirmar (até 30s) ───────────
-            console.log('   ⏳ Aguardando confirmação de login (até 30s)...');
-            try {
-                await this.page.waitForFunction(
-                    () => {
-                        // Sucesso: botão Login/Log In sumiu do header
-                        const temBotaoLogin = [...document.querySelectorAll('button, a, [role="button"]')]
-                            .some(b => {
-                                const t = b.textContent.trim().toLowerCase();
-                                return (t === 'login' || t === 'log in') &&
-                                    !b.closest('form') && !b.closest('[class*="login-form"]');
-                            });
-                        return !temBotaoLogin;
-                    },
-                    { timeout: 30000, polling: 500 }
-                );
-                console.log('   ✅ Login automático bem-sucedido!');
-                return true;
-            } catch(_) {
-                // Verifica se o botão Login/Registre-se sumiu (confirmação real)
-                const logadoReal = await this.page.evaluate(() => {
-                    const txt = document.body.innerText || '';
-                    const temRegistre = txt.includes('Registre-se') || txt.includes('Register');
-                    const temBotaoLogin = [...document.querySelectorAll('button, a')]
-                        .some(b => b.textContent.trim() === 'Login' || b.textContent.trim() === 'Log In');
-                    return !temRegistre && !temBotaoLogin;
-                }).catch(() => false);
-                if (logadoReal) {
-                    console.log('   ✅ Login confirmado (botão desapareceu)');
-                    return true;
-                }
-                console.log('   ⚠️  Login não confirmado em 30s — pode ser CAPTCHA, 2FA ou Bet365 detectou automação');
-                return false;
-            }
-
-        } catch(e) {
-            console.log(`   ❌ Erro no login automático: ${e.message}`);
-            return false;
-        }
-    }
-
-    // Aceita popup de política de cookies (aparece na primeira visita de cada aba)
-    async _aceitarCookiesPopup(pg) {
-        const p = pg || this.page;
-        try {
-            const aceitou = await p.evaluate(() => {
+            const aceitou = await this.page.evaluate(() => {
                 // Matching exato (evitar clicar em "Gerenciar Cookies" ou "Rejeitar")
                 const exatos = ['Aceitar', 'Accept', 'Aceitar tudo', 'Accept All',
                                 'Concordo', 'Allow all', 'Allow All', 'Aceitar cookies',
@@ -452,136 +297,6 @@ class Bet365Coletor {
         } catch(_) {}
     }
 
-    // Login via NOVA ABA: abre segunda aba, deixa Edge autofill credenciais e clica submit
-    async _loginViaNovaAba() {
-        let novaAba = null;
-        try {
-            console.log('   🗂️  Abrindo nova aba para login via autofill...');
-            novaAba = await this.browser.newPage();
-
-            // Injeta stealth na nova aba também
-            await novaAba.evaluateOnNewDocument(() => {
-                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-                window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {}, app: {} };
-            });
-
-            await novaAba.goto('https://www.bet365.bet.br/', {
-                waitUntil: 'domcontentloaded', timeout: 30000
-            });
-            await this._delay(2000);
-
-            // Aceita popup de cookies se aparecer
-            await this._aceitarCookiesPopup(novaAba);
-            await this._delay(1000);
-
-            // Verifica se já está logado nesta aba
-            const jaLogado = await novaAba.evaluate(() => {
-                const txt = document.body?.innerText || '';
-                return !txt.includes('Registre-se') && !txt.includes('Register');
-            });
-            if (jaLogado) {
-                console.log('   ✅ Nova aba: já logado!');
-                await novaAba.close();
-                return true;
-            }
-
-            // Clica no botão Login da nova aba
-            const clicou = await novaAba.evaluate(() => {
-                for (const el of document.querySelectorAll('button, a, [role="button"]')) {
-                    const txt = el.textContent.trim();
-                    if (txt === 'Login' || txt === 'Log In' || txt === 'Entrar') {
-                        el.click(); return true;
-                    }
-                }
-                return false;
-            });
-            if (!clicou) { await novaAba.close(); return false; }
-            console.log('   🖱️  Nova aba: clicou Login');
-
-            // Aguarda o formulário aparecer e o Edge autofill preencher
-            await this._delay(3000);
-
-            // Verifica se os campos foram preenchidos pelo autofill
-            const camposPreenchidos = await novaAba.evaluate(() => {
-                const usuario = document.querySelector('input[type="text"], input[name="username"]');
-                const senha   = document.querySelector('input[type="password"]');
-                return {
-                    usuario: (usuario?.value || '').length > 0,
-                    senha:   (senha?.value   || '').length > 0,
-                    temForm: !!(usuario && senha)
-                };
-            });
-            console.log(`   📋 Nova aba: form=${camposPreenchidos.temForm} user=${camposPreenchidos.usuario} pwd=${camposPreenchidos.senha}`);
-
-            if (!camposPreenchidos.temForm) { await novaAba.close(); return false; }
-
-            // Se autofill não preencheu, digita manualmente
-            if (!camposPreenchidos.usuario || !camposPreenchidos.senha) {
-                const usuario2 = process.env.BET365_USERNAME || '';
-                const senha2   = process.env.BET365_PASSWORD || '';
-                if (usuario2 && !camposPreenchidos.usuario) {
-                    await novaAba.click('input[type="text"], input[name="username"]', { clickCount: 3 });
-                    await novaAba.type('input[type="text"], input[name="username"]', usuario2, { delay: 50 });
-                }
-                if (senha2 && !camposPreenchidos.senha) {
-                    await novaAba.click('input[type="password"]', { clickCount: 3 });
-                    await novaAba.type('input[type="password"]', senha2, { delay: 50 });
-                }
-                await this._delay(500);
-            }
-
-            // Localiza e clica no botão submit abaixo da senha
-            const btnRect = await novaAba.evaluate(() => {
-                const pwd = document.querySelector('input[type="password"]');
-                if (!pwd) return null;
-                const pwdR = pwd.getBoundingClientRect();
-                const candidatos = [];
-                for (const btn of document.querySelectorAll('button, input[type="submit"], [role="button"]')) {
-                    const r = btn.getBoundingClientRect();
-                    if (r.width < 30 || r.height < 15 || r.top <= pwdR.bottom) continue;
-                    if (r.top > pwdR.bottom + 300) continue;
-                    candidatos.push({ x: r.left+r.width/2, y: r.top+r.height/2,
-                        dist: Math.abs((r.left+r.width/2)-(pwdR.left+pwdR.width/2)) });
-                }
-                if (!candidatos.length) return null;
-                candidatos.sort((a,b) => a.dist - b.dist);
-                return candidatos[0];
-            });
-
-            if (btnRect) {
-                await novaAba.mouse.move(btnRect.x - 20, btnRect.y - 10, { steps: 5 });
-                await this._delay(100);
-                await novaAba.mouse.click(btnRect.x, btnRect.y);
-                console.log(`   🖱️  Nova aba: clicou submit @ (${Math.round(btnRect.x)},${Math.round(btnRect.y)})`);
-            } else {
-                await novaAba.keyboard.press('Enter');
-                console.log('   ⌨️  Nova aba: Enter');
-            }
-
-            // Aguarda confirmação (Bet365 pode demorar para redirecionar após login)
-            await this._delay(6000);
-            const logado = await novaAba.evaluate(() => {
-                const txt = document.body?.innerText || '';
-                return !txt.includes('Registre-se') && !txt.includes('Register');
-            });
-
-            await novaAba.close();
-            if (logado) {
-                console.log('   ✅ Nova aba: login confirmado!');
-                // Atualiza a aba principal para pegar o cookie de sessão
-                await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
-                await this._delay(2000);
-                return true;
-            }
-            return false;
-
-        } catch(e) {
-            console.log(`   ⚠️  Nova aba erro: ${e.message}`);
-            try { await novaAba?.close(); } catch(_) {}
-            return false;
-        }
-    }
-
     // Fecha o popup "Seu último login foi no dia..." que aparece após login
     async _fecharPopupPosLogin() {
         try {
@@ -606,6 +321,9 @@ class Bet365Coletor {
     async navegarParaPagina() {
         console.log(`📡 Bet365 - Carregando página...`);
 
+        // 0. Tenta restaurar sessão via cookies salvos (antes de navegar)
+        const cookiesOk = await this._carregarCookies();
+
         // 1. Carrega a home
         await this.page.goto('https://www.bet365.bet.br/', {
             waitUntil: 'domcontentloaded',
@@ -617,7 +335,12 @@ class Bet365Coletor {
         await this._aceitarCookiesPopup();
         await this._delay(1000);
 
-        // 2. Login
+        if (cookiesOk) {
+            // Aguarda mais um pouco para a sessão ser reconhecida
+            await this._delay(2000);
+        }
+
+        // 2. Login (só pede se necessário)
         await this._fazerLogin();
         await this._delay(2000);
 
