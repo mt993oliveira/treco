@@ -157,8 +157,9 @@ class Bet365Coletor {
     async fecharBrowser() {
         if (this.browser) {
             await this.browser.close().catch(() => {});
-            this.browser = null;
-            this.page    = null;
+            this.browser    = null;
+            this.page       = null;
+            this.pageLogin  = null;
             console.log('🔒 Bet365 - Navegador fechado');
         }
     }
@@ -256,6 +257,10 @@ class Bet365Coletor {
             }, { timeout: 1800000, polling: 2000 }); // 30 min
             console.log('   ✅ Login detectado! Salvando cookies...');
             await this._salvarCookies();
+            // Recarrega a aba principal para herdar sessão autenticada (evita conteúdo vazio)
+            console.log('   🔄 Recarregando aba principal com sessão ativa...');
+            await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+            await this._delay(3000);
             return true;
         } catch(e) {
             console.log('   ❌ Timeout — login não realizado em 30 minutos');
@@ -344,54 +349,21 @@ class Bet365Coletor {
         await this._fazerLogin();
         await this._delay(2000);
 
-        // 2b. Fecha popup "Seu último login foi no dia..." se aparecer
-        await this._fecharPopupPosLogin();
-        await this._delay(1000);
+        // 2b. Abre nova aba MANTENDO a aba original aberta (contexto de referência)
+        // Igual ao que funciona manualmente: Ctrl+T com aba anterior ainda visível
+        console.log('   🗂️  Abrindo nova aba para coleta (aba original mantida)...');
+        this.pageLogin = this.page; // guarda aba original como referência
+        this.page = await this.browser.newPage();
+        this.page.on('pageerror', () => {});
+        this.page.on('requestfailed', () => {});
+        console.log('   ✅ Nova aba aberta');
 
-        // 3. Navega para Esportes Virtuais pelo menu lateral
-        console.log('   🎮 Clicando em Esportes Virtuais...');
-        const clicouVirtual = await this.page.evaluate(() => {
-            // Tenta seletor principal
-            for (const el of document.querySelectorAll('.wn-PreMatchItem_Text, .wl-StandardSportItem_Text, .wn-LeftHandColumn a')) {
-                if (/esportes virtuais/i.test(el.textContent)) {
-                    (el.closest('[class*="Item"]') || el).click();
-                    return true;
-                }
-            }
-            return false;
-        });
-        if (clicouVirtual) {
-            console.log('   ✅ Clicou em Esportes Virtuais');
-            await this._delay(2500);
-        }
+        // 3. Navega direto para Futebol Virtual na nova aba
+        console.log('   ⚽ Navegando para Futebol Virtual (B146)...');
+        await this.page.goto(this.url, { waitUntil: 'load', timeout: 60000 });
+        await this._delay(6000);
 
-        // 4. Clica em "Futebol" dentro de Esportes Virtuais
-        console.log('   ⚽ Clicando em Futebol Virtual...');
-        const clicouFutebol = await this.page.evaluate(() => {
-            for (const el of document.querySelectorAll('[class*="SportItem"], [class*="Category"], a')) {
-                if (/^futebol$/i.test(el.textContent.trim())) {
-                    el.click();
-                    return true;
-                }
-            }
-            return false;
-        });
-        if (clicouFutebol) {
-            console.log('   ✅ Clicou em Futebol');
-            await this._delay(2500);
-        }
-
-        // 5. Verifica URL e força navegação direta se necessário
-        const urlAtual = await this.page.evaluate(() => window.location.href);
-        console.log(`   🔗 URL atual: ${urlAtual}`);
-
-        if (!urlAtual.includes('B146')) {
-            console.log('   🔄 Forçando URL de Futebol Virtual (B146)...');
-            await this.page.evaluate((url) => { window.location.href = url; }, this.url);
-            await this._delay(4000);
-        }
-
-        // 6. Aguarda as tabs de liga aparecerem
+        // 5. Aguarda as tabs de liga aparecerem
         console.log('   ⏳ Aguardando ligas...');
         try {
             await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 45000 });
