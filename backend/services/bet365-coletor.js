@@ -131,6 +131,19 @@ class Bet365Coletor {
 
         this.page = await this.browser.newPage();
 
+        // Injeta stealth antes de qualquer script da página (evita detecção de bot)
+        await this.page.evaluateOnNewDocument(() => {
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+            Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en-US'] });
+            window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {}, app: {} };
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (params) =>
+                params.name === 'notifications'
+                    ? Promise.resolve({ state: Notification.permission })
+                    : originalQuery(params);
+        });
+
         this.page.on('pageerror', () => {});
         this.page.on('requestfailed', () => {});
 
@@ -150,12 +163,14 @@ class Bet365Coletor {
     // NAVEGAÇÃO E ESPERA
     // ─────────────────────────────────────────────────────────────
 
-    // Digita texto simulando humano (delays aleatórios entre teclas)
+    // Digita texto simulando humano — usa teclado puro (funciona com React/autofill)
     async _typeHuman(selector, texto) {
-        await this.page.focus(selector);
-        await this._delay(300 + Math.random() * 300);
+        await this.page.click(selector, { clickCount: 3 }); // triplo-clique = seleciona tudo
+        await this._delay(150);
+        await this.page.keyboard.press('Backspace');         // apaga seleção
+        await this._delay(100);
         for (const char of texto) {
-            await this.page.type(selector, char, { delay: 40 + Math.random() * 60 });
+            await this.page.type(selector, char, { delay: 45 + Math.random() * 55 });
         }
         await this._delay(200 + Math.random() * 200);
     }
@@ -294,46 +309,81 @@ class Bet365Coletor {
             console.log('   ✅ Senha digitada');
 
             // ── Passo 5: submeter formulário ─────────────────────────
-            // Pequena pausa humana antes de clicar
-            await this._delay(800 + Math.random() * 600);
+            await this._delay(600 + Math.random() * 400);
 
-            const submeteu = await this.page.evaluate(() => {
-                // Procura botão de submit no formulário
-                const botoes = [...document.querySelectorAll('button[type="submit"], input[type="submit"], .lpLoginBtn, [class*="SubmitBtn"], [class*="submit"]')];
-                for (const btn of botoes) {
-                    const txt = btn.textContent.trim().toLowerCase();
-                    if (!txt || txt === 'login' || txt === 'entrar' || txt === 'log in' || txt === 'sign in' || btn.type === 'submit') {
-                        btn.click();
-                        return true;
-                    }
+            // Localiza o botão submit geometricamente: o botão ABAIXO do campo senha
+            // (Tab pode pular para fora do modal; busca por posição é mais confiável)
+            const btnRect = await this.page.evaluate((senhaSelector) => {
+                const pwd = document.querySelector(senhaSelector || 'input[type="password"]');
+                if (!pwd) return null;
+                const pwdR = pwd.getBoundingClientRect();
+
+                // Todos os botões visíveis abaixo do campo de senha
+                const candidatos = [];
+                for (const btn of document.querySelectorAll('button, input[type="submit"], [role="button"]')) {
+                    const r = btn.getBoundingClientRect();
+                    if (r.width < 30 || r.height < 15) continue;       // muito pequeno
+                    if (r.top <= pwdR.bottom) continue;                  // não está abaixo da senha
+                    if (r.top > pwdR.bottom + 300) continue;             // muito longe
+                    const cx = r.left + r.width / 2;
+                    const cy = r.top  + r.height / 2;
+                    const dist = Math.abs(cx - (pwdR.left + pwdR.width/2));
+                    candidatos.push({ x: cx, y: cy, dist,
+                        txt: btn.textContent.trim().substring(0,30), tipo: btn.type || '' });
                 }
-                // Fallback: Enter no form
-                const form = document.querySelector('form');
-                if (form) { form.submit(); return true; }
-                return false;
-            });
+                // Pega o mais próximo horizontalmente do campo senha
+                if (!candidatos.length) return null;
+                candidatos.sort((a,b) => a.dist - b.dist);
+                return candidatos[0];
+            }, campoSenha);
 
-            if (!submeteu) {
-                // Último recurso: Enter no campo senha
-                await this.page.keyboard.press('Enter');
-                console.log('   ⌨️  Enter pressionado como submit');
+            if (btnRect) {
+                console.log(`   🎯 Submit abaixo da senha: "${btnRect.txt}" @ (${Math.round(btnRect.x)},${Math.round(btnRect.y)})`);
+                await this.page.mouse.move(btnRect.x - 30, btnRect.y - 15, { steps: 8 });
+                await this._delay(120);
+                await this.page.mouse.move(btnRect.x, btnRect.y, { steps: 5 });
+                await this._delay(80);
+                await this.page.mouse.click(btnRect.x, btnRect.y);
+                console.log('   🖱️  Click com mouse no botão submit');
             } else {
-                console.log('   🖱️  Botão submit clicado');
+                // Fallback: Enter no campo senha
+                await this.page.focus(campoSenha || 'input[type="password"]');
+                await this.page.keyboard.press('Enter');
+                console.log('   ⌨️  Fallback: Enter no campo senha');
             }
 
-            // ── Passo 6: aguarda login confirmar ─────────────────────
-            console.log('   ⏳ Aguardando confirmação de login (até 20s)...');
+            // ── Passo 6: aguarda login confirmar (até 30s) ───────────
+            console.log('   ⏳ Aguardando confirmação de login (até 30s)...');
             try {
                 await this.page.waitForFunction(
-                    () => ![...document.querySelectorAll('button')].some(b =>
-                        b.textContent.trim() === 'Login' || b.textContent.trim() === 'Log In'),
-                    { timeout: 20000, polling: 500 }
+                    () => {
+                        // Sucesso: botão Login/Log In sumiu do header
+                        const temBotaoLogin = [...document.querySelectorAll('button, a, [role="button"]')]
+                            .some(b => {
+                                const t = b.textContent.trim().toLowerCase();
+                                return (t === 'login' || t === 'log in') &&
+                                    !b.closest('form') && !b.closest('[class*="login-form"]');
+                            });
+                        return !temBotaoLogin;
+                    },
+                    { timeout: 30000, polling: 500 }
                 );
                 console.log('   ✅ Login automático bem-sucedido!');
                 return true;
             } catch(_) {
-                // Pode ter aparecido verificação (CAPTCHA, 2FA)
-                console.log('   ⚠️  Login não confirmado em 20s (CAPTCHA ou 2FA?)');
+                // Verifica se o botão Login/Registre-se sumiu (confirmação real)
+                const logadoReal = await this.page.evaluate(() => {
+                    const txt = document.body.innerText || '';
+                    const temRegistre = txt.includes('Registre-se') || txt.includes('Register');
+                    const temBotaoLogin = [...document.querySelectorAll('button, a')]
+                        .some(b => b.textContent.trim() === 'Login' || b.textContent.trim() === 'Log In');
+                    return !temRegistre && !temBotaoLogin;
+                }).catch(() => false);
+                if (logadoReal) {
+                    console.log('   ✅ Login confirmado (botão desapareceu)');
+                    return true;
+                }
+                console.log('   ⚠️  Login não confirmado em 30s — pode ser CAPTCHA, 2FA ou Bet365 detectou automação');
                 return false;
             }
 
