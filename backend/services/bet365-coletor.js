@@ -653,37 +653,13 @@ class Bet365Coletor {
                 const timeFora = t2El.textContent.trim();
                 const placarRaw = scEl.textContent.trim().replace(/\s+/g, '');
 
-                // Tenta extrair FT e HT do placar
-                // Formatos possíveis: "2-1 (1-0)" ou "2-1" ou "2 - 1"
-                let placar = placarRaw;
-                let golCasaHT = null, golForaHT = null;
-
-                // Formato "FT (HT)" — ex: "2-1(1-0)"
-                const htMatch = placarRaw.match(/^(\d+[-–]\d+)\s*\((\d+[-–]\d+)\)$/);
-                if (htMatch) {
-                    placar = htMatch[1];
-                    const htParts = htMatch[2].split(/[-–]/);
-                    golCasaHT = parseInt(htParts[0]) || 0;
-                    golForaHT = parseInt(htParts[1]) || 0;
-                } else {
-                    // Tenta seletor separado para HT
-                    const htEl = grupo.querySelector('.vrr-HTHTeamDetails_HTScore, [class*="HTScore"], [class*="HalfTime"]');
-                    if (htEl) {
-                        const htTxt = htEl.textContent.trim().replace(/\s+/g,'');
-                        const htParts = htTxt.split(/[-–]/);
-                        if (htParts.length === 2) {
-                            golCasaHT = parseInt(htParts[0]) || 0;
-                            golForaHT = parseInt(htParts[1]) || 0;
-                        }
-                    }
-                }
-
-                const parts    = placar.split(/[-–]/);
+                const placar = placarRaw;
+                const parts  = placar.split(/[-–]/);
                 const golCasa  = parseInt(parts[0]) || 0;
                 const golFora  = parseInt(parts[1]) || 0;
                 const resultado = golCasa > golFora ? 'CASA' : golFora > golCasa ? 'FORA' : 'EMPATE';
 
-                // Mercados do resultado (odds pagas)
+                // Mercados do resultado (odds pagas / seleções vencedoras)
                 const mercados = [];
                 const participantes = grupo.querySelectorAll('.vrr-HeadToHeadParticipant');
                 for (const p of participantes) {
@@ -696,6 +672,25 @@ class Bet365Coletor {
                             selecao:  win.textContent.trim(),
                             odd:      prc ? parseFloat(prc.textContent.trim()) || 0 : 0
                         });
+                    }
+                }
+
+                // Extrai HT dos mercados liquidados (seleção vencedora = placar real do HT)
+                // "Resultado Correto - Intervalo" / "Half Time Correct Score" contém o placar HT como seleção
+                let golCasaHT = null, golForaHT = null;
+                for (const m of mercados) {
+                    const nome = m.mercado.toLowerCase();
+                    if (nome.includes('intervalo') && nome.includes('correto') ||
+                        nome.includes('half time correct') ||
+                        nome.includes('half-time correct')) {
+                        // Seleção vencedora é o placar HT: "1-0", "2-1", etc.
+                        const htMatch = m.selecao.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+                        if (htMatch) {
+                            golCasaHT = parseInt(htMatch[1]);
+                            golForaHT = parseInt(htMatch[2]);
+                        }
+                        // Se for "Qualquer Outro Resultado" / "Any Other Score" → HT desconhecido (null)
+                        break;
                     }
                 }
 
