@@ -363,7 +363,13 @@ class Bet365Coletor {
         await this.page.goto(this.url, { waitUntil: 'load', timeout: 60000 });
         await this._delay(6000);
 
-        // 5. Aguarda as tabs de liga aparecerem
+        // Fecha a aba de referência assim que a nova carregou (evita acúmulo de abas)
+        if (this.pageLogin && !this.pageLogin.isClosed()) {
+            await this.pageLogin.close().catch(() => {});
+            this.pageLogin = null;
+        }
+
+        // 4. Aguarda as tabs de liga aparecerem
         console.log('   ⏳ Aguardando ligas...');
         try {
             await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 45000 });
