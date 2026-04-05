@@ -111,7 +111,19 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async iniciarBrowser() {
-        if (this.browser) return;
+        if (this.browser) {
+            // Verifica se o browser ainda está conectado (pode ter sido fechado manualmente)
+            try {
+                await this.browser.version();
+                return; // ainda vivo
+            } catch(_) {
+                console.log('   ⚠️  Navegador desconectado (fechado manualmente?), reiniciando...');
+                this.browser   = null;
+                this.page      = null;
+                this.pageLogin = null;
+                this.pagesLiga = [];
+            }
+        }
         const headless = process.env.BET365_HEADLESS !== 'false' ? 'new' : false;
         const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
         const userDataDir = 'C:\\Users\\Administrador\\AppData\\Local\\Microsoft\\Edge\\BetColetor';
@@ -1195,6 +1207,9 @@ class Bet365Coletor {
             if (err.message.includes('Session closed') ||
                 err.message.includes('Target closed') ||
                 err.message.includes('Protocol error') ||
+                err.message.includes('Browser was closed') ||
+                err.message.includes('Connection closed') ||
+                err.message.includes('ECONNRESET') ||
                 err.message.includes('not clickable') ||
                 err.message.includes('not an Element') ||
                 err.message.includes('detached') ||
