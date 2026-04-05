@@ -175,15 +175,31 @@ class Bet365Coletor {
         await this._delay(200 + Math.random() * 200);
     }
 
-    // Verifica se o botão "Login" ainda está visível na página
+    // Verifica se o usuário NÃO está logado (detecta botão Login ou "Registre-se" no header)
     async _botaoLoginVisivel() {
-        return this.page.evaluate(() =>
-            [...document.querySelectorAll('button, .hm-LoginButtonMobile, .hm-MainHeaderMobile_Login, [class*="Login"]')]
+        // Aguarda o header da Bet365 renderizar completamente (SPA demora)
+        try {
+            await this.page.waitForFunction(() => {
+                const txt = document.body?.innerText || '';
+                // Aguarda até o texto "Login" ou algum indicador de conta aparecer
+                return txt.includes('Login') || txt.includes('Registre-se') ||
+                       txt.includes('Minha Conta') || txt.includes('Saldo') ||
+                       txt.length > 200;
+            }, { timeout: 8000, polling: 500 });
+        } catch(_) {}
+
+        return this.page.evaluate(() => {
+            const txt = document.body?.innerText || '';
+            // "Registre-se" aparece APENAS quando não está logado
+            if (txt.includes('Registre-se') || txt.includes('Register')) return true;
+            // Fallback: botão Login visível
+            return [...document.querySelectorAll('button, a, [role="button"]')]
                 .some(el => {
-                    const txt = el.textContent.trim();
-                    return txt === 'Login' || txt === 'Log In' || txt === 'Entrar';
-                })
-        );
+                    const t = el.textContent.trim();
+                    return (t === 'Login' || t === 'Log In' || t === 'Entrar') &&
+                           el.offsetParent !== null; // visível
+                });
+        });
     }
 
     async _fazerLogin() {
@@ -229,7 +245,15 @@ class Bet365Coletor {
 
     async _loginAutomatico(usuario, senha) {
         try {
-            // ── Passo 1: clicar no botão Login ───────────────────────
+            // ── Estratégia 1: nova aba com autofill do Edge ──────────
+            // Abre segunda aba, navega para bet365, deixa Edge preencher
+            // credenciais salvas automaticamente e clica no submit.
+            // Mais difícil de detectar pois usa o autofill nativo do browser.
+            const loginOkNovaAba = await this._loginViaNovaAba();
+            if (loginOkNovaAba) return true;
+            console.log('   ⚠️  Nova aba não funcionou, tentando na aba principal...');
+
+            // ── Estratégia 2: aba principal — clicar no botão Login ──
             const clicouLogin = await this.page.evaluate(() => {
                 const candidatos = [...document.querySelectorAll('button, a, [role="button"], [class*="Login"]')];
                 for (const el of candidatos) {
@@ -393,6 +417,171 @@ class Bet365Coletor {
         }
     }
 
+    // Aceita popup de política de cookies (aparece na primeira visita de cada aba)
+    async _aceitarCookiesPopup(pg) {
+        const p = pg || this.page;
+        try {
+            const aceitou = await p.evaluate(() => {
+                // Matching exato (evitar clicar em "Gerenciar Cookies" ou "Rejeitar")
+                const exatos = ['Aceitar', 'Accept', 'Aceitar tudo', 'Accept All',
+                                'Concordo', 'Allow all', 'Allow All', 'Aceitar cookies',
+                                'Accept cookies', 'Got it'];
+                for (const el of document.querySelectorAll('button, a, [role="button"]')) {
+                    const txt = el.textContent.trim();
+                    if (exatos.some(t => txt === t || txt.toLowerCase() === t.toLowerCase())) {
+                        el.click();
+                        return txt;
+                    }
+                }
+                // Fallback menos agressivo: começa com "Aceitar" ou "Accept"
+                for (const el of document.querySelectorAll('button, a, [role="button"]')) {
+                    const txt = el.textContent.trim().toLowerCase();
+                    if ((txt.startsWith('aceitar') || txt.startsWith('accept')) &&
+                        !txt.includes('gerenciar') && !txt.includes('manage') &&
+                        !txt.includes('config') && !txt.includes('ajust')) {
+                        el.click();
+                        return el.textContent.trim();
+                    }
+                }
+                return null;
+            });
+            if (aceitou) {
+                console.log(`   🍪 Cookies aceitos ("${aceitou}")`);
+                await this._delay(800);
+            }
+        } catch(_) {}
+    }
+
+    // Login via NOVA ABA: abre segunda aba, deixa Edge autofill credenciais e clica submit
+    async _loginViaNovaAba() {
+        let novaAba = null;
+        try {
+            console.log('   🗂️  Abrindo nova aba para login via autofill...');
+            novaAba = await this.browser.newPage();
+
+            // Injeta stealth na nova aba também
+            await novaAba.evaluateOnNewDocument(() => {
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {}, app: {} };
+            });
+
+            await novaAba.goto('https://www.bet365.bet.br/', {
+                waitUntil: 'domcontentloaded', timeout: 30000
+            });
+            await this._delay(2000);
+
+            // Aceita popup de cookies se aparecer
+            await this._aceitarCookiesPopup(novaAba);
+            await this._delay(1000);
+
+            // Verifica se já está logado nesta aba
+            const jaLogado = await novaAba.evaluate(() => {
+                const txt = document.body?.innerText || '';
+                return !txt.includes('Registre-se') && !txt.includes('Register');
+            });
+            if (jaLogado) {
+                console.log('   ✅ Nova aba: já logado!');
+                await novaAba.close();
+                return true;
+            }
+
+            // Clica no botão Login da nova aba
+            const clicou = await novaAba.evaluate(() => {
+                for (const el of document.querySelectorAll('button, a, [role="button"]')) {
+                    const txt = el.textContent.trim();
+                    if (txt === 'Login' || txt === 'Log In' || txt === 'Entrar') {
+                        el.click(); return true;
+                    }
+                }
+                return false;
+            });
+            if (!clicou) { await novaAba.close(); return false; }
+            console.log('   🖱️  Nova aba: clicou Login');
+
+            // Aguarda o formulário aparecer e o Edge autofill preencher
+            await this._delay(3000);
+
+            // Verifica se os campos foram preenchidos pelo autofill
+            const camposPreenchidos = await novaAba.evaluate(() => {
+                const usuario = document.querySelector('input[type="text"], input[name="username"]');
+                const senha   = document.querySelector('input[type="password"]');
+                return {
+                    usuario: (usuario?.value || '').length > 0,
+                    senha:   (senha?.value   || '').length > 0,
+                    temForm: !!(usuario && senha)
+                };
+            });
+            console.log(`   📋 Nova aba: form=${camposPreenchidos.temForm} user=${camposPreenchidos.usuario} pwd=${camposPreenchidos.senha}`);
+
+            if (!camposPreenchidos.temForm) { await novaAba.close(); return false; }
+
+            // Se autofill não preencheu, digita manualmente
+            if (!camposPreenchidos.usuario || !camposPreenchidos.senha) {
+                const usuario2 = process.env.BET365_USERNAME || '';
+                const senha2   = process.env.BET365_PASSWORD || '';
+                if (usuario2 && !camposPreenchidos.usuario) {
+                    await novaAba.click('input[type="text"], input[name="username"]', { clickCount: 3 });
+                    await novaAba.type('input[type="text"], input[name="username"]', usuario2, { delay: 50 });
+                }
+                if (senha2 && !camposPreenchidos.senha) {
+                    await novaAba.click('input[type="password"]', { clickCount: 3 });
+                    await novaAba.type('input[type="password"]', senha2, { delay: 50 });
+                }
+                await this._delay(500);
+            }
+
+            // Localiza e clica no botão submit abaixo da senha
+            const btnRect = await novaAba.evaluate(() => {
+                const pwd = document.querySelector('input[type="password"]');
+                if (!pwd) return null;
+                const pwdR = pwd.getBoundingClientRect();
+                const candidatos = [];
+                for (const btn of document.querySelectorAll('button, input[type="submit"], [role="button"]')) {
+                    const r = btn.getBoundingClientRect();
+                    if (r.width < 30 || r.height < 15 || r.top <= pwdR.bottom) continue;
+                    if (r.top > pwdR.bottom + 300) continue;
+                    candidatos.push({ x: r.left+r.width/2, y: r.top+r.height/2,
+                        dist: Math.abs((r.left+r.width/2)-(pwdR.left+pwdR.width/2)) });
+                }
+                if (!candidatos.length) return null;
+                candidatos.sort((a,b) => a.dist - b.dist);
+                return candidatos[0];
+            });
+
+            if (btnRect) {
+                await novaAba.mouse.move(btnRect.x - 20, btnRect.y - 10, { steps: 5 });
+                await this._delay(100);
+                await novaAba.mouse.click(btnRect.x, btnRect.y);
+                console.log(`   🖱️  Nova aba: clicou submit @ (${Math.round(btnRect.x)},${Math.round(btnRect.y)})`);
+            } else {
+                await novaAba.keyboard.press('Enter');
+                console.log('   ⌨️  Nova aba: Enter');
+            }
+
+            // Aguarda confirmação (Bet365 pode demorar para redirecionar após login)
+            await this._delay(6000);
+            const logado = await novaAba.evaluate(() => {
+                const txt = document.body?.innerText || '';
+                return !txt.includes('Registre-se') && !txt.includes('Register');
+            });
+
+            await novaAba.close();
+            if (logado) {
+                console.log('   ✅ Nova aba: login confirmado!');
+                // Atualiza a aba principal para pegar o cookie de sessão
+                await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+                await this._delay(2000);
+                return true;
+            }
+            return false;
+
+        } catch(e) {
+            console.log(`   ⚠️  Nova aba erro: ${e.message}`);
+            try { await novaAba?.close(); } catch(_) {}
+            return false;
+        }
+    }
+
     // Fecha o popup "Seu último login foi no dia..." que aparece após login
     async _fecharPopupPosLogin() {
         try {
@@ -422,7 +611,11 @@ class Bet365Coletor {
             waitUntil: 'domcontentloaded',
             timeout: 60000
         });
-        await this._delay(3000);
+        await this._delay(2000);
+
+        // 1b. Aceita popup de cookies se aparecer (antes de verificar login)
+        await this._aceitarCookiesPopup();
+        await this._delay(1000);
 
         // 2. Login
         await this._fazerLogin();
