@@ -958,11 +958,20 @@ app.get('/dashboard', (req, res) => {
 
 // Rota para servir o index.html para outras rotas específicas (mantendo compatibilidade)
 app.get('/index.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// Servir arquivos estáticos da pasta frontend (deve vir após as rotas específicas)
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Servir arquivos estáticos — HTML sem cache, demais com cache normal
+app.use(express.static(path.join(__dirname, '../frontend'), {
+    setHeaders(res, filePath) {
+        if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+    }
+}));
 
 // Rota curinga para servir o portifolio.html para todas as outras rotas (exceto API e rotas específicas)
 app.get('*', (req, res) => {
@@ -977,6 +986,7 @@ app.get('*', (req, res) => {
     } else {
         // Para todas as outras rotas que não sejam as definidas explicitamente,
         // servir o portifólio.html
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.sendFile(path.join(__dirname, '../frontend/portifolio.html'));
     }
 });
