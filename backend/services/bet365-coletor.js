@@ -85,15 +85,18 @@ class Bet365Coletor {
             pool: { max: 10, min: 0, idleTimeoutMillis: 30000 }
         });
         console.log('✅ Bet365 - Banco conectado');
-        // Garante coluna resultado_estimado (idempotente)
-        await this.pool.query(`
-            IF NOT EXISTS (
-                SELECT 1 FROM sys.columns
-                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
-                AND name = 'resultado_estimado'
-            )
-            ALTER TABLE bet365_historico_partidas ADD resultado_estimado BIT NOT NULL DEFAULT 0
-        `).catch(e => console.warn('⚠️ Schema histórico:', e.message));
+        // Garante colunas (idempotente)
+        const migracoes = [
+            `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='resultado_estimado')
+             ALTER TABLE bet365_historico_partidas ADD resultado_estimado BIT NOT NULL DEFAULT 0`,
+            `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='gol_casa_ht')
+             ALTER TABLE bet365_historico_partidas ADD gol_casa_ht TINYINT NULL`,
+            `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='gol_fora_ht')
+             ALTER TABLE bet365_historico_partidas ADD gol_fora_ht TINYINT NULL`,
+        ];
+        for (const sql of migracoes) {
+            await this.pool.query(sql).catch(e => console.warn('⚠️ Schema:', e.message));
+        }
         return this.pool;
     }
 
@@ -648,7 +651,33 @@ class Bet365Coletor {
 
                 const timeCasa = t1El.textContent.trim();
                 const timeFora = t2El.textContent.trim();
-                const placar   = scEl.textContent.trim().replace(/\s+/g, '');
+                const placarRaw = scEl.textContent.trim().replace(/\s+/g, '');
+
+                // Tenta extrair FT e HT do placar
+                // Formatos possíveis: "2-1 (1-0)" ou "2-1" ou "2 - 1"
+                let placar = placarRaw;
+                let golCasaHT = null, golForaHT = null;
+
+                // Formato "FT (HT)" — ex: "2-1(1-0)"
+                const htMatch = placarRaw.match(/^(\d+[-–]\d+)\s*\((\d+[-–]\d+)\)$/);
+                if (htMatch) {
+                    placar = htMatch[1];
+                    const htParts = htMatch[2].split(/[-–]/);
+                    golCasaHT = parseInt(htParts[0]) || 0;
+                    golForaHT = parseInt(htParts[1]) || 0;
+                } else {
+                    // Tenta seletor separado para HT
+                    const htEl = grupo.querySelector('.vrr-HTHTeamDetails_HTScore, [class*="HTScore"], [class*="HalfTime"]');
+                    if (htEl) {
+                        const htTxt = htEl.textContent.trim().replace(/\s+/g,'');
+                        const htParts = htTxt.split(/[-–]/);
+                        if (htParts.length === 2) {
+                            golCasaHT = parseInt(htParts[0]) || 0;
+                            golForaHT = parseInt(htParts[1]) || 0;
+                        }
+                    }
+                }
+
                 const parts    = placar.split(/[-–]/);
                 const golCasa  = parseInt(parts[0]) || 0;
                 const golFora  = parseInt(parts[1]) || 0;
@@ -670,7 +699,7 @@ class Bet365Coletor {
                     }
                 }
 
-                resultados.push({ liga, horario, timeCasa, timeFora, placar, golCasa, golFora, resultado, mercados });
+                resultados.push({ liga, horario, timeCasa, timeFora, placar, golCasa, golFora, golCasaHT, golForaHT, resultado, mercados });
             }
             return resultados;
         }, liga);
@@ -707,20 +736,27 @@ class Bet365Coletor {
 
         console.log(`   📋 ${ligasFiltradas.length} liga(s): ${ligasFiltradas.map(l => l.nome).join(', ')}`);
 
-        // 2. Para cada liga: F5, seleciona, coleta
+        // 2. Para cada liga: seleciona aba (sem F5 para ser mais rápido), coleta
+        let primeiraLiga = true;
         for (const liga of ligasFiltradas) {
             console.log(`\n   🏆 ${liga.nome}`);
 
-            // F5 — estado limpo
-            await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-            await this._delay(2000);
-            await this._fecharPopupPosLogin();
-
-            try {
-                await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 12000 });
-            } catch(e) {
-                console.log(`   ⚠️  Tabs não apareceram — pulando`);
-                continue;
+            if (primeiraLiga) {
+                // Na primeira liga: aguarda tabs estarem disponíveis
+                try {
+                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 12000 });
+                } catch(e) {
+                    console.log(`   ⚠️  Tabs não apareceram — tentando F5`);
+                    await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+                    await this._delay(2000);
+                    try {
+                        await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 10000 });
+                    } catch(e2) {
+                        console.log(`   ❌ Tabs não apareceram após F5 — pulando liga`);
+                        continue;
+                    }
+                }
+                primeiraLiga = false;
             }
 
             // Clica na aba da liga
@@ -730,7 +766,7 @@ class Bet365Coletor {
                 return false;
             }, liga.idx);
             if (!clicou) continue;
-            await this._delay(2000);
+            await this._delay(1500);
 
             // ── Resultados ──
             const temBtnResultados = await this.page.evaluate(() =>
@@ -823,8 +859,19 @@ class Bet365Coletor {
 
         let eventosOk = 0, mercadosOk = 0, oddsOk = 0, histOk = 0;
 
-        // Desativa todos os eventos anteriores
-        await pool.request().query(`UPDATE bet365_eventos SET ativo = 0`);
+        // Desativa apenas eventos das ligas que serão re-processadas neste ciclo
+        // (mantém eventos de outras ligas ativos — importante para mostrar múltiplos jogos futuros)
+        const ligasPresentes = [...new Set(eventos.map(e => e.liga))];
+        for (const ligaNome of ligasPresentes) {
+            await pool.request()
+                .input('liga', sql.NVarChar(200), ligaNome)
+                .query(`UPDATE bet365_eventos SET ativo = 0 WHERE league_name = @liga`);
+        }
+        // Limpa eventos muito antigos (> 3 horas) de qualquer liga
+        await pool.request().query(`
+            UPDATE bet365_eventos SET ativo = 0
+            WHERE start_time_datetime < DATEADD(HOUR, -3, GETUTCDATE())
+        `);
 
         // ── Salva eventos + mercados + odds ──
         for (const ev of eventos) {
@@ -1015,24 +1062,28 @@ class Bet365Coletor {
                         dataPart = new Date(ms);
                     }
 
-                    await pool.request()
+                    const reqHist = pool.request()
                         .input('evId',      sql.BigInt,       eventoId)
                         .input('liga',      sql.NVarChar(200), res.liga)
                         .input('timeCasa',  sql.NVarChar(100), res.timeCasa)
                         .input('timeFora',  sql.NVarChar(100), res.timeFora)
                         .input('golCasa',   sql.Int,           res.golCasa)
                         .input('golFora',   sql.Int,           res.golFora)
+                        .input('golCasaHT', sql.TinyInt,       res.golCasaHT ?? null)
+                        .input('golForaHT', sql.TinyInt,       res.golForaHT ?? null)
                         .input('resultado', sql.NVarChar(10),  res.resultado)
                         .input('oddCasa',   sql.Decimal(10,2), oddCasa)
                         .input('oddEmpate', sql.Decimal(10,2), oddEmpate)
                         .input('oddFora',   sql.Decimal(10,2), oddFora)
-                        .input('dataPart',  sql.DateTime2,     dataPart)
-                        .query(`
+                        .input('dataPart',  sql.DateTime2,     dataPart);
+                    await reqHist.query(`
                             MERGE bet365_historico_partidas AS t
                             USING (SELECT @evId AS evento_id) AS s ON t.evento_id = s.evento_id
                             WHEN MATCHED AND t.gol_casa = 0 AND t.gol_fora = 0 THEN UPDATE SET
                                 t.gol_casa            = @golCasa,
                                 t.gol_fora            = @golFora,
+                                t.gol_casa_ht         = ISNULL(@golCasaHT, t.gol_casa_ht),
+                                t.gol_fora_ht         = ISNULL(@golForaHT, t.gol_fora_ht),
                                 t.resultado           = @resultado,
                                 t.resultado_estimado  = 0,
                                 t.odd_casa   = CASE WHEN t.odd_casa   = 0 THEN @oddCasa   ELSE t.odd_casa   END,
@@ -1040,9 +1091,11 @@ class Bet365Coletor {
                                 t.odd_fora   = CASE WHEN t.odd_fora   = 0 THEN @oddFora   ELSE t.odd_fora   END
                             WHEN NOT MATCHED THEN INSERT
                                 (evento_id, liga, time_casa, time_fora, gol_casa, gol_fora,
+                                 gol_casa_ht, gol_fora_ht,
                                  resultado, odd_casa, odd_empate, odd_fora, data_partida, resultado_estimado)
                             VALUES
                                 (@evId, @liga, @timeCasa, @timeFora, @golCasa, @golFora,
+                                 @golCasaHT, @golForaHT,
                                  @resultado, @oddCasa, @oddEmpate, @oddFora, @dataPart, 0);
                         `);
                     if (jaExiste && scoreZero) {

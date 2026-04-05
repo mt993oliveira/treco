@@ -867,38 +867,66 @@ function renderAnalise() {
         .filter(l => l.liga !== null)
         .filter((l, i, arr) => arr.findIndex(x => x.liga === l.liga) === i); // deduplica
     sugestoesCanon.forEach(liga => {
-        const melhor = liga.melhor;
-        if (!melhor) return;
+        if (!liga.melhor) return;
 
         const selecionado = S.ligaCardSel === liga.liga;
-        const confBadge = melhor.confianca === 'alta' ? 'badge-alta' : melhor.confianca === 'media' ? 'badge-media' : 'badge-baixa';
-        const streakBadge = melhor.streak_tipo === 'verde' ? 'badge-verde' : 'badge-verm';
-        const streakIcon  = melhor.streak_tipo === 'verde' ? '🟢' : '🔴';
-        const tendIcon    = melhor.tendencia === 'subindo' ? '↑' : melhor.tendencia === 'caindo' ? '↓' : '→';
-        const tendCls     = melhor.tendencia === 'subindo' ? 'tend-subindo' : melhor.tendencia === 'caindo' ? 'tend-caindo' : 'tend-estavel';
-
+        const melhor = liga.melhor;
         const ligaNome = liga.liga.replace(/virtual/i,'').replace(/futebol/i,'').trim() || liga.liga;
+
+        // Top 5 filtros por tx_ultn (confianca >= media preferidos primeiro)
+        const top5 = (liga.filtros || [])
+            .filter(f => f.confianca !== 'baixa' || f.tx_ultn >= 60)
+            .slice(0, 5);
+        if (top5.length === 0) top5.push(melhor); // fallback
+
+        // Grupos de mercado para separar visualmente
+        const GRUPO = {
+            'over0.5':'Gols','over1.5':'Gols','over2.5':'Gols','over3.5':'Gols',
+            'under1.5':'Gols','under2.5':'Gols','ambas':'Gols','btts_o25':'Combo',
+            'ft_casa':'1X2','ft_empate':'1X2','ft_fora':'1X2'
+        };
+        const GRUPO_COR = { 'Gols':'#60a5fa', '1X2':'#4ade80', 'Combo':'#f59e0b' };
+        const CONF_COR = { alta:'#4ade80', media:'#fbbf24', baixa:'#94a3b8' };
+        const TEND_ICON = { subindo:'↑', caindo:'↓', estavel:'→' };
+        const TEND_CLS = { subindo:'tend-subindo', caindo:'tend-caindo', estavel:'tend-estavel' };
+
+        const linhasTop5 = top5.map((f, i) => {
+            const cor = CONF_COR[f.confianca] || '#94a3b8';
+            const grupo = GRUPO[f.id] || '';
+            const grupoCor = GRUPO_COR[grupo] || '#64748b';
+            const streakIcon = f.streak_tipo === 'verde' ? '🟢' : '🔴';
+            const tendIcon2 = TEND_ICON[f.tendencia] || '→';
+            const tendCls2  = TEND_CLS[f.tendencia]  || 'tend-estavel';
+            return `<div style="display:flex;align-items:center;gap:4px;padding:5px 0;
+                ${i < top5.length - 1 ? 'border-bottom:1px solid #0f172a;' : ''}">
+                <span style="font-size:9px;color:${grupoCor};font-weight:700;min-width:28px">${grupo}</span>
+                <span style="font-size:11px;color:#cbd5e1;flex:1">${f.label}</span>
+                <span style="font-size:12px;font-weight:800;color:${cor}">${f.tx_ultn}%</span>
+                <span style="font-size:10px" class="${tendCls2}">${tendIcon2}</span>
+                <span style="font-size:9px">${streakIcon}${f.streak > 1 ? f.streak : ''}</span>
+            </div>`;
+        }).join('');
+
+        // Stat pills da melhor aposta
+        const confBadge  = melhor.confianca === 'alta' ? 'badge-alta' : melhor.confianca === 'media' ? 'badge-media' : 'badge-baixa';
+        const streakBadge2 = melhor.streak_tipo === 'verde' ? 'badge-verde' : 'badge-verm';
+        const streakIcon2  = melhor.streak_tipo === 'verde' ? '🟢' : '🔴';
 
         const div = document.createElement('div');
         div.className = 'liga-card' + (selecionado ? ' selecionado' : '');
         div.onclick = () => { S.ligaCardSel = selecionado ? null : liga.liga; renderAnalise(); };
         div.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
                 <div style="font-size:12px;font-weight:800;color:#e2e8f0">${ligaNome}</div>
                 <span class="badge ${confBadge}">${melhor.confianca.toUpperCase()}</span>
             </div>
-            <div style="font-size:10px;color:#475569;margin-bottom:8px">${liga.amostras} partidas analisadas</div>
+            <div style="font-size:10px;color:#475569;margin-bottom:8px">${liga.amostras} partidas · melhor: <b style="color:#1fcc59">${melhor.label} ${melhor.tx_ultn}%</b></div>
             <div style="background:#060810;border-radius:6px;padding:8px;margin-bottom:8px">
-                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:4px">MELHOR APOSTA</div>
-                <div style="font-size:13px;font-weight:800;color:#1fcc59">${melhor.label}</div>
-                <div style="font-size:18px;font-weight:900;color:#e2e8f0;margin-top:2px">${melhor.tx_ultn}%</div>
-                <div style="font-size:10px;color:#475569">últimos ${melhor.n_custom} jogos</div>
+                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">TOP APOSTAS <span style="color:#334155">(últimos ${melhor.n_custom}J)</span></div>
+                ${linhasTop5}
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <span class="badge ${streakBadge}">${streakIcon} ${melhor.streak} seguidos</span>
-                <span style="font-size:11px;font-weight:700" class="${tendCls}">${tendIcon} ${melhor.tendencia}</span>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+                <span class="badge ${streakBadge2}">${streakIcon2} ${melhor.streak} seguidos</span>
                 <span class="stat-pill">Geral <b>${melhor.tx_geral}%</b></span>
                 <span class="stat-pill">5J <b>${melhor.tx_ult5}%</b></span>
                 <span class="stat-pill">20J <b>${melhor.tx_ult20 ?? '–'}%</b></span>
@@ -2468,9 +2496,9 @@ function _hmRenderIACards(jogos, todasPartidas) {
 
         // Confidence
         const n = ligaFreqs.n;
-        const confianca = n < 20 ? '⚠️ Baixa confiança (poucas amostras)'
-                        : n < 50 ? '🔶 Média confiança'
-                        : '✅ Alta confiança';
+        const confianca = n < 20 ? '⚠️ Baixa'
+                        : n < 50 ? '🔶 Média'
+                        : '✅ Alta';
 
         // Minutes to start
         let tempoLabel = '';
@@ -2479,7 +2507,7 @@ function _hmRenderIACards(jogos, todasPartidas) {
             tempoLabel = isNaN(mins) ? '' : ` · ${mins}min para início`;
         }
 
-        // Result rows
+        // Result rows (1X2 table)
         const mkRow = (r) => {
             const edgeColor = r.edge >= 0 ? '#4ade80' : '#f87171';
             const isBest = r.label === bestBet.label;
@@ -2500,11 +2528,74 @@ function _hmRenderIACards(jogos, todasPartidas) {
             }).join(' ')
             : '<span style="color:#475569;font-size:11px">Sem dados suficientes</span>';
 
-        const riskyHtml = riskyBet ? `
-            <div class="ia-risky-bet">
-                <div style="font-size:9px;font-weight:700;color:#f59e0b;letter-spacing:.08em;margin-bottom:4px">⚡ APOSTA ARRISCADA</div>
-                <div style="font-size:12px;color:#e2e8f0">${riskyBet.label} · Odd <b style="color:#fbbf24">${riskyBet.odd.toFixed(2)}</b> · Edge <b style="color:#4ade80">+${(riskyBet.edge*100).toFixed(1)}%</b></div>
-            </div>` : '';
+        // ── Análise de gols (Over/Under) ──────────────────────────────
+        const nP = partidasLiga.length || 1;
+        const goalsSugs = [
+            { label:'Over 0.5',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)>=1).length/nP*100).toFixed(1) },
+            { label:'Over 1.5',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)>=2).length/nP*100).toFixed(1) },
+            { label:'Over 2.5',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)>=3).length/nP*100).toFixed(1) },
+            { label:'Over 3.5',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)>=4).length/nP*100).toFixed(1) },
+            { label:'Under 1.5', pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)<=1).length/nP*100).toFixed(1) },
+            { label:'Under 2.5', pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)<=2).length/nP*100).toFixed(1) },
+            { label:'Empate',    pct: +(partidasLiga.filter(p=>p.resultado==='EMPATE').length/nP*100).toFixed(1) },
+            { label:'Ambas M.',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)>0&&(p.gol_fora||0)>0).length/nP*100).toFixed(1) },
+        ].sort((a,b) => b.pct - a.pct);
+        const avgGols = +(partidasLiga.reduce((s,p)=>s+(p.gol_casa||0)+(p.gol_fora||0),0)/nP).toFixed(2);
+
+        // Barra de progresso para goals
+        const mkGoalBar = (g) => {
+            const cor = g.pct >= 70 ? '#4ade80' : g.pct >= 55 ? '#fbbf24' : g.pct >= 45 ? '#94a3b8' : '#f87171';
+            return `<div style="margin-bottom:4px">
+                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:1px">
+                    <span style="color:#94a3b8">${g.label}</span>
+                    <b style="color:${cor}">${g.pct}%</b>
+                </div>
+                <div style="height:3px;background:#1e293b;border-radius:2px">
+                    <div style="height:3px;width:${Math.min(100,g.pct)}%;background:${cor};border-radius:2px"></div>
+                </div>
+            </div>`;
+        };
+
+        // Top 5 sugestões combinadas (1X2 + gols + arriscada)
+        const todasSugestoes = [
+            // 1X2
+            ...evs.map(r => ({
+                cat:'1X2', label: r.label,
+                pct: (r.freq*100).toFixed(1), odd: r.odd, edge: r.edge, ev: r.ev,
+                score: r.ev
+            })),
+            // Gols — só os mais extremos (> 65% ou < 35%)
+            ...goalsSugs.filter(g => g.pct >= 65 || g.pct <= 35).map(g => ({
+                cat:'Gols', label: g.label,
+                pct: g.pct, odd: null, edge: null, ev: null,
+                score: Math.abs(g.pct - 50) / 50  // distância da 50% como score de confiança
+            })),
+            // Arriscada
+            ...(riskyBet ? [{
+                cat:'⚡ Risco', label: riskyBet.label,
+                pct: (riskyBet.freq*100).toFixed(1), odd: riskyBet.odd, edge: riskyBet.edge, ev: riskyBet.ev,
+                score: riskyBet.edge * 2 + 0.01  // bônus pelo edge alto
+            }] : []),
+        ].sort((a,b) => b.score - a.score);
+
+        const top3Sug = todasSugestoes.slice(0, 3);
+        const top3Html = top3Sug.map((s, i) => {
+            const icons = ['🥇','🥈','🥉'];
+            const catCor = s.cat === '1X2' ? '#4ade80' : s.cat === 'Gols' ? '#60a5fa' : '#f59e0b';
+            const oddStr  = s.odd  !== null ? `Odd <b style="color:#fbbf24">${s.odd.toFixed(2)}</b>` : '';
+            const edgeStr = s.edge !== null && s.edge > 0 ? ` Edge <b style="color:#4ade80">+${(s.edge*100).toFixed(1)}%</b>` : '';
+            const evStr   = s.ev   !== null ? ` EV <b style="color:#60a5fa">${s.ev.toFixed(2)}</b>` : '';
+            return `<div style="display:flex;align-items:center;gap:5px;padding:5px 0;
+                ${i < top3Sug.length-1 ? 'border-bottom:1px solid #0f172a;' : ''}">
+                <span style="font-size:12px">${icons[i]}</span>
+                <span style="font-size:9px;font-weight:700;color:${catCor};min-width:26px">${s.cat}</span>
+                <div style="flex:1;font-size:11px;color:#e2e8f0">
+                    <b>${s.label}</b>
+                    <span style="color:#94a3b8"> ${s.pct}%</span>
+                </div>
+                <div style="font-size:10px;text-align:right">${oddStr}${edgeStr}${evStr}</div>
+            </div>`;
+        }).join('');
 
         html += `<div class="ia-card">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
@@ -2514,26 +2605,40 @@ function _hmRenderIACards(jogos, todasPartidas) {
                 </div>
                 <div style="font-size:9px;color:#64748b;text-align:right">${confianca}<br><span style="color:#334155">${n} amostras</span></div>
             </div>
-            <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:5px;overflow:hidden">
+            <!-- Tabela 1X2 -->
+            <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:5px;overflow:hidden;margin-bottom:8px">
                 <thead>
                     <tr style="background:#0c1220">
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:left">Resultado</th>
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Freq%</th>
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Odd</th>
-                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Implied%</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Impl%</th>
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Edge</th>
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">EV</th>
                     </tr>
                 </thead>
-                <tbody>
-                    ${evs.map(mkRow).join('')}
-                </tbody>
+                <tbody>${evs.map(mkRow).join('')}</tbody>
             </table>
+
+            <!-- Over/Under gols -->
+            <div style="background:#0f172a;border-radius:5px;padding:8px;margin-bottom:8px">
+                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:6px">MERCADO DE GOLS · ~${avgGols} gols/jogo</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+                    ${goalsSugs.slice(0,6).map(mkGoalBar).join('')}
+                </div>
+            </div>
+
+            <!-- Top 3 sugestões combinadas -->
+            <div class="ia-risky-bet">
+                <div style="font-size:9px;font-weight:700;color:#f59e0b;letter-spacing:.08em;margin-bottom:6px">⚡ TOP SUGESTÕES</div>
+                ${top3Html}
+            </div>
+
+            <!-- Top placares -->
             <div style="margin-top:8px">
                 <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">TOP PLACARES NA LIGA</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">${placaresHtml}</div>
             </div>
-            ${riskyHtml}
         </div>`;
     });
 
@@ -2566,8 +2671,14 @@ async function renderHeatmapIA() {
             let agendados = Array.isArray(eventos) ? eventos : [];
             agendados = agendados.filter(j => j.status === 'AGENDADO' || j.status === 'agendado');
             if (S.ligaAtiva) agendados = agendados.filter(j => normalizarLiga(j.liga) === S.ligaAtiva);
+            // Ordena por horário de início (mais próximo primeiro) e mostra todos
+            agendados.sort((a, b) => {
+                const ta = a.horario || a.start_time_datetime || '';
+                const tb = b.horario || b.start_time_datetime || '';
+                return ta < tb ? -1 : ta > tb ? 1 : 0;
+            });
             if (agendados.length > 0) {
-                html += _hmRenderIACards(agendados.slice(0, 6), S.todasPartidas);
+                html += _hmRenderIACards(agendados, S.todasPartidas);
             }
         }
     } catch (e) {

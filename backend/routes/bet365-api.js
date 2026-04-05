@@ -37,7 +37,7 @@ async function getDbPool() {
     return sqlPool;
 }
 
-// ─── Garante coluna resultado_estimado em bet365_historico_partidas ───
+// ─── Garante colunas em bet365_historico_partidas ───
 let _schemaOk = false;
 async function garantirSchema(pool) {
     if (_schemaOk) return;
@@ -49,6 +49,22 @@ async function garantirSchema(pool) {
                 AND name = 'resultado_estimado'
             )
             ALTER TABLE bet365_historico_partidas ADD resultado_estimado BIT NOT NULL DEFAULT 0
+        `);
+        await pool.query(`
+            IF NOT EXISTS (
+                SELECT 1 FROM sys.columns
+                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
+                AND name = 'gol_casa_ht'
+            )
+            ALTER TABLE bet365_historico_partidas ADD gol_casa_ht TINYINT NULL
+        `);
+        await pool.query(`
+            IF NOT EXISTS (
+                SELECT 1 FROM sys.columns
+                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
+                AND name = 'gol_fora_ht'
+            )
+            ALTER TABLE bet365_historico_partidas ADD gol_fora_ht TINYINT NULL
         `);
         _schemaOk = true;
     } catch (e) {
