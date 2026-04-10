@@ -656,6 +656,7 @@ class Bet365Coletor {
                             t.gol_casa_ht=ISNULL(@golCHT,t.gol_casa_ht),
                             t.gol_fora_ht=ISNULL(@golFHT,t.gol_fora_ht),
                             t.resultado=@resultado, t.resultado_estimado=0,
+                            t.data_partida=@dataPart,
                             t.odd_casa=CASE WHEN t.odd_casa=0 THEN @oddCasa ELSE t.odd_casa END,
                             t.odd_empate=CASE WHEN t.odd_empate=0 THEN @oddEmp ELSE t.odd_empate END,
                             t.odd_fora=CASE WHEN t.odd_fora=0 THEN @oddFora ELSE t.odd_fora END
