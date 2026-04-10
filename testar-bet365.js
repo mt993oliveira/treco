@@ -1,199 +1,191 @@
 /**
- * Teste rápido do coletor Bet365
- * Abre a página, extrai os dados e mostra no console SEM salvar no banco
- * Uso: node testar-bet365.js
+ * Teste Bet365 - Conecta no Edge JÁ ABERTO pelo usuário
+ *
+ * COMO USAR:
+ *   1. Feche o Edge completamente
+ *   2. Clique duas vezes em: abrir-edge-debug.bat
+ *   3. No Edge que abrir, acesse: https://www.bet365.bet.br/#/AVR/B146/R%5E1/
+ *   4. Aguarde a página carregar com as ligas visíveis
+ *   5. Rode: node testar-bet365.js
  */
 
 require('dotenv').config();
-
 const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const http = require('http');
 
-const URL = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
+const DEBUG_PORT = 9222;
+const URL_SOCCER = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
+
+function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function httpGet(url) {
+    return new Promise((resolve, reject) => {
+        http.get(url, res => {
+            let data = '';
+            res.on('data', d => data += d);
+            res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
+        }).on('error', reject);
+    });
+}
 
 (async () => {
     console.log('============================================');
-    console.log('  TESTE BET365 - FUTEBOL VIRTUAL');
+    console.log('  TESTE BET365 - SEU EDGE JÁ ABERTO');
     console.log('============================================\n');
 
     let browser;
     try {
-        console.log('🌐 Abrindo navegador headless...');
-        browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox', '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage', '--disable-gpu',
-                '--window-size=1366,768',
-                '--disable-blink-features=AutomationControlled',
-                '--lang=pt-BR,pt'
-            ],
-            defaultViewport: { width: 1366, height: 768 }
-        });
-
-        const page = await browser.newPage();
-        await page.setUserAgent(
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-        );
-        await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9' });
-
-        await page.setRequestInterception(true);
-        page.on('request', req => {
-            if (['image', 'media', 'font'].includes(req.resourceType())) req.abort();
-            else req.continue();
-        });
-
-        console.log(`📡 Navegando para: ${URL}`);
-        await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 45000 });
-
-        // Aguarda conteúdo
-        console.log('⏳ Aguardando página renderizar (até 30s)...');
-        let carregou = false;
-        for (let i = 0; i < 20; i++) {
-            await new Promise(r => setTimeout(r, 1500));
-            carregou = await page.evaluate(() => {
-                const txt = document.body.innerText || '';
-                return /\d{1,2}\.\d{2}/.test(txt) && txt.length > 300;
-            }).catch(() => false);
-            if (carregou) { console.log('✅ Conteúdo detectado!\n'); break; }
-            process.stdout.write('.');
+        // ── 1. Verifica se Edge está rodando em debug mode ──
+        console.log(`🔍 Procurando Edge na porta ${DEBUG_PORT}...`);
+        let version;
+        try {
+            version = await httpGet(`http://127.0.0.1:${DEBUG_PORT}/json/version`);
+            console.log(`✅ Edge encontrado: ${version.Browser}\n`);
+        } catch(e) {
+            console.log('❌ Edge não está rodando com debug habilitado!\n');
+            console.log('📋 PASSOS:');
+            console.log('   1. Feche o Edge completamente (todos os processos)');
+            console.log('   2. Clique duas vezes em: abrir-edge-debug.bat');
+            console.log(`   3. Acesse no Edge: ${URL_SOCCER}`);
+            console.log('   4. Rode novamente: node testar-bet365.js\n');
+            return;
         }
-        if (!carregou) console.log('\n⚠️  Conteúdo não detectado — mostrando o que tem\n');
 
-        // Extrai TUDO da página
-        const dados = await page.evaluate(() => {
-            const linhas = (document.body.innerText || '')
-                .split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-            function isOdd(t) {
-                t = (t || '').trim();
-                const n = parseFloat(t);
-                return /^\d{1,2}\.\d{2}$/.test(t) && n >= 1.01 && n <= 99;
-            }
-            function isCountdown(t) {
-                t = (t || '').trim();
-                if (!/^\d{1,2}:\d{2}$/.test(t)) return false;
-                const [m, s] = t.split(':').map(Number);
-                return s < 60 && m < 99;
-            }
-            function isScore(t) {
-                return /^\d{1,2}\s*[-–]\s*\d{1,2}$/.test((t || '').trim());
-            }
-            function skip(t) {
-                const s = (t || '').toLowerCase().trim();
-                if (s.length < 2 || isOdd(t) || isCountdown(t) || isScore(t)) return true;
-                if (/^\d+$/.test(s)) return true;
-                const palavras = ['bet365','login','depositar','saque','futebol','virtual',
-                    'esportes','sports','ao vivo','resultado','odds','apostas','home',
-                    'mais','more','1','x','2'];
-                return palavras.includes(s);
-            }
-
-            const proximos = [];
-            const resultados = [];
-            const processados = new Set();
-
-            for (let i = 0; i < linhas.length - 5; i++) {
-                if (!skip(linhas[i]) && isCountdown(linhas[i+1]) &&
-                    isOdd(linhas[i+2]) && isOdd(linhas[i+3]) && isOdd(linhas[i+4]) &&
-                    !skip(linhas[i+5])) {
-                    const k = `${linhas[i]}|${linhas[i+5]}`;
-                    if (!processados.has(k)) {
-                        processados.add(k);
-                        proximos.push({
-                            timeCasa: linhas[i], timeFora: linhas[i+5],
-                            countdown: linhas[i+1],
-                            oddCasa: parseFloat(linhas[i+2]),
-                            oddEmpate: parseFloat(linhas[i+3]),
-                            oddFora: parseFloat(linhas[i+4])
-                        });
-                    }
-                }
-                if (isCountdown(linhas[i]) && !skip(linhas[i+1]) &&
-                    isOdd(linhas[i+2]) && isOdd(linhas[i+3]) && isOdd(linhas[i+4]) &&
-                    !skip(linhas[i+5])) {
-                    const k = `${linhas[i+1]}|${linhas[i+5]}`;
-                    if (!processados.has(k)) {
-                        processados.add(k);
-                        proximos.push({
-                            timeCasa: linhas[i+1], timeFora: linhas[i+5],
-                            countdown: linhas[i],
-                            oddCasa: parseFloat(linhas[i+2]),
-                            oddEmpate: parseFloat(linhas[i+3]),
-                            oddFora: parseFloat(linhas[i+4])
-                        });
-                    }
-                }
-            }
-
-            const rp = new Set();
-            for (let i = 0; i < linhas.length - 2; i++) {
-                let t1, sc, t2;
-                if (!skip(linhas[i]) && isScore(linhas[i+1]) && !skip(linhas[i+2])) {
-                    [t1, sc, t2] = [linhas[i], linhas[i+1], linhas[i+2]];
-                } else if (/^\d{2}:\d{2}$/.test(linhas[i]) && !skip(linhas[i+1]) && isScore(linhas[i+2]) && !skip(linhas[i+3])) {
-                    [t1, sc, t2] = [linhas[i+1], linhas[i+2], linhas[i+3]];
-                }
-                if (t1 && sc && t2) {
-                    const k = `${t1}|${sc}|${t2}`;
-                    if (!rp.has(k)) {
-                        rp.add(k);
-                        const p = sc.split(/[-–]/).map(x => parseInt(x)||0);
-                        resultados.push({ timeCasa: t1, placar: sc, timeFora: t2,
-                            golCasa: p[0]||0, golFora: p[1]||0 });
-                    }
-                }
-            }
-
-            return {
-                totalLinhas: linhas.length,
-                primeiras50Linhas: linhas.slice(0, 50),
-                proximos,
-                resultados
-            };
+        // ── 2. Conecta ao Edge sem abrir novo browser ──
+        browser = await puppeteer.connect({
+            browserWSEndpoint: version.webSocketDebuggerUrl,
+            defaultViewport: null
         });
+        console.log('✅ Conectado ao Edge do usuário!\n');
 
-        // ── Mostrar resultados ────────────────────────────────────
-        console.log('============================================');
-        console.log(`📄 Total de linhas de texto na página: ${dados.totalLinhas}`);
-        console.log('============================================\n');
+        // ── 3. Encontra a aba da Bet365 ──
+        const pages = await browser.pages();
+        console.log(`📋 ${pages.length} aba(s) aberta(s):`);
+        for (const p of pages) {
+            const u = p.url();
+            console.log(`   ${u.substring(0, 80)}`);
+        }
 
-        console.log('📝 PRIMEIRAS 50 LINHAS DA PÁGINA (para identificar ligas):');
-        console.log('--------------------------------------------');
-        dados.primeiras50Linhas.forEach((l, i) => console.log(`  ${String(i+1).padStart(2)}: ${l}`));
-        console.log('');
+        let pgBet = pages.find(p => p.url().includes('bet365') && p.url().includes('AVR'));
+        if (!pgBet) pgBet = pages.find(p => p.url().includes('bet365'));
 
-        if (dados.proximos.length > 0) {
-            console.log(`⚽ PRÓXIMOS JOGOS (${dados.proximos.length} encontrados):`);
-            console.log('--------------------------------------------');
-            dados.proximos.forEach(j =>
-                console.log(`  ⏰ ${j.countdown.padEnd(6)} | ${j.timeCasa.padEnd(20)} x ${j.timeFora.padEnd(20)} | ${j.oddCasa} / ${j.oddEmpate} / ${j.oddFora}`)
+        if (!pgBet) {
+            console.log(`\n⚠️  Nenhuma aba da Bet365 encontrada.`);
+            console.log(`   Abra no Edge: ${URL_SOCCER}`);
+            console.log('   E rode novamente: node testar-bet365.js');
+            return;
+        }
+
+        console.log(`\n✅ Aba Bet365: ${pgBet.url()}`);
+
+        // Navega para o soccer se necessário
+        if (!pgBet.url().includes('B146')) {
+            console.log('   Navegando para Futebol Virtual...');
+            await pgBet.goto(URL_SOCCER, { waitUntil: 'load', timeout: 60000 });
+            await _delay(8000);
+        }
+
+        // ── 4. Aguarda ligas ──
+        console.log('\n⏳ Aguardando ligas...');
+        let ligas = [];
+        try {
+            await pgBet.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
+            ligas = await pgBet.evaluate(() =>
+                [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].map((el, idx) => {
+                    const t = el.querySelector('.vrl-MeetingsHeaderButton_Title');
+                    return { idx, nome: t ? t.textContent.trim() : `Liga${idx}` };
+                })
             );
-            console.log('');
-        } else {
-            console.log('⚠️  Nenhum jogo próximo detectado\n');
+            console.log(`✅ ${ligas.length} liga(s): ${ligas.map(l => l.nome).join(' | ')}\n`);
+        } catch(e) {
+            const diag = await pgBet.evaluate(() => ({
+                url: window.location.href,
+                txt: (document.body?.innerText || '').substring(0, 400)
+            })).catch(() => ({}));
+            console.log('❌ Ligas não apareceram na aba');
+            console.log(`   URL: ${diag.url}`);
+            console.log(`   Conteúdo: ${(diag.txt||'').replace(/\n/g,' | ')}`);
+            return;
         }
 
-        if (dados.resultados.length > 0) {
-            console.log(`📋 RESULTADOS (${dados.resultados.length} encontrados):`);
-            console.log('--------------------------------------------');
-            dados.resultados.forEach(r =>
-                console.log(`  ${r.timeCasa.padEnd(20)} ${r.golCasa} - ${r.golFora}  ${r.timeFora}`)
+        // ── 5. Coleta todas as ligas ──
+        const IGNORAR = ['express cup'];
+        for (const liga of ligas) {
+            if (IGNORAR.some(ig => liga.nome.toLowerCase().includes(ig))) continue;
+
+            console.log(`─────────────────────────────────────`);
+            console.log(`🏆 ${liga.nome}`);
+
+            await pgBet.evaluate((idx) => {
+                document.querySelectorAll('.vrl-MeetingsHeaderButton')[idx]?.click();
+            }, liga.idx);
+            await _delay(1500);
+
+            // Resultados
+            const temRes = await pgBet.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
+            if (temRes) {
+                await pgBet.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
+                await _delay(2000);
+                await pgBet.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
+                await _delay(800);
+                const res = await pgBet.evaluate(() =>
+                    [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup')].slice(0,5).map(g => {
+                        const t1 = g.querySelector('.vrr-HTHTeamDetails_TeamOne')?.textContent.trim()||'?';
+                        const sc = g.querySelector('.vrr-HTHTeamDetails_Score')?.textContent.trim().replace(/\s+/g,'')||'?';
+                        const t2 = g.querySelector('.vrr-HTHTeamDetails_TeamTwo')?.textContent.trim()||'?';
+                        return `${t1} ${sc} ${t2}`;
+                    })
+                );
+                console.log(res.length > 0 ? `   📋 ${res.join(' | ')}` : '   📋 Sem resultados');
+                await pgBet.evaluate((idx) => document.querySelectorAll('.vrl-MeetingsHeaderButton')[idx]?.click(), liga.idx);
+                await _delay(1500);
+            }
+
+            // Próximos jogos
+            const numH = await pgBet.evaluate(() =>
+                document.querySelectorAll('.vr-EventTimesNavBarButton').length
             );
-            console.log('');
+            console.log(`   ⏰ ${numH} horário(s)`);
+
+            for (let i = 0; i < Math.min(numH, 3); i++) {
+                await pgBet.evaluate((i) => document.querySelectorAll('.vr-EventTimesNavBarButton')[i]?.click(), i);
+                await _delay(1500);
+                let temMkt = false;
+                for (let t = 0; t < 10; t++) {
+                    temMkt = await pgBet.evaluate(() =>
+                        document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length > 0
+                    ).catch(() => false);
+                    if (temMkt) break;
+                    await _delay(500);
+                }
+                if (!temMkt) continue;
+
+                const j = await pgBet.evaluate(() => {
+                    const h = document.querySelector('.vr-EventTimesNavBarButton-selected .vr-EventTimesNavBarButton_Text')?.textContent.trim()||'?';
+                    const ftPod = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
+                        .find(p => /Fulltime Result|Resultado Final/i.test(p.querySelector('.gl-MarketGroupButton_Text')?.textContent));
+                    const nomes = ftPod ? [...ftPod.querySelectorAll('.srb-ParticipantStackedBorderless_Name')]
+                        .map(n => n.textContent.trim()).filter(t => t && !/draw|empate/i.test(t)) : [];
+                    const odds = ftPod ? [...ftPod.querySelectorAll('.srb-ParticipantStackedBorderless_Odds')]
+                        .map(o => parseFloat(o.textContent.trim())||0) : [];
+                    const cd = document.querySelector('.svc-MarketGroup_BookCloses span:last-child')?.textContent.trim()||'?';
+                    const nm = document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length;
+                    return { h, tc: nomes[0]||'?', tf: nomes[1]||'?', oc: odds[0]||0, oe: odds[1]||0, of_: odds[2]||0, cd, nm };
+                });
+                console.log(`   ⚽ ${j.tc} x ${j.tf} [${j.h}] | ${j.oc}/${j.oe}/${j.of_} | fecha: ${j.cd} | ${j.nm} mercados`);
+            }
         }
 
-        console.log('============================================');
-        console.log(dados.proximos.length > 0 || dados.resultados.length > 0
-            ? '✅ PÁGINA FUNCIONANDO - Coletor vai operar normalmente'
-            : '⚠️  Página carregou mas sem dados estruturados\n   → Verifique as "50 linhas" acima para entender o layout');
+        console.log('\n============================================');
+        console.log('✅ COLETA CONCLUÍDA!');
         console.log('============================================');
 
-    } catch (err) {
-        console.error('❌ Erro:', err.message);
+    } catch(err) {
+        console.error('\n❌ ERRO:', err.message);
     } finally {
-        if (browser) await browser.close();
+        if (browser) {
+            browser.disconnect(); // desconecta mas NÃO fecha o Edge
+            console.log('\n🔌 Desconectado (seu Edge continua aberto normalmente)');
+        }
     }
 })();
