@@ -349,8 +349,13 @@ class Bet365Coletor {
             await this._delay(2000);
         }
 
-        // Próximos jogos
-        const numHorarios = await pg.evaluate(() => document.querySelectorAll('.vr-EventTimesNavBarButton').length);
+        // Próximos jogos — aguarda botões de horário aparecerem (até 8s)
+        let numHorarios = 0;
+        for (let t = 0; t < 8; t++) {
+            numHorarios = await pg.evaluate(() => document.querySelectorAll('.vr-EventTimesNavBarButton').length);
+            if (numHorarios > 0) break;
+            await this._delay(1000);
+        }
         console.log(`   ⏰ [${liga.nome}] ${numHorarios} horário(s)`);
 
         for (let i = 0; i < numHorarios; i++) {
@@ -403,9 +408,15 @@ class Bet365Coletor {
             })
         );
 
-        const ligasFiltradas = ligas.filter(l =>
-            !LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))
-        );
+        // Filtra ignoradas e remove duplicatas (mantém primeira ocorrência)
+        const nomesSeen = new Set();
+        const ligasFiltradas = ligas.filter(l => {
+            if (LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))) return false;
+            const key = l.nome.toLowerCase().trim();
+            if (nomesSeen.has(key)) return false;
+            nomesSeen.add(key);
+            return true;
+        });
 
         console.log(`   ✅ ${ligasFiltradas.length} liga(s): ${ligasFiltradas.map(l => l.nome).join(' | ')}`);
 
@@ -422,7 +433,7 @@ class Bet365Coletor {
                 return false;
             }, liga.idx);
             if (!clicou) { console.log(`   ⚠️  [${liga.nome}] Tab não encontrada`); continue; }
-            await this._delay(1500);
+            await this._delay(3000); // aguarda conteúdo da aba carregar
 
             try {
                 const { eventos, resultados } = await this._coletarLiga(pg, liga);
