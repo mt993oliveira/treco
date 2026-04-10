@@ -33,7 +33,7 @@ class Bet365Coletor {
     constructor() {
         this.url       = URL_SOCCER;
         this.browser   = null;
-        this.pagesLiga = [];
+        this.page      = null;
         this.pool      = null;
         this.coletando = false;
         this._coletas  = 0;
@@ -148,15 +148,9 @@ class Bet365Coletor {
 
     async encerrar() {
         if (this.browser) {
-            // Fecha abas extras que criamos (não a principal do usuário)
-            for (const entry of this.pagesLiga) {
-                if (entry._criada && !entry.page.isClosed()) {
-                    await entry.page.close().catch(() => {});
-                }
-            }
-            this.pagesLiga = [];
             this.browser.disconnect();
             this.browser = null;
+            this.page    = null;
             console.log('🔌 Bet365 - Desconectado do Edge');
         }
         if (this.pool) {
@@ -198,70 +192,6 @@ class Bet365Coletor {
         return { page: pg, _criada: true };
     }
 
-    async _prepararAbas() {
-        // Encontra/abre a página base
-        const base = await this._encontrarOuAbrirPaginaVirtual();
-        const pgBase = base.page;
-
-        // Aguarda abas de liga
-        console.log('   ⏳ Aguardando ligas...');
-        try {
-            await pgBase.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
-        } catch(e) {
-            console.log('   ❌ Ligas não apareceram — verifique se a página está aberta no Edge');
-            return;
-        }
-
-        const ligas = await pgBase.evaluate(() =>
-            [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].map((el, idx) => {
-                const t = el.querySelector('.vrl-MeetingsHeaderButton_Title');
-                return { idx, nome: t ? t.textContent.trim() : `Liga${idx}` };
-            })
-        );
-
-        const ligasFiltradas = ligas.filter(l =>
-            !LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))
-        );
-
-        console.log(`   ✅ ${ligasFiltradas.length} liga(s): ${ligasFiltradas.map(l => l.nome).join(' | ')}`);
-
-        // Fecha abas antigas que criamos
-        for (const entry of this.pagesLiga) {
-            if (entry._criada && !entry.page.isClosed()) {
-                await entry.page.close().catch(() => {});
-            }
-        }
-        this.pagesLiga = [];
-
-        // Aba da 1ª liga: reutiliza pgBase
-        // Demais ligas: abre nova aba no Edge do usuário
-        for (let i = 0; i < ligasFiltradas.length; i++) {
-            const liga = ligasFiltradas[i];
-            let pg, criada;
-
-            if (i === 0) {
-                pg = pgBase;
-                criada = base._criada;
-            } else {
-                pg = await this.browser.newPage();
-                pg.on('pageerror', () => {});
-                pg.on('requestfailed', () => {});
-                await pg.goto(this.url, { waitUntil: 'load', timeout: 60000 });
-                await this._delay(4000);
-                await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 }).catch(() => {});
-                criada = true;
-            }
-
-            // Clica na aba desta liga
-            await pg.evaluate((idx) => {
-                document.querySelectorAll('.vrl-MeetingsHeaderButton')[idx]?.click();
-            }, liga.idx);
-            await this._delay(1500);
-
-            this.pagesLiga.push({ page: pg, liga, _criada: criada });
-            console.log(`   ✅ Aba ${i + 1}/${ligasFiltradas.length}: ${liga.nome}`);
-        }
-    }
 
     // ─────────────────────────────────────────────────────────────
     // EXTRAÇÃO DE MERCADOS
@@ -403,22 +333,6 @@ class Bet365Coletor {
         const eventos    = [];
         const resultados = [];
 
-        // F5 na aba desta liga
-        await pg.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-        await this._delay(3000);
-
-        try { await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 }); }
-        catch(e) { console.log(`   ⚠️  [${liga.nome}] Tabs não apareceram após F5`); return { eventos, resultados }; }
-
-        // Clica na aba desta liga
-        const clicou = await pg.evaluate((idx) => {
-            const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-            if (tabs[idx]) { tabs[idx].click(); return true; }
-            return false;
-        }, liga.idx);
-        if (!clicou) return { eventos, resultados };
-        await this._delay(1500);
-
         // Resultados
         const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
         if (temBtnRes) {
@@ -480,25 +394,42 @@ class Bet365Coletor {
     // COLETA PARALELA — todas as ligas
     // ─────────────────────────────────────────────────────────────
 
-    async _extrairDados() {
-        if (this.pagesLiga.length === 0) {
-            console.log('   ⚠️  Nenhuma aba de liga preparada');
-            return { eventos: [], resultados: [] };
-        }
-
-        console.log(`   🔄 Coletando ${this.pagesLiga.length} liga(s) em paralelo...`);
-
-        const resultados = await Promise.all(
-            this.pagesLiga.map(({ page: pg, liga }) =>
-                this._coletarLiga(pg, liga).catch(err => {
-                    console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
-                    return { eventos: [], resultados: [] };
-                })
-            )
+    async _extrairDados(pg) {
+        // Lê as ligas disponíveis na aba atual
+        const ligas = await pg.evaluate(() =>
+            [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].map((el, idx) => {
+                const t = el.querySelector('.vrl-MeetingsHeaderButton_Title');
+                return { idx, nome: t ? t.textContent.trim() : `Liga${idx}` };
+            })
         );
 
-        const todosEventos    = resultados.flatMap(r => r.eventos);
-        const todosResultados = resultados.flatMap(r => r.resultados);
+        const ligasFiltradas = ligas.filter(l =>
+            !LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))
+        );
+
+        console.log(`   ✅ ${ligasFiltradas.length} liga(s): ${ligasFiltradas.map(l => l.nome).join(' | ')}`);
+
+        const todosEventos    = [];
+        const todosResultados = [];
+
+        for (const liga of ligasFiltradas) {
+            // Clica na aba desta liga
+            const clicou = await pg.evaluate((idx) => {
+                const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+                if (tabs[idx]) { tabs[idx].click(); return true; }
+                return false;
+            }, liga.idx);
+            if (!clicou) continue;
+            await this._delay(1500);
+
+            try {
+                const { eventos, resultados } = await this._coletarLiga(pg, liga);
+                todosEventos.push(...eventos);
+                todosResultados.push(...resultados);
+            } catch(err) {
+                console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
+            }
+        }
 
         console.log(`\n   ✅ Total: ${todosEventos.length} evento(s), ${todosResultados.length} resultado(s)`);
         return { eventos: todosEventos, resultados: todosResultados };
@@ -731,12 +662,21 @@ class Bet365Coletor {
         try {
             await this.conectarBrowser();
 
-            // Prepara abas na 1ª coleta ou se perdeu as abas
-            if (this.pagesLiga.length === 0) {
-                await this._prepararAbas();
+            // Garante que temos a aba correta
+            if (!this.page || this.page.isClosed()) {
+                const { page } = await this._encontrarOuAbrirPaginaVirtual();
+                this.page = page;
             }
 
-            const dados      = await this._extrairDados();
+            // Aguarda ligas
+            console.log('   ⏳ Aguardando ligas...');
+            try {
+                await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
+            } catch(e) {
+                throw new Error('Ligas não apareceram — verifique se a página está aberta no Edge');
+            }
+
+            const dados      = await this._extrairDados(this.page);
             const contadores = await this.salvarNoBanco(dados);
             await this._logColeta(inicio, 'SUCESSO', contadores, null);
 
@@ -745,18 +685,24 @@ class Bet365Coletor {
             }
 
             console.log(`✅ Bet365 - Coleta concluída`);
+
+            // F5 ao final do ciclo para a próxima coleta
+            console.log('   🔄 Atualizando página para próxima coleta...');
+            await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+            await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 }).catch(() => {});
+
         } catch(err) {
             console.error(`❌ Bet365 - Erro: ${err.message}`);
             await this._logColeta(inicio, 'ERRO', null, err.message);
 
-            // Se perdeu conexão com o Edge, reseta as abas
+            // Se perdeu conexão com o Edge, reseta
             if (err.message.includes('Session closed') || err.message.includes('Target closed') ||
                 err.message.includes('Protocol error') || err.message.includes('Connection closed') ||
                 err.message.includes('ECONNRESET') || err.message.includes('detached') ||
                 err.message.includes('não encontrado')) {
                 console.log('   🔄 Resetando conexão...');
-                this.browser   = null;
-                this.pagesLiga = [];
+                this.browser = null;
+                this.page    = null;
             }
         } finally {
             this.coletando = false;
