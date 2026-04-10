@@ -8,15 +8,12 @@ echo   CONTROLFINANCE - BET365 FUTEBOL VIRTUAL
 echo ============================================
 echo.
 
-echo [1/3] Abrindo Edge com debug...
+echo [1/2] Abrindo Edge com debug...
 start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --remote-debugging-port=9222 ^
   --no-first-run ^
   --no-default-browser-check ^
   --user-data-dir="C:\Users\Administrador\AppData\Local\Microsoft\Edge\BetColetor"
-
-echo [2/3] Iniciando servidor web (porta 3000)...
-start "Servidor Web" cmd /k "cd /d C:\PRODUCAO && npm start"
 
 echo.
 echo ============================================
@@ -31,7 +28,9 @@ echo ============================================
 echo.
 pause > nul
 
-echo [3/3] Iniciando coletor...
+echo [2/2] Iniciando servidor + coletor...
 echo.
-node -r dotenv/config backend/scheduler-bet365.js
+echo  Apos iniciar, acesse: http://localhost:3000/bet365-historico.html
+echo.
+npm start
 pause
