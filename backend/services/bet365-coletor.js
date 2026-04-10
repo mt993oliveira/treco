@@ -412,14 +412,16 @@ class Bet365Coletor {
         const todosEventos    = [];
         const todosResultados = [];
 
-        for (const liga of ligasFiltradas) {
+        for (let i = 0; i < ligasFiltradas.length; i++) {
+            const liga = ligasFiltradas[i];
+
             // Clica na aba desta liga
             const clicou = await pg.evaluate((idx) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
                 if (tabs[idx]) { tabs[idx].click(); return true; }
                 return false;
             }, liga.idx);
-            if (!clicou) continue;
+            if (!clicou) { console.log(`   ⚠️  [${liga.nome}] Tab não encontrada`); continue; }
             await this._delay(1500);
 
             try {
@@ -428,6 +430,17 @@ class Bet365Coletor {
                 todosResultados.push(...resultados);
             } catch(err) {
                 console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
+            }
+
+            // F5 após cada liga para garantir estado limpo na próxima
+            console.log(`   🔄 [${liga.nome}] Atualizando página...`);
+            await pg.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+            await this._delay(2000);
+            try {
+                await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
+            } catch(e) {
+                console.log('   ⚠️  Ligas não apareceram após reload, aguardando mais...');
+                await this._delay(5000);
             }
         }
 
@@ -685,11 +698,6 @@ class Bet365Coletor {
             }
 
             console.log(`✅ Bet365 - Coleta concluída`);
-
-            // F5 ao final do ciclo para a próxima coleta
-            console.log('   🔄 Atualizando página para próxima coleta...');
-            await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-            await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 }).catch(() => {});
 
         } catch(err) {
             console.error(`❌ Bet365 - Erro: ${err.message}`);
