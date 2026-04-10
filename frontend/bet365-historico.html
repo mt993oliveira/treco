@@ -583,20 +583,23 @@ const DEFAULTS = {
 };
 
 // Ligas canônicas (únicas aceitas no sistema)
-const LIGAS_CANONICAS = ['Copa do Mundo', 'Euro Cup', 'Premier League', 'Super Liga Sul-Americana'];
+const LIGAS_CANONICAS = ['Copa do Mundo', 'Euro Cup', 'Premier League', 'Super Liga Sul-Americana', 'Super League'];
 
-// Mapeamento de nomes antigos → nome canônico
+// Mapeamento de nomes do banco → nome exibido na grid
 const LIGA_ALIASES = {
+    // World Cup (nomes que podem existir em registros antigos)
     'world cup':                    'Copa do Mundo',
     'copa do mundo':                'Copa do Mundo',
+    // Euro Cup
     'euro cup':                     'Euro Cup',
+    // Premiership
     'premier league':               'Premier League',
     'premiership':                  'Premier League',
+    // South American (nomes que podem existir em registros antigos)
     'super liga sul-americana':     'Super Liga Sul-Americana',
     'south american super league':  'Super Liga Sul-Americana',
-    // NOTA: 'super league' (times europeus: Leeds, City, Everton) é uma liga
-    // DIFERENTE da 'Super Liga Sul-Americana' (times sul-americanos).
-    // NÃO mapeamos aqui para evitar contaminação de slots na tabela.
+    // Super League (liga europeia: Paris, Barcelona, Celtic, Porto, Madrid...)
+    'super league':                 'Super League',
 };
 
 // Mapeamento de nomes de times em inglês → português (PT-BR)

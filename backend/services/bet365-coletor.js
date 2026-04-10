@@ -29,6 +29,23 @@ const DEBUG_PORT = parseInt(process.env.BET365_DEBUG_PORT) || 9222;
 const URL_SOCCER = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR = ['express cup'];
 
+// Normaliza nomes de liga antes de gerar IDs e salvar no banco.
+// Garante que a mesma liga não seja gravada com nomes diferentes.
+const LIGA_NORMALIZAR = {
+    'copa do mundo':             'World Cup',
+    'world cup':                 'World Cup',
+    'euro cup':                  'Euro Cup',
+    'premiership':               'Premiership',
+    'premier league':            'Premiership',
+    'south american super league': 'South American Super League',
+    'super liga sul-americana':  'South American Super League',
+    'super league':              'Super League',
+};
+
+function normalizarNomeLiga(nome) {
+    return LIGA_NORMALIZAR[(nome || '').toLowerCase().trim()] || nome;
+}
+
 class Bet365Coletor {
     constructor() {
         this.url       = URL_SOCCER;
@@ -340,9 +357,9 @@ class Bet365Coletor {
             await this._delay(2000);
             await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
             await this._delay(1000);
-            const res = await this._extrairResultados(liga.nome, pg);
+            const res = await this._extrairResultados(normalizarNomeLiga(liga.nome), pg);
             resultados.push(...res);
-            console.log(`   📋 [${liga.nome}] ${res.length} resultado(s)`);
+            console.log(`   📋 [${normalizarNomeLiga(liga.nome)}] ${res.length} resultado(s)`);
 
             // Volta para próximos
             await pg.evaluate((idx) => document.querySelectorAll('.vrl-MeetingsHeaderButton')[idx]?.click(), liga.idx);
@@ -385,11 +402,12 @@ class Bet365Coletor {
             const oddEmpate = ftMkt?.selecoes[1]?.odd || 0;
             const oddFora   = ftMkt?.selecoes[2]?.odd || 0;
 
-            const horario  = infoJogo.horario || countdown;
-            const eventoId = this._gerarId(liga.nome, infoJogo.timeCasa, infoJogo.timeFora, horario);
+            const horario    = infoJogo.horario || countdown;
+            const ligaNormal = normalizarNomeLiga(liga.nome);
+            const eventoId   = this._gerarId(ligaNormal, infoJogo.timeCasa, infoJogo.timeFora, horario);
 
-            eventos.push({ eventoId, liga: liga.nome, timeCasa: infoJogo.timeCasa, timeFora: infoJogo.timeFora, horario, countdown, oddCasa, oddEmpate, oddFora, mercados });
-            console.log(`      ✅ [${liga.nome}] ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
+            eventos.push({ eventoId, liga: ligaNormal, timeCasa: infoJogo.timeCasa, timeFora: infoJogo.timeFora, horario, countdown, oddCasa, oddEmpate, oddFora, mercados });
+            console.log(`      ✅ [${ligaNormal}] ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
         }
 
         return { eventos, resultados };
@@ -408,15 +426,10 @@ class Bet365Coletor {
             })
         );
 
-        // Filtra ignoradas e remove duplicatas (mantém primeira ocorrência)
-        const nomesSeen = new Set();
-        const ligasFiltradas = ligas.filter(l => {
-            if (LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))) return false;
-            const key = l.nome.toLowerCase().trim();
-            if (nomesSeen.has(key)) return false;
-            nomesSeen.add(key);
-            return true;
-        });
+        // Filtra apenas as ignoradas (percorre todas, inclusive duplicatas)
+        const ligasFiltradas = ligas.filter(l =>
+            !LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))
+        );
 
         console.log(`   ✅ ${ligasFiltradas.length} liga(s): ${ligasFiltradas.map(l => l.nome).join(' | ')}`);
 
@@ -576,16 +589,40 @@ class Bet365Coletor {
                 if (jaExiste && scoreZero && !temScore) continue;
 
                 let oddCasa = 0, oddEmpate = 0, oddFora = 0;
+                // 1) Tenta match exato pelo eventoId (hash com horário)
                 const evMem = eventos.find(e => e.eventoId === eventoId);
                 if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
 
                 if (!oddCasa && !oddEmpate && !oddFora) {
+                    // 2) Busca por hash exato no banco
                     const evDb = await pool.request().input('evId2', sql.BigInt, eventoId)
                         .query(`SELECT odd_casa, odd_empate, odd_fora FROM bet365_eventos WHERE id=@evId2`);
                     if (evDb.recordset.length > 0) {
                         oddCasa   = parseFloat(evDb.recordset[0].odd_casa)   || 0;
                         oddEmpate = parseFloat(evDb.recordset[0].odd_empate) || 0;
                         oddFora   = parseFloat(evDb.recordset[0].odd_fora)   || 0;
+                    }
+                }
+
+                if (!oddCasa && !oddEmpate && !oddFora) {
+                    // 3) Fallback: busca por liga + times (ignora diferença de formato no horário)
+                    const evFb = await pool.request()
+                        .input('liga2',     sql.NVarChar(200), res.liga)
+                        .input('timeCasa2', sql.NVarChar(100), res.timeCasa)
+                        .input('timeFora2', sql.NVarChar(100), res.timeFora)
+                        .query(`
+                            SELECT TOP 1 odd_casa, odd_empate, odd_fora
+                            FROM bet365_eventos
+                            WHERE league_name = @liga2
+                              AND time_casa   = @timeCasa2
+                              AND time_fora   = @timeFora2
+                              AND odd_casa    > 0
+                            ORDER BY data_coleta DESC
+                        `);
+                    if (evFb.recordset.length > 0) {
+                        oddCasa   = parseFloat(evFb.recordset[0].odd_casa)   || 0;
+                        oddEmpate = parseFloat(evFb.recordset[0].odd_empate) || 0;
+                        oddFora   = parseFloat(evFb.recordset[0].odd_fora)   || 0;
                     }
                 }
 
