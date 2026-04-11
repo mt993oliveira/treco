@@ -470,16 +470,19 @@ class Bet365Coletor {
                 console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
             }
 
-            // F5 após cada liga para garantir estado limpo na próxima
-            console.log(`   🔄 [${liga.nome}] Atualizando página...`);
+            // Ctrl+F5 (hard refresh) após cada liga — limpa cache e garante estado limpo
+            console.log(`   🔄 [${liga.nome}] Ctrl+F5 — hard refresh...`);
             for (let r = 1; r <= 3; r++) {
                 try {
+                    await pg.setCacheEnabled(false);                          // desativa cache (= Ctrl+F5)
                     await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
-                    await this._delay(3000);
+                    await pg.setCacheEnabled(true);                           // reativa cache
+                    await this._delay(4000);                                  // aguarda JS da Bet365 inicializar
                     await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
-                    break; // ligas apareceram, continua
+                    break; // ligas apareceram, continua para próxima liga
                 } catch(e) {
-                    console.log(`   ⚠️  Ligas não apareceram após reload (${r}/3), tentando novamente...`);
+                    await pg.setCacheEnabled(true).catch(() => {});           // garante que cache não fica desativado
+                    console.log(`   ⚠️  Ligas não apareceram após Ctrl+F5 (${r}/3), tentando novamente...`);
                     if (r === 3) console.log('   ❌ Não foi possível recarregar. Próxima liga pode falhar.');
                 }
             }
@@ -769,11 +772,14 @@ class Bet365Coletor {
                     ligasOk = true;
                     break;
                 } catch(e) {
-                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — recarregando página...`);
+                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — Ctrl+F5...`);
                     try {
+                        await this.page.setCacheEnabled(false);
                         await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+                        await this.page.setCacheEnabled(true);
                         await this._delay(4000);
                     } catch(reloadErr) {
+                        await this.page.setCacheEnabled(true).catch(() => {});
                         console.log(`   ⚠️  Reload falhou: ${reloadErr.message}`);
                     }
                 }
