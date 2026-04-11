@@ -494,7 +494,8 @@ class Bet365Coletor {
                 if (ev.horario && /^\d{1,2}[.:]\d{2}$/.test(ev.horario)) {
                     const [h, m] = ev.horario.replace('.', ':').split(':').map(Number);
                     let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), h, m, 0, 0);
-                    if (ms > Date.now() + 90 * 60000) ms -= 86400000;
+                    if (ms > Date.now() + 90 * 60000) ms -= 86400000; // futuro distante = ontem
+                    if (ms < Date.now() - 30 * 60000) ms += 86400000;  // >30min no passado = amanhã
                     startDt = new Date(ms);
                 }
                 const agora = new Date();

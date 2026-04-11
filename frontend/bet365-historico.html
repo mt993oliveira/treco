@@ -1508,8 +1508,8 @@ function renderTabela() {
 
     gsDesc.forEach(grupo => {
         const hora    = grupo.hora;
-        // Exibe horário UTC (= horário da Bet365), não fuso local do browser
-        const horaStr = `${pad2(hora.getUTCDate())}/${pad2(hora.getUTCMonth()+1)} ${pad2(hora.getUTCHours())}:00`;
+        // Exibe horário local do browser (mesmo fuso que o usuário vê na Bet365 BR)
+        const horaStr = `${pad2(hora.getDate())}/${pad2(hora.getMonth()+1)} ${pad2(hora.getHours())}:00`;
 
         // Mapeia cada jogo ao slot do seu minuto exato dentro da hora
         const slotMap = new Array(N).fill(null);
