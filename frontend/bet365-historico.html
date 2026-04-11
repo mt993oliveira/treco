@@ -1187,8 +1187,8 @@ async function renderProximosJogos() {
 
         // Filtrar por liga ativa e só AGENDADOS com odds
         let jogos = (d.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
-        if (S.ligaAtiva) jogos = jogos.filter(j => j.liga === S.ligaAtiva);
-        jogos = jogos.slice(0, 12).sort((a, b) => (a.seconds_to_start||999) - (b.seconds_to_start||999));
+        if (S.ligaAtiva) jogos = jogos.filter(j => normalizarLiga(j.liga) === S.ligaAtiva);
+        jogos = jogos.sort((a, b) => new Date(a.horario||0) - new Date(b.horario||0)).slice(0, 12);
 
         if (!jogos.length) {
             el.innerHTML = '<div style="color:#334155;font-size:11px;padding:8px">Nenhum jogo agendado para esta liga</div>';
@@ -1448,7 +1448,7 @@ function renderTabela() {
     const tbody = document.getElementById('tbl-body');
     const tfoot = document.getElementById('tbl-foot');
 
-    const semDados = !S.todasPartidas.length;
+    const semDados = !S.partidas.length;
 
     // ── Slots de minuto: usa mapa fixo da liga se conhecida ──
     // Garante posicionamento correto mesmo em dados históricos antigos
