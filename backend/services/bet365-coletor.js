@@ -578,35 +578,44 @@ class Bet365Coletor {
 
         for (const res of resultados) {
             try {
-                const eventoId = this._gerarId(res.liga, res.timeCasa, res.timeFora, res.horario || '');
-                const existe   = await pool.request().input('evId', sql.BigInt, eventoId)
+                // ── 1. Calcula data/hora real do jogo PRIMEIRO ──
+                // O hash inclui a DATA para diferenciar jogos iguais em dias diferentes
+                // (futebol virtual repete os mesmos times/horários todos os dias)
+                let dataPart = new Date();
+                if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
+                    const [hh, mm] = res.horario.replace('.', ':').split(':').map(Number);
+                    let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), hh, mm, 0, 0);
+                    if (ms > Date.now() + 90 * 60000) ms -= 86400000; // hora no futuro distante = ontem
+                    dataPart = new Date(ms);
+                }
+
+                // Hash inclui data UTC para unicidade por dia
+                const dataKey = `${dataPart.getUTCFullYear()}-${String(dataPart.getUTCMonth()+1).padStart(2,'0')}-${String(dataPart.getUTCDate()).padStart(2,'0')}`;
+                const eventoId = this._gerarId(res.liga, res.timeCasa, res.timeFora, `${dataKey}|${res.horario || ''}`);
+
+                // ── 2. Verifica se já existe com placar real ──
+                const existe = await pool.request().input('evId', sql.BigInt, eventoId)
                     .query(`SELECT id, gol_casa, gol_fora FROM bet365_historico_partidas WHERE evento_id=@evId`);
 
                 const jaExiste  = existe.recordset.length > 0;
                 const scoreZero = jaExiste && existe.recordset[0].gol_casa === 0 && existe.recordset[0].gol_fora === 0;
                 const temScore  = (res.golCasa || 0) + (res.golFora || 0) > 0;
 
-                if (jaExiste && !scoreZero) continue;
-                if (jaExiste && scoreZero && !temScore) continue;
+                if (jaExiste && !scoreZero) continue; // já tem placar real, pula
+                if (jaExiste && scoreZero && !temScore) continue; // 0-0 real, pula
 
+                // ── 3. Busca odds ──
                 let oddCasa = 0, oddEmpate = 0, oddFora = 0;
-                // 1) Tenta match exato pelo eventoId (hash com horário)
-                const evMem = eventos.find(e => e.eventoId === eventoId);
+                // 1) Tenta match por liga + times em memória (evento coletado neste ciclo)
+                const evMem = eventos.find(e =>
+                    e.liga === res.liga &&
+                    e.timeCasa === res.timeCasa &&
+                    e.timeFora === res.timeFora
+                );
                 if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
 
                 if (!oddCasa && !oddEmpate && !oddFora) {
-                    // 2) Busca por hash exato no banco
-                    const evDb = await pool.request().input('evId2', sql.BigInt, eventoId)
-                        .query(`SELECT odd_casa, odd_empate, odd_fora FROM bet365_eventos WHERE id=@evId2`);
-                    if (evDb.recordset.length > 0) {
-                        oddCasa   = parseFloat(evDb.recordset[0].odd_casa)   || 0;
-                        oddEmpate = parseFloat(evDb.recordset[0].odd_empate) || 0;
-                        oddFora   = parseFloat(evDb.recordset[0].odd_fora)   || 0;
-                    }
-                }
-
-                if (!oddCasa && !oddEmpate && !oddFora) {
-                    // 3) Fallback: busca por liga + times (ignora diferença de formato no horário)
+                    // 2) Fallback: busca por liga + times no banco (mais recente)
                     const evFb = await pool.request()
                         .input('liga2',     sql.NVarChar(200), res.liga)
                         .input('timeCasa2', sql.NVarChar(100), res.timeCasa)
@@ -627,14 +636,7 @@ class Bet365Coletor {
                     }
                 }
 
-                let dataPart = new Date();
-                if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
-                    const [hh, mm] = res.horario.replace('.', ':').split(':').map(Number);
-                    let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), hh, mm, 0, 0);
-                    if (ms > Date.now() + 90 * 60000) ms -= 86400000;
-                    dataPart = new Date(ms);
-                }
-
+                // ── 4. Salva resultado ──
                 await pool.request()
                     .input('evId',     sql.BigInt,       eventoId)
                     .input('liga',     sql.NVarChar(200), res.liga)
@@ -668,7 +670,8 @@ class Bet365Coletor {
                                 @resultado,@oddCasa,@oddEmp,@oddFora,@dataPart,0);
                     `);
 
-                if (jaExiste && scoreZero) console.log(`   🔄 Score atualizado: ${res.timeCasa} ${res.golCasa}-${res.golFora} ${res.timeFora}`);
+                const acao = jaExiste ? '🔄 Atualizado' : '✅ Salvo';
+                console.log(`   ${acao}: [${res.liga}] ${res.timeCasa} ${res.golCasa}-${res.golFora} ${res.timeFora} (${res.horario})`);
                 histOk++;
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
