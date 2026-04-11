@@ -392,6 +392,17 @@
         </div>
     </div>
 
+    <!-- Últimos Resultados coletados -->
+    <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em">ÚLTIMOS RESULTADOS COLETADOS</div>
+            <span id="ultimos-res-count" style="font-size:10px;color:#334155"></span>
+        </div>
+        <div id="ultimos-resultados-lista" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+            <div style="color:#334155;font-size:11px;padding:16px;text-align:center">Carregando...</div>
+        </div>
+    </div>
+
     <!-- Próximos jogos -->
     <div style="margin-top:14px">
         <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">
@@ -732,7 +743,7 @@ function setView(v) {
     document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
     ['analise','historico','clubes','diagnostico'].forEach(id =>
         document.getElementById('view-' + id).className = 'view-btn' + (v === id ? ' ativo' : ''));
-    if (v === 'historico')   { carregarHistorico(); renderProximosJogos(); }
+    if (v === 'historico')   { carregarHistorico(); renderProximosJogos(); renderUltimosResultados(); }
     if (v === 'analise')     { renderAnalise(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); }
@@ -747,6 +758,7 @@ async function carregarTudo() {
         carregarSugestoes(),
         carregarEstatisticasAvancadas(),
         renderProximosJogos(),
+        renderUltimosResultados(),
     ]);
     // Render heatmap IA after historico is loaded (S.todasPartidas populated)
     renderHeatmapIA();
@@ -1050,7 +1062,7 @@ function renderLigas() {
             S.partidas  = filtrarPartidas();
             document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
             b.classList.add('ativo');
-            renderTabela(); renderGrafico(); renderProximosJogos(); renderHeatmapIA();
+            renderTabela(); renderGrafico(); renderProximosJogos(); renderHeatmapIA(); renderUltimosResultados();
             document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
         };
         c.appendChild(b);
@@ -1406,6 +1418,76 @@ function renderGrafico() {
         S.grafico = new Chart(document.getElementById('grafico').getContext('2d'), cfg);
     }
     if (fi) document.getElementById('g-titulo').textContent = `${fi.label} — ${serie.length} jogos`;
+}
+
+// ============================================================
+// ÚLTIMOS RESULTADOS — lista simples com nomes + placar
+// ============================================================
+async function renderUltimosResultados() {
+    const el = document.getElementById('ultimos-resultados-lista');
+    const cnt = document.getElementById('ultimos-res-count');
+    if (!el) return;
+    try {
+        const r = await fetch('/api/bet365/ultimos-resultados?n=30');
+        const d = await r.json();
+        if (!d.success) throw new Error(d.error || 'Erro');
+
+        if (!d.data?.length) {
+            el.innerHTML = `<div style="padding:16px;text-align:center;color:#334155;font-size:11px">
+                Nenhum resultado coletado ainda. Aguarde a próxima coleta.
+            </div>`;
+            if (cnt) cnt.textContent = '';
+            return;
+        }
+
+        if (cnt) cnt.textContent = `(${d.total} resultados reais)`;
+
+        const ligaFiltro = S.ligaAtiva; // null = todas
+        const partidas = ligaFiltro
+            ? d.data.filter(p => normalizarLiga(p.liga) === ligaFiltro)
+            : d.data;
+
+        if (!partidas.length) {
+            el.innerHTML = `<div style="padding:16px;text-align:center;color:#334155;font-size:11px">
+                Nenhum resultado para esta liga nas últimas coletas.
+            </div>`;
+            return;
+        }
+
+        const rows = partidas.map(p => {
+            const dt = p.data_partida ? new Date(p.data_partida) : null;
+            const horaStr = dt ? dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '—';
+            const dataStr = dt ? dt.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'}) : '';
+            const liga = normalizarLiga(p.liga) || p.liga || '—';
+            const placar = (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa} - ${p.gol_fora}` : '? - ?';
+            const res = p.resultado || '?';
+            const resCor = res === 'CASA' ? '#4ade80' : res === 'FORA' ? '#f87171' : '#fbbf24';
+            const tc = normalizarTime(p.time_casa) || p.time_casa || '?';
+            const tf = normalizarTime(p.time_fora) || p.time_fora || '?';
+            return `<tr style="border-bottom:1px solid #1e293b">
+                <td style="padding:5px 10px;color:#475569;font-size:10px;white-space:nowrap">${dataStr} ${horaStr}</td>
+                <td style="padding:5px 8px;font-size:9px;color:#64748b;white-space:nowrap">${liga}</td>
+                <td style="padding:5px 8px;font-size:11px;color:#e2e8f0;text-align:right">${tc}</td>
+                <td style="padding:5px 10px;font-size:13px;font-weight:800;text-align:center;color:#e2e8f0;white-space:nowrap">${placar}</td>
+                <td style="padding:5px 8px;font-size:11px;color:#e2e8f0;text-align:left">${tf}</td>
+                <td style="padding:5px 8px;font-size:10px;font-weight:700;color:${resCor};text-align:center">${res}</td>
+            </tr>`;
+        }).join('');
+
+        el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#0c1220">
+                <th style="padding:6px 10px;font-size:9px;font-weight:700;color:#334155;text-align:left">HORA</th>
+                <th style="padding:6px 8px;font-size:9px;font-weight:700;color:#334155;text-align:left">LIGA</th>
+                <th style="padding:6px 8px;font-size:9px;font-weight:700;color:#334155;text-align:right">CASA</th>
+                <th style="padding:6px 10px;font-size:9px;font-weight:700;color:#334155;text-align:center">PLACAR</th>
+                <th style="padding:6px 8px;font-size:9px;font-weight:700;color:#334155;text-align:left">FORA</th>
+                <th style="padding:6px 8px;font-size:9px;font-weight:700;color:#334155;text-align:center">RES</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table></div>`;
+    } catch(e) {
+        el.innerHTML = `<div style="padding:16px;text-align:center;color:#f87171;font-size:11px">Erro: ${e.message}</div>`;
+    }
 }
 
 // ============================================================
@@ -2143,11 +2225,53 @@ async function _diagCarregarStats() {
         const elC = document.getElementById('diag-contagens');
         if (elC && diag.success) {
             const d = diag.data;
+
+            // Monta tabela de últimos resultados no banco
+            const ultimosRows = (d.ultimosHistorico || []).map(p => {
+                const dt = p.data_partida ? new Date(p.data_partida) : null;
+                const horaStr = dt ? dt.toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+                const placar = (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa}-${p.gol_fora}` : '?-?';
+                const est = p.resultado_estimado ? ' ★est' : '';
+                return `<tr style="border-bottom:1px solid #1e293b">
+                    <td style="padding:3px 8px;font-size:10px;color:#475569;white-space:nowrap">${horaStr}</td>
+                    <td style="padding:3px 8px;font-size:9px;color:#64748b">${p.liga || '—'}</td>
+                    <td style="padding:3px 8px;font-size:10px;color:#e2e8f0">${p.time_casa || '?'} <b>${placar}</b> ${p.time_fora || '?'}${est}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Nenhum registro no banco</td></tr>';
+
+            const porLigaRows = (d.historicoPorLiga || []).map(l => {
+                const ultima = l.ultima_partida ? new Date(l.ultima_partida).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+                return `<tr style="border-bottom:1px solid #0c1220">
+                    <td style="padding:3px 8px;font-size:10px;color:#94a3b8">${l.liga}</td>
+                    <td style="padding:3px 8px;font-size:10px;color:#1fcc59;font-weight:700;text-align:right">${l.total}</td>
+                    <td style="padding:3px 8px;font-size:9px;color:#475569">${ultima}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Vazio</td></tr>';
+
             elC.innerHTML = `
-                <div style="display:flex;flex-direction:column;gap:5px">
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
                     <div style="font-size:11px"><span style="color:#475569">Eventos ativos:</span> <b style="color:#60a5fa">${d.eventosAtivos ?? '—'}</b></div>
                     <div style="font-size:11px"><span style="color:#475569">Histórico total:</span> <b style="color:#1fcc59">${d.historicoPartidas ?? '—'}</b></div>
+                    <div style="font-size:11px"><span style="color:#475569">Histórico últimas 24h:</span> <b style="color:${(d.historicoPartidas24h||0)>0?'#1fcc59':'#f87171'}">${d.historicoPartidas24h ?? '0'}</b></div>
                 </div>
+                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">HISTÓRICO POR LIGA</div>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
+                    <thead><tr style="background:#0c1220">
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Liga</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:right">Total</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Última partida</th>
+                    </tr></thead>
+                    <tbody>${porLigaRows}</tbody>
+                </table>
+                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">ÚLTIMOS 20 REGISTROS NO BANCO</div>
+                <table style="width:100%;border-collapse:collapse">
+                    <thead><tr style="background:#0c1220">
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Data/Hora</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Liga</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Partida</th>
+                    </tr></thead>
+                    <tbody>${ultimosRows}</tbody>
+                </table>
             `;
         }
 

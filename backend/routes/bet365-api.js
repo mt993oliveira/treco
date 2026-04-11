@@ -398,10 +398,26 @@ router.get('/diagnostico', async (req, res) => {
 
         const countEventos = await pool.query(`SELECT COUNT(*) AS total FROM bet365_eventos WHERE ativo = 1`);
         const countHistorico = await pool.query(`SELECT COUNT(*) AS total FROM bet365_historico_partidas`);
+        const countHistorico24h = await pool.query(`SELECT COUNT(*) AS total FROM bet365_historico_partidas WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())`);
         const ultimosEventos = await pool.query(`
             SELECT TOP 10 id, time_casa, time_fora, league_name, gol_casa, gol_fora, status
             FROM bet365_eventos
             ORDER BY data_atualizacao DESC
+        `);
+        const ultimosHistorico = await pool.query(`
+            SELECT TOP 20
+                liga, time_casa, time_fora, gol_casa, gol_fora, resultado,
+                data_partida,
+                ISNULL(resultado_estimado, 0) AS resultado_estimado
+            FROM bet365_historico_partidas
+            ORDER BY data_partida DESC
+        `);
+        const historicoPorLiga = await pool.query(`
+            SELECT liga, COUNT(*) AS total,
+                   MAX(data_partida) AS ultima_partida
+            FROM bet365_historico_partidas
+            GROUP BY liga
+            ORDER BY total DESC
         `);
 
         res.json({
@@ -409,10 +425,40 @@ router.get('/diagnostico', async (req, res) => {
             data: {
                 eventosAtivos: countEventos.recordset[0]?.total || 0,
                 historicoPartidas: countHistorico.recordset[0]?.total || 0,
-                amostraEventos: ultimosEventos.recordset
+                historicoPartidas24h: countHistorico24h.recordset[0]?.total || 0,
+                amostraEventos: ultimosEventos.recordset,
+                ultimosHistorico: ultimosHistorico.recordset,
+                historicoPorLiga: historicoPorLiga.recordset
             }
         });
 
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/bet365/ultimos-resultados
+ * Retorna os últimos N resultados coletados (lista simples)
+ */
+router.get('/ultimos-resultados', async (req, res) => {
+    try {
+        const n = Math.min(parseInt(req.query.n) || 30, 100);
+        const pool = await getDbPool();
+        await garantirSchema(pool);
+        const result = await pool.request()
+            .input('n', sql.Int, n)
+            .query(`
+                SELECT TOP (@n)
+                    liga, time_casa, time_fora,
+                    gol_casa, gol_fora, resultado,
+                    data_partida,
+                    ISNULL(resultado_estimado, 0) AS resultado_estimado
+                FROM bet365_historico_partidas
+                WHERE resultado_estimado = 0
+                ORDER BY data_partida DESC
+            `);
+        res.json({ success: true, total: result.recordset.length, data: result.recordset });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
