@@ -911,4 +911,67 @@ router.post('/reparar-datas', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/bet365/limpar-ligas-erradas
+ * Remove registros históricos onde o time pertence a uma liga diferente da registrada.
+ * Times de clube (Chelsea, Leeds, etc.) não devem estar na World Cup.
+ * Times nacionais (Brasil, França, etc.) não devem estar no Premier League.
+ */
+router.post('/limpar-ligas-erradas', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        // Times exclusivos do Premier League (clubes ingleses)
+        const timesPremier = [
+            'Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Burnley',
+            'Chelsea','Crystal Palace','Everton','Fulham','Leeds','Leicester',
+            'Liverpool','Luton','Manchester City','Manchester United','Newcastle',
+            'Nottingham Forest','Sheffield United','Tottenham','West Ham','Wolves',
+            'Wolverhampton'
+        ];
+
+        // Times exclusivos do Super League (clubes europeus)
+        const timesSuper = [
+            'Ajax','Atletico Madrid','Barcelona','Benfica','Celtic','Dortmund',
+            'Inter Milan','Juventus','Lyon','Marseille','Milan','Monaco','Napoli',
+            'Paris','Porto','Real Madrid','Roma','Schalke','Valencia','Villarreal',
+            'Galatasaray','Fenerbahce','Anderlecht','Salzburg','Bruges'
+        ];
+
+        // Deleta registros Premier League em liga errada
+        const delPremierErrado = await pool.request()
+            .input('times', sql.NVarChar(sql.MAX), timesPremier.join(','))
+            .query(`
+                DELETE FROM bet365_historico_partidas
+                WHERE liga NOT IN ('Premiership','Premier League')
+                  AND (
+                    time_casa IN (${timesPremier.map(t => `'${t}'`).join(',')})
+                    OR time_fora IN (${timesPremier.map(t => `'${t}'`).join(',')})
+                  )
+            `);
+
+        // Deleta registros Super League em liga errada
+        const delSuperErrado = await pool.request()
+            .query(`
+                DELETE FROM bet365_historico_partidas
+                WHERE liga NOT IN ('Super League')
+                  AND (
+                    time_casa IN (${timesSuper.map(t => `'${t}'`).join(',')})
+                    OR time_fora IN (${timesSuper.map(t => `'${t}'`).join(',')})
+                  )
+            `);
+
+        res.json({
+            success: true,
+            removidos_premier_errado: delPremierErrado.rowsAffected[0],
+            removidos_super_errado:   delSuperErrado.rowsAffected[0],
+            total_removidos: delPremierErrado.rowsAffected[0] + delSuperErrado.rowsAffected[0]
+        });
+
+    } catch (err) {
+        console.error('❌ ERRO API bet365/limpar-ligas-erradas:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 module.exports = router;

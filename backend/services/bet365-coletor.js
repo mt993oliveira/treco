@@ -366,8 +366,14 @@ class Bet365Coletor {
             resultados.push(...res);
             console.log(`   📋 [${normalizarNomeLiga(liga.nome)}] ${res.length} resultado(s)`);
 
-            // Volta para próximos
-            await pg.evaluate((idx) => document.querySelectorAll('.vrl-MeetingsHeaderButton')[idx]?.click(), liga.idx);
+            // Volta para próximos — clica pelo nome para garantir a aba certa
+            await pg.evaluate((nomeLiga) => {
+                const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+                for (const tab of tabs) {
+                    const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
+                    if (txt === nomeLiga) { tab.click(); return; }
+                }
+            }, liga.nome);
             await this._delay(2000);
         }
 
@@ -444,13 +450,16 @@ class Bet365Coletor {
         for (let i = 0; i < ligasFiltradas.length; i++) {
             const liga = ligasFiltradas[i];
 
-            // Clica na aba desta liga
-            const clicou = await pg.evaluate((idx) => {
+            // Clica na aba PELO NOME (não pelo índice) — evita erro após F5
+            const clicou = await pg.evaluate((nomeLiga) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-                if (tabs[idx]) { tabs[idx].click(); return true; }
+                for (const tab of tabs) {
+                    const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
+                    if (txt === nomeLiga) { tab.click(); return true; }
+                }
                 return false;
-            }, liga.idx);
-            if (!clicou) { console.log(`   ⚠️  [${liga.nome}] Tab não encontrada`); continue; }
+            }, liga.nome);
+            if (!clicou) { console.log(`   ⚠️  [${liga.nome}] Tab não encontrada pelo nome`); continue; }
             await this._delay(3000); // aguarda conteúdo da aba carregar
 
             try {
