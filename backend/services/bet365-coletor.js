@@ -27,7 +27,7 @@ dotenv.config();
 
 const DEBUG_PORT = parseInt(process.env.BET365_DEBUG_PORT) || 9222;
 const URL_SOCCER = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
-const LIGAS_IGNORAR = ['express cup'];
+const LIGAS_IGNORAR = ['express cup', 'south american', 'sul-americana'];
 
 // Normaliza nomes de liga antes de gerar IDs e salvar no banco.
 // Garante que a mesma liga não seja gravada com nomes diferentes.
