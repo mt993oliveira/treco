@@ -1456,8 +1456,9 @@ async function renderUltimosResultados() {
 
         const rows = partidas.map(p => {
             const dt = p.data_partida ? new Date(p.data_partida) : null;
-            const horaStr = dt ? dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '—';
-            const dataStr = dt ? dt.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'}) : '';
+            // Mostra em UTC para ser consistente com a grid (Bet365 usa UTC)
+            const horaStr = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '—';
+            const dataStr = dt ? `${pad2(dt.getUTCDate())}/${pad2(dt.getUTCMonth()+1)}` : '';
             const liga = normalizarLiga(p.liga) || p.liga || '—';
             const placar = (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa} - ${p.gol_fora}` : '? - ?';
             const res = p.resultado || '?';
@@ -1590,8 +1591,8 @@ function renderTabela() {
 
     gsDesc.forEach(grupo => {
         const hora    = grupo.hora;
-        // Exibe horário local do browser (mesmo fuso que o usuário vê na Bet365 BR)
-        const horaStr = `${pad2(hora.getDate())}/${pad2(hora.getMonth()+1)} ${pad2(hora.getHours())}:00`;
+        // Exibe horário UTC — os tempos da Bet365 são armazenados e exibidos em UTC
+        const horaStr = `${pad2(hora.getUTCDate())}/${pad2(hora.getUTCMonth()+1)} ${pad2(hora.getUTCHours())}:00`;
 
         // Mapeia cada jogo ao slot do seu minuto exato dentro da hora
         const slotMap = new Array(N).fill(null);

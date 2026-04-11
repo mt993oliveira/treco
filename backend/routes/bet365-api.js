@@ -832,4 +832,83 @@ router.get('/log-coleta', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/bet365/reparar-datas
+ * Corrige registros históricos com data_partida errada (minuto 00:xx UTC)
+ * cruzando com start_time_datetime de bet365_eventos pelo nome dos times.
+ */
+router.post('/reparar-datas', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        // Busca registros históricos cujo minuto UTC não bate com os slots canônicos
+        // da liga — ou cujo MINUTE(data_partida) = 55,52,48... (odds capturadas erroneamente)
+        // Estratégia: cruza historico × eventos pelo nome dos times dentro de janela de 4h
+        const corrigidos = [];
+        const erros = [];
+
+        const candidatos = await pool.query(`
+            SELECT h.id, h.evento_id, h.liga, h.time_casa, h.time_fora, h.data_partida
+            FROM bet365_historico_partidas h
+            WHERE h.resultado_estimado = 0
+              AND h.data_partida >= DATEADD(DAY, -3, GETUTCDATE())
+        `);
+
+        for (const h of candidatos.recordset) {
+            try {
+                const ev = await pool.request()
+                    .input('liga',     sql.NVarChar(200), h.liga)
+                    .input('timeCasa', sql.NVarChar(100), h.time_casa)
+                    .input('timeFora', sql.NVarChar(100), h.time_fora)
+                    .input('dataRef',  sql.DateTime2,     h.data_partida)
+                    .query(`
+                        SELECT TOP 1 start_time_datetime
+                        FROM bet365_eventos
+                        WHERE league_name = @liga
+                          AND time_casa   = @timeCasa
+                          AND time_fora   = @timeFora
+                          AND ABS(DATEDIFF(HOUR, start_time_datetime, @dataRef)) <= 6
+                        ORDER BY ABS(DATEDIFF(MINUTE, start_time_datetime, @dataRef))
+                    `);
+
+                if (ev.recordset.length > 0) {
+                    const novaData = ev.recordset[0].start_time_datetime;
+                    const diffMin  = Math.abs(
+                        (new Date(novaData) - new Date(h.data_partida)) / 60000
+                    );
+                    // Só atualiza se a diferença for significativa (> 5 min)
+                    if (diffMin > 5) {
+                        await pool.request()
+                            .input('id',       sql.Int,       h.id)
+                            .input('novaData', sql.DateTime2, novaData)
+                            .query(`UPDATE bet365_historico_partidas SET data_partida=@novaData WHERE id=@id`);
+                        corrigidos.push({
+                            id: h.id,
+                            time_casa: h.time_casa,
+                            time_fora: h.time_fora,
+                            data_antiga: h.data_partida,
+                            data_nova: novaData,
+                            diff_min: Math.round(diffMin)
+                        });
+                    }
+                }
+            } catch (e) {
+                erros.push({ id: h.id, erro: e.message });
+            }
+        }
+
+        res.json({
+            success: true,
+            candidatos: candidatos.recordset.length,
+            corrigidos: corrigidos.length,
+            erros: erros.length,
+            detalhes: corrigidos
+        });
+
+    } catch (err) {
+        console.error('❌ ERRO API bet365/reparar-datas:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 module.exports = router;
