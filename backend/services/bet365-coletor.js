@@ -350,13 +350,18 @@ class Bet365Coletor {
         const eventos    = [];
         const resultados = [];
 
-        // Resultados
+        // Resultados — clica "Show More" várias vezes para pegar todos da sessão
         const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
         if (temBtnRes) {
             await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
             await this._delay(2000);
-            await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
-            await this._delay(1000);
+            // Clica Show More até 5 vezes para carregar resultados da última hora
+            for (let sm = 0; sm < 5; sm++) {
+                const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
+                if (!temMore) break;
+                await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
+                await this._delay(800);
+            }
             const res = await this._extrairResultados(normalizarNomeLiga(liga.nome), pg);
             resultados.push(...res);
             console.log(`   📋 [${normalizarNomeLiga(liga.nome)}] ${res.length} resultado(s)`);
@@ -458,13 +463,16 @@ class Bet365Coletor {
 
             // F5 após cada liga para garantir estado limpo na próxima
             console.log(`   🔄 [${liga.nome}] Atualizando página...`);
-            await pg.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-            await this._delay(2000);
-            try {
-                await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
-            } catch(e) {
-                console.log('   ⚠️  Ligas não apareceram após reload, aguardando mais...');
-                await this._delay(5000);
+            for (let r = 1; r <= 3; r++) {
+                try {
+                    await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+                    await this._delay(3000);
+                    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
+                    break; // ligas apareceram, continua
+                } catch(e) {
+                    console.log(`   ⚠️  Ligas não apareceram após reload (${r}/3), tentando novamente...`);
+                    if (r === 3) console.log('   ❌ Não foi possível recarregar. Próxima liga pode falhar.');
+                }
             }
         }
 
@@ -595,7 +603,7 @@ class Bet365Coletor {
                           AND time_casa   = @timeCasa2
                           AND time_fora   = @timeFora2
                           AND start_time_datetime <= DATEADD(MINUTE, 10, GETUTCDATE())
-                          AND start_time_datetime >= DATEADD(MINUTE, -180, GETUTCDATE())
+                          AND start_time_datetime >= DATEADD(MINUTE, -360, GETUTCDATE())
                         ORDER BY start_time_datetime DESC
                     `);
 
@@ -743,12 +751,26 @@ class Bet365Coletor {
                 this.page = page;
             }
 
-            // Aguarda ligas
+            // Aguarda ligas — com até 3 tentativas de reload automático
             console.log('   ⏳ Aguardando ligas...');
-            try {
-                await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
-            } catch(e) {
-                throw new Error('Ligas não apareceram — verifique se a página está aberta no Edge');
+            let ligasOk = false;
+            for (let tentativa = 1; tentativa <= 3; tentativa++) {
+                try {
+                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
+                    ligasOk = true;
+                    break;
+                } catch(e) {
+                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — recarregando página...`);
+                    try {
+                        await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+                        await this._delay(4000);
+                    } catch(reloadErr) {
+                        console.log(`   ⚠️  Reload falhou: ${reloadErr.message}`);
+                    }
+                }
+            }
+            if (!ligasOk) {
+                throw new Error('Ligas não apareceram após 3 tentativas — verifique se a página está aberta no Edge');
             }
 
             const dados      = await this._extrairDados(this.page);

@@ -593,24 +593,24 @@ const DEFAULTS = {
     resultado_ft: 'ft-casa', gols_exatos: 'gols-2', especial: 'esp-btts-o25',
 };
 
-// Ligas canônicas (únicas aceitas no sistema)
-const LIGAS_CANONICAS = ['Copa do Mundo', 'Euro Cup', 'Premier League', 'Super Liga Sul-Americana', 'Super League'];
+// Ligas canônicas — exatamente as 4 que existem no site
+const LIGAS_CANONICAS = ['Copa do Mundo', 'Euro Cup', 'Premier League', 'Super League'];
 
 // Mapeamento de nomes do banco → nome exibido na grid
 const LIGA_ALIASES = {
-    // World Cup (nomes que podem existir em registros antigos)
+    // World Cup
     'world cup':                    'Copa do Mundo',
     'copa do mundo':                'Copa do Mundo',
     // Euro Cup
     'euro cup':                     'Euro Cup',
-    // Premiership
+    // Premiership / Premier League
     'premier league':               'Premier League',
     'premiership':                  'Premier League',
-    // South American (nomes que podem existir em registros antigos)
-    'super liga sul-americana':     'Super Liga Sul-Americana',
-    'south american super league':  'Super Liga Sul-Americana',
-    // Super League (liga europeia: Paris, Barcelona, Celtic, Porto, Madrid...)
+    // Super League
     'super league':                 'Super League',
+    // Aliases antigos (descartados silenciosamente)
+    'super liga sul-americana':     null,
+    'south american super league':  null,
 };
 
 // Mapeamento de nomes de times em inglês → português (PT-BR)
@@ -661,9 +661,8 @@ const TEAM_ALIASES = {
 const BET365_OFFSET_MS = 1 * 3600 * 1000;
 
 function normalizarLiga(nome) {
-    // Retorna o nome canônico (seja via alias ou se já é canônico)
     const key = (nome || '').toLowerCase().trim();
-    if (LIGA_ALIASES[key]) return LIGA_ALIASES[key];
+    if (key in LIGA_ALIASES) return LIGA_ALIASES[key]; // pode ser null (descartado)
     if (LIGAS_CANONICAS.includes(nome)) return nome;
     return null;
 }
