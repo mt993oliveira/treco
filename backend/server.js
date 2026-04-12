@@ -2,6 +2,7 @@ const express = require('express');
 const sql = require('mssql');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -897,6 +898,29 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 INSERT INTO HistoricoUsuarios (UsuarioId, DataAlteracao, Acao)
                 VALUES (${req.body.usuarioId}, GETDATE(), ${'Novo usuário criado: ' + usuario})
             `;
+
+            // Enviar e-mail com dados do novo usuário via Formspree
+            try {
+                const licencaInicio = dataInicioLicenca ? new Date(dataInicioLicenca).toLocaleDateString('pt-BR') : '—';
+                const licencaFim = dataFimLicenca ? new Date(dataFimLicenca).toLocaleDateString('pt-BR') : '—';
+                await axios.post('https://formspree.io/f/xaqawaep', {
+                    _subject: `[RadarX] Novo usuário criado: ${usuario}`,
+                    name: 'Sistema RadarX',
+                    email: email || 'sem-email@radarx.com.br',
+                    message:
+                        `✅ Novo usuário cadastrado na plataforma RadarX\n\n` +
+                        `Nome: ${nomeCompleto}\n` +
+                        `Usuário (login): ${usuario}\n` +
+                        `E-mail: ${email || '—'}\n` +
+                        `Tipo: ${tipoUsuario}\n` +
+                        `Senha inicial: ${senha}\n` +
+                        `Licença início: ${licencaInicio}\n` +
+                        `Licença fim: ${licencaFim}\n` +
+                        `Cadastrado em: ${new Date().toLocaleString('pt-BR')}`,
+                }, { headers: { Accept: 'application/json' } });
+            } catch (emailErr) {
+                console.warn('⚠️ Falha ao enviar e-mail via Formspree:', emailErr.message);
+            }
         }
 
         res.json({ success: true, message: 'Usuário salvo com sucesso' });
