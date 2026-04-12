@@ -816,17 +816,57 @@ router.get('/estatisticas-avancadas', async (req, res) => {
  */
 router.get('/log-coleta', async (req, res) => {
     try {
-        const pool = await getDbPool();
-        const result = await pool.request().query(`
-            SELECT TOP 20
+        const pool  = await getDbPool();
+        const limit = parseInt(req.query.limit) || 20;   // 0 = todos
+        const dia   = req.query.dia || '';               // 'YYYY-MM-DD' ou vazio
+
+        let whereClause = '';
+        const request = pool.request();
+
+        if (dia) {
+            whereClause = `WHERE CAST(data_inicio AS DATE) = @dia`;
+            request.input('dia', dia);
+        }
+
+        const topClause = limit > 0 ? `TOP ${limit}` : '';
+
+        const result = await request.query(`
+            SELECT ${topClause}
                 data_inicio, data_fim, status,
                 eventos_coletados, mercados_coletados,
                 odds_coletadas, resultados_salvos, erro_mensagem,
                 DATEDIFF(SECOND, data_inicio, ISNULL(data_fim, data_inicio)) AS duracao_seg
             FROM bet365_log_coleta
+            ${whereClause}
             ORDER BY data_inicio DESC
         `);
         res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
+ * POST /api/bet365/limpar-ligas-descartadas
+ * Remove registros de ligas descartadas: 'Super League' e 'South American Super League'
+ */
+router.post('/limpar-ligas-descartadas', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const result = await pool.request().query(`
+            DELETE FROM bet365_historico_partidas
+            WHERE liga IN ('Super League', 'South American Super League')
+        `);
+        const removidos = result.rowsAffected?.[0] ?? 0;
+
+        // Limpa também eventos dessas ligas
+        const resultEvt = await pool.request().query(`
+            DELETE FROM bet365_eventos
+            WHERE liga IN ('Super League', 'South American Super League')
+        `);
+        const removidosEvt = resultEvt.rowsAffected?.[0] ?? 0;
+
+        res.json({ success: true, partidas_removidas: removidos, eventos_removidos: removidosEvt });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }

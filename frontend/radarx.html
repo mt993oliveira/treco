@@ -1,0 +1,2995 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarX — Futebol Virtual</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #060810; color: #f1f5f9; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; }
+
+        /* Liga tabs */
+        .liga-tab { cursor: pointer; padding: 4px 12px; border-radius: 5px; font-size: 11px; font-weight: 700;
+            background: #1e293b; color: #64748b; border: 1px solid #334155; transition: all .15s; white-space: nowrap; letter-spacing:.02em; }
+        .liga-tab.ativo { background: #1fcc59; color: #000; border-color: #1fcc59; }
+        .liga-tab:hover:not(.ativo) { background: #334155; color: #e2e8f0; }
+
+        /* Section / filter buttons */
+        .secao-btn { cursor: pointer; padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: 600;
+            background: #1e293b; color: #64748b; border: 1px solid #334155; transition: all .15s; white-space: nowrap; }
+        .secao-btn.ativo { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+        .secao-btn:hover:not(.ativo) { background: #334155; color: #e2e8f0; }
+
+        .filtro-btn { cursor: pointer; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700;
+            background: #1e293b; color: #64748b; border: 1px solid #334155; transition: all .15s; }
+        .filtro-btn.ativo { background: #1fcc59; color: #000; border-color: #1fcc59; }
+        .filtro-btn:hover:not(.ativo) { background: #334155; color: #e2e8f0; }
+
+.acao-btn { cursor: pointer; padding: 4px 13px; border-radius: 5px; font-size: 11px; font-weight: 700;
+            border: 1px solid #334155; background: #1e293b; color: #e2e8f0; transition: all .15s; }
+        .acao-btn:hover { background: #334155; }
+        .acao-btn.ativo { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+
+        /* Analysis cards */
+        .liga-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 14px;
+            cursor: pointer; transition: all .2s; min-width: 200px; flex: 1; }
+        .liga-card:hover { border-color: #334155; transform: translateY(-1px); }
+        .liga-card.selecionado { border-color: #1fcc59; box-shadow: 0 0 12px #1fcc5920; }
+        .liga-card .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+        .badge-alta  { background: #14532d; color: #4ade80; }
+        .badge-media { background: #713f12; color: #fbbf24; }
+        .badge-baixa { background: #450a0a; color: #f87171; }
+        .badge-verde { background: #14532d; color: #4ade80; }
+        .badge-verm  { background: #450a0a; color: #f87171; }
+
+        /* Stat pills */
+        .stat-pill { display: inline-flex; align-items: center; gap: 4px; background: #1e293b; border-radius: 4px;
+            padding: 3px 8px; font-size: 10px; color: #94a3b8; }
+        .stat-pill b { color: #e2e8f0; }
+
+        /* Table */
+        .tabela-hist { border-collapse: collapse; width: 100%; font-size: 11px; }
+        .tabela-hist th { background: #0c1220; padding: 5px 4px; text-align: center; border: 1px solid #1e293b;
+            color: #475569; font-weight: 700; font-size: 10px; position: sticky; top: 0; z-index: 10; }
+        .tabela-hist th.th-l { text-align: left; min-width: 56px; }
+        .tabela-hist td { padding: 3px 3px; text-align: center; border: 1px solid #0d1421;
+            min-width: 40px; max-width: 52px; height: 29px; font-size: 11px; font-weight: 700; }
+        .tabela-hist td.td-l { background: #0f172a; color: #334155; font-size: 10px; font-weight: 600;
+            text-align: left; padding: 3px 6px; white-space: nowrap; }
+        .tabela-hist td.td-pct { background: #0f172a; min-width: 42px; font-weight: 800; font-size: 12px; }
+        .tabela-hist td.td-g   { background: #0f172a; color: #334155; font-size: 10px; min-width: 24px; }
+        .tabela-hist tfoot td  { background: #0c1220; color: #60a5fa; font-weight: 700; }
+        .c-verde  { background: #14532d; color: #4ade80; }
+        .c-verm   { background: #3b0a0a; color: #f87171; }
+        .c-vazio  { background: #060810; }
+        .pct-alta  { color: #4ade80 !important; }
+        .pct-media { color: #fbbf24 !important; }
+        .pct-baixa { color: #f87171 !important; }
+        .tabela-hist td.c-verde:hover,
+        .tabela-hist td.c-verm:hover { outline: 1px solid rgba(255,255,255,.25); cursor: default; }
+
+        /* Legend */
+        .legenda-item { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 2px 5px;
+            border-radius: 3px; font-size: 10px; user-select: none; }
+        .legenda-item:hover { background: #1e293b; }
+        .legenda-item.off { opacity: 0.3; }
+        .legenda-cor { width: 18px; height: 2.5px; border-radius: 2px; flex-shrink: 0; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.87); z-index: 200;
+            display: none; align-items: center; justify-content: center; }
+        .modal-overlay.aberto { display: flex; }
+        .modal-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 20px;
+            max-width: 640px; width: 95%; max-height: 85vh; overflow-y: auto; }
+        .modal-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .modal-table th { padding: 7px 10px; color: #475569; border-bottom: 1px solid #1e293b; font-size: 10px; font-weight: 700; }
+        .modal-table td { padding: 5px 10px; border-bottom: 1px solid #0f172a; }
+        .modal-table tr:hover td { background: #1e293b22; }
+
+        /* Status dot */
+        .sdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .sdot.ok  { background: #1fcc59; animation: blink 2s ease-in-out infinite; }
+        .sdot.err { background: #ef4444; }
+        .sdot.idle { background: #475569; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        .tabela-scroll { overflow-x: auto; overflow-y: auto; max-height: 440px; }
+
+        #tt { position: fixed; background: #1e293b; border: 1px solid #334155; border-radius: 6px;
+            padding: 7px 10px; font-size: 11px; z-index: 300; pointer-events: none;
+            white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.6); display: none; }
+
+        .mm-input { width: 36px; background: #1e293b; color: #e2e8f0; border: 1px solid #334155;
+            border-radius: 3px; padding: 1px 4px; font-size: 10px; text-align: center; }
+
+        /* Tendência icons */
+        .tend-subindo { color: #4ade80; }
+        .tend-caindo  { color: #f87171; }
+        .tend-estavel { color: #94a3b8; }
+
+        /* View switcher */
+        .view-btn { cursor: pointer; padding: 5px 14px; border-radius: 5px; font-size: 12px; font-weight: 700;
+            background: #1e293b; border: 1px solid #334155; color: #64748b; transition: all .15s; }
+        .view-btn.ativo { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+
+        /* HEATMAP */
+        .heatmap-container {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(36px, 1fr));
+            gap: 3px;
+            max-width: 600px;
+        }
+        .heatmap-cell {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid #1e293b;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        .heatmap-cell.casa { background: #14532d; color: #4ade80; }
+        .heatmap-cell.empate { background: #1e1b4b; color: #a5b4fc; }
+        .heatmap-cell.fora { background: #3b0a0a; color: #f87171; }
+        .heatmap-cell.vazio { background: #0c1220; color: #334155; border-style: dashed; }
+        .heatmap-label {
+            font-size: 9px;
+            color: #475569;
+            text-align: center;
+            margin-top: 2px;
+        }
+        .heatmap-legend {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: #64748b;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        /* HEATMAP V2 + IA CARDS */
+        .heatmap-cell-v2 {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            padding: 4px 2px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid #1e293b;
+            min-width: 44px;
+            min-height: 44px;
+            position: relative;
+        }
+        .heatmap-cell-v2:hover { transform: scale(1.08); z-index: 10; }
+        .ia-card {
+            background: #0a0f1e;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .ia-best-bet {
+            background: #052e16;
+            border: 1px solid #166534;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-top: 8px;
+        }
+        .ia-risky-bet {
+            background: #1c1003;
+            border: 1px solid #92400e;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-top: 6px;
+        }
+
+        /* ESTATÍSTICAS AVANÇADAS */
+        .stats-avancadas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .stat-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .stat-card-titulo {
+            font-size: 9px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+        .stat-card-valor {
+            font-size: 24px;
+            font-weight: 800;
+            color: #e2e8f0;
+            margin-bottom: 4px;
+        }
+        .stat-card-desc {
+            font-size: 10px;
+            color: #64748b;
+        }
+        .stat-card-trend {
+            font-size: 10px;
+            margin-top: 6px;
+        }
+        .stat-card-trend.subindo { color: #4ade80; }
+        .stat-card-trend.caindo { color: #f87171; }
+    </style>
+</head>
+<body>
+
+<!-- ========== HEADER ========== -->
+<header style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:9px 16px;position:sticky;top:0;z-index:50">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <img src="/img/RadarX.jpeg" alt="RadarX" style="height:28px;border-radius:4px;object-fit:contain">
+            <span style="color:#1fcc59;font-weight:900;font-size:14px;letter-spacing:-.3px">RadarX</span>
+            <span style="color:#1e293b">|</span>
+            <span style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
+        </div>
+        <div id="liga-tabs" style="display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:0"></div>
+        <div class="master-only" style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span class="sdot idle" id="sdot"></span>
+            <span style="font-size:10px;color:#475569" id="s-txt">Carregando...</span>
+            <button onclick="carregarTudo()" title="Atualizar"
+                style="background:none;border:none;color:#475569;font-size:16px;cursor:pointer;line-height:1"
+                onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#475569'">↻</button>
+        </div>
+    </div>
+</header>
+
+<!-- ========== VIEW SELECTOR ========== -->
+<div style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:8px 16px;display:flex;gap:8px;align-items:center">
+    <button class="view-btn ativo" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
+    <button class="view-btn" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
+    <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
+    <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
+    <div class="master-only" style="width:1px;height:20px;background:#1e293b;margin:0 4px"></div>
+    <button class="view-btn master-only" id="btn-buscar-resultados" onclick="buscarResultados()" title="Forçar busca de resultados finalizados"
+        style="background:#14532d;border-color:#14532d;color:#4ade80">🔍 Buscar Resultados</button>
+    <div style="margin-left:auto;font-size:10px;color:#334155" id="ultimo-update"></div>
+</div>
+
+<!-- ========== VIEW: ANÁLISE ========== -->
+<div id="view-analise-content" style="padding:14px 16px">
+
+    <!-- Cards de ligas -->
+    <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">DESEMPENHO POR LIGA — SUGESTÕES DE APOSTA</div>
+        <div id="analise-cards" style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="color:#334155;font-size:12px;padding:24px">Carregando análise...</div>
+        </div>
+    </div>
+
+    <!-- Heatmap de Resultados V2 + IA -->
+    <div style="margin-bottom:14px" id="heatmap-ia-section">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">🔥 HEATMAP DE RESULTADOS — ANÁLISE IA</div>
+        <div id="heatmap-ia-container">
+            <div id="heatmap-ia-loading" style="color:#334155;font-size:12px;padding:24px;text-align:center">Carregando heatmap...</div>
+        </div>
+    </div>
+
+    <!-- Estatísticas Avançadas -->
+    <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">📊 ESTATÍSTICAS AVANÇADAS</div>
+        <div class="stats-avancadas-grid" id="stats-avancadas-grid" style="display:none">
+            <!-- Preenchido via JS -->
+        </div>
+        <div id="stats-loading" style="color:#334155;font-size:12px;padding:24px;text-align:center">Carregando estatísticas...</div>
+    </div>
+
+    <!-- Detalhe da liga selecionada -->
+    <div id="analise-detalhe" style="display:none">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">DETALHE DA LIGA SELECIONADA</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <!-- Stats gerais -->
+            <div id="detalhe-stats" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;flex:1;min-width:220px"></div>
+            <!-- Ranking dos filtros -->
+            <div id="detalhe-filtros" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;flex:2;min-width:320px"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== VIEW: HISTÓRICO ========== -->
+<div id="view-historico-content" style="display:none;padding:12px 16px">
+
+    <!-- Controls bar — linha 1: período + filtro de condição -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+
+        <!-- Linha 1: período de tempo -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
+            <button class="secao-btn" data-h="6"  onclick="setHoras(6)">6H</button>
+            <button class="secao-btn" data-h="12" onclick="setHoras(12)">12H</button>
+            <button class="secao-btn ativo" data-h="24" onclick="setHoras(24)">24H</button>
+            <button class="secao-btn" data-h="48" onclick="setHoras(48)">48H</button>
+            <button class="secao-btn" data-h="72" onclick="setHoras(72)">72H</button>
+            <div style="width:1px;height:16px;background:#1e293b;margin:0 4px"></div>
+            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">CONDIÇÃO</span>
+            <button class="secao-btn ativo" data-s="over"         onclick="trocarSecao('over')">Over Gols</button>
+            <button class="secao-btn"       data-s="under"        onclick="trocarSecao('under')">Under Gols</button>
+            <button class="secao-btn"       data-s="ambas"        onclick="trocarSecao('ambas')">Ambas Marcam</button>
+            <button class="secao-btn"       data-s="resultado_ft" onclick="trocarSecao('resultado_ft')">Resultado FT</button>
+            <button class="secao-btn"       data-s="gols_exatos"  onclick="trocarSecao('gols_exatos')">Gols Exatos</button>
+            <button class="secao-btn"       data-s="especial"     onclick="trocarSecao('especial')">Especial</button>
+        </div>
+
+        <!-- Linha 2: sub-filtros do tipo selecionado -->
+        <div id="filtros-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center"></div>
+    </div>
+
+    <!-- Chart + Legend -->
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Over 1.5 — Evolução</div>
+                <div style="display:flex;gap:8px;align-items:center;font-size:10px;color:#334155">
+                    <label>MM1<input class="mm-input" id="mm1" type="number" value="12" min="2" max="50" onchange="renderGrafico()"></label>
+                    <label>MM2<input class="mm-input" id="mm2" type="number" value="26" min="3" max="100" onchange="renderGrafico()"></label>
+                    <label>Sig<input class="mm-input" id="mms" type="number" value="9"  min="2" max="20"  onchange="renderGrafico()"></label>
+                </div>
+            </div>
+            <div style="position:relative;height:190px"><canvas id="grafico"></canvas></div>
+        </div>
+        <div style="width:155px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px;flex-shrink:0">
+            <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:7px">LINHAS</div>
+            <div id="legenda"></div>
+        </div>
+    </div>
+
+    <!-- Table header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+        <div style="display:flex;gap:7px">
+            <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
+            <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
+        </div>
+        <div style="font-size:10px;color:#475569" id="tabela-info">—</div>
+    </div>
+
+    <!-- Grid principal: 1 linha = 1 hora, 20 colunas = 20 jogos -->
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+        <div class="tabela-scroll">
+            <table class="tabela-hist" id="tbl">
+                <thead><tr id="tbl-head"></tr></thead>
+                <tbody id="tbl-body"></tbody>
+                <tfoot><tr id="tbl-foot"></tr></tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Últimos Resultados coletados -->
+    <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em">ÚLTIMOS RESULTADOS COLETADOS</div>
+            <span id="ultimos-res-count" style="font-size:10px;color:#334155"></span>
+        </div>
+        <div id="ultimos-resultados-lista" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+            <div style="color:#334155;font-size:11px;padding:16px;text-align:center">Carregando...</div>
+        </div>
+    </div>
+
+    <!-- Próximos jogos -->
+    <div style="margin-top:14px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">
+            PRÓXIMOS JOGOS — ODDS + HISTÓRICO
+        </div>
+        <div id="proximos-jogos" style="display:flex;gap:8px;flex-wrap:wrap">
+            <div style="color:#334155;font-size:11px;padding:8px">Carregando jogos...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== VIEW: CLUBES ========== -->
+<div id="view-clubes-content" style="display:none;padding:12px 16px">
+
+    <!-- Liga filter -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#475569">LIGA:</span>
+        <div id="clubes-liga-tabs" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+        <input id="clubes-busca" type="text" placeholder="Buscar time..." oninput="filtrarClubes()"
+            style="margin-left:auto;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:4px 10px;font-size:11px;width:160px;outline:none">
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start">
+
+        <!-- LISTA DE TIMES -->
+        <div style="width:210px;flex-shrink:0;background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+            <div style="padding:7px 10px;background:#0c1220;font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">TIMES — clique para detalhar</div>
+            <div id="clubes-lista" style="overflow-y:auto;max-height:600px"></div>
+        </div>
+
+        <!-- DETALHE DO TIME -->
+        <div style="flex:1;min-width:0" id="clubes-detalhe">
+            <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:24px;text-align:center;color:#334155">
+                <div style="font-size:28px;margin-bottom:8px">⚽</div>
+                <div style="font-size:12px">Selecione um time para ver o histórico e próximos jogos</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ========== VIEW: DIAGNÓSTICO ========== -->
+<div id="view-diagnostico-content" style="display:none;padding:12px 16px">
+
+    <!-- Status rápido: WS + última coleta -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+
+        <!-- Card: conexão WebSocket -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">STATUS WEBSOCKET</div>
+            <div style="display:flex;align-items:center;gap:8px">
+                <span class="sdot idle" id="diag-ws-dot"></span>
+                <span id="diag-ws-txt" style="font-size:12px;color:#64748b">Verificando...</span>
+            </div>
+            <div id="diag-ws-msg" style="font-size:10px;color:#334155;margin-top:5px">—</div>
+        </div>
+
+        <!-- Card: última coleta -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">ÚLTIMA COLETA</div>
+            <div id="diag-ultima-coleta" style="font-size:12px;color:#64748b">Carregando...</div>
+        </div>
+
+        <!-- Card: contagens -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">BANCO DE DADOS</div>
+            <div id="diag-contagens" style="font-size:12px;color:#64748b">Carregando...</div>
+        </div>
+
+        <!-- Card: resultados estimados -->
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">RESULTADOS ESTIMADOS</div>
+            <div id="diag-estimados" style="font-size:12px;color:#64748b">Carregando...</div>
+            <div style="font-size:9px;color:#334155;margin-top:4px">Gerados por "Buscar Resultados" quando o coletor falhou. Excluídos das sugestões.</div>
+        </div>
+    </div>
+
+    <!-- Ações rápidas -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="acao-btn" onclick="buscarResultados()" style="background:#14532d;border-color:#14532d;color:#4ade80">
+            🔍 Buscar Resultados Pendentes
+        </button>
+        <button class="acao-btn" onclick="carregarDiagnostico()">↻ Atualizar Diagnóstico</button>
+        <button class="acao-btn" onclick="limparEstimados()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171"
+            title="Remove resultados estimados (0-0 gerados automaticamente)">🗑 Limpar Estimados</button>
+        <button class="acao-btn" onclick="limparLigasDescartadas()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171"
+            title="Remove dados de 'Super League' e 'South American Super League'">🗑 Limpar Ligas Antigas</button>
+    </div>
+
+    <!-- Tabela de logs de coleta -->
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+        <div style="padding:8px 12px;background:#0c1220;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">HISTÓRICO DE COLETAS</span>
+            <input type="date" id="diag-filtro-dia" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:10px;outline:none"
+                oninput="_diagCarregarLogs()">
+            <span style="font-size:9px;color:#475569">Exibir:</span>
+            <button class="filtro-btn ativo" id="diag-lim-20"  onclick="_diagSetLimit(20)"  >20</button>
+            <button class="filtro-btn"       id="diag-lim-50"  onclick="_diagSetLimit(50)"  >50</button>
+            <button class="filtro-btn"       id="diag-lim-100" onclick="_diagSetLimit(100)" >100</button>
+            <button class="filtro-btn"       id="diag-lim-all" onclick="_diagSetLimit(0)"   >Todos</button>
+        </div>
+        <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:11px" id="diag-logs-table">
+                <thead>
+                    <tr style="background:#0c1220">
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left">Início</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Status</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Duração</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Eventos</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Mercados</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Odds</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Resultados</th>
+                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left">Erro</th>
+                    </tr>
+                </thead>
+                <tbody id="diag-logs-tbody">
+                    <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando logs...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODALS ========== -->
+<div class="modal-overlay" id="modal-times">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h2 style="font-size:14px;font-weight:700">🏆 Ranking de Times</h2>
+            <button onclick="fecharModal('modal-times')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">×</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+            <button class="secao-btn ativo" id="rt-casa"  onclick="renderRankTimes('casa')">Casa</button>
+            <button class="secao-btn"       id="rt-fora"  onclick="renderRankTimes('fora')">Fora</button>
+            <button class="secao-btn"       id="rt-geral" onclick="renderRankTimes('geral')">Geral</button>
+        </div>
+        <div id="rank-times-body"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-odds">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h2 style="font-size:14px;font-weight:700">📊 Ranking de Odds</h2>
+            <button onclick="fecharModal('modal-odds')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">×</button>
+        </div>
+        <div id="rank-odds-body"></div>
+    </div>
+</div>
+
+<div id="tt"></div>
+
+<script>
+// ============================================================
+// MASTER-ONLY VISIBILITY
+// ============================================================
+(function() {
+    const u = (() => { try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e){ return null; } })();
+    const isMaster = u && u.TipoUsuario === 'master';
+    if (!isMaster) {
+        // Hide master-only elements as soon as DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.master-only').forEach(el => { el.style.display = 'none'; });
+        });
+    }
+})();
+
+// ============================================================
+// FILTROS CONFIG
+// ============================================================
+const FILTROS = {
+    over: [
+        { id: 'over0.5', label: 'Over 0.5', cor: '#fbbf24' },
+        { id: 'over1.5', label: 'Over 1.5', cor: '#10b981' },
+        { id: 'over2.5', label: 'Over 2.5', cor: '#3b82f6' },
+        { id: 'over3.5', label: 'Over 3.5', cor: '#8b5cf6' },
+        { id: 'over4.5', label: 'Over 4.5', cor: '#ec4899' },
+    ],
+    under: [
+        { id: 'under0.5', label: 'Under 0.5', cor: '#94a3b8' },
+        { id: 'under1.5', label: 'Under 1.5', cor: '#f97316' },
+        { id: 'under2.5', label: 'Under 2.5', cor: '#ef4444' },
+        { id: 'under3.5', label: 'Under 3.5', cor: '#dc2626' },
+    ],
+    ambas: [
+        { id: 'ambas-sim', label: 'Sim (BTTS)', cor: '#06b6d4' },
+        { id: 'ambas-nao', label: 'Não (BTTS)', cor: '#0e7490' },
+    ],
+    resultado_ft: [
+        { id: 'ft-casa',   label: 'Casa',   cor: '#84cc16' },
+        { id: 'ft-empate', label: 'Empate', cor: '#a78bfa' },
+        { id: 'ft-fora',   label: 'Fora',   cor: '#fb923c' },
+    ],
+    gols_exatos: [
+        { id: 'gols-0',  label: '0 Gols', cor: '#475569' },
+        { id: 'gols-1',  label: '1 Gol',  cor: '#94a3b8' },
+        { id: 'gols-2',  label: '2 Gols', cor: '#60a5fa' },
+        { id: 'gols-3',  label: '3 Gols', cor: '#818cf8' },
+        { id: 'gols-4',  label: '4 Gols', cor: '#c084fc' },
+        { id: 'gols-5p', label: '5+ Gols',cor: '#f472b6' },
+    ],
+    especial: [
+        { id: 'esp-btts-o25', label: 'BTTS + O2.5', cor: '#2dd4bf' },
+        { id: 'esp-btts-u25', label: 'BTTS + U2.5', cor: '#38bdf8' },
+        { id: 'esp-casa-o15', label: 'Casa + O1.5', cor: '#4ade80' },
+        { id: 'esp-fora-o15', label: 'Fora + O1.5', cor: '#fb923c' },
+    ],
+};
+
+const DEFAULTS = {
+    over: 'over1.5', under: 'under2.5', ambas: 'ambas-sim',
+    resultado_ft: 'ft-casa', gols_exatos: 'gols-2', especial: 'esp-btts-o25',
+};
+
+// Ligas canônicas — as ligas coletadas do site
+const LIGAS_CANONICAS = ['Copa do Mundo', 'Euro Cup', 'Premier League', 'Express Cup', 'Super Liga Sul-Americana'];
+
+// Mapeamento de nomes do banco → nome exibido na grid
+const LIGA_ALIASES = {
+    // World Cup
+    'world cup':                    'Copa do Mundo',
+    'copa do mundo':                'Copa do Mundo',
+    // Euro Cup
+    'euro cup':                     'Euro Cup',
+    // Premiership / Premier League
+    'premier league':               'Premier League',
+    'premiership':                  'Premier League',
+    // Express Cup
+    'express cup':                  'Express Cup',
+    // Super Liga Sul-Americana
+    'super liga sul-americana':     'Super Liga Sul-Americana',
+    'south american super league':  'Super Liga Sul-Americana',
+    // Descartadas silenciosamente
+    'super league':                 null,
+};
+
+// Mapeamento de nomes de times em inglês → português (PT-BR)
+const TEAM_ALIASES = {
+    'albania':     'Albânia',
+    'australia':   'Austrália',
+    'austria':     'Áustria',
+    'belgium':     'Bélgica',
+    'brazil':      'Brasil',
+    'cameroon':    'Camarões',
+    'canada':      'Canadá',
+    'croatia':     'Croácia',
+    'czechia':     'República Tcheca',
+    'czech republic': 'República Tcheca',
+    'denmark':     'Dinamarca',
+    'ecuador':     'Equador',
+    'england':     'Inglaterra',
+    'france':      'França',
+    'georgia':     'Geórgia',
+    'germany':     'Alemanha',
+    'ghana':       'Gana',
+    'hungary':     'Hungria',
+    'iran':        'Irã',
+    'italy':       'Itália',
+    'japan':       'Japão',
+    'mexico':      'México',
+    'morocco':     'Marrocos',
+    'netherlands': 'Países Baixos',
+    'poland':      'Polônia',
+    'romania':     'Romênia',
+    'scotland':    'Escócia',
+    'senegal':     'Senegal',
+    'serbia':      'Sérvia',
+    'slovakia':    'Eslováquia',
+    'slovenia':    'Eslovênia',
+    'south korea': 'Coreia do Sul',
+    'spain':       'Espanha',
+    'switzerland': 'Suíça',
+    'tunisia':     'Tunísia',
+    'turkey':      'Turquia',
+    'ukraine':     'Ucrânia',
+    'uruguay':     'Uruguai',
+    'usa':         'EUA',
+    'wales':       'País de Gales',
+};
+
+// Bet365 BR usa UTC+1 para horários virtuais — somamos 1h ao agora do grid
+const BET365_OFFSET_MS = 1 * 3600 * 1000;
+
+function normalizarLiga(nome) {
+    const key = (nome || '').toLowerCase().trim();
+    if (key in LIGA_ALIASES) return LIGA_ALIASES[key]; // pode ser null (descartado)
+    if (LIGAS_CANONICAS.includes(nome)) return nome;
+    return null;
+}
+
+function normalizarTime(nome) {
+    if (!nome) return nome;
+    return TEAM_ALIASES[nome.toLowerCase().trim()] || nome;
+}
+
+// ============================================================
+// ESTADO
+// ============================================================
+const S = {
+    partidas:      [],
+    todasPartidas: [],
+    ligas:         [],
+    sugestoes:     [],
+    proximosJogos: [],
+    ligaAtiva:     null,
+    ligaCardSel:   null,
+    rankingN:      10,
+    secao:         'over',
+    filtro:        'over1.5',
+    horas:         24,      // período do grid: 6/12/24/48/72
+    linhas:        {},
+    grafico:       null,
+    grafTopo:      null,
+    view:          'analise',
+    showNomes:     false,   // exibe nome dos clubes dentro das células do grid
+};
+
+Object.values(FILTROS).flat().forEach(f => { S.linhas[f.id] = true; });
+
+// ============================================================
+// LÓGICA DE FILTROS (client-side)
+// ============================================================
+function checa(j, fid) {
+    const t = (j.gol_casa || 0) + (j.gol_fora || 0);
+    const c = j.gol_casa || 0, f = j.gol_fora || 0;
+    switch (fid) {
+        case 'over0.5':      return t >= 1;
+        case 'over1.5':      return t >= 2;
+        case 'over2.5':      return t >= 3;
+        case 'over3.5':      return t >= 4;
+        case 'over4.5':      return t >= 5;
+        case 'under0.5':     return t === 0;
+        case 'under1.5':     return t <= 1;
+        case 'under2.5':     return t <= 2;
+        case 'under3.5':     return t <= 3;
+        case 'ambas-sim':    return c > 0 && f > 0;
+        case 'ambas-nao':    return !(c > 0 && f > 0);
+        case 'ft-casa':      return j.resultado === 'CASA';
+        case 'ft-empate':    return j.resultado === 'EMPATE';
+        case 'ft-fora':      return j.resultado === 'FORA';
+        case 'gols-0':       return t === 0;
+        case 'gols-1':       return t === 1;
+        case 'gols-2':       return t === 2;
+        case 'gols-3':       return t === 3;
+        case 'gols-4':       return t === 4;
+        case 'gols-5p':      return t >= 5;
+        case 'esp-btts-o25': return c > 0 && f > 0 && t >= 3;
+        case 'esp-btts-u25': return c > 0 && f > 0 && t <= 2;
+        case 'esp-casa-o15': return j.resultado === 'CASA' && t >= 2;
+        case 'esp-fora-o15': return j.resultado === 'FORA' && t >= 2;
+        default: return false;
+    }
+}
+
+// ============================================================
+// VIEW SWITCHER
+// ============================================================
+function setView(v) {
+    S.view = v;
+    document.getElementById('view-analise-content').style.display      = v === 'analise'      ? '' : 'none';
+    document.getElementById('view-historico-content').style.display     = v === 'historico'    ? '' : 'none';
+    document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
+    document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
+    ['analise','historico','clubes','diagnostico'].forEach(id =>
+        document.getElementById('view-' + id).className = 'view-btn' + (v === id ? ' ativo' : ''));
+    if (v === 'historico')   { carregarHistorico(); renderProximosJogos(); renderUltimosResultados(); }
+    if (v === 'analise')     { renderAnalise(); }
+    if (v === 'clubes')      { renderClubes(); }
+    if (v === 'diagnostico') { carregarDiagnostico(); }
+}
+
+// ============================================================
+// LOAD DATA
+// ============================================================
+async function carregarTudo() {
+    await Promise.all([
+        carregarHistorico(),
+        carregarSugestoes(),
+        carregarEstatisticasAvancadas(),
+        renderProximosJogos(),
+        renderUltimosResultados(),
+    ]);
+    // Render heatmap IA after historico is loaded (S.todasPartidas populated)
+    renderHeatmapIA();
+}
+
+// ============================================================
+// BUSCAR RESULTADOS FINALIZADOS
+// ============================================================
+async function buscarResultados() {
+    const btn = document.getElementById('btn-buscar-resultados');
+    const textoOriginal = btn.innerHTML;
+    btn.innerHTML = '⏳ Buscando...';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+
+    try {
+        const r = await fetch('/api/bet365/buscar-resultados', { method: 'POST' });
+        const d = await r.json();
+
+        if (!d.success) throw new Error(d.error || 'Erro');
+
+        const msg = [];
+        if (d.candidatos > 0) msg.push(`${d.candidatos} eventos encontrados`);
+        if (d.salvos > 0) msg.push(`${d.salvos} resultados salvos`);
+
+        alert(`✅ Busca concluída!\n\n${msg.join('\n')}`);
+
+        // Recarrega os dados
+        await carregarTudo();
+
+    } catch (e) {
+        alert(`❌ Erro: ${e.message}`);
+    } finally {
+        btn.innerHTML = textoOriginal;
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    }
+}
+
+async function carregarHistorico() {
+    const dot = document.getElementById('sdot');
+    const txt = document.getElementById('s-txt');
+    dot.className = 'sdot idle';
+
+    try {
+        const r = await fetch(`/api/bet365/historico-tabela?horas=${S.horas}`);
+        const d = await r.json();
+        if (!d.success) throw new Error(d.error || 'Erro');
+
+        // Normaliza nomes de liga e filtra só as 4 ligas canônicas
+        S.todasPartidas = (d.partidas || [])
+            .map(p => {
+                const canon = normalizarLiga(p.liga);
+                if (!canon) return null;
+                return { ...p, liga: canon,
+                    time_casa: normalizarTime(p.time_casa),
+                    time_fora: normalizarTime(p.time_fora) };
+            })
+            .filter(Boolean);
+
+        // Monta lista de ligas com total real
+        S.ligas = LIGAS_CANONICAS
+            .map(nome => ({ liga: nome, total: S.todasPartidas.filter(p => p.liga === nome).length }))
+            .filter(l => l.total > 0);
+
+        // Seleciona a primeira liga automaticamente
+        if (!S.ligaAtiva || !S.ligas.find(l => l.liga === S.ligaAtiva)) {
+            S.ligaAtiva = S.ligas[0]?.liga || null;
+        }
+
+        S.partidas = filtrarPartidas();
+
+        renderLigas();
+        if (S.view === 'historico') { renderFiltros(); renderLegenda(); renderTabela(); renderGrafico(); }
+
+        dot.className = 'sdot ok';
+        txt.textContent = `${S.todasPartidas.length} partidas (${S.horas}h)`;
+        document.getElementById('ultimo-update').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
+
+    } catch (e) {
+        dot.className = 'sdot err';
+        txt.textContent = 'Erro: ' + e.message;
+    }
+}
+
+function filtrarPartidas() {
+    if (!S.todasPartidas) return [];
+    if (!S.ligaAtiva) return S.todasPartidas;
+    return S.todasPartidas.filter(p => p.liga === S.ligaAtiva);
+}
+
+async function carregarSugestoes() {
+    try {
+        const r = await fetch(`/api/bet365/sugestoes?n=${S.rankingN}`);
+        const d = await r.json();
+        if (!d.success) return;
+        S.sugestoes = d.data || [];
+        if (S.view === 'analise') renderAnalise();
+    } catch {}
+}
+
+// ============================================================
+// ANÁLISE CARDS
+// ============================================================
+function renderAnalise() {
+    const c = document.getElementById('analise-cards');
+
+    if (!S.sugestoes.length) {
+        c.innerHTML = `<div style="color:#334155;font-size:12px;padding:24px 0">
+            <div style="font-size:22px;margin-bottom:6px">⏳</div>
+            Aguardando histórico... O sistema precisa de ao menos 5 partidas por liga para gerar sugestões.
+        </div>`;
+        document.getElementById('analise-detalhe').style.display = 'none';
+        return;
+    }
+
+    c.innerHTML = '';
+    // Filtra e renomeia para exibir apenas as 4 ligas canônicas
+    const sugestoesCanon = S.sugestoes
+        .map(l => ({ ...l, liga: normalizarLiga(l.liga) || null }))
+        .filter(l => l.liga !== null)
+        .filter((l, i, arr) => arr.findIndex(x => x.liga === l.liga) === i); // deduplica
+    sugestoesCanon.forEach(liga => {
+        if (!liga.melhor) return;
+
+        const selecionado = S.ligaCardSel === liga.liga;
+        const melhor = liga.melhor;
+        const ligaNome = liga.liga.replace(/virtual/i,'').replace(/futebol/i,'').trim() || liga.liga;
+
+        // Top 5 filtros por tx_ultn (confianca >= media preferidos primeiro)
+        const top5 = (liga.filtros || [])
+            .filter(f => f.confianca !== 'baixa' || f.tx_ultn >= 60)
+            .slice(0, 5);
+        if (top5.length === 0) top5.push(melhor); // fallback
+
+        // Grupos de mercado para separar visualmente
+        const GRUPO = {
+            'over0.5':'Gols','over1.5':'Gols','over2.5':'Gols','over3.5':'Gols',
+            'under1.5':'Gols','under2.5':'Gols','ambas':'Gols','btts_o25':'Combo',
+            'ft_casa':'1X2','ft_empate':'1X2','ft_fora':'1X2'
+        };
+        const GRUPO_COR = { 'Gols':'#60a5fa', '1X2':'#4ade80', 'Combo':'#f59e0b' };
+        const CONF_COR = { alta:'#4ade80', media:'#fbbf24', baixa:'#94a3b8' };
+        const TEND_ICON = { subindo:'↑', caindo:'↓', estavel:'→' };
+        const TEND_CLS = { subindo:'tend-subindo', caindo:'tend-caindo', estavel:'tend-estavel' };
+
+        const linhasTop5 = top5.map((f, i) => {
+            const cor = CONF_COR[f.confianca] || '#94a3b8';
+            const grupo = GRUPO[f.id] || '';
+            const grupoCor = GRUPO_COR[grupo] || '#64748b';
+            const streakIcon = f.streak_tipo === 'verde' ? '🟢' : '🔴';
+            const tendIcon2 = TEND_ICON[f.tendencia] || '→';
+            const tendCls2  = TEND_CLS[f.tendencia]  || 'tend-estavel';
+            return `<div style="display:flex;align-items:center;gap:4px;padding:5px 0;
+                ${i < top5.length - 1 ? 'border-bottom:1px solid #0f172a;' : ''}">
+                <span style="font-size:9px;color:${grupoCor};font-weight:700;min-width:28px">${grupo}</span>
+                <span style="font-size:11px;color:#cbd5e1;flex:1">${f.label}</span>
+                <span style="font-size:12px;font-weight:800;color:${cor}">${f.tx_ultn}%</span>
+                <span style="font-size:10px" class="${tendCls2}">${tendIcon2}</span>
+                <span style="font-size:9px">${streakIcon}${f.streak > 1 ? f.streak : ''}</span>
+            </div>`;
+        }).join('');
+
+        // Stat pills da melhor aposta
+        const confBadge  = melhor.confianca === 'alta' ? 'badge-alta' : melhor.confianca === 'media' ? 'badge-media' : 'badge-baixa';
+        const streakBadge2 = melhor.streak_tipo === 'verde' ? 'badge-verde' : 'badge-verm';
+        const streakIcon2  = melhor.streak_tipo === 'verde' ? '🟢' : '🔴';
+
+        const div = document.createElement('div');
+        div.className = 'liga-card' + (selecionado ? ' selecionado' : '');
+        div.onclick = () => { S.ligaCardSel = selecionado ? null : liga.liga; renderAnalise(); };
+        div.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                <div style="font-size:12px;font-weight:800;color:#e2e8f0">${ligaNome}</div>
+                <span class="badge ${confBadge}">${melhor.confianca.toUpperCase()}</span>
+            </div>
+            <div style="font-size:10px;color:#475569;margin-bottom:8px">${liga.amostras} partidas · melhor: <b style="color:#1fcc59">${melhor.label} ${melhor.tx_ultn}%</b></div>
+            <div style="background:#060810;border-radius:6px;padding:8px;margin-bottom:8px">
+                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">TOP APOSTAS <span style="color:#334155">(últimos ${melhor.n_custom}J)</span></div>
+                ${linhasTop5}
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+                <span class="badge ${streakBadge2}">${streakIcon2} ${melhor.streak} seguidos</span>
+                <span class="stat-pill">Geral <b>${melhor.tx_geral}%</b></span>
+                <span class="stat-pill">5J <b>${melhor.tx_ult5}%</b></span>
+                <span class="stat-pill">20J <b>${melhor.tx_ult20 ?? '–'}%</b></span>
+            </div>
+        `;
+        c.appendChild(div);
+    });
+
+    // Detalhe da liga selecionada
+    if (S.ligaCardSel) {
+        const ligaData = S.sugestoes.find(l => l.liga === S.ligaCardSel);
+        if (ligaData) renderAnaliseDetalhe(ligaData);
+        document.getElementById('analise-detalhe').style.display = '';
+    } else {
+        document.getElementById('analise-detalhe').style.display = 'none';
+    }
+}
+
+function renderAnaliseDetalhe(liga) {
+    const s = liga.stats;
+    document.getElementById('detalhe-stats').innerHTML = `
+        <div style="font-size:11px;font-weight:800;color:#e2e8f0;margin-bottom:10px">
+            ${liga.liga.replace(/virtual/i,'').trim()}
+        </div>
+        <div style="font-size:9px;color:#475569;margin-bottom:10px">${liga.amostras} partidas | ${liga.total} total coletadas</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+            ${statBar('Média Gols/Jogo', liga.stats.mediaGols, 5, '#60a5fa')}
+            ${statBar('Over 1.5', s.pctO15, 100, '#10b981', '%')}
+            ${statBar('Over 2.5', s.pctO25, 100, '#3b82f6', '%')}
+            ${statBar('Ambas Marcam', s.pctAmbas, 100, '#06b6d4', '%')}
+            ${statBar('Casa Vence', s.pctCasa, 100, '#84cc16', '%')}
+            ${statBar('Empate', s.pctEmpate, 100, '#a78bfa', '%')}
+            ${statBar('Fora Vence', s.pctFora, 100, '#fb923c', '%')}
+        </div>
+    `;
+
+    const nAtual = S.rankingN;
+    const rows = liga.filtros.slice(0, 11).map((f, i) => {
+        const tx = f.tx_ultn;
+        const cor = tx >= 65 ? '#4ade80' : tx >= 55 ? '#fbbf24' : tx >= 45 ? '#94a3b8' : '#f87171';
+        const tendIcon = f.tendencia === 'subindo' ? '↑' : f.tendencia === 'caindo' ? '↓' : '→';
+        const tendCls  = f.tendencia === 'subindo' ? '#4ade80' : f.tendencia === 'caindo' ? '#f87171' : '#94a3b8';
+        const streakIcon = f.streak_tipo === 'verde' ? '🟢' : '🔴';
+        return `<tr>
+            <td style="color:#475569;text-align:center;font-size:10px">${i+1}</td>
+            <td style="font-weight:600">${f.label}</td>
+            <td style="text-align:center;color:${cor};font-weight:800">${f.tx_ultn}%</td>
+            <td style="text-align:center;color:#94a3b8">${f.tx_geral}%</td>
+            <td style="text-align:center">${streakIcon} ${f.streak}</td>
+            <td style="text-align:center;color:${tendCls};font-weight:700">${tendIcon}</td>
+            <td style="text-align:center">
+                <span class="badge ${f.confianca === 'alta' ? 'badge-alta' : f.confianca === 'media' ? 'badge-media' : 'badge-baixa'}">
+                    ${f.confianca}
+                </span>
+            </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('detalhe-filtros').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:9px;font-weight:700;color:#475569">
+                RANKING DE FILTROS <span style="color:#60a5fa">(ult. ${nAtual} jogos)</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px">
+                <span style="font-size:9px;color:#475569">Jogos:</span>
+                <select id="ranking-n-sel" onchange="onRankingNChange(this.value)"
+                    style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;
+                           font-size:10px;padding:2px 5px;cursor:pointer">
+                    ${[3,5,10,15,20,30,50].map(v =>
+                        `<option value="${v}" ${v === nAtual ? 'selected' : ''}>${v}</option>`
+                    ).join('')}
+                </select>
+            </div>
+        </div>
+        <table class="modal-table">
+            <thead><tr>
+                <th>#</th><th>Filtro</th><th style="text-align:center">Ult${nAtual}%</th>
+                <th style="text-align:center">Geral%</th><th style="text-align:center">Streak</th>
+                <th style="text-align:center">Tend</th><th style="text-align:center">Conf</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
+}
+
+async function onRankingNChange(val) {
+    S.rankingN = parseInt(val) || 10;
+    await carregarSugestoes();
+}
+
+function statBar(label, value, max, cor, suffix = '') {
+    const pct = Math.min(100, (value / max) * 100);
+    return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+            <span style="color:#64748b">${label}</span>
+            <b style="color:#e2e8f0">${value}${suffix}</b>
+        </div>
+        <div style="background:#1e293b;border-radius:3px;height:4px;overflow:hidden">
+            <div style="background:${cor};height:4px;width:${pct}%;border-radius:3px;transition:width .4s"></div>
+        </div>
+    </div>`;
+}
+
+// ============================================================
+// LIGA TABS
+// ============================================================
+function renderLigas() {
+    const c = document.getElementById('liga-tabs');
+    c.innerHTML = '';
+
+    const mk = (label, liga, total) => {
+        const b = document.createElement('button');
+        b.className = 'liga-tab' + (S.ligaAtiva === liga ? ' ativo' : '');
+        b.textContent = label;
+        if (total) b.title = `${liga} — ${total} jogos`;
+        b.onclick = () => {
+            S.ligaAtiva = liga;
+            S.partidas  = filtrarPartidas();
+            document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
+            b.classList.add('ativo');
+            renderTabela(); renderGrafico(); renderProximosJogos(); renderHeatmapIA(); renderUltimosResultados();
+            document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
+        };
+        c.appendChild(b);
+    };
+
+    // Apenas ligas canônicas (já filtradas em carregarHistorico)
+    S.ligas.forEach(l => mk(l.liga, l.liga, l.total));
+}
+
+// ============================================================
+// FILTROS / SEÇÃO
+// ============================================================
+function renderFiltros() {
+    const c = document.getElementById('filtros-row');
+    c.innerHTML = '';
+    (FILTROS[S.secao] || []).forEach(f => {
+        const b = document.createElement('button');
+        b.className = 'filtro-btn' + (S.filtro === f.id ? ' ativo' : '');
+        b.textContent = f.label;
+        b.onclick = () => { S.filtro = f.id; renderFiltros(); renderTabela(); renderGrafico(); };
+        c.appendChild(b);
+    });
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-left:auto;display:flex;gap:6px';
+    div.innerHTML = `
+        <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
+        <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
+        <button class="acao-btn${S.showNomes ? ' ativo' : ''}" id="btn-show-nomes"
+            onclick="S.showNomes=!S.showNomes;renderFiltros();renderTabela()"
+            title="Mostrar/ocultar nomes dos clubes nas células">🏷️ Clubes</button>
+    `;
+    c.appendChild(div);
+}
+
+function trocarSecao(s) {
+    S.secao  = s;
+    S.filtro = DEFAULTS[s] || (FILTROS[s]?.[0]?.id ?? '');
+    document.querySelectorAll('.secao-btn[data-s]').forEach(b => b.classList.toggle('ativo', b.dataset.s === s));
+    renderFiltros(); renderLegenda(); renderTabela(); renderGrafico();
+}
+
+function setHoras(n) {
+    S.horas = n;
+    document.querySelectorAll('.secao-btn[data-h]').forEach(b =>
+        b.classList.toggle('ativo', parseInt(b.dataset.h) === n));
+    carregarHistorico(); // recarrega do servidor com novo período
+}
+
+// ============================================================
+// LEGENDA
+// ============================================================
+function renderLegenda() {
+    const c = document.getElementById('legenda');
+    c.innerHTML = '';
+    (FILTROS[S.secao] || []).forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'legenda-item' + (S.linhas[f.id] ? '' : ' off');
+        item.innerHTML = `<span class="legenda-cor" style="background:${f.cor}"></span><span>${f.label}</span>`;
+        item.onclick = () => { S.linhas[f.id] = !S.linhas[f.id]; renderLegenda(); renderGrafico(); };
+        c.appendChild(item);
+    });
+    const mm1 = document.getElementById('mm1')?.value || 12;
+    const mm2 = document.getElementById('mm2')?.value || 26;
+    const div = document.createElement('div');
+    div.style.cssText = 'border-top:1px solid #1e293b;margin-top:5px;padding-top:5px';
+    div.innerHTML = `
+        <div class="legenda-item" style="cursor:default;opacity:.7">
+            <span class="legenda-cor" style="background:#60a5fa"></span><span>MACD(${mm1}/${mm2})</span>
+        </div>
+        <div class="legenda-item" style="cursor:default;opacity:.7">
+            <span class="legenda-cor" style="background:#f472b6"></span><span>Sinal</span>
+        </div>
+    `;
+    c.appendChild(div);
+}
+
+// ============================================================
+// AGRUPAMENTO — por hora, sempre preenche todas as horas do período
+// ============================================================
+function pad2(n) { return String(n).padStart(2,'0'); }
+
+function horaKey(d) {
+    // Usa UTC para agrupar pelo horário da Bet365 (não fuso local do browser)
+    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:00`;
+}
+
+function utcHourStart(d) {
+    // Retorna ms do início da hora UTC (zera minutos/segundos)
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours());
+}
+
+function grupos() {
+    const byHour = new Map();
+
+    // Popula com partidas existentes
+    S.partidas.forEach(p => {
+        if (!p.data_partida) return;
+        const d = new Date(p.data_partida);
+        const key = horaKey(d);
+        if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(utcHourStart(d)), jogos: [] });
+        byHour.get(key).jogos.push(p);
+    });
+
+    // Garante todos os slots do período (mesmo sem dados)
+    // Bet365 usa UTC+1 — avançamos 1h para que a linha atual bata com o horário Bet365
+    const agora = new Date(Date.now() + BET365_OFFSET_MS);
+    for (let h = 0; h < S.horas; h++) {
+        const ms  = utcHourStart(new Date(agora.getTime() - h * 3600000));
+        const key = horaKey(new Date(ms));
+        if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(ms), jogos: [] });
+    }
+
+    return [...byHour.values()].sort((a, b) => a.hora - b.hora);
+}
+
+// Série flat de todas as partidas para o gráfico
+function serieFlat() {
+    return S.partidas.slice(); // já em ordem ASC
+}
+
+// ============================================================
+// PRÓXIMOS JOGOS — carrega de /api/bet365/eventos-completos (com todos os mercados)
+// ============================================================
+async function renderProximosJogos() {
+    const el = document.getElementById('proximos-jogos');
+    if (!el) return;
+    try {
+        const r = await fetch('/api/bet365/eventos-completos');
+        const d = await r.json();
+        if (!d.success || !d.data?.length) {
+            el.innerHTML = '<div style="color:#334155;font-size:11px;padding:8px">Nenhum jogo agendado encontrado</div>';
+            return;
+        }
+
+        // Filtrar por liga ativa e só AGENDADOS com odds
+        let jogos = (d.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
+        if (S.ligaAtiva) jogos = jogos.filter(j => normalizarLiga(j.liga) === S.ligaAtiva);
+        jogos = jogos.sort((a, b) => new Date(a.horario||0) - new Date(b.horario||0)).slice(0, 12);
+
+        if (!jogos.length) {
+            el.innerHTML = '<div style="color:#334155;font-size:11px;padding:8px">Nenhum jogo agendado para esta liga</div>';
+            return;
+        }
+
+        // Estatísticas históricas
+        const histCasa = time => {
+            const part = S.partidas.filter(p => p.time_casa === time);
+            if (!part.length) return null;
+            return (part.filter(p => p.resultado === 'CASA').length / part.length * 100).toFixed(0);
+        };
+        const histFora = time => {
+            const part = S.partidas.filter(p => p.time_fora === time);
+            if (!part.length) return null;
+            return (part.filter(p => p.resultado === 'FORA').length / part.length * 100).toFixed(0);
+        };
+        const histOver15 = liga => {
+            const part = S.todasPartidas.filter(p => !liga || p.liga === liga);
+            if (!part.length) return null;
+            return (part.filter(p => (p.gol_casa||0)+(p.gol_fora||0) >= 2).length / part.length * 100).toFixed(0);
+        };
+
+        // Renderiza odds expandíveis de todos os mercados
+        const renderMercadoOdds = (mercados) => {
+            if (!mercados?.length) return '';
+            return mercados.map(m => {
+                const sels = m.selecoes || [];
+                // Layout em grid: até 2 colunas para mercados com 2-4 seleções
+                const useGrid = sels.length >= 2 && sels.length <= 6;
+                const selHtml = useGrid
+                    ? `<div style="display:grid;grid-template-columns:repeat(${Math.min(sels.length,3)},1fr);gap:3px">${
+                        sels.map(s => {
+                            const odd = parseFloat(s.odd||0);
+                            const cor = odd < 1.8 ? '#4ade80' : odd < 2.5 ? '#fbbf24' : '#f87171';
+                            return `<div style="background:#060d1a;border:1px solid #1e293b;border-radius:4px;padding:4px 3px;text-align:center">
+                                <div style="font-size:8px;color:#64748b;line-height:1.2;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.nome}">${s.nome}</div>
+                                <div style="font-size:11px;font-weight:800;color:${cor}">${odd.toFixed(2)}</div>
+                            </div>`;
+                        }).join('')
+                    }</div>`
+                    : `<div style="display:flex;flex-direction:column;gap:2px">${
+                        sels.map(s => {
+                            const odd = parseFloat(s.odd||0);
+                            const cor = odd < 1.8 ? '#4ade80' : odd < 2.5 ? '#fbbf24' : '#f87171';
+                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 4px;background:#060d1a;border-radius:3px">
+                                <span style="font-size:9px;color:#94a3b8;flex:1">${s.nome}</span>
+                                <span style="font-size:10px;font-weight:800;color:${cor};min-width:34px;text-align:right">${odd.toFixed(2)}</span>
+                            </div>`;
+                        }).join('')
+                    }</div>`;
+                return `
+                <div style="margin-bottom:7px">
+                    <div style="font-size:8px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #0d1526">${m.nome}</div>
+                    ${selHtml}
+                </div>`;
+            }).join('');
+        };
+
+        el.innerHTML = jogos.map((j, idx) => {
+            const mins = Math.round((j.seconds_to_start || 0) / 60);
+            const tempo = mins <= 0 ? 'Ao vivo' : mins < 60 ? `em ${mins}min` : `${Math.floor(mins/60)}h${mins%60}m`;
+            const hC  = histCasa(j.time_casa);
+            const hF  = histFora(j.time_fora);
+            const hO  = histOver15(j.liga);
+            const liga = (j.liga||'').replace(/virtual/gi,'').trim();
+            const idPanel = `odds-panel-${idx}`;
+            const hasMercados = j.mercados?.length > 0;
+            return `
+            <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:7px;padding:9px 11px;min-width:200px;flex:1">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                    <span style="font-size:9px;color:#475569;font-weight:700">${liga}</span>
+                    <span style="font-size:9px;color:${mins<=0?'#1fcc59':'#94a3b8'};font-weight:700">${tempo}</span>
+                </div>
+                <div style="font-size:11px;font-weight:700;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${j.time_casa} <span style="color:#334155">×</span> ${j.time_fora}
+                </div>
+                <div style="display:flex;gap:4px;margin-bottom:5px">
+                    <span style="flex:1;text-align:center;background:#14532d20;border:1px solid #14532d40;border-radius:4px;padding:3px 0;font-size:11px;font-weight:800;color:#4ade80">${parseFloat(j.odd_casa||0).toFixed(2)}</span>
+                    <span style="flex:1;text-align:center;background:#1e293b;border:1px solid #334155;border-radius:4px;padding:3px 0;font-size:11px;font-weight:800;color:#94a3b8">${parseFloat(j.odd_empate||0).toFixed(2)}</span>
+                    <span style="flex:1;text-align:center;background:#45090920;border:1px solid #45090940;border-radius:4px;padding:3px 0;font-size:11px;font-weight:800;color:#f87171">${parseFloat(j.odd_fora||0).toFixed(2)}</span>
+                </div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:${hasMercados?'6px':'0'}">
+                    ${hC !== null ? `<span style="font-size:9px;color:#94a3b8">Casa hist: <b style="color:#4ade80">${hC}%</b></span>` : ''}
+                    ${hF !== null ? `<span style="font-size:9px;color:#94a3b8">Fora hist: <b style="color:#f87171">${hF}%</b></span>` : ''}
+                    ${hO !== null ? `<span style="font-size:9px;color:#94a3b8">O1.5 liga: <b style="color:#60a5fa">${hO}%</b></span>` : ''}
+                </div>
+                ${hasMercados ? `
+                <button onclick="(function(btn,panel){panel.style.display=panel.style.display==='none'?'block':'none';btn.textContent=panel.style.display==='none'?'▼ Ver todas as odds (${j.mercados.length})':'▲ Ocultar odds'})(this,document.getElementById('${idPanel}'))"
+                    style="width:100%;background:#0d1526;border:1px solid #1e293b;border-radius:4px;padding:4px;font-size:9px;color:#60a5fa;cursor:pointer;font-weight:700">
+                    ▼ Ver todas as odds (${j.mercados.length})
+                </button>
+                <div id="${idPanel}" style="display:none;margin-top:6px;max-height:320px;overflow-y:auto;scrollbar-width:thin">
+                    ${renderMercadoOdds(j.mercados)}
+                </div>` : ''}
+            </div>`;
+        }).join('');
+    } catch (e) {
+        el.innerHTML = `<div style="color:#ef4444;font-size:10px;padding:8px">Erro: ${e.message}</div>`;
+    }
+}
+
+// ============================================================
+// EMA / MACD
+// ============================================================
+function ema(serie, p) {
+    if (!serie.length) return [];
+    const k = 2 / (p + 1), r = [serie[0]];
+    for (let i = 1; i < serie.length; i++) r.push(serie[i] * k + r[i-1] * (1-k));
+    return r;
+}
+function macd(serie, f, sl, sg) {
+    const ef = ema(serie, f), es = ema(serie, sl);
+    const ml = ef.map((v,i) => +(v - es[i]).toFixed(2));
+    const sig = ema(ml, sg);
+    const hi  = ml.map((v,i) => +(v - sig[i]).toFixed(2));
+    return { ml, sig, hi };
+}
+
+// ============================================================
+// GRÁFICO SUPERIOR — estilo Caramelo: pontos por jogo + média móvel
+// ============================================================
+function renderGrafico() {
+    const serie = serieFlat();
+    if (!serie.length) return;
+
+    const mm1 = parseInt(document.getElementById('mm1')?.value) || 12;
+    const mm2 = parseInt(document.getElementById('mm2')?.value) || 26;
+    const mms = parseInt(document.getElementById('mms')?.value) || 9;
+
+    const opcoes = FILTROS[S.secao] || [];
+    const datasets = [];
+
+    // Pontos individuais (0 = miss, 100 = hit) para o filtro ativo
+    const fi = opcoes.find(f => f.id === S.filtro) || opcoes[0];
+    if (fi) {
+        const pts = serie.map(j => checa(j, fi.id) ? 100 : 0);
+        datasets.push({
+            type: 'scatter',
+            label: fi.label,
+            data: pts.map((v, i) => ({ x: i, y: v })),
+            backgroundColor: pts.map(v => v ? '#1fcc5960' : '#dc262640'),
+            pointRadius: 3,
+            pointHoverRadius: 5,
+        });
+
+        // Média móvel de 10 jogos
+        const mm10 = pts.map((_, i) => {
+            const w = pts.slice(Math.max(0, i-9), i+1);
+            return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);
+        });
+        datasets.push({
+            type: 'line',
+            label: `Média 10`,
+            data: mm10,
+            borderColor: fi.cor,
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.4,
+        });
+
+        // MACD se tiver dados suficientes
+        if (serie.length >= mm2) {
+            const md = macd(pts, mm1, mm2, mms);
+            datasets.push({ type: 'line', label: `MACD`, data: md.ml, borderColor: '#60a5fa',
+                borderWidth: 1.5, borderDash: [4,2], pointRadius: 0, tension: 0.3, backgroundColor:'transparent' });
+            datasets.push({ type: 'line', label: `Sinal`, data: md.sig, borderColor: '#f472b6',
+                borderWidth: 1.5, borderDash: [2,3], pointRadius: 0, tension: 0.3, backgroundColor:'transparent' });
+        }
+    }
+
+    // Linhas adicionais para outros filtros ativos
+    opcoes.forEach(f => {
+        if (!S.linhas[f.id] || f.id === fi?.id) return;
+        const pts2 = serie.map(j => checa(j, f.id) ? 100 : 0);
+        const mm = pts2.map((_, i) => {
+            const w = pts2.slice(Math.max(0,i-9), i+1);
+            return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);
+        });
+        datasets.push({ type:'line', label: f.label, data: mm, borderColor: f.cor,
+            backgroundColor:'transparent', borderWidth:1.5, pointRadius:0, tension:0.4 });
+    });
+
+    const labels = serie.map((p, i) => {
+        if (i % 10 !== 0) return '';
+        const d = p.data_partida ? new Date(p.data_partida) : null;
+        return d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : `#${i+1}`;
+    });
+
+    const cfg = {
+        type: 'line', data: { labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 150 },
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1,
+                    callbacks: { label: ctx => ` ${ctx.dataset.label}: ${typeof ctx.raw === 'object' ? ctx.raw.y : ctx.raw}${ctx.dataset.type !== 'scatter' ? '%' : ''}` }
+                }
+            },
+            scales: {
+                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxTicksLimit:12,maxRotation:0} },
+                y: { min:0, max:105, grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},callback:v=>v+'%'} }
+            }
+        }
+    };
+
+    if (S.grafico) {
+        S.grafico.data    = cfg.data;
+        S.grafico.options = cfg.options;
+        S.grafico.update('none');
+    } else {
+        S.grafico = new Chart(document.getElementById('grafico').getContext('2d'), cfg);
+    }
+    if (fi) document.getElementById('g-titulo').textContent = `${fi.label} — ${serie.length} jogos`;
+}
+
+// ============================================================
+// ÚLTIMOS RESULTADOS — lista simples com nomes + placar
+// ============================================================
+async function renderUltimosResultados() {
+    const el = document.getElementById('ultimos-resultados-lista');
+    const cnt = document.getElementById('ultimos-res-count');
+    if (!el) return;
+    try {
+        const r = await fetch('/api/bet365/ultimos-resultados?n=30');
+        const d = await r.json();
+        if (!d.success) throw new Error(d.error || 'Erro');
+
+        if (!d.data?.length) {
+            el.innerHTML = `<div style="padding:16px;text-align:center;color:#334155;font-size:11px">
+                Nenhum resultado coletado ainda. Aguarde a próxima coleta.
+            </div>`;
+            if (cnt) cnt.textContent = '';
+            return;
+        }
+
+        if (cnt) cnt.textContent = `(${d.total} resultados reais)`;
+
+        const ligaFiltro = S.ligaAtiva; // null = todas
+        const partidas = ligaFiltro
+            ? d.data.filter(p => normalizarLiga(p.liga) === ligaFiltro)
+            : d.data;
+
+        if (!partidas.length) {
+            el.innerHTML = `<div style="padding:16px;text-align:center;color:#334155;font-size:11px">
+                Nenhum resultado para esta liga nas últimas coletas.
+            </div>`;
+            return;
+        }
+
+        const rows = partidas.map(p => {
+            const dt = p.data_partida ? new Date(p.data_partida) : null;
+            // Mostra em UTC para ser consistente com a grid (Bet365 usa UTC)
+            const horaStr = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '—';
+            const dataStr = dt ? `${pad2(dt.getUTCDate())}/${pad2(dt.getUTCMonth()+1)}` : '';
+            const liga = normalizarLiga(p.liga) || p.liga || '—';
+            const placar = (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa} - ${p.gol_fora}` : '? - ?';
+            const res = p.resultado || '?';
+            const resCor = res === 'CASA' ? '#4ade80' : res === 'FORA' ? '#f87171' : '#fbbf24';
+            const tc = normalizarTime(p.time_casa) || p.time_casa || '?';
+            const tf = normalizarTime(p.time_fora) || p.time_fora || '?';
+            return `<tr style="border-bottom:1px solid #1e293b">
+                <td style="padding:5px 10px;color:#475569;font-size:10px;white-space:nowrap">${dataStr} ${horaStr}</td>
+                <td style="padding:5px 8px;font-size:9px;color:#64748b;white-space:nowrap">${liga}</td>
+                <td style="padding:5px 8px;font-size:11px;color:#e2e8f0;text-align:right">${tc}</td>
+                <td style="padding:5px 10px;font-size:13px;font-weight:800;text-align:center;color:#e2e8f0;white-space:nowrap">${placar}</td>
+                <td style="padding:5px 8px;font-size:11px;color:#e2e8f0;text-align:left">${tf}</td>
+                <td style="padding:5px 8px;font-size:10px;font-weight:700;color:${resCor};text-align:center">${res}</td>
+            </tr>`;
+        }).join('');
+
+        el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#0c1220">
+                <th style="padding:6px 10px;font-size:9px;font-weight:700;color:#334155;text-align:left">HORA</th>
+                <th style="padding:6px 8px;font-size:9px;font-weight:700;color:#334155;text-align:left">LIGA</th>
+                <th style="padding:6px 8px;font-size:9px;font-weight:700;color:#334155;text-align:right">CASA</th>
+                <th style="padding:6px 10px;font-size:9px;font-weight:700;color:#334155;text-align:center">PLACAR</th>
+                <th style="padding:6px 8px;font-size:9px;font-weight:700;color:#334155;text-align:left">FORA</th>
+                <th style="padding:6px 8px;font-size:9px;font-weight:700;color:#334155;text-align:center">RES</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table></div>`;
+    } catch(e) {
+        el.innerHTML = `<div style="padding:16px;text-align:center;color:#f87171;font-size:11px">Erro: ${e.message}</div>`;
+    }
+}
+
+// ============================================================
+// MINUTOS FIXOS POR LIGA (confirmados empiricamente)
+// Cada liga inicia com offset diferente, ciclo de 3 minutos, 20 jogos/hora
+// ============================================================
+const LIGA_MINUTOS = {
+    // Premier League → :00, :03, :06, ..., :57
+    premier:  [0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57],
+    // Copa do Mundo / World Cup → :01, :04, :07, ..., :58
+    world:    [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,52,55,58],
+    copa:     [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,52,55,58],
+    // Super Liga Sul-Americana / Super League → :01, :04, ..., :58
+    super:    [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,52,55,58],
+    // Euro Cup → :02, :05, :08, ..., :59
+    euro:     [2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59],
+};
+
+// Retorna os slots de minuto conhecidos para a liga, ou null se desconhecida
+function minutosParaLiga(liga) {
+    if (!liga) return null;
+    const l = liga.toLowerCase();
+    if (l.includes('premier') || l.includes('premiership')) return LIGA_MINUTOS.premier;
+    if (l.includes('world') || l.includes('copa') || l.includes('mundial')) return LIGA_MINUTOS.world;
+    if (l.includes('super'))  return LIGA_MINUTOS.super;
+    if (l.includes('euro'))   return LIGA_MINUTOS.euro;
+    return null;
+}
+
+// ============================================================
+// TABELA HISTÓRICA — 1 linha = 1 hora, 20 colunas = jogos daquela hora
+// Estilo CarameloBet: score na célula, cor = filtro ativo
+// ============================================================
+function renderTabela() {
+    const gs = grupos();
+    const filtrosDaSec = FILTROS[S.secao] || [];
+    const fi = filtrosDaSec.find(f => f.id === S.filtro) || filtrosDaSec[0];
+
+    const thead = document.getElementById('tbl-head');
+    const tbody = document.getElementById('tbl-body');
+    const tfoot = document.getElementById('tbl-foot');
+
+    const semDados = !S.partidas.length;
+
+    // ── Slots de minuto: usa mapa fixo da liga se conhecida ──
+    // Garante posicionamento correto mesmo em dados históricos antigos
+    let minuteSlots = minutosParaLiga(S.ligaAtiva);
+
+    // DIAGNÓSTICO — aparece no console do browser (F12)
+    console.group(`[Tabela] Liga: "${S.ligaAtiva}"`);
+    console.log('minuteSlots:', minuteSlots);
+    const amostra = S.partidas.slice(0, 5).map(p => ({
+        liga: p.liga,
+        data_partida_raw: p.data_partida,
+        hora_local: p.data_partida ? new Date(p.data_partida).toLocaleString('pt-BR') : null,
+        minuto: p.data_partida ? new Date(p.data_partida).getMinutes() : null,
+    }));
+    console.table(amostra);
+    console.groupEnd();
+    if (!minuteSlots) {
+        // Liga desconhecida ou "todas": deriva dos dados ou fallback 0,3,6,...
+        const minuteSet = new Set();
+        S.partidas.forEach(p => {
+            if (p.data_partida) minuteSet.add(new Date(p.data_partida).getMinutes());
+        });
+        minuteSlots = [...minuteSet].sort((a, b) => a - b);
+        if (minuteSlots.length === 0 || minuteSlots.length > 20) {
+            minuteSlots = Array.from({length: 20}, (_, i) => i * 3);
+        }
+    }
+    const N = minuteSlots.length;
+
+    // Cabeçalho — mostra o minuto real de cada coluna (ex: :00, :03, :06...)
+    thead.innerHTML = `
+        <th class="th-l" style="min-width:74px;position:sticky;left:0;z-index:11;background:#0c1220">
+            ${fi ? `<span style="color:${fi.cor};font-size:9px">${fi.label}</span>` : 'HORA'}
+        </th>
+        <th style="min-width:36px;background:#0c1220">%</th>
+        ${minuteSlots.map(m => `<th title="Minuto ${m}">:${pad2(m)}</th>`).join('')}
+    `;
+
+    tbody.innerHTML = '';
+
+    if (semDados) {
+        tbody.innerHTML = `<tr><td colspan="${N+2}" style="text-align:center;padding:40px;color:#334155;background:#060810">
+            <div style="font-size:22px;margin-bottom:8px">📊</div>
+            <div style="font-size:12px;color:#475569">Nenhum histórico nas últimas ${S.horas}h</div>
+            <div style="font-size:10px;margin-top:4px;color:#334155">A coleta precisa capturar resultados finais. Verifique o agendador.</div>
+        </td></tr>`;
+        tfoot.innerHTML = '';
+        document.getElementById('tabela-info').textContent = `0 partidas • ${S.horas}h`;
+        return;
+    }
+
+    const colHits  = Array(N).fill(0);
+    const colTotal = Array(N).fill(0);
+
+    // Mais recente primeiro (topo da tabela)
+    const gsDesc = [...gs].reverse();
+
+    gsDesc.forEach(grupo => {
+        const hora    = grupo.hora;
+        // Exibe horário UTC — os tempos da Bet365 são armazenados e exibidos em UTC
+        const horaStr = `${pad2(hora.getUTCDate())}/${pad2(hora.getUTCMonth()+1)} ${pad2(hora.getUTCHours())}:00`;
+
+        // Mapeia cada jogo ao slot do seu minuto exato dentro da hora
+        const slotMap = new Array(N).fill(null);
+        const sorted = [...grupo.jogos].sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
+        sorted.forEach(j => {
+            if (!j.data_partida) return;
+            const min = new Date(j.data_partida).getUTCMinutes(); // UTC = horário Bet365
+            // Busca o índice exato na lista de minutos canônicos da liga
+            let idx = minuteSlots.indexOf(min);
+            if (idx < 0) {
+                // Minuto não está na lista (ex: dado antigo) → slot mais próximo
+                idx = minuteSlots.findIndex(m => m >= min);
+                if (idx < 0) idx = N - 1;
+            }
+            if (!slotMap[idx]) slotMap[idx] = j;
+            else {
+                for (let s = idx + 1; s < N; s++) { if (!slotMap[s]) { slotMap[s] = j; break; } }
+            }
+        });
+
+        const jogosComDados = slotMap.filter(Boolean);
+        const temJogo = jogosComDados.length > 0;
+
+        // Taxa de acerto do filtro ativo para esta hora
+        const hits = fi ? jogosComDados.filter(j => checa(j, fi.id)).length : 0;
+        const pct  = temJogo ? Math.round(hits / jogosComDados.length * 100) : null;
+        const pctC = pct === null ? '' : pct >= 65 ? 'pct-alta' : pct >= 45 ? 'pct-media' : 'pct-baixa';
+
+        const tr = document.createElement('tr');
+
+        // Células dos jogos — uma por slot de 3 minutos
+        const cells = Array.from({length: N}, (_, ci) => {
+            const j = slotMap[ci];
+            if (!j) {
+                return `<td class="c-vazio" style="opacity:.3"></td>`;
+            }
+            const hit   = fi ? checa(j, fi.id) : false;
+            const score = (j.gol_casa != null && j.gol_fora != null)
+                ? `${j.gol_casa}-${j.gol_fora}` : '–';
+            const _d = j.data_partida ? new Date(j.data_partida) : null;
+            const minStr = _d ? `${pad2(_d.getUTCHours())}:${pad2(_d.getUTCMinutes())}` : '';
+            const isEstimado = j.resultado_estimado === 1 || j.resultado_estimado === true;
+            const ttSuffix = isEstimado ? ' [estimado]' : '';
+            const tt = `${minStr} ${j.time_casa} ${score} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]${ttSuffix}`;
+            // Células estimadas não entram no footer de % (dados não confiáveis)
+            if (!isEstimado) {
+                colHits[ci]  += hit ? 1 : 0;
+                colTotal[ci] += 1;
+            }
+            const abbrev = n => (n||'').split(' ')[0].slice(0,8);
+            const cellContent = S.showNomes
+                ? `<span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_casa)}</span><span style="display:block;font-size:9px;font-weight:800">${score}</span><span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_fora)}</span>`
+                : score;
+            const opacityStyle = isEstimado ? 'opacity:0.35;' : '';
+            const baseStyle = S.showNomes ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
+            const cellStyle = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
+            return `<td class="${hit ? 'c-verde' : 'c-verm'}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
+        }).join('');
+
+        tr.innerHTML = `
+            <td class="td-l" style="position:sticky;left:0;background:#0f172a;z-index:5;
+                font-size:10px;font-weight:700;color:#60a5fa;white-space:nowrap;min-width:74px">
+                ${horaStr}${temJogo ? `<span style="color:#334155;font-weight:400;margin-left:4px">(${jogosComDados.length})</span>` : ''}
+            </td>
+            <td class="td-pct ${pctC}">${pct !== null ? pct+'%' : '—'}</td>
+            ${cells}
+        `;
+
+        tr.querySelectorAll('td[data-tt]').forEach(td => {
+            td.addEventListener('mouseenter', showTT);
+            td.addEventListener('mousemove',  moveTT);
+            td.addEventListener('mouseleave', hideTT);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    // Footer — % de acerto por posição (jogo 1-20 dentro da hora)
+    const footCells = Array.from({length: N}, (_, ci) => {
+        if (!colTotal[ci]) return `<td style="color:#1e293b">–</td>`;
+        const p = Math.round(colHits[ci] / colTotal[ci] * 100);
+        const c = p >= 65 ? '#4ade80' : p >= 45 ? '#fbbf24' : '#f87171';
+        return `<td style="color:${c};font-weight:800;font-size:10px">${p}%</td>`;
+    }).join('');
+
+    tfoot.innerHTML = `
+        <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:9px;color:#475569;font-weight:700">% / POSIÇÃO</td>
+        <td class="td-pct"></td>
+        ${footCells}
+    `;
+
+    const totalPartidas = gs.reduce((s, g) => s + g.jogos.length, 0);
+    const horasCom      = gs.filter(g => g.jogos.length > 0).length;
+    document.getElementById('tabela-info').textContent =
+        `${S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
+}
+
+// ============================================================
+// TOOLTIP
+// ============================================================
+const ttEl = document.getElementById('tt');
+function showTT(e) { ttEl.textContent = e.currentTarget.dataset.tt; ttEl.style.display = 'block'; moveTT(e); }
+function moveTT(e) { ttEl.style.left = (e.clientX + 14) + 'px'; ttEl.style.top = (e.clientY - 8) + 'px'; }
+function hideTT()  { ttEl.style.display = 'none'; }
+
+// ============================================================
+// RANKING TIMES
+// ============================================================
+function abrirModalTimes() {
+    document.getElementById('modal-times').classList.add('aberto');
+    renderRankTimes('casa');
+}
+
+function renderRankTimes(tipo) {
+    ['casa','fora','geral'].forEach(t =>
+        document.getElementById(`rt-${t}`).className = 'secao-btn' + (t === tipo ? ' ativo' : ''));
+
+    const mapa = new Map();
+    S.partidas.forEach(j => {
+        const add = (nome, vit, gm, gs) => {
+            if (!nome) return;
+            if (!mapa.has(nome)) mapa.set(nome, {n:nome,j:0,v:0,e:0,d:0,gm:0,gs:0,o15:0});
+            const s = mapa.get(nome);
+            s.j++; s.gm += gm; s.gs += gs;
+            if (vit === 1) s.v++;
+            else if (vit === 0) s.e++;
+            else s.d++;
+            s.o15 += (gm + gs) >= 2 ? 1 : 0;
+        };
+        const tc = j.gol_casa||0, tf = j.gol_fora||0;
+        const res = tc>tf ? 1 : tc<tf ? -1 : 0;
+        if (tipo === 'casa' || tipo === 'geral') add(j.time_casa, res, tc, tf);
+        if (tipo === 'fora' || tipo === 'geral') add(j.time_fora, -res, tf, tc);
+    });
+
+    const arr = Array.from(mapa.values())
+        .filter(t => t.j >= 2)
+        .map(t => ({...t, pv:t.j?t.v/t.j*100:0, pe:t.j?t.e/t.j*100:0, pd:t.j?t.d/t.j*100:0,
+            mg:t.j?t.gm/t.j:0, po:t.j?t.o15/t.j*100:0}))
+        .sort((a,b) => b.pv - a.pv);
+
+    const c = document.getElementById('rank-times-body');
+    if (!arr.length) { c.innerHTML = '<p style="color:#334155;text-align:center;padding:24px">Dados insuficientes</p>'; return; }
+
+    c.innerHTML = `<table class="modal-table">
+        <thead><tr><th>#</th><th>Time</th><th style="text-align:center">J</th>
+            <th style="text-align:center">V%</th><th style="text-align:center">E%</th><th style="text-align:center">D%</th>
+            <th style="text-align:center">GM/J</th><th style="text-align:center">O1.5%</th></tr></thead>
+        <tbody>${arr.slice(0,40).map((t,i) => `<tr>
+            <td style="color:#334155;text-align:center">${i+1}</td>
+            <td style="font-weight:600">${t.n}</td>
+            <td style="text-align:center;color:#64748b">${t.j}</td>
+            <td style="text-align:center;color:#4ade80">${t.pv.toFixed(0)}%</td>
+            <td style="text-align:center;color:#a78bfa">${t.pe.toFixed(0)}%</td>
+            <td style="text-align:center;color:#f87171">${t.pd.toFixed(0)}%</td>
+            <td style="text-align:center;color:#60a5fa">${t.mg.toFixed(2)}</td>
+            <td style="text-align:center;color:#10b981">${t.po.toFixed(0)}%</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+// ============================================================
+// RANKING ODDS
+// ============================================================
+function abrirModalOdds() {
+    document.getElementById('modal-odds').classList.add('aberto');
+    renderRankOdds();
+}
+
+function renderRankOdds() {
+    const faixas = [
+        {l:'< 1.50', mn:0, mx:1.50},
+        {l:'2.00–2.49', mn:2.00, mx:2.50}, {l:'2.50–2.99', mn:2.50, mx:3.00},
+        {l:'3.00–3.99', mn:3.00, mx:4.00}, {l:'≥ 4.00', mn:4.00, mx:9999},
+    ];
+
+    const calc = (mn, mx, campo, res) => {
+        const p = S.partidas.filter(j => { const o = parseFloat(j[campo])||0; return o>=mn && o<mx; });
+        if (!p.length) return {j:0,pv:0,po15:0,po25:0};
+        return {
+            j: p.length,
+            pv:   +(p.filter(j=>j.resultado===res).length / p.length * 100).toFixed(1),
+            po15: +(p.filter(j=>(j.gol_casa||0)+(j.gol_fora||0)>=2).length / p.length * 100).toFixed(1),
+            po25: +(p.filter(j=>(j.gol_casa||0)+(j.gol_fora||0)>=3).length / p.length * 100).toFixed(1),
+        };
+    };
+
+    const tbl = (titulo, campo, res) => `
+        <div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:6px">${titulo}</div>
+        <table class="modal-table" style="margin-bottom:14px">
+            <thead><tr><th>Odd</th><th style="text-align:center">Jogos</th>
+                <th style="text-align:center">%Vence</th><th style="text-align:center">O1.5%</th><th style="text-align:center">O2.5%</th></tr></thead>
+            <tbody>${faixas.map(f => {
+                const d = calc(f.mn, f.mx, campo, res);
+                const cv = d.pv>=55 ? '#4ade80' : d.pv>=35 ? '#fbbf24' : '#f87171';
+                const co = d.po15>=60 ? '#4ade80' : d.po15>=40 ? '#fbbf24' : '#f87171';
+                return `<tr><td>${f.l}</td>
+                    <td style="text-align:center;color:#64748b">${d.j}</td>
+                    <td style="text-align:center;color:${cv}">${d.j?d.pv+'%':'–'}</td>
+                    <td style="text-align:center;color:${co}">${d.j?d.po15+'%':'–'}</td>
+                    <td style="text-align:center;color:#475569">${d.j?d.po25+'%':'–'}</td>
+                </tr>`;
+            }).join('')}</tbody>
+        </table>`;
+
+    document.getElementById('rank-odds-body').innerHTML =
+        tbl('Odd Casa (quando casa vence)', 'odd_casa', 'CASA') +
+        tbl('Odd Fora (quando fora vence)', 'odd_fora', 'FORA');
+}
+
+function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
+
+// ============================================================
+// CLUBES — Histórico por time + próximos jogos
+// ============================================================
+
+let S_clubes = { ligaFiltro: null, busca: '', timeSel: null, proximosEvts: [] };
+
+// Monta mapa de stats por time a partir de S.todasPartidas
+function buildTimesMap(liga) {
+    const map = new Map();
+    const partidas = S.todasPartidas.filter(p => !liga || p.liga === liga);
+
+    partidas.forEach(p => {
+        const add = (nome, res_vit, res_der, gm, gs, lado, jogo) => {
+            if (!nome || nome.trim() === '') return;
+            if (!map.has(nome)) map.set(nome, {
+                nome, jogos:0, vit:0, emp:0, der:0, gm:0, gs:0,
+                jogos_casa:0, vit_casa:0, emp_casa:0, der_casa:0,
+                jogos_fora:0, vit_fora:0, emp_fora:0, der_fora:0,
+                forma:[], ligas: new Set(), partidas:[]
+            });
+            const s = map.get(nome);
+            s.jogos++;
+            s.gm += gm; s.gs += gs;
+            if (p.resultado === 'EMPATE') s.emp++;
+            else if (p.resultado === res_vit) s.vit++;
+            else s.der++;
+
+            if (lado === 'casa') {
+                s.jogos_casa++;
+                if (p.resultado === 'EMPATE') s.emp_casa++;
+                else if (p.resultado === 'CASA') s.vit_casa++;
+                else s.der_casa++;
+            } else {
+                s.jogos_fora++;
+                if (p.resultado === 'EMPATE') s.emp_fora++;
+                else if (p.resultado === 'FORA') s.vit_fora++;
+                else s.der_fora++;
+            }
+
+            const f = p.resultado === 'EMPATE' ? 'E' : (p.resultado === res_vit ? 'V' : 'D');
+            s.forma.push({ r: f, jogo });
+            if (p.liga) s.ligas.add(p.liga);
+            s.partidas.push({ ...p, _lado: lado });
+        };
+        add(p.time_casa, 'CASA', 'FORA', p.gol_casa||0, p.gol_fora||0, 'casa', p);
+        add(p.time_fora, 'FORA', 'CASA', p.gol_fora||0, p.gol_casa||0, 'fora', p);
+    });
+    return map;
+}
+
+function renderClubes() {
+    renderClubesLigaTabs();
+    renderListaClubes();
+    if (S_clubes.timeSel) renderDetalheClube(S_clubes.timeSel);
+}
+
+function renderClubesLigaTabs() {
+    const c = document.getElementById('clubes-liga-tabs');
+    // Seleciona a primeira liga se nenhuma estiver ativa
+    if (!S_clubes.ligaFiltro || !S.ligas.find(l => l.liga === S_clubes.ligaFiltro)) {
+        S_clubes.ligaFiltro = S.ligas[0]?.liga || null;
+    }
+    c.innerHTML = S.ligas.map(l => {
+        return `<button class="liga-tab${S_clubes.ligaFiltro === l.liga ? ' ativo' : ''}"
+            onclick="S_clubes.ligaFiltro='${l.liga.replace(/'/g,"\\'")}';renderClubes()">${l.liga}</button>`;
+    }).join('');
+}
+
+function filtrarClubes() {
+    S_clubes.busca = document.getElementById('clubes-busca').value.toLowerCase();
+    renderListaClubes();
+}
+
+function renderListaClubes() {
+    const c = document.getElementById('clubes-lista');
+    const map = buildTimesMap(S_clubes.ligaFiltro);
+    let lista = [...map.values()].sort((a,b) => b.jogos - a.jogos);
+
+    if (S_clubes.busca) {
+        lista = lista.filter(t => t.nome.toLowerCase().includes(S_clubes.busca));
+    }
+
+    if (!lista.length) {
+        c.innerHTML = `<div style="padding:16px;color:#334155;font-size:11px;text-align:center">
+            ${S.todasPartidas.length ? 'Nenhum time encontrado' : 'Sem dados históricos ainda'}</div>`;
+        return;
+    }
+
+    c.innerHTML = lista.map(t => {
+        const pct = t.jogos ? +(t.vit / t.jogos * 100).toFixed(0) : 0;
+        const cor = pct >= 55 ? '#4ade80' : pct >= 40 ? '#fbbf24' : '#f87171';
+        const forma5 = t.forma.slice(-5).map(f =>
+            `<span style="color:${f.r==='V'?'#4ade80':f.r==='E'?'#a5b4fc':'#f87171'};font-weight:800">${f.r}</span>`
+        ).join('');
+        const ativo = S_clubes.timeSel === t.nome;
+        return `<div onclick="renderDetalheClube('${t.nome.replace(/'/g,"\\'")}')"
+            style="padding:8px 10px;border-bottom:1px solid #0d1421;cursor:pointer;
+            ${ativo?'background:#0c1833;border-left:2px solid #3b82f6':''}
+            display:flex;align-items:center;justify-content:space-between;gap:6px"
+            onmouseover="this.style.background='#1e293b30'" onmouseout="this.style.background='${ativo?'#0c1833':''}'" >
+            <div>
+                <div style="font-size:11px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">${t.nome}</div>
+                <div style="font-size:9px;color:#475569;margin-top:1px">${t.jogos} jogos • ${forma5}</div>
+            </div>
+            <span style="font-size:12px;font-weight:800;color:${cor};flex-shrink:0">${pct}%</span>
+        </div>`;
+    }).join('');
+}
+
+async function renderDetalheClube(nomeTime) {
+    S_clubes.timeSel = nomeTime;
+    renderListaClubes(); // atualiza seleção visual
+
+    const c = document.getElementById('clubes-detalhe');
+    c.innerHTML = '<div style="padding:20px;color:#475569;font-size:11px">Carregando...</div>';
+
+    const map = buildTimesMap(S_clubes.ligaFiltro);
+    const t = map.get(nomeTime);
+    if (!t) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Time não encontrado</div>'; return; }
+
+    // Próximo jogo agendado
+    let proximoEvt = null;
+    try {
+        const r = await fetch('/api/bet365/eventos');
+        const d = await r.json();
+        if (d.success) {
+            const evts = (d.data || []).filter(e => e.status === 'AGENDADO' &&
+                (e.time_casa === nomeTime || e.time_fora === nomeTime));
+            evts.sort((a,b) => (a.seconds_to_start||999) - (b.seconds_to_start||999));
+            proximoEvt = evts[0] || null;
+        }
+    } catch {}
+
+    // H2H com próximo adversário
+    let adversario = null, h2h = [];
+    if (proximoEvt) {
+        adversario = proximoEvt.time_casa === nomeTime ? proximoEvt.time_fora : proximoEvt.time_casa;
+        h2h = t.partidas.filter(p =>
+            (p.time_casa === adversario || p.time_fora === adversario)
+        ).sort((a,b) => new Date(b.data_partida) - new Date(a.data_partida)).slice(0, 20);
+    }
+
+    // Últimas 10 partidas
+    const ultimas = [...t.partidas]
+        .sort((a,b) => new Date(b.data_partida) - new Date(a.data_partida))
+        .slice(0, 10);
+
+    const pct    = t.jogos ? +(t.vit / t.jogos * 100).toFixed(1) : 0;
+    const gdiff  = t.gm - t.gs;
+    const pctC   = t.jogos_casa ? +(t.vit_casa / t.jogos_casa * 100).toFixed(0) : 0;
+    const pctF   = t.jogos_fora ? +(t.vit_fora / t.jogos_fora * 100).toFixed(0) : 0;
+    const mediaG = t.jogos ? +(t.gm / t.jogos).toFixed(1) : 0;
+    const mediaS = t.jogos ? +(t.gs / t.jogos).toFixed(1) : 0;
+
+    const forma10 = t.forma.slice(-10).map(f => {
+        const cor = f.r==='V'?'#14532d':f.r==='E'?'#1e1b4b':'#3b0a0a';
+        const txt = f.r==='V'?'#4ade80':f.r==='E'?'#a5b4fc':'#f87171';
+        const op  = f.jogo.time_casa === nomeTime
+            ? `× ${f.jogo.time_fora} ${f.jogo.gol_casa||0}-${f.jogo.gol_fora||0}`
+            : `× ${f.jogo.time_casa} ${f.jogo.gol_fora||0}-${f.jogo.gol_casa||0}`;
+        return `<span title="${op}" style="display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:3px;font-size:11px;font-weight:800;background:${cor};color:${txt};cursor:default">${f.r}</span>`;
+    }).join('');
+
+    const listaPartidas = ultimas.map(p => {
+        const isC = p.time_casa === nomeTime;
+        const opn = isC ? p.time_fora : p.time_casa;
+        const pl  = isC ? `${p.gol_casa||0}-${p.gol_fora||0}` : `${p.gol_fora||0}-${p.gol_casa||0}`;
+        const res = p.resultado === 'EMPATE' ? 'E' : (isC ? (p.resultado === 'CASA' ? 'V' : 'D') : (p.resultado === 'FORA' ? 'V' : 'D'));
+        const corRes = res==='V'?'#4ade80':res==='E'?'#a5b4fc':'#f87171';
+        const corBg  = res==='V'?'#14532d':res==='E'?'#1e1b4b':'#3b0a0a';
+        const lado   = isC ? 'Casa' : 'Fora';
+        const _pd = p.data_partida ? new Date(p.data_partida) : null;
+        const data   = _pd ? `${pad2(_pd.getUTCDate())}/${pad2(_pd.getUTCMonth()+1)} ${pad2(_pd.getUTCHours())}:${pad2(_pd.getUTCMinutes())}` : '';
+        return `<tr>
+            <td style="padding:4px 8px;color:#475569;font-size:10px">${data}</td>
+            <td style="padding:4px 8px;font-size:10px;color:#94a3b8">${lado}</td>
+            <td style="padding:4px 8px;font-size:11px;color:#e2e8f0">${nomeTime} <span style="color:#334155">×</span> ${opn}</td>
+            <td style="padding:4px 8px;font-weight:800;text-align:center;font-size:12px">${pl}</td>
+            <td style="padding:4px 8px;text-align:center"><span style="background:${corBg};color:${corRes};padding:1px 6px;border-radius:3px;font-size:11px;font-weight:800">${res}</span></td>
+            <td style="padding:4px 8px;font-size:10px;color:#334155">${(p.liga||'').replace(/virtual/gi,'').trim()}</td>
+        </tr>`;
+    }).join('');
+
+    // H2H section
+    let h2hHtml = '';
+    if (adversario && h2h.length) {
+        const h2hVit = h2h.filter(p => {
+            const isC = p.time_casa === nomeTime;
+            return isC ? p.resultado === 'CASA' : p.resultado === 'FORA';
+        }).length;
+        const h2hEmp = h2h.filter(p => p.resultado === 'EMPATE').length;
+        const h2hDer = h2h.length - h2hVit - h2hEmp;
+
+        const h2hLinhas = h2h.slice(0,8).map(p => {
+            const isC = p.time_casa === nomeTime;
+            const pl  = `${p.gol_casa||0}-${p.gol_fora||0}`;
+            const res = p.resultado === 'EMPATE' ? 'E' : (isC ? (p.resultado==='CASA'?'V':'D') : (p.resultado==='FORA'?'V':'D'));
+            const corBg = res==='V'?'#14532d':res==='E'?'#1e1b4b':'#3b0a0a';
+            const corTx = res==='V'?'#4ade80':res==='E'?'#a5b4fc':'#f87171';
+            const data  = p.data_partida ? new Date(p.data_partida).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+            return `<tr>
+                <td style="padding:3px 8px;color:#475569;font-size:10px">${data}</td>
+                <td style="padding:3px 8px;font-size:10px;color:#e2e8f0">${p.time_casa} <span style="color:#334155">×</span> ${p.time_fora}</td>
+                <td style="padding:3px 8px;font-weight:800;text-align:center">${pl}</td>
+                <td style="padding:3px 8px;text-align:center"><span style="background:${corBg};color:${corTx};padding:1px 6px;border-radius:3px;font-size:11px;font-weight:800">${res}</span></td>
+            </tr>`;
+        }).join('');
+
+        h2hHtml = `
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;margin-top:10px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">
+                H2H — ${nomeTime} × ${adversario} (${h2h.length} jogos)
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+                <div style="text-align:center">
+                    <div style="font-size:22px;font-weight:800;color:#4ade80">${h2hVit}</div>
+                    <div style="font-size:9px;color:#475569">${nomeTime.split(' ')[0]} vence</div>
+                </div>
+                <div style="text-align:center">
+                    <div style="font-size:22px;font-weight:800;color:#a5b4fc">${h2hEmp}</div>
+                    <div style="font-size:9px;color:#475569">Empates</div>
+                </div>
+                <div style="text-align:center">
+                    <div style="font-size:22px;font-weight:800;color:#f87171">${h2hDer}</div>
+                    <div style="font-size:9px;color:#475569">${adversario.split(' ')[0]} vence</div>
+                </div>
+                <div style="text-align:center">
+                    <div style="font-size:22px;font-weight:800;color:#60a5fa">${h2hVit ? +(h2hVit/h2h.length*100).toFixed(0) : 0}%</div>
+                    <div style="font-size:9px;color:#475569">Taxa vitória</div>
+                </div>
+            </div>
+            <table style="width:100%;border-collapse:collapse">${h2hLinhas}</table>
+        </div>`;
+    }
+
+    // Próximo jogo card
+    let proximoHtml = '';
+    if (proximoEvt) {
+        const mins  = Math.round((proximoEvt.seconds_to_start||0) / 60);
+        const tempo = mins <= 0 ? '<span style="color:#1fcc59">Ao vivo</span>' : `em <b style="color:#e2e8f0">${mins < 60 ? mins + ' min' : Math.floor(mins/60) + 'h' + (mins%60) + 'm'}</b>`;
+        proximoHtml = `
+        <div style="background:#0c1833;border:1px solid #1e3a5f;border-radius:8px;padding:14px;margin-top:10px">
+            <div style="font-size:10px;font-weight:700;color:#3b82f6;letter-spacing:.06em;margin-bottom:8px">PRÓXIMO JOGO ${tempo}</div>
+            <div style="font-size:14px;font-weight:800;color:#e2e8f0;margin-bottom:8px">
+                ${proximoEvt.time_casa} <span style="color:#334155;font-size:11px">vs</span> ${proximoEvt.time_fora}
+            </div>
+            <div style="font-size:9px;color:#475569;margin-bottom:10px">${(proximoEvt.liga||'').replace(/virtual/gi,'').trim()}</div>
+            <div style="display:flex;gap:6px">
+                <div style="flex:1;text-align:center;background:#14532d20;border:1px solid #14532d50;border-radius:5px;padding:6px">
+                    <div style="font-size:14px;font-weight:800;color:#4ade80">${parseFloat(proximoEvt.odd_casa||0).toFixed(2)}</div>
+                    <div style="font-size:9px;color:#475569">Casa</div>
+                </div>
+                <div style="flex:1;text-align:center;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:6px">
+                    <div style="font-size:14px;font-weight:800;color:#94a3b8">${parseFloat(proximoEvt.odd_empate||0).toFixed(2)}</div>
+                    <div style="font-size:9px;color:#475569">Empate</div>
+                </div>
+                <div style="flex:1;text-align:center;background:#3b0a0a20;border:1px solid #3b0a0a50;border-radius:5px;padding:6px">
+                    <div style="font-size:14px;font-weight:800;color:#f87171">${parseFloat(proximoEvt.odd_fora||0).toFixed(2)}</div>
+                    <div style="font-size:9px;color:#475569">Fora</div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    c.innerHTML = `
+    <!-- Stats principais -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;flex:2;min-width:240px">
+            <div style="font-size:14px;font-weight:800;color:#e2e8f0;margin-bottom:4px">${nomeTime}</div>
+            <div style="font-size:10px;color:#475569;margin-bottom:10px">${[...t.ligas].join(', ')}</div>
+            <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#e2e8f0">${t.jogos}</div><div style="font-size:9px;color:#475569">Jogos</div></div>
+                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#4ade80">${t.vit}</div><div style="font-size:9px;color:#475569">Vitórias</div></div>
+                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#a5b4fc">${t.emp}</div><div style="font-size:9px;color:#475569">Empates</div></div>
+                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#f87171">${t.der}</div><div style="font-size:9px;color:#475569">Derrotas</div></div>
+                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:${pct>=55?'#4ade80':pct>=40?'#fbbf24':'#f87171'}">${pct}%</div><div style="font-size:9px;color:#475569">Vitórias%</div></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+                <span style="font-size:10px;color:#94a3b8">Gols marcados: <b>${t.gm}</b> (${mediaG}/jogo)</span>
+                <span style="font-size:10px;color:#94a3b8">Gols sofridos: <b>${t.gs}</b> (${mediaS}/jogo)</span>
+                <span style="font-size:10px;color:${gdiff>=0?'#4ade80':'#f87171'}">Saldo: ${gdiff>=0?'+':''}${gdiff}</span>
+            </div>
+            <div style="font-size:10px;font-weight:700;color:#334155;margin-bottom:5px">FORMA RECENTE</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap">${forma10 || '<span style="color:#334155;font-size:10px">Sem dados</span>'}</div>
+        </div>
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;flex:1;min-width:160px">
+            <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:10px">DESEMPENHO</div>
+            <div style="margin-bottom:8px">
+                <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">Como CASA (${t.jogos_casa} jogos)</div>
+                <div style="display:flex;gap:6px">
+                    <span style="font-size:11px;font-weight:700;color:#4ade80">V:${t.vit_casa}</span>
+                    <span style="font-size:11px;font-weight:700;color:#a5b4fc">E:${t.emp_casa}</span>
+                    <span style="font-size:11px;font-weight:700;color:#f87171">D:${t.der_casa}</span>
+                    <span style="font-size:11px;font-weight:700;color:${pctC>=55?'#4ade80':pctC>=40?'#fbbf24':'#f87171'}">${pctC}%</span>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">Como FORA (${t.jogos_fora} jogos)</div>
+                <div style="display:flex;gap:6px">
+                    <span style="font-size:11px;font-weight:700;color:#4ade80">V:${t.vit_fora}</span>
+                    <span style="font-size:11px;font-weight:700;color:#a5b4fc">E:${t.emp_fora}</span>
+                    <span style="font-size:11px;font-weight:700;color:#f87171">D:${t.der_fora}</span>
+                    <span style="font-size:11px;font-weight:700;color:${pctF>=55?'#4ade80':pctF>=40?'#fbbf24':'#f87171'}">${pctF}%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    ${proximoHtml}
+    ${h2hHtml}
+
+    <!-- Últimas partidas -->
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-top:10px">
+        <div style="padding:7px 10px;background:#0c1220;font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">ÚLTIMAS ${ultimas.length} PARTIDAS</div>
+        <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+                <thead><tr style="background:#0c1220">
+                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:left">Data</th>
+                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:left">Lado</th>
+                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:left">Confronto</th>
+                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:center">Placar</th>
+                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:center">Res</th>
+                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:left">Liga</th>
+                </tr></thead>
+                <tbody>${listaPartidas || '<tr><td colspan="6" style="padding:16px;text-align:center;color:#334155;font-size:10px">Sem partidas registradas</td></tr>'}</tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+// ============================================================
+// DIAGNÓSTICO
+// ============================================================
+
+let _wsConectado = false;
+
+async function carregarDiagnostico() {
+    await Promise.all([
+        _diagCarregarLogs(),
+        _diagCarregarStats(),
+    ]);
+    _diagAtualizarWS();
+}
+
+function _diagAtualizarWS() {
+    const dot = document.getElementById('diag-ws-dot');
+    const txt = document.getElementById('diag-ws-txt');
+    const msg = document.getElementById('diag-ws-msg');
+    if (!dot || !txt) return;
+    if (_wsConectado) {
+        dot.className = 'sdot ok';
+        txt.textContent = 'Conectado';
+        msg.textContent = 'Recebendo atualizações em tempo real';
+    } else {
+        dot.className = 'sdot err';
+        txt.textContent = 'Desconectado';
+        msg.textContent = 'Tentando reconectar... (auto a cada 12s)';
+    }
+}
+
+let _diagLimit = 20;
+
+function _diagSetLimit(n) {
+    _diagLimit = n;
+    ['20','50','100','all'].forEach(id => {
+        const el = document.getElementById(`diag-lim-${id}`);
+        if (el) el.classList.toggle('ativo', (id === 'all' ? 0 : parseInt(id)) === n);
+    });
+    _diagCarregarLogs();
+}
+
+async function _diagCarregarLogs() {
+    const tbody = document.getElementById('diag-logs-tbody');
+    try {
+        const dia   = document.getElementById('diag-filtro-dia')?.value || '';
+        const limit = _diagLimit;
+        const params = new URLSearchParams();
+        if (dia)   params.set('dia', dia);
+        if (limit) params.set('limit', limit);
+        const r = await fetch('/api/bet365/log-coleta?' + params.toString());
+        const d = await r.json();
+        if (!d.success || !d.data?.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Nenhum log encontrado</td></tr>';
+            const el = document.getElementById('diag-ultima-coleta');
+            if (el) el.innerHTML = '<span style="color:#334155">Nenhuma coleta registrada</span>';
+            return;
+        }
+        const rows = d.data.map((l, i) => {
+            const inicio = l.data_inicio ? new Date(l.data_inicio).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+            const dur    = l.duracao_seg != null ? `${l.duracao_seg}s` : '—';
+            const cor    = l.status === 'SUCESSO' ? '#4ade80' : '#f87171';
+            const bgRow  = i === 0 ? 'background:#0c1833' : '';
+            const erroTxt = l.erro_mensagem
+                ? `<span title="${escHtml(l.erro_mensagem)}" style="color:#f87171;cursor:help;max-width:200px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(l.erro_mensagem.substring(0,60))}…</span>`
+                : '<span style="color:#1e293b">—</span>';
+            return `<tr style="${bgRow}">
+                <td style="padding:5px 10px;color:#e2e8f0;white-space:nowrap">${inicio}</td>
+                <td style="padding:5px 10px;text-align:center"><span style="color:${cor};font-weight:700">${l.status}</span></td>
+                <td style="padding:5px 10px;text-align:center;color:#94a3b8">${dur}</td>
+                <td style="padding:5px 10px;text-align:center;color:#60a5fa;font-weight:700">${l.eventos_coletados ?? '—'}</td>
+                <td style="padding:5px 10px;text-align:center;color:#a78bfa">${l.mercados_coletados ?? '—'}</td>
+                <td style="padding:5px 10px;text-align:center;color:#94a3b8">${l.odds_coletadas ?? '—'}</td>
+                <td style="padding:5px 10px;text-align:center;color:#1fcc59;font-weight:700">${l.resultados_salvos ?? '—'}</td>
+                <td style="padding:5px 10px;font-size:10px">${erroTxt}</td>
+            </tr>`;
+        }).join('');
+        tbody.innerHTML = rows;
+
+        // Atualiza card última coleta
+        const el = document.getElementById('diag-ultima-coleta');
+        if (el && d.data[0]) {
+            const u = d.data[0];
+            const cor = u.status === 'SUCESSO' ? '#4ade80' : '#f87171';
+            const inicio = u.data_inicio ? new Date(u.data_inicio).toLocaleString('pt-BR') : '—';
+            el.innerHTML = `
+                <div><span style="color:${cor};font-weight:800">${u.status}</span></div>
+                <div style="font-size:10px;color:#94a3b8;margin-top:3px">${inicio}</div>
+                <div style="font-size:10px;color:#475569;margin-top:3px">
+                    ${u.eventos_coletados ?? 0} eventos · ${u.resultados_salvos ?? 0} resultados · ${u.duracao_seg ?? '—'}s
+                </div>
+            `;
+        }
+    } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="padding:16px;text-align:center;color:#ef4444">Erro: ${e.message}</td></tr>`;
+    }
+}
+
+async function _diagCarregarStats() {
+    try {
+        const [diag, stats] = await Promise.all([
+            fetch('/api/bet365/diagnostico').then(r => r.json()),
+            fetch('/api/bet365/stats').then(r => r.json()),
+        ]);
+
+        const elC = document.getElementById('diag-contagens');
+        if (elC && diag.success) {
+            const d = diag.data;
+
+            // Monta tabela de últimos resultados no banco
+            const ultimosRows = (d.ultimosHistorico || []).map(p => {
+                const dt = p.data_partida ? new Date(p.data_partida) : null;
+                const horaStr = dt ? dt.toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+                const placar = (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa}-${p.gol_fora}` : '?-?';
+                const est = p.resultado_estimado ? ' ★est' : '';
+                return `<tr style="border-bottom:1px solid #1e293b">
+                    <td style="padding:3px 8px;font-size:10px;color:#475569;white-space:nowrap">${horaStr}</td>
+                    <td style="padding:3px 8px;font-size:9px;color:#64748b">${p.liga || '—'}</td>
+                    <td style="padding:3px 8px;font-size:10px;color:#e2e8f0">${p.time_casa || '?'} <b>${placar}</b> ${p.time_fora || '?'}${est}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Nenhum registro no banco</td></tr>';
+
+            const porLigaRows = (d.historicoPorLiga || []).map(l => {
+                const ultima = l.ultima_partida ? new Date(l.ultima_partida).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+                return `<tr style="border-bottom:1px solid #0c1220">
+                    <td style="padding:3px 8px;font-size:10px;color:#94a3b8">${l.liga}</td>
+                    <td style="padding:3px 8px;font-size:10px;color:#1fcc59;font-weight:700;text-align:right">${l.total}</td>
+                    <td style="padding:3px 8px;font-size:9px;color:#475569">${ultima}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Vazio</td></tr>';
+
+            elC.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+                    <div style="font-size:11px"><span style="color:#475569">Eventos ativos:</span> <b style="color:#60a5fa">${d.eventosAtivos ?? '—'}</b></div>
+                    <div style="font-size:11px"><span style="color:#475569">Histórico total:</span> <b style="color:#1fcc59">${d.historicoPartidas ?? '—'}</b></div>
+                    <div style="font-size:11px"><span style="color:#475569">Histórico últimas 24h:</span> <b style="color:${(d.historicoPartidas24h||0)>0?'#1fcc59':'#f87171'}">${d.historicoPartidas24h ?? '0'}</b></div>
+                </div>
+                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">HISTÓRICO POR LIGA</div>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
+                    <thead><tr style="background:#0c1220">
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Liga</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:right">Total</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Última partida</th>
+                    </tr></thead>
+                    <tbody>${porLigaRows}</tbody>
+                </table>
+                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">ÚLTIMOS 20 REGISTROS NO BANCO</div>
+                <table style="width:100%;border-collapse:collapse">
+                    <thead><tr style="background:#0c1220">
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Data/Hora</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Liga</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Partida</th>
+                    </tr></thead>
+                    <tbody>${ultimosRows}</tbody>
+                </table>
+            `;
+        }
+
+        // Estima estimados via diagnostico
+        const elE = document.getElementById('diag-estimados');
+        if (elE) {
+            try {
+                const res2 = await fetch('/api/bet365/historico-partidas?limite=5000');
+                const d2 = await res2.json();
+                if (d2.success) {
+                    const total = d2.data?.length ?? 0;
+                    // Conta 0-0 EMPATE como proxy de estimados (coluna pode não existir ainda)
+                    const estimados = (d2.data || []).filter(p =>
+                        p.resultado_estimado === 1 || p.resultado_estimado === true ||
+                        (p.gol_casa === 0 && p.gol_fora === 0 && p.resultado === 'EMPATE')
+                    ).length;
+                    const pct = total > 0 ? (estimados / total * 100).toFixed(1) : 0;
+                    const cor = estimados > 0 ? '#f87171' : '#4ade80';
+                    elE.innerHTML = `
+                        <div style="font-size:18px;font-weight:800;color:${cor}">${estimados}</div>
+                        <div style="font-size:10px;color:#475569">${pct}% do total de ${total} partidas</div>
+                    `;
+                }
+            } catch {}
+        }
+    } catch (e) {
+        console.warn('[Diagnóstico] Erro stats:', e.message);
+    }
+}
+
+async function limparEstimados() {
+    if (!confirm('Remover todos os resultados estimados (0-0 gerados automaticamente)?\n\nIsso limpará registros falsos que poluem as estatísticas.')) return;
+    try {
+        const pool_r = await fetch('/api/bet365/diagnostico');
+        // Não temos endpoint direto — informa usuário
+        alert('Para limpar estimados, execute no SQL Server:\n\nDELETE FROM bet365_historico_partidas WHERE resultado_estimado = 1\n\nOu: DELETE FROM bet365_historico_partidas WHERE gol_casa=0 AND gol_fora=0 AND resultado=\'EMPATE\'');
+    } catch {}
+}
+
+async function limparLigasDescartadas() {
+    if (!confirm('Apagar todos os registros de "Super League" e "South American Super League"?\n\nEssa ação não pode ser desfeita.')) return;
+    try {
+        const r = await fetch('/api/bet365/limpar-ligas-descartadas', { method: 'POST' });
+        const d = await r.json();
+        if (d.success) {
+            alert(`✅ Limpeza concluída!\n${d.partidas_removidas} partidas e ${d.eventos_removidos} eventos removidos.`);
+            await carregarTudo();
+        } else {
+            alert('❌ Erro: ' + (d.error || 'desconhecido'));
+        }
+    } catch (e) {
+        alert('❌ Erro: ' + e.message);
+    }
+}
+
+// ============================================================
+// WEBSOCKET
+// ============================================================
+function conectarWS() {
+    try {
+        const prot = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${prot}//${location.host}/ws`);
+        ws.onopen = () => {
+            _wsConectado = true;
+            const dot = document.getElementById('sdot');
+            if (dot) { dot.className = 'sdot ok'; document.getElementById('s-txt').textContent = 'Conectado (WS)'; }
+            if (S.view === 'diagnostico') _diagAtualizarWS();
+        };
+        ws.onmessage = e => {
+            try {
+                const m = JSON.parse(e.data);
+                if (m.tipo === 'coleta') {
+                    if (m.resultadosSalvos > 0 || m.novos > 0) setTimeout(carregarTudo, 2000);
+                    else setTimeout(carregarHistorico, 1000);
+                    if (S.view === 'diagnostico') setTimeout(carregarDiagnostico, 2500);
+                }
+            } catch {}
+        };
+        ws.onclose = () => {
+            _wsConectado = false;
+            if (S.view === 'diagnostico') _diagAtualizarWS();
+            setTimeout(conectarWS, 12000);
+        };
+    } catch {}
+}
+
+// ============================================================
+// HEATMAP V2 + IA — ANÁLISE COM S.todasPartidas
+// ============================================================
+
+function _hmComputeMatriz(partidas) {
+    const maxGols = 5;
+    const matriz = {};
+    let totalGeral = 0;
+    // Também acumula odds para calcular implied probability histórica
+    let somaOddCasa = 0, somaOddEmp = 0, somaOddFora = 0, nOdds = 0;
+
+    for (let c = 0; c <= maxGols; c++) {
+        for (let f = 0; f <= maxGols; f++) {
+            matriz[`${c}-${f}`] = { total: 0, tipo: null };
+        }
+    }
+
+    partidas.forEach(p => {
+        const c = Math.min(parseInt(p.gol_casa) || 0, maxGols);
+        const f = Math.min(parseInt(p.gol_fora) || 0, maxGols);
+        const key = `${c}-${f}`;
+        if (matriz[key] !== undefined) {
+            matriz[key].total++;
+            totalGeral++;
+            if (c > f) matriz[key].tipo = 'casa';
+            else if (c === f) matriz[key].tipo = 'empate';
+            else matriz[key].tipo = 'fora';
+        }
+        if (p.odd_casa && p.odd_empate && p.odd_fora) {
+            somaOddCasa += parseFloat(p.odd_casa);
+            somaOddEmp  += parseFloat(p.odd_empate);
+            somaOddFora += parseFloat(p.odd_fora);
+            nOdds++;
+        }
+    });
+
+    const avgOdds = nOdds > 0
+        ? { casa: somaOddCasa/nOdds, emp: somaOddEmp/nOdds, fora: somaOddFora/nOdds }
+        : { casa: 2, emp: 3.2, fora: 4 };
+
+    return { matriz, totalGeral, avgOdds };
+}
+
+function _hmRenderGrid(partidas) {
+    const { matriz, totalGeral, avgOdds } = _hmComputeMatriz(partidas);
+    const maxGols = 5;
+
+    // Find max cell count for intensity scaling
+    let maxCell = 0;
+    Object.values(matriz).forEach(c => { if (c.total > maxCell) maxCell = c.total; });
+
+    // Compute aggregate frequencies for edge calculation
+    let nCasa = 0, nEmp = 0, nFora = 0;
+    partidas.forEach(p => {
+        const r = p.resultado || (parseInt(p.gol_casa) > parseInt(p.gol_fora) ? 'CASA' :
+                   parseInt(p.gol_casa) === parseInt(p.gol_fora) ? 'EMPATE' : 'FORA');
+        if (r === 'CASA') nCasa++; else if (r === 'EMPATE') nEmp++; else nFora++;
+    });
+
+    // Build header row (gols fora 0-5)
+    let headerCells = '<div style="min-width:44px;min-height:22px"></div>';
+    for (let f = 0; f <= maxGols; f++) {
+        headerCells += `<div style="min-width:44px;text-align:center;font-size:9px;color:#475569;font-weight:700">${f}</div>`;
+    }
+
+    let gridRows = `<div style="display:grid;grid-template-columns:44px repeat(6,44px);gap:3px;margin-bottom:4px">${headerCells}</div>`;
+
+    for (let c = maxGols; c >= 0; c--) {
+        let rowHtml = `<div style="display:flex;align-items:center;justify-content:center;min-width:44px;font-size:9px;color:#475569;font-weight:700">${c}</div>`;
+        for (let f = 0; f <= maxGols; f++) {
+            const key = `${c}-${f}`;
+            const cell = matriz[key];
+            const count = cell.total;
+            const pct = totalGeral > 0 ? (count / totalGeral * 100) : 0;
+
+            // Implied probability from avg historical odds
+            let impliedPct = 0;
+            if (c > f) impliedPct = (1 / avgOdds.casa) * 100 * (pct > 0 ? 1 : 0);
+            else if (c === f) impliedPct = (1 / avgOdds.emp) * 100 * (pct > 0 ? 1 : 0);
+            else impliedPct = (1 / avgOdds.fora) * 100 * (pct > 0 ? 1 : 0);
+
+            // Distribute implied evenly across cells of same result type
+            const nSameType = Object.values(matriz).filter(m => m.tipo === cell.tipo && m.total > 0).length || 1;
+            const cellImplied = impliedPct / nSameType;
+            const edge = count > 0 ? (pct - cellImplied) : 0;
+
+            // Colors
+            let baseColor, textColor;
+            if (count === 0) {
+                baseColor = '#0c1220'; textColor = '#334155';
+            } else if (c > f) {
+                // Casa win — green tones
+                const intensity = maxCell > 0 ? count / maxCell : 0;
+                const g = Math.round(40 + intensity * 80);
+                baseColor = `rgba(20,${g + 43},45,${0.4 + intensity * 0.6})`;
+                textColor = '#4ade80';
+            } else if (c === f) {
+                // Empate — purple/blue tones
+                const intensity = maxCell > 0 ? count / maxCell : 0;
+                baseColor = `rgba(30,27,${Math.round(75 + intensity * 100)},${0.4 + intensity * 0.6})`;
+                textColor = '#a5b4fc';
+            } else {
+                // Fora win — red tones
+                const intensity = maxCell > 0 ? count / maxCell : 0;
+                const r = Math.round(59 + intensity * 80);
+                baseColor = `rgba(${r},10,10,${0.4 + intensity * 0.6})`;
+                textColor = '#f87171';
+            }
+
+            const borderColor = count > 0 ? (edge >= 0 ? '#166534' : '#7f1d1d') : '#1e293b';
+            const edgeBadge = count > 0 ? (edge >= 0 ? '▲' : '▼') : '';
+            const edgeBadgeColor = edge >= 0 ? '#4ade80' : '#f87171';
+
+            rowHtml += `<div class="heatmap-cell-v2" style="background:${baseColor};border-color:${borderColor};color:${textColor}"
+                title="${c}-${f}: ${count}x | ${pct.toFixed(1)}% | Edge: ${edge >= 0 ? '+' : ''}${edge.toFixed(1)}%">
+                <span style="font-size:10px;font-weight:700">${c}-${f}</span>
+                <span style="font-size:8px;opacity:0.85">${count > 0 ? `${count} (${pct.toFixed(0)}%)` : '—'}</span>
+                ${edgeBadge ? `<span style="position:absolute;top:2px;right:3px;font-size:7px;color:${edgeBadgeColor}">${edgeBadge}</span>` : ''}
+            </div>`;
+        }
+        gridRows += `<div style="display:grid;grid-template-columns:44px repeat(6,44px);gap:3px;margin-bottom:3px">${rowHtml}</div>`;
+    }
+
+    // Summary stats
+    const over15 = partidas.filter(p => (parseInt(p.gol_casa)||0) + (parseInt(p.gol_fora)||0) > 1.5).length;
+    const over15Pct = totalGeral > 0 ? (over15/totalGeral*100).toFixed(1) : '—';
+    const totalGols = partidas.reduce((a, p) => a + (parseInt(p.gol_casa)||0) + (parseInt(p.gol_fora)||0), 0);
+    const mediaGols = totalGeral > 0 ? (totalGols/totalGeral).toFixed(2) : '—';
+    const pctCasa = totalGeral > 0 ? (nCasa/totalGeral*100).toFixed(1) : '—';
+    const pctEmp  = totalGeral > 0 ? (nEmp/totalGeral*100).toFixed(1) : '—';
+    const pctFora = totalGeral > 0 ? (nFora/totalGeral*100).toFixed(1) : '—';
+
+    let maisFreqRes = '—';
+    if (nCasa >= nEmp && nCasa >= nFora) maisFreqRes = `CASA (${pctCasa}%)`;
+    else if (nEmp >= nCasa && nEmp >= nFora) maisFreqRes = `EMPATE (${pctEmp}%)`;
+    else maisFreqRes = `FORA (${pctFora}%)`;
+
+    // Most frequent placar
+    let maisFreqPlacar = '—';
+    let mfCount = 0;
+    Object.entries(matriz).forEach(([k, v]) => { if (v.total > mfCount) { mfCount = v.total; maisFreqPlacar = k; } });
+
+    const summaryHtml = `
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding:10px;background:#0f172a;border:1px solid #1e293b;border-radius:7px">
+            <div class="stat-pill"><b>${totalGeral}</b>&nbsp;jogos analisados</div>
+            <div class="stat-pill">Resultado mais freq.: <b style="margin-left:4px">${maisFreqRes}</b></div>
+            <div class="stat-pill">Placar mais freq.: <b style="margin-left:4px">${maisFreqPlacar} (${mfCount}x)</b></div>
+            <div class="stat-pill">Over 1.5: <b style="margin-left:4px;color:#fbbf24">${over15Pct}%</b></div>
+            <div class="stat-pill">Média gols: <b style="margin-left:4px;color:#60a5fa">${mediaGols}</b></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+            <div class="legend-item"><div class="legend-color" style="background:#14532d"></div>Casa vence</div>
+            <div class="legend-item"><div class="legend-color" style="background:#1e1b4b"></div>Empate</div>
+            <div class="legend-item"><div class="legend-color" style="background:#3b0a0a"></div>Fora vence</div>
+            <div class="legend-item"><div style="width:10px;height:10px;border:1px solid #166534;border-radius:2px;margin-right:2px"></div>Edge positivo ▲</div>
+            <div class="legend-item"><div style="width:10px;height:10px;border:1px solid #7f1d1d;border-radius:2px;margin-right:2px"></div>Edge negativo ▼</div>
+        </div>
+    `;
+
+    return `
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;overflow-x:auto">
+            <div style="font-size:10px;color:#475569;margin-bottom:8px">← Gols Fora / Gols Casa ↓</div>
+            ${gridRows}
+            ${summaryHtml}
+        </div>
+    `;
+}
+
+function _hmTopPlacares(partidas, minOcorrencias = 3, top = 5) {
+    const freq = {};
+    partidas.forEach(p => {
+        const c = Math.min(parseInt(p.gol_casa)||0, 5);
+        const f = Math.min(parseInt(p.gol_fora)||0, 5);
+        const k = `${c}-${f}`;
+        freq[k] = (freq[k] || 0) + 1;
+    });
+    return Object.entries(freq)
+        .filter(([, v]) => v >= minOcorrencias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, top)
+        .map(([placar, count]) => {
+            const [c, f] = placar.split('-').map(Number);
+            const tipo = c > f ? 'CASA' : c === f ? 'EMPATE' : 'FORA';
+            const pct = partidas.length > 0 ? (count/partidas.length*100).toFixed(1) : '0';
+            return { placar, count, pct, tipo };
+        });
+}
+
+function _hmComputeFreqsLiga(partidasLiga) {
+    let nCasa = 0, nEmp = 0, nFora = 0;
+    let somaOddC = 0, somaOddE = 0, somaOddF = 0, nOdds = 0;
+    partidasLiga.forEach(p => {
+        const r = p.resultado || (parseInt(p.gol_casa) > parseInt(p.gol_fora) ? 'CASA' :
+                   parseInt(p.gol_casa) === parseInt(p.gol_fora) ? 'EMPATE' : 'FORA');
+        if (r === 'CASA') nCasa++; else if (r === 'EMPATE') nEmp++; else nFora++;
+        if (p.odd_casa && p.odd_empate && p.odd_fora) {
+            somaOddC += parseFloat(p.odd_casa);
+            somaOddE += parseFloat(p.odd_empate);
+            somaOddF += parseFloat(p.odd_fora);
+            nOdds++;
+        }
+    });
+    const n = partidasLiga.length || 1;
+    return {
+        n,
+        freqCasa: nCasa/n, freqEmp: nEmp/n, freqFora: nFora/n,
+        avgOddCasa: nOdds > 0 ? somaOddC/nOdds : 2,
+        avgOddEmp:  nOdds > 0 ? somaOddE/nOdds : 3.2,
+        avgOddFora: nOdds > 0 ? somaOddF/nOdds : 4,
+    };
+}
+
+function _hmBlendTeamFreqs(ligaFreqs, todasPartidas, timeCasa, timeFora, liga) {
+    // Team-specific stats for casa team
+    const casaGames = todasPartidas.filter(p => p.liga === liga &&
+        (normalizarTime(p.time_casa) === timeCasa || p.time_casa === timeCasa));
+    const foraGames = todasPartidas.filter(p => p.liga === liga &&
+        (normalizarTime(p.time_fora) === timeFora || p.time_fora === timeFora));
+
+    let freqCasa = ligaFreqs.freqCasa;
+    let freqEmp  = ligaFreqs.freqEmp;
+    let freqFora = ligaFreqs.freqFora;
+
+    if (casaGames.length >= 5) {
+        const tf = _hmComputeFreqsLiga(casaGames);
+        freqCasa = 0.5 * ligaFreqs.freqCasa + 0.5 * tf.freqCasa;
+        freqEmp  = 0.5 * ligaFreqs.freqEmp  + 0.5 * tf.freqEmp;
+        freqFora = 0.5 * ligaFreqs.freqFora + 0.5 * tf.freqFora;
+    }
+    if (foraGames.length >= 5) {
+        const tf = _hmComputeFreqsLiga(foraGames);
+        freqCasa = 0.5 * freqCasa + 0.5 * tf.freqCasa;
+        freqEmp  = 0.5 * freqEmp  + 0.5 * tf.freqEmp;
+        freqFora = 0.5 * freqFora + 0.5 * tf.freqFora;
+    }
+
+    // Normalize
+    const soma = freqCasa + freqEmp + freqFora || 1;
+    return { freqCasa: freqCasa/soma, freqEmp: freqEmp/soma, freqFora: freqFora/soma };
+}
+
+function _hmRenderIACards(jogos, todasPartidas) {
+    if (!jogos || jogos.length === 0) return '';
+
+    let html = `<div style="margin-top:16px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">🤖 ANÁLISE IA — PRÓXIMOS JOGOS</div>`;
+
+    jogos.forEach(jogo => {
+        const liga = normalizarLiga(jogo.liga) || jogo.liga || '';
+        const partidasLiga = todasPartidas.filter(p => p.liga === liga);
+        const ligaFreqs = _hmComputeFreqsLiga(partidasLiga);
+        const timeCasa = normalizarTime(jogo.time_casa || '');
+        const timeFora = normalizarTime(jogo.time_fora || '');
+        const blended = _hmBlendTeamFreqs(ligaFreqs, todasPartidas, timeCasa, timeFora, liga);
+
+        const oddC = parseFloat(jogo.odd_casa)   || ligaFreqs.avgOddCasa;
+        const oddE = parseFloat(jogo.odd_empate)  || ligaFreqs.avgOddEmp;
+        const oddF = parseFloat(jogo.odd_fora)    || ligaFreqs.avgOddFora;
+
+        const implC = 1/oddC, implE = 1/oddE, implF = 1/oddF;
+        const edgeC = blended.freqCasa - implC;
+        const edgeE = blended.freqEmp  - implE;
+        const edgeF = blended.freqFora - implF;
+        const evC   = blended.freqCasa * oddC;
+        const evE   = blended.freqEmp  * oddE;
+        const evF   = blended.freqFora * oddF;
+
+        // Best bet
+        const evs = [
+            { label: 'Casa',   freq: blended.freqCasa, odd: oddC, impl: implC, edge: edgeC, ev: evC },
+            { label: 'Empate', freq: blended.freqEmp,  odd: oddE, impl: implE, edge: edgeE, ev: evE },
+            { label: 'Fora',   freq: blended.freqFora, odd: oddF, impl: implF, edge: edgeF, ev: evF },
+        ];
+        const bestBet = evs.reduce((a, b) => b.ev > a.ev ? b : a);
+        const riskyBet = evs.find(e => e.edge > 0 && e.odd > 3.0) || null;
+
+        // Top placares
+        const topPlacares = _hmTopPlacares(partidasLiga, 3, 3);
+
+        // Confidence
+        const n = ligaFreqs.n;
+        const confianca = n < 20 ? '⚠️ Baixa'
+                        : n < 50 ? '🔶 Média'
+                        : '✅ Alta';
+
+        // Minutes to start
+        let tempoLabel = '';
+        if (jogo.tempo !== undefined && jogo.tempo !== null) {
+            const mins = parseInt(jogo.tempo);
+            tempoLabel = isNaN(mins) ? '' : ` · ${mins}min para início`;
+        }
+
+        // Result rows (1X2 table)
+        const mkRow = (r) => {
+            const edgeColor = r.edge >= 0 ? '#4ade80' : '#f87171';
+            const isBest = r.label === bestBet.label;
+            return `<tr style="${isBest ? 'background:#052e16;' : ''}">
+                <td style="padding:4px 7px;font-size:11px;font-weight:700;color:#e2e8f0">${isBest ? '★ ' : ''}${r.label}</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#94a3b8">${(r.freq*100).toFixed(1)}%</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#fbbf24">${r.odd.toFixed(2)}</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#64748b">${(r.impl*100).toFixed(1)}%</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;font-weight:700;color:${edgeColor}">${r.edge >= 0 ? '+' : ''}${(r.edge*100).toFixed(1)}%</td>
+                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#60a5fa">${r.ev.toFixed(2)}</td>
+            </tr>`;
+        };
+
+        const placaresHtml = topPlacares.length > 0
+            ? topPlacares.map(p => {
+                const cor = p.tipo === 'CASA' ? '#4ade80' : p.tipo === 'EMPATE' ? '#a5b4fc' : '#f87171';
+                return `<span style="background:#1e293b;border-radius:4px;padding:3px 8px;font-size:11px;color:${cor};font-weight:700">${p.placar} <span style="color:#64748b;font-weight:400">${p.pct}%</span></span>`;
+            }).join(' ')
+            : '<span style="color:#475569;font-size:11px">Sem dados suficientes</span>';
+
+        // ── Análise de gols (Over/Under) ──────────────────────────────
+        const nP = partidasLiga.length || 1;
+        const goalsSugs = [
+            { label:'Over 0.5',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)>=1).length/nP*100).toFixed(1) },
+            { label:'Over 1.5',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)>=2).length/nP*100).toFixed(1) },
+            { label:'Over 2.5',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)>=3).length/nP*100).toFixed(1) },
+            { label:'Over 3.5',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)>=4).length/nP*100).toFixed(1) },
+            { label:'Under 1.5', pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)<=1).length/nP*100).toFixed(1) },
+            { label:'Under 2.5', pct: +(partidasLiga.filter(p=>(p.gol_casa||0)+(p.gol_fora||0)<=2).length/nP*100).toFixed(1) },
+            { label:'Empate',    pct: +(partidasLiga.filter(p=>p.resultado==='EMPATE').length/nP*100).toFixed(1) },
+            { label:'Ambas M.',  pct: +(partidasLiga.filter(p=>(p.gol_casa||0)>0&&(p.gol_fora||0)>0).length/nP*100).toFixed(1) },
+        ].sort((a,b) => b.pct - a.pct);
+        const avgGols = +(partidasLiga.reduce((s,p)=>s+(p.gol_casa||0)+(p.gol_fora||0),0)/nP).toFixed(2);
+
+        // Barra de progresso para goals
+        const mkGoalBar = (g) => {
+            const cor = g.pct >= 70 ? '#4ade80' : g.pct >= 55 ? '#fbbf24' : g.pct >= 45 ? '#94a3b8' : '#f87171';
+            return `<div style="margin-bottom:4px">
+                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:1px">
+                    <span style="color:#94a3b8">${g.label}</span>
+                    <b style="color:${cor}">${g.pct}%</b>
+                </div>
+                <div style="height:3px;background:#1e293b;border-radius:2px">
+                    <div style="height:3px;width:${Math.min(100,g.pct)}%;background:${cor};border-radius:2px"></div>
+                </div>
+            </div>`;
+        };
+
+        // Top 5 sugestões combinadas (1X2 + gols + arriscada)
+        const todasSugestoes = [
+            // 1X2
+            ...evs.map(r => ({
+                cat:'1X2', label: r.label,
+                pct: (r.freq*100).toFixed(1), odd: r.odd, edge: r.edge, ev: r.ev,
+                score: r.ev
+            })),
+            // Gols — só os mais extremos (> 65% ou < 35%)
+            ...goalsSugs.filter(g => g.pct >= 65 || g.pct <= 35).map(g => ({
+                cat:'Gols', label: g.label,
+                pct: g.pct, odd: null, edge: null, ev: null,
+                score: Math.abs(g.pct - 50) / 50  // distância da 50% como score de confiança
+            })),
+            // Arriscada
+            ...(riskyBet ? [{
+                cat:'⚡ Risco', label: riskyBet.label,
+                pct: (riskyBet.freq*100).toFixed(1), odd: riskyBet.odd, edge: riskyBet.edge, ev: riskyBet.ev,
+                score: riskyBet.edge * 2 + 0.01  // bônus pelo edge alto
+            }] : []),
+        ].sort((a,b) => b.score - a.score);
+
+        const top3Sug = todasSugestoes.slice(0, 3);
+        const top3Html = top3Sug.map((s, i) => {
+            const icons = ['🥇','🥈','🥉'];
+            const catCor = s.cat === '1X2' ? '#4ade80' : s.cat === 'Gols' ? '#60a5fa' : '#f59e0b';
+            const oddStr  = s.odd  !== null ? `Odd <b style="color:#fbbf24">${s.odd.toFixed(2)}</b>` : '';
+            const edgeStr = s.edge !== null && s.edge > 0 ? ` Edge <b style="color:#4ade80">+${(s.edge*100).toFixed(1)}%</b>` : '';
+            const evStr   = s.ev   !== null ? ` EV <b style="color:#60a5fa">${s.ev.toFixed(2)}</b>` : '';
+            return `<div style="display:flex;align-items:center;gap:5px;padding:5px 0;
+                ${i < top3Sug.length-1 ? 'border-bottom:1px solid #0f172a;' : ''}">
+                <span style="font-size:12px">${icons[i]}</span>
+                <span style="font-size:9px;font-weight:700;color:${catCor};min-width:26px">${s.cat}</span>
+                <div style="flex:1;font-size:11px;color:#e2e8f0">
+                    <b>${s.label}</b>
+                    <span style="color:#94a3b8"> ${s.pct}%</span>
+                </div>
+                <div style="font-size:10px;text-align:right">${oddStr}${edgeStr}${evStr}</div>
+            </div>`;
+        }).join('');
+
+        html += `<div class="ia-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+                <div>
+                    <div style="font-size:12px;font-weight:700;color:#e2e8f0">${timeCasa} <span style="color:#475569">vs</span> ${timeFora}</div>
+                    <div style="font-size:10px;color:#475569;margin-top:2px">${liga}${tempoLabel}</div>
+                </div>
+                <div style="font-size:9px;color:#64748b;text-align:right">${confianca}<br><span style="color:#334155">${n} amostras</span></div>
+            </div>
+            <!-- Tabela 1X2 -->
+            <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:5px;overflow:hidden;margin-bottom:8px">
+                <thead>
+                    <tr style="background:#0c1220">
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:left">Resultado</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Freq%</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Odd</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Impl%</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Edge</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">EV</th>
+                    </tr>
+                </thead>
+                <tbody>${evs.map(mkRow).join('')}</tbody>
+            </table>
+
+            <!-- Over/Under gols -->
+            <div style="background:#0f172a;border-radius:5px;padding:8px;margin-bottom:8px">
+                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:6px">MERCADO DE GOLS · ~${avgGols} gols/jogo</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+                    ${goalsSugs.slice(0,6).map(mkGoalBar).join('')}
+                </div>
+            </div>
+
+            <!-- Top 3 sugestões combinadas -->
+            <div class="ia-risky-bet">
+                <div style="font-size:9px;font-weight:700;color:#f59e0b;letter-spacing:.08em;margin-bottom:6px">⚡ TOP SUGESTÕES</div>
+                ${top3Html}
+            </div>
+
+            <!-- Top placares -->
+            <div style="margin-top:8px">
+                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">TOP PLACARES NA LIGA</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">${placaresHtml}</div>
+            </div>
+        </div>`;
+    });
+
+    html += '</div>';
+    return html;
+}
+
+async function renderHeatmapIA() {
+    const container = document.getElementById('heatmap-ia-container');
+    if (!container) return;
+
+    const partidas = S.ligaAtiva
+        ? S.todasPartidas.filter(p => p.liga === S.ligaAtiva)
+        : S.todasPartidas;
+
+    if (!partidas || partidas.length === 0) {
+        container.innerHTML = '<div style="color:#475569;font-size:12px;padding:20px;text-align:center">Sem dados de partidas para heatmap</div>';
+        return;
+    }
+
+    // Render grid synchronously from S.todasPartidas
+    let html = _hmRenderGrid(partidas);
+
+    // Fetch upcoming games for IA suggestions
+    try {
+        const res = await fetch('/api/bet365/eventos-completos');
+        if (res.ok) {
+            const json = await res.json();
+            const eventos = (json.data || json.eventos || json || []);
+            let agendados = Array.isArray(eventos) ? eventos : [];
+            agendados = agendados.filter(j => j.status === 'AGENDADO' || j.status === 'agendado');
+            if (S.ligaAtiva) agendados = agendados.filter(j => normalizarLiga(j.liga) === S.ligaAtiva);
+            // Ordena por horário de início (mais próximo primeiro) e mostra todos
+            agendados.sort((a, b) => {
+                const ta = a.horario || a.start_time_datetime || '';
+                const tb = b.horario || b.start_time_datetime || '';
+                return ta < tb ? -1 : ta > tb ? 1 : 0;
+            });
+            if (agendados.length > 0) {
+                html += _hmRenderIACards(agendados, S.todasPartidas);
+            }
+        }
+    } catch (e) {
+        console.warn('[HeatmapIA] Não foi possível buscar eventos-completos:', e);
+    }
+
+    container.innerHTML = html;
+}
+
+// ============================================================
+// ESTATÍSTICAS AVANÇADAS
+// ============================================================
+async function carregarEstatisticasAvancadas() {
+    try {
+        const res = await fetch(`/api/bet365/estatisticas-avancadas`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        
+        if (json.success && json.data?.gerais) {
+            renderizarEstatisticasAvancadas(json.data);
+            document.getElementById('stats-avancadas-grid').style.display = 'grid';
+            document.getElementById('stats-loading').style.display = 'none';
+        }
+    } catch (err) {
+        console.error('Erro ao carregar estatísticas:', err);
+        document.getElementById('stats-loading').textContent = 'Erro ao carregar estatísticas';
+    }
+}
+
+function renderizarEstatisticasAvancadas(data) {
+    const grid = document.getElementById('stats-avancadas-grid');
+    const gerais = data.gerais || {};
+    const distribuicao = data.distribuicaoGols || [];
+    const performance = data.performanceLiga || [];
+    
+    // Calcular tendências (comparando com média histórica)
+    const mediaGols = parseFloat(gerais.media_gols) || 0;
+    const tendenciaGols = mediaGols > 2.5 ? 'subindo' : mediaGols < 1.5 ? 'caindo' : 'estavel';
+    
+    let html = '';
+    
+    // Card: Total de Eventos
+    html += `
+        <div class="stat-card">
+            <div class="stat-card-titulo">Eventos Ativos</div>
+            <div class="stat-card-valor">${gerais.total_eventos || 0}</div>
+            <div class="stat-card-desc">
+                <span style="color:#4ade80">${gerais.ao_vivo || 0} ao vivo</span> • 
+                <span style="color:#a5b4fc">${gerais.agendados || 0} agendados</span>
+            </div>
+        </div>
+    `;
+    
+    // Card: Média de Gols
+    html += `
+        <div class="stat-card">
+            <div class="stat-card-titulo">Média de Gols</div>
+            <div class="stat-card-valor">${mediaGols.toFixed(2)}</div>
+            <div class="stat-card-trend ${tendenciaGols}">
+                ${tendenciaGols === 'subindo' ? '▲' : tendenciaGols === 'caindo' ? '▼' : '•'} 
+                Tendência: ${tendenciaGols === 'subindo' ? 'Alta' : tendenciaGols === 'caindo' ? 'Baixa' : 'Estável'}
+            </div>
+            <div class="stat-card-desc" style="margin-top:6px">
+                Over 1.5: ${distribuicao.filter(d => (d.total_gols || 0) >= 2).reduce((s,d) => s + (d.quantidade||0), 0)} jogos
+            </div>
+        </div>
+    `;
+    
+    // Card: Liga Mais Ativa
+    const ligaTop = performance[0];
+    if (ligaTop) {
+        html += `
+            <div class="stat-card">
+                <div class="stat-card-titulo">Liga Mais Ativa</div>
+                <div class="stat-card-valor" style="font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ligaTop.liga)}</div>
+                <div class="stat-card-desc">
+                    ${ligaTop.total_jogos || 0} jogos • Média: ${(ligaTop.media_gols || 0).toFixed(2)} gols
+                </div>
+            </div>
+        `;
+    }
+    
+    // Card: Distribuição de Gols
+    const over25 = distribuicao.filter(d => (d.total_gols || 0) >= 3).reduce((s,d) => s + (d.quantidade||0), 0);
+    const under25 = distribuicao.filter(d => (d.total_gols || 0) < 3).reduce((s,d) => s + (d.quantidade||0), 0);
+    const pctOver = ((over25 / (over25 + under25 + 0.001)) * 100).toFixed(1);
+    
+    html += `
+        <div class="stat-card">
+            <div class="stat-card-titulo">Over 2.5 Gols</div>
+            <div class="stat-card-valor" style="color:${pctOver >= 50 ? '#4ade80' : pctOver >= 35 ? '#fbbf24' : '#f87171'}">${pctOver}%</div>
+            <div class="stat-card-desc">
+                ${over25} de ${over25 + under25} jogos com 3+ gols
+            </div>
+        </div>
+    `;
+    
+    grid.innerHTML = html;
+}
+
+// ============================================================
+// UTILITÁRIO
+// ============================================================
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    carregarTudo();
+    conectarWS();
+    setInterval(carregarTudo, 120000);
+
+    // Define hoje como data padrão no filtro de diagnóstico
+    const filtroDia = document.getElementById('diag-filtro-dia');
+    if (filtroDia) {
+        const hoje = new Date().toISOString().slice(0, 10);
+        filtroDia.value = hoje;
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(el =>
+        el.addEventListener('click', e => { if (e.target === el) el.classList.remove('aberto'); }));
+});
+</script>
+</body>
+</html>

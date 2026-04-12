@@ -11,8 +11,8 @@
  *   Edge aberto via abrir-edge-debug.bat (porta 9222)
  *   com a página de futebol virtual carregada.
  *
- * Ligas: World Cup | Euro Cup | Premiership | Super League
- * (Express Cup ignorada)
+ * Ligas: World Cup | Euro Cup | Premiership | Express Cup | Super Liga Sul-Americana
+ * (Super League ignorada)
  * ============================================================
  */
 
@@ -27,7 +27,7 @@ dotenv.config();
 
 const DEBUG_PORT = parseInt(process.env.BET365_DEBUG_PORT) || 9222;
 const URL_SOCCER = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
-const LIGAS_IGNORAR = ['express cup', 'south american', 'sul-americana'];
+const LIGAS_IGNORAR = ['super league'];
 
 // Normaliza nomes de liga antes de gerar IDs e salvar no banco.
 // Garante que a mesma liga não seja gravada com nomes diferentes.
@@ -37,9 +37,9 @@ const LIGA_NORMALIZAR = {
     'euro cup':                  'Euro Cup',
     'premiership':               'Premiership',
     'premier league':            'Premiership',
-    'south american super league': 'South American Super League',
-    'super liga sul-americana':  'South American Super League',
-    'super league':              'Super League',
+    'express cup':               'Express Cup',
+    'south american super league': 'Super Liga Sul-Americana',
+    'super liga sul-americana':  'Super Liga Sul-Americana',
 };
 
 function normalizarNomeLiga(nome) {

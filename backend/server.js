@@ -948,6 +948,12 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/portifolio.html'));
 });
 
+// Rota para servir o RadarX (painel de futebol virtual)
+app.get('/radarx.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../frontend/radarx.html'));
+});
+
 // Rota para servir o index.html (painel de controle) após o login
 app.get('/dashboard', (req, res) => {
     // Verificar se o usuário está autenticado consultando o localStorage do lado do cliente
