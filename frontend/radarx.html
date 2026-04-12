@@ -57,6 +57,8 @@
         .tabela-hist th.th-l { text-align: left; min-width: 56px; }
         .tabela-hist td { padding: 3px 3px; text-align: center; border: 1px solid #0d1421;
             min-width: 40px; max-width: 52px; height: 29px; font-size: 11px; font-weight: 700; }
+        .tabela-hist.compact th { padding: 3px 1px; font-size: 8px; min-width: unset; }
+        .tabela-hist.compact td { padding: 2px 1px; font-size: 9px; min-width: 20px; max-width: 28px; height: 24px; }
         .tabela-hist td.td-l { background: #0f172a; color: #334155; font-size: 10px; font-weight: 600;
             text-align: left; padding: 3px 6px; white-space: nowrap; }
         .tabela-hist td.td-pct { background: #0f172a; min-width: 42px; font-weight: 800; font-size: 12px; }
@@ -1801,6 +1803,8 @@ const LIGA_MINUTOS = {
     super:    [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,52,55,58],
     // Euro Cup → :02, :05, :08, ..., :59
     euro:     [2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59],
+    // Express Cup → jogo a cada 1 minuto: :00, :01, :02, ..., :59
+    express:  Array.from({length: 60}, (_, i) => i),
 };
 
 // Retorna os slots de minuto conhecidos para a liga, ou null se desconhecida
@@ -1809,8 +1813,9 @@ function minutosParaLiga(liga) {
     const l = liga.toLowerCase();
     if (l.includes('premier') || l.includes('premiership')) return LIGA_MINUTOS.premier;
     if (l.includes('world') || l.includes('copa') || l.includes('mundial')) return LIGA_MINUTOS.world;
-    if (l.includes('super'))  return LIGA_MINUTOS.super;
-    if (l.includes('euro'))   return LIGA_MINUTOS.euro;
+    if (l.includes('super'))   return LIGA_MINUTOS.super;
+    if (l.includes('euro'))    return LIGA_MINUTOS.euro;
+    if (l.includes('express')) return LIGA_MINUTOS.express;
     return null;
 }
 
@@ -1856,6 +1861,10 @@ function renderTabela() {
         }
     }
     const N = minuteSlots.length;
+
+    // Modo compacto para ligas com muitas colunas (ex: Express Cup = 60)
+    const tbl = document.getElementById('tbl');
+    tbl.classList.toggle('compact', N >= 30);
 
     // Cabeçalho — mostra o minuto real de cada coluna (ex: :00, :03, :06...)
     thead.innerHTML = `
