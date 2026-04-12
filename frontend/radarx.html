@@ -557,6 +557,19 @@
 
 <script>
 // ============================================================
+// AUTH GUARD — redireciona para / se não autenticado
+// ============================================================
+(function() {
+    try {
+        const u = JSON.parse(localStorage.getItem('currentUser'));
+        if (!u || !u.Id) { window.location.replace('/'); }
+    } catch(e) {
+        localStorage.removeItem('currentUser');
+        window.location.replace('/');
+    }
+})();
+
+// ============================================================
 // MASTER-ONLY VISIBILITY
 // ============================================================
 (function() {
