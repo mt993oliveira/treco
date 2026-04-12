@@ -901,13 +901,34 @@ function renderAnalise() {
     }
 
     c.innerHTML = '';
-    // Filtra e renomeia para exibir apenas as 4 ligas canônicas
-    const sugestoesCanon = S.sugestoes
-        .map(l => ({ ...l, liga: normalizarLiga(l.liga) || null }))
-        .filter(l => l.liga !== null)
-        .filter((l, i, arr) => arr.findIndex(x => x.liga === l.liga) === i); // deduplica
+
+    // Constrói mapa de sugestões por nome canônico
+    const sugestoesMap = new Map();
+    S.sugestoes.forEach(l => {
+        const canon = normalizarLiga(l.liga);
+        if (canon && !sugestoesMap.has(canon)) sugestoesMap.set(canon, { ...l, liga: canon });
+    });
+
+    // Garante que todas as ligas canônicas aparecem (mesmo sem dados ainda)
+    const sugestoesCanon = LIGAS_CANONICAS.map(nome =>
+        sugestoesMap.get(nome) || { liga: nome, total: 0, amostras: 0, melhor: null, filtros: [], stats: null }
+    );
+
     sugestoesCanon.forEach(liga => {
-        if (!liga.melhor) return;
+        // Card "sem dados" para ligas sem histórico suficiente
+        if (!liga.melhor) {
+            const div = document.createElement('div');
+            div.className = 'liga-card';
+            div.style.opacity = '0.5';
+            div.innerHTML = `
+                <div style="font-size:12px;font-weight:800;color:#e2e8f0;margin-bottom:8px">${liga.liga}</div>
+                <div style="font-size:11px;color:#475569;text-align:center;padding:12px 0">
+                    ⏳ Coletando dados...<br>
+                    <span style="font-size:10px">${liga.amostras ? liga.amostras + ' partidas (mín. 5)' : 'Nenhuma partida ainda'}</span>
+                </div>`;
+            c.appendChild(div);
+            return;
+        }
 
         const selecionado = S.ligaCardSel === liga.liga;
         const melhor = liga.melhor;
@@ -977,7 +998,7 @@ function renderAnalise() {
 
     // Detalhe da liga selecionada
     if (S.ligaCardSel) {
-        const ligaData = S.sugestoes.find(l => l.liga === S.ligaCardSel);
+        const ligaData = sugestoesMap.get(S.ligaCardSel);
         if (ligaData) renderAnaliseDetalhe(ligaData);
         document.getElementById('analise-detalhe').style.display = '';
     } else {

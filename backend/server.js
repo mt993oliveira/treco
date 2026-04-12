@@ -968,6 +968,9 @@ app.get('/index.html', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
+// Servir pasta /img da raiz do projeto (logo RadarX etc.)
+app.use('/img', express.static(path.join(__dirname, '../img')));
+
 // Servir arquivos estáticos — HTML sem cache, demais com cache normal
 app.use(express.static(path.join(__dirname, '../frontend'), {
     setHeaders(res, filePath) {
