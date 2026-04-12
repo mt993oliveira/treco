@@ -853,18 +853,25 @@ router.get('/log-coleta', async (req, res) => {
 router.post('/limpar-ligas-descartadas', async (req, res) => {
     try {
         const pool = await getDbPool();
-        const result = await pool.request().query(`
+
+        // bet365_historico_partidas usa coluna "liga"
+        const resultHist = await pool.request().query(`
             DELETE FROM bet365_historico_partidas
             WHERE liga IN ('Super League', 'South American Super League')
         `);
-        const removidos = result.rowsAffected?.[0] ?? 0;
+        const removidos = resultHist.rowsAffected?.[0] ?? 0;
 
-        // Limpa também eventos dessas ligas
+        // bet365_eventos usa coluna "league_name"
         const resultEvt = await pool.request().query(`
             DELETE FROM bet365_eventos
-            WHERE liga IN ('Super League', 'South American Super League')
+            WHERE league_name IN ('Super League', 'South American Super League')
         `);
         const removidosEvt = resultEvt.rowsAffected?.[0] ?? 0;
+
+        if (removidos === 0 && removidosEvt === 0) {
+            return res.json({ success: true, partidas_removidas: 0, eventos_removidos: 0,
+                message: 'Nenhum registro encontrado para essas ligas. Banco já está limpo.' });
+        }
 
         res.json({ success: true, partidas_removidas: removidos, eventos_removidos: removidosEvt });
     } catch (err) {

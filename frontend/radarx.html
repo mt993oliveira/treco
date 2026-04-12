@@ -2359,8 +2359,12 @@ async function limparLigasDescartadas() {
         const r = await fetch('/api/bet365/limpar-ligas-descartadas', { method: 'POST' });
         const d = await r.json();
         if (d.success) {
-            alert(`✅ Limpeza concluída!\n${d.partidas_removidas} partidas e ${d.eventos_removidos} eventos removidos.`);
-            await carregarTudo();
+            if (d.partidas_removidas === 0 && d.eventos_removidos === 0) {
+                alert('ℹ️ ' + (d.message || 'Nenhum registro encontrado. O banco já está limpo.'));
+            } else {
+                alert(`✅ Limpeza concluída!\n${d.partidas_removidas} partida(s) e ${d.eventos_removidos} evento(s) removidos.`);
+                await carregarTudo();
+            }
         } else {
             alert('❌ Erro: ' + (d.error || 'desconhecido'));
         }
