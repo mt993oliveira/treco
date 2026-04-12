@@ -812,23 +812,28 @@
         btn.textContent = 'Enviando...';
         btn.disabled = true;
         try {
-            const r = await fetch(this.action, {
+            const r = await fetch('/api/contato', {
                 method: 'POST',
-                headers: { 'Accept': 'application/json' },
-                body: new FormData(this),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name:    document.getElementById('contact-name').value,
+                    email:   emailVal,
+                    phone:   document.getElementById('contact-phone').value,
+                    message: document.getElementById('contact-msg').value,
+                }),
             });
-            if (r.ok) {
+            const data = await r.json().catch(() => ({}));
+            if (r.ok && data.success) {
                 this.style.display = 'none';
                 document.getElementById('form-success').style.display = 'block';
             } else {
-                const data = await r.json().catch(() => ({}));
-                console.error('Formspree erro:', r.status, data);
+                console.error('Contato erro:', r.status, data);
                 btn.textContent = 'Enviar Mensagem';
                 btn.disabled = false;
-                alert('Erro ao enviar (' + r.status + '). Tente novamente.');
+                alert('Erro ao enviar. Tente novamente.');
             }
         } catch(err) {
-            console.error('Formspree catch:', err);
+            console.error('Contato catch:', err);
             btn.textContent = 'Enviar Mensagem';
             btn.disabled = false;
             alert('Erro de conexão. Tente novamente.');

@@ -967,6 +967,26 @@ app.post('/api/usuarios/delete', requireAuth, async (req, res) => {
 
 const path = require('path');
 
+// Rota de contato — encaminha para Formspree pelo backend (evita bloqueio CORS/domínio)
+app.post('/api/contato', async (req, res) => {
+    const { name, email, phone, message } = req.body;
+    if (!name || !email || !message) {
+        return res.status(400).json({ success: false, message: 'Campos obrigatórios: name, email, message' });
+    }
+    try {
+        const r = await axios.post('https://formspree.io/f/xaqawaep', {
+            name,
+            email,
+            phone: phone || '',
+            message,
+        }, { headers: { Accept: 'application/json', 'Content-Type': 'application/json' } });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Erro ao enviar contato via Formspree:', err.message);
+        res.status(500).json({ success: false, message: 'Erro ao enviar mensagem.' });
+    }
+});
+
 // Rota principal para servir o portfolio.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/portifolio.html'));
