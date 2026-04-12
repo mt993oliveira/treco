@@ -2207,8 +2207,8 @@ async function _diagCarregarLogs() {
         const dia   = document.getElementById('diag-filtro-dia')?.value || '';
         const limit = _diagLimit;
         const params = new URLSearchParams();
-        if (dia)   params.set('dia', dia);
-        if (limit) params.set('limit', limit);
+        if (dia) params.set('dia', dia);
+        params.set('limit', limit); // envia sempre, inclusive 0 (= Todos)
         const r = await fetch('/api/bet365/log-coleta?' + params.toString());
         const d = await r.json();
         if (!d.success || !d.data?.length) {

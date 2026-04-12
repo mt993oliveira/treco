@@ -817,7 +817,7 @@ router.get('/estatisticas-avancadas', async (req, res) => {
 router.get('/log-coleta', async (req, res) => {
     try {
         const pool  = await getDbPool();
-        const limit = parseInt(req.query.limit) || 20;   // 0 = todos
+        const limit = req.query.limit !== undefined ? parseInt(req.query.limit) : 20; // 0 = todos, undefined = default 20
         const dia   = req.query.dia || '';               // 'YYYY-MM-DD' ou vazio
 
         let whereClause = '';
