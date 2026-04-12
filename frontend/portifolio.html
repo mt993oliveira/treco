@@ -812,15 +812,15 @@
         btn.textContent = 'Enviando...';
         btn.disabled = true;
         try {
+            const fd = new FormData();
+            fd.append('name',    document.getElementById('contact-name').value);
+            fd.append('email',   emailVal);
+            fd.append('phone',   document.getElementById('contact-phone').value);
+            fd.append('message', document.getElementById('contact-msg').value);
             const r = await fetch('https://formspree.io/f/xaqawaep', {
                 method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: document.getElementById('contact-name').value,
-                    email: emailVal,
-                    phone: document.getElementById('contact-phone').value,
-                    message: document.getElementById('contact-msg').value,
-                }),
+                headers: { 'Accept': 'application/json' },
+                body: fd,
             });
             if (r.ok) {
                 this.style.display = 'none';
