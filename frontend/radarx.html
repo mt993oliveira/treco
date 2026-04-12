@@ -271,8 +271,96 @@
                 style="background:none;border:none;color:#475569;font-size:16px;cursor:pointer;line-height:1"
                 onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#475569'">↻</button>
         </div>
+
+        <!-- User menu -->
+        <div style="position:relative;flex-shrink:0" id="user-menu-wrap">
+            <button onclick="toggleUserMenu()" id="user-menu-btn"
+                style="display:flex;align-items:center;gap:7px;background:#1e293b;border:1px solid #334155;
+                       border-radius:6px;padding:5px 10px;cursor:pointer;transition:background .15s"
+                onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
+                <span style="width:24px;height:24px;border-radius:50%;background:#1fcc5930;border:1px solid #1fcc5950;
+                             display:flex;align-items:center;justify-content:center;font-size:11px;color:#1fcc59;font-weight:700"
+                      id="user-avatar">?</span>
+                <span style="font-size:11px;color:#e2e8f0;font-weight:600;max-width:100px;overflow:hidden;
+                             text-overflow:ellipsis;white-space:nowrap" id="user-nome">...</span>
+                <span style="font-size:9px;color:#475569">▾</span>
+            </button>
+            <div id="user-dropdown"
+                style="display:none;position:absolute;right:0;top:calc(100% + 6px);
+                       background:#0f172a;border:1px solid #1e293b;border-radius:8px;
+                       min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:200;overflow:hidden">
+                <div style="padding:10px 14px;border-bottom:1px solid #1e293b">
+                    <div style="font-size:12px;font-weight:700;color:#e2e8f0" id="dd-nome">—</div>
+                    <div style="font-size:10px;color:#475569" id="dd-usuario">—</div>
+                    <div style="font-size:10px;color:#334155" id="dd-tipo">—</div>
+                </div>
+                <button onclick="abrirPerfil()"
+                    style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:flex;gap:8px;align-items:center"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    👤 Meu Perfil
+                </button>
+                <button onclick="fazerLogout()"
+                    style="width:100%;background:none;border:none;color:#f87171;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:flex;gap:8px;align-items:center;
+                           border-top:1px solid #1e293b"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    🚪 Sair
+                </button>
+            </div>
+        </div>
     </div>
 </header>
+
+<!-- ========== MODAL: PERFIL ========== -->
+<div class="modal-overlay" id="modal-perfil">
+    <div class="modal-box" style="max-width:420px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+            <h2 style="font-size:14px;font-weight:700">👤 Meu Perfil</h2>
+            <button onclick="fecharModal('modal-perfil')"
+                style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <form id="perfil-form" onsubmit="salvarPerfil(event)">
+            <div style="margin-bottom:12px">
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">NOME COMPLETO</label>
+                <input id="perfil-nome" type="text" required
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                           padding:8px 10px;font-size:12px;outline:none"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            </div>
+            <div style="margin-bottom:12px">
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">E-MAIL</label>
+                <input id="perfil-email" type="email"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                           padding:8px 10px;font-size:12px;outline:none"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            </div>
+            <div style="border-top:1px solid #1e293b;padding-top:12px;margin-bottom:12px">
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">
+                    NOVA SENHA <span style="font-weight:400;color:#334155">(deixe em branco para manter)</span>
+                </label>
+                <input id="perfil-senha" type="password"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                           padding:8px 10px;font-size:12px;outline:none;margin-bottom:8px"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">CONFIRMAR NOVA SENHA</label>
+                <input id="perfil-senha2" type="password"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                           padding:8px 10px;font-size:12px;outline:none"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            </div>
+            <div id="perfil-msg" style="display:none;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button type="button" onclick="fecharModal('modal-perfil')"
+                    style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                           padding:7px 16px;font-size:12px;cursor:pointer">Cancelar</button>
+                <button type="submit"
+                    style="background:#1fcc59;border:none;color:#000;border-radius:5px;
+                           padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- ========== VIEW SELECTOR ========== -->
 <div style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:8px 16px;display:flex;gap:8px;align-items:center">
@@ -3011,9 +3099,107 @@ function escHtml(s) {
 }
 
 // ============================================================
+// USER MENU
+// ============================================================
+function _getUser() {
+    try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e) { return null; }
+}
+
+function _initUserMenu() {
+    const u = _getUser();
+    if (!u) return;
+    const initials = (u.NomeCompleto || u.Usuario || '?').trim().split(' ')
+        .map(p => p[0]).slice(0, 2).join('').toUpperCase();
+    document.getElementById('user-avatar').textContent = initials;
+    document.getElementById('user-nome').textContent   = u.NomeCompleto || u.Usuario;
+    document.getElementById('dd-nome').textContent     = u.NomeCompleto || '—';
+    document.getElementById('dd-usuario').textContent  = '@' + (u.Usuario || '—');
+    document.getElementById('dd-tipo').textContent     = u.TipoUsuario === 'master' ? '⭐ Master' : 'Usuário';
+}
+
+function toggleUserMenu() {
+    const dd = document.getElementById('user-dropdown');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+// Fecha dropdown ao clicar fora
+document.addEventListener('click', e => {
+    const wrap = document.getElementById('user-menu-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+        const dd = document.getElementById('user-dropdown');
+        if (dd) dd.style.display = 'none';
+    }
+});
+
+function fazerLogout() {
+    if (!confirm('Deseja sair da plataforma?')) return;
+    localStorage.removeItem('currentUser');
+    window.location.replace('/');
+}
+
+function abrirPerfil() {
+    document.getElementById('user-dropdown').style.display = 'none';
+    const u = _getUser();
+    if (!u) return;
+    document.getElementById('perfil-nome').value  = u.NomeCompleto || '';
+    document.getElementById('perfil-email').value = u.Email || '';
+    document.getElementById('perfil-senha').value  = '';
+    document.getElementById('perfil-senha2').value = '';
+    const msg = document.getElementById('perfil-msg');
+    msg.style.display = 'none';
+    document.getElementById('modal-perfil').classList.add('aberto');
+}
+
+async function salvarPerfil(e) {
+    e.preventDefault();
+    const u    = _getUser();
+    if (!u) return;
+    const nome  = document.getElementById('perfil-nome').value.trim();
+    const email = document.getElementById('perfil-email').value.trim();
+    const senha = document.getElementById('perfil-senha').value;
+    const senha2 = document.getElementById('perfil-senha2').value;
+    const msg   = document.getElementById('perfil-msg');
+
+    if (senha && senha !== senha2) {
+        msg.textContent  = 'As senhas não coincidem.';
+        msg.style.cssText = 'display:block;background:#3b0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
+        return;
+    }
+
+    try {
+        const body = { id: u.Id, nomeCompleto: nome, email };
+        if (senha) body.senha = senha;
+
+        const r = await fetch('/api/usuarios/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const d = await r.json();
+
+        if (d.success) {
+            u.NomeCompleto = nome;
+            u.Email = email;
+            localStorage.setItem('currentUser', JSON.stringify(u));
+            _initUserMenu();
+            msg.textContent   = '✅ Perfil atualizado com sucesso!';
+            msg.style.cssText = 'display:block;background:#14532d;border:1px solid #166534;color:#4ade80;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
+            setTimeout(() => fecharModal('modal-perfil'), 1500);
+        } else {
+            msg.textContent   = '❌ ' + (d.message || 'Erro ao salvar.');
+            msg.style.cssText = 'display:block;background:#3b0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
+        }
+    } catch(err) {
+        msg.textContent   = '❌ Erro: ' + err.message;
+        msg.style.cssText = 'display:block;background:#3b0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
+    }
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+    _initUserMenu();
     carregarTudo();
     conectarWS();
     setInterval(carregarTudo, 120000);
