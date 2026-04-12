@@ -475,10 +475,91 @@
         }
         .modal-close-row button:hover { color: var(--text); }
 
+        /* ── HAMBURGER ─────────────────────────────── */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            width: 36px;
+            height: 36px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        .hamburger span {
+            display: block;
+            height: 2px;
+            background: var(--muted);
+            border-radius: 2px;
+            transition: all .25s;
+        }
+        .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        .mobile-menu {
+            display: none;
+            flex-direction: column;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 5%;
+            gap: 4px;
+        }
+        .mobile-menu.open { display: flex; }
+        .mobile-menu a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            transition: color .15s;
+        }
+        .mobile-menu a:last-of-type { border-bottom: none; }
+        .mobile-menu a:hover { color: var(--text); }
+        .mobile-menu .btn-login-mob {
+            margin-top: 8px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            padding: 11px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* ── BREAKPOINT TABLET (≤768px) ─────────────── */
+        @media (max-width: 768px) {
+            .stats-grid { gap: 28px; }
+            .features-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+            section { padding: 60px 5%; }
+        }
+
+        /* ── BREAKPOINT MOBILE (≤640px) ─────────────── */
         @media (max-width: 640px) {
             .contact-wrapper { grid-template-columns: 1fr; }
             .nav-links { display: none; }
-            .hero h1 { font-size: 2rem; }
+            .btn-login { display: none; }
+            .hamburger { display: flex; }
+            .hero { padding: 90px 5% 60px; min-height: auto; }
+            .hero h1 { font-size: clamp(1.8rem, 8vw, 2.4rem); }
+            .hero p { font-size: 14px; }
+            .hero-actions { flex-direction: column; align-items: stretch; }
+            .hero-actions .btn-primary,
+            .hero-actions .btn-outline { text-align: center; padding: 14px; }
+            .stats-grid { gap: 20px; }
+            .stat-item .value { font-size: 1.6rem; }
+            section { padding: 50px 5%; }
+            .features-grid { grid-template-columns: 1fr; }
+            .steps-grid { grid-template-columns: 1fr; }
+            .contact-wrapper { gap: 24px; }
+            footer { padding: 24px 5%; }
         }
 
         /* WhatsApp float button */
@@ -523,8 +604,17 @@
             <a href="#contato">Contato</a>
         </div>
         <button class="btn-login" onclick="abrirLogin()"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+        <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
     </div>
 </nav>
+<div class="mobile-menu" id="mobile-menu">
+    <a href="#features" onclick="closeMobileMenu()">Recursos</a>
+    <a href="#como-funciona" onclick="closeMobileMenu()">Como Funciona</a>
+    <a href="#contato" onclick="closeMobileMenu()">Contato</a>
+    <button class="btn-login-mob" onclick="closeMobileMenu();abrirLogin()"><i class="fas fa-sign-in-alt"></i> Entrar na Plataforma</button>
+</div>
 
 <!-- HERO -->
 <section class="hero" id="inicio">
@@ -728,6 +818,17 @@
 </div>
 
 <script>
+    function toggleMobileMenu() {
+        const menu = document.getElementById('mobile-menu');
+        const btn  = document.getElementById('hamburger');
+        const open = menu.classList.toggle('open');
+        btn.classList.toggle('open', open);
+    }
+    function closeMobileMenu() {
+        document.getElementById('mobile-menu').classList.remove('open');
+        document.getElementById('hamburger').classList.remove('open');
+    }
+
     function abrirLogin() {
         document.getElementById('login-modal').classList.add('open');
         document.getElementById('username').focus();
