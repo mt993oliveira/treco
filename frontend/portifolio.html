@@ -654,24 +654,24 @@
         </div>
 
         <div class="contact-form">
-            <form id="contactForm">
+            <form id="contactForm" action="https://formspree.io/f/xaqawaep" method="POST">
                 <div class="form-group">
                     <label>NOME</label>
-                    <input type="text" id="contact-name" placeholder="Seu nome" required>
+                    <input type="text" id="contact-name" name="name" placeholder="Seu nome" required>
                 </div>
                 <div class="form-group">
                     <label>E-MAIL</label>
-                    <input type="email" id="contact-email" placeholder="seu@email.com" required autocomplete="email">
+                    <input type="email" id="contact-email" name="email" placeholder="seu@email.com" required autocomplete="email">
                     <span class="field-error" id="email-error"></span>
                 </div>
                 <div class="form-group">
                     <label>WHATSAPP</label>
-                    <input type="tel" id="contact-phone" placeholder="(00) 00000-0000" maxlength="15" inputmode="numeric">
+                    <input type="tel" id="contact-phone" name="phone" placeholder="(00) 00000-0000" maxlength="15" inputmode="numeric">
                     <span class="field-error" id="phone-error"></span>
                 </div>
                 <div class="form-group">
                     <label>MENSAGEM</label>
-                    <textarea id="contact-msg" placeholder="Como podemos ajudar?" required></textarea>
+                    <textarea id="contact-msg" name="message" placeholder="Como podemos ajudar?" required></textarea>
                 </div>
                 <button type="submit" class="btn-form">Enviar Mensagem</button>
             </form>
@@ -812,25 +812,23 @@
         btn.textContent = 'Enviando...';
         btn.disabled = true;
         try {
-            const fd = new FormData();
-            fd.append('name',    document.getElementById('contact-name').value);
-            fd.append('email',   emailVal);
-            fd.append('phone',   document.getElementById('contact-phone').value);
-            fd.append('message', document.getElementById('contact-msg').value);
-            const r = await fetch('https://formspree.io/f/xaqawaep', {
+            const r = await fetch(this.action, {
                 method: 'POST',
                 headers: { 'Accept': 'application/json' },
-                body: fd,
+                body: new FormData(this),
             });
             if (r.ok) {
                 this.style.display = 'none';
                 document.getElementById('form-success').style.display = 'block';
             } else {
+                const data = await r.json().catch(() => ({}));
+                console.error('Formspree erro:', r.status, data);
                 btn.textContent = 'Enviar Mensagem';
                 btn.disabled = false;
-                alert('Erro ao enviar. Tente novamente.');
+                alert('Erro ao enviar (' + r.status + '). Tente novamente.');
             }
         } catch(err) {
+            console.error('Formspree catch:', err);
             btn.textContent = 'Enviar Mensagem';
             btn.disabled = false;
             alert('Erro de conexão. Tente novamente.');
