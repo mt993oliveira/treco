@@ -643,7 +643,7 @@
             </div>
             <div class="contact-item">
                 <i class="fas fa-globe"></i>
-                <span>controlfinance.com.br</span>
+                <span>radarx.com.br</span>
             </div>
             <div class="contact-item">
                 <i class="fas fa-shield-alt"></i>
@@ -739,10 +739,35 @@
     });
 
     // Contact form
-    document.getElementById('contactForm').addEventListener('submit', function(e) {
+    document.getElementById('contactForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        this.style.display = 'none';
-        document.getElementById('form-success').style.display = 'block';
+        const btn = this.querySelector('button[type="submit"]');
+        btn.textContent = 'Enviando...';
+        btn.disabled = true;
+        try {
+            const r = await fetch('https://formspree.io/f/xaqawaep', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: document.getElementById('contact-name').value,
+                    email: document.getElementById('contact-email').value,
+                    phone: document.getElementById('contact-phone').value,
+                    message: document.getElementById('contact-msg').value,
+                }),
+            });
+            if (r.ok) {
+                this.style.display = 'none';
+                document.getElementById('form-success').style.display = 'block';
+            } else {
+                btn.textContent = 'Enviar Mensagem';
+                btn.disabled = false;
+                alert('Erro ao enviar. Tente novamente.');
+            }
+        } catch(err) {
+            btn.textContent = 'Enviar Mensagem';
+            btn.disabled = false;
+            alert('Erro de conexão. Tente novamente.');
+        }
     });
 
     // Login form
