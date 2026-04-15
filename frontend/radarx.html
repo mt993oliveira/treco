@@ -621,8 +621,6 @@
 
         <!-- Linha 2: sub-filtros do tipo selecionado -->
         <div id="filtros-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center"></div>
-        <!-- Linha 3: sub-filtros de odds (visível só quando Odds está ativo) -->
-        <div id="odds-subfiltros" style="display:none;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px"></div>
     </div>
 
     <!-- Chart + Legend -->
@@ -1113,8 +1111,7 @@ const S = {
     grafTopo:      null,
     view:          'analise',
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
-    showOdds:      false,   // exibe odds 1X2 nas células do grid
-    filtroOdds:    'over1.5', // sub-filtro ativo no modo Odds
+    showOdds:      false,   // exibe odds pré-jogo nas células do grid
 };
 
 Object.values(FILTROS).flat().forEach(f => { S.linhas[f.id] = true; });
@@ -1150,20 +1147,6 @@ function checa(j, fid) {
         case 'esp-btts-u25': return c > 0 && f > 0 && t <= 2;
         case 'esp-casa-o15': return j.resultado === 'CASA' && t >= 2;
         case 'esp-fora-o15': return j.resultado === 'FORA' && t >= 2;
-        default: return false;
-    }
-}
-
-// Verifica se jogo atende ao sub-filtro de odds
-function checaOdds(j, fid) {
-    const t = (j.gol_casa || 0) + (j.gol_fora || 0);
-    const c = j.gol_casa || 0, f = j.gol_fora || 0;
-    switch(fid) {
-        case 'ambas-sim': return c > 0 && f > 0;
-        case 'ambas-nao': return !(c > 0 && f > 0);
-        case 'over1.5':   return t >= 2;
-        case 'over2.5':   return t >= 3;
-        case 'over3.5':   return t >= 4;
         default: return false;
     }
 }
@@ -1556,27 +1539,6 @@ function renderFiltros() {
             title="Mostrar odds pré-jogo 1X2 nas células">💹 Odds</button>
     `;
     c.appendChild(div);
-
-    // Sub-filtros de odds
-    const oSub = document.getElementById('odds-subfiltros');
-    if (oSub) {
-        if (S.showOdds) {
-            const opts = [
-                { id: 'ambas-sim', label: 'Ambas Sim' },
-                { id: 'ambas-nao', label: 'Ambas Não' },
-                { id: 'over1.5',   label: 'Over 1.5'  },
-                { id: 'over2.5',   label: 'Over 2.5'  },
-                { id: 'over3.5',   label: 'Over 3.5'  },
-            ];
-            oSub.style.display = 'flex';
-            oSub.innerHTML = `<span style="font-size:9px;color:#64748b;font-weight:700;align-self:center">DESTACAR:</span>` +
-                opts.map(o => `<button class="filtro-btn${S.filtroOdds === o.id ? ' ativo' : ''}"
-                    onclick="S.filtroOdds='${o.id}';renderFiltros();renderTabela()">${o.label}</button>`).join('');
-        } else {
-            oSub.style.display = 'none';
-            oSub.innerHTML = '';
-        }
-    }
 }
 
 function trocarSecao(s) {
@@ -2167,26 +2129,28 @@ function renderTabela() {
                 colTotal[ci] += 1;
             }
             const abbrev = n => n || '';
-            // Determina destaque: modo Odds usa checaOdds, caso contrário usa filtro ativo
-            const hitEfetivo = isOculto ? false : (S.showOdds ? checaOdds(j, S.filtroOdds) : hit);
-            // Linha de odds 1X2 (exibida quando modo Odds está ativo)
+            // Destaque sempre pelo filtro/condição selecionado na seção
+            const hitEfetivo = isOculto ? false : hit;
+            // Odds pré-jogo (exibidas quando modo Odds está ativo)
             const oddC = parseFloat(j.odd_casa   || 0);
-            const oddE = parseFloat(j.odd_empate || 0);
             const oddF = parseFloat(j.odd_fora   || 0);
-            const temOdds = S.showOdds && (oddC > 0 || oddE > 0 || oddF > 0);
-            const oddsLine = temOdds
-                ? `<span style="display:flex;gap:1px;margin-top:2px">`+
-                  `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:#4ade80">${oddC.toFixed(1)}</span>`+
-                  `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:#94a3b8">${oddE.toFixed(1)}</span>`+
-                  `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:#f87171">${oddF.toFixed(1)}</span>`+
-                  `</span>` : '';
-            const nmSlot = `data-action="slot" data-min="${minuteSlots[ci]}"`;
+            const temOdds = S.showOdds && (oddC > 0 || oddF > 0);
+            const fmtOdd  = v => v > 0 ? v.toFixed(2) : '';
+            // Cores das odds: verde se favorito (< 2.00), amarelo se médio, vermelho se azarão
+            const corOddC = oddC > 0 ? (oddC < 2.0 ? '#4ade80' : oddC < 3.0 ? '#fbbf24' : '#f87171') : '#64748b';
+            const corOddF = oddF > 0 ? (oddF < 2.0 ? '#4ade80' : oddF < 3.0 ? '#fbbf24' : '#f87171') : '#64748b';
+            const nmSlot  = `data-action="slot" data-min="${minuteSlots[ci]}"`;
             const cellContent = S.showNomes
-                ? `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
+                ? (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
+                  `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
                   `<span data-action="liga" style="display:block;font-size:9px;font-weight:800;cursor:pointer">${score}</span>`+
                   `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
-                  oddsLine
-                : `<span data-action="liga" style="cursor:pointer">${score}</span>${oddsLine}`;
+                  (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
+                : `<span data-action="liga" style="cursor:pointer">${score}</span>`+
+                  (temOdds ? `<span style="display:flex;gap:2px;margin-top:1px">`+
+                    `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddC}">${fmtOdd(oddC)}</span>`+
+                    `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddF}">${fmtOdd(oddF)}</span>`+
+                    `</span>` : '');
             const opacityStyle = isEstimado ? 'opacity:0.35;' : isOculto ? 'opacity:0.7;' : '';
             const baseStyle    = (S.showNomes || isOculto || temOdds) ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
             const cellStyle    = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
