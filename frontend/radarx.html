@@ -67,6 +67,7 @@
         .c-verde  { background: #14532d; color: #4ade80; }
         .c-verm   { background: #3b0a0a; color: #f87171; }
         .c-vazio  { background: #060810; }
+        .c-futuro { background: #0a1628; color: #3b82f6; border: 1px dashed #1e3a5f !important; }
         .pct-alta  { color: #4ade80 !important; }
         .pct-media { color: #fbbf24 !important; }
         .pct-baixa { color: #f87171 !important; }
@@ -983,12 +984,13 @@ function normalizarTime(nome) {
 // ESTADO
 // ============================================================
 const S = {
-    partidas:      [],
-    todasPartidas: [],
-    ligas:         [],
-    sugestoes:     [],
-    proximosJogos: [],
-    ligaAtiva:     null,
+    partidas:         [],
+    todasPartidas:    [],
+    ligas:            [],
+    sugestoes:        [],
+    proximosJogos:    [],
+    eventosAgendados: [],
+    ligaAtiva:        null,
     ligaCardSel:   null,
     rankingN:      10,
     secao:         'over',
@@ -1524,6 +1526,10 @@ async function renderProximosJogos() {
             return;
         }
 
+        // Armazena todos os agendados para uso na grid (projeção de próximos jogos)
+        S.eventosAgendados = (d.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
+        if (S.view === 'historico') renderTabela();
+
         // Filtrar por liga ativa e só AGENDADOS com odds
         let jogos = (d.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
         if (S.ligaAtiva) jogos = jogos.filter(j => normalizarLiga(j.liga) === S.ligaAtiva);
@@ -1787,7 +1793,8 @@ async function renderUltimosResultados() {
             const horaStr = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '—';
             const dataStr = dt ? `${pad2(dt.getUTCDate())}/${pad2(dt.getUTCMonth()+1)}` : '';
             const liga = normalizarLiga(p.liga) || p.liga || '—';
-            const placar = (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa} - ${p.gol_fora}` : '? - ?';
+            const placar = (p.placar_oculto === 1 || p.placar_oculto === true) ? '5+'
+                : (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa} - ${p.gol_fora}` : '? - ?';
             const res = p.resultado || '?';
             const resCor = res === 'CASA' ? '#4ade80' : res === 'FORA' ? '#f87171' : '#fbbf24';
             const tc = normalizarTime(p.time_casa) || p.time_casa || '?';
@@ -1957,33 +1964,64 @@ function renderTabela() {
 
         const tr = document.createElement('tr');
 
+        // Mapa de eventos agendados para a liga ativa → chave "YYYY-MM-DD HH:MM"
+        const agendadosMap = new Map();
+        (S.eventosAgendados || []).forEach(ev => {
+            const canon = normalizarLiga(ev.liga);
+            if (canon !== S.ligaAtiva || !ev.horario) return;
+            const d = new Date(ev.horario);
+            const key = `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+            agendadosMap.set(key, ev);
+        });
+
         // Células dos jogos — uma por slot de 3 minutos
         const cells = Array.from({length: N}, (_, ci) => {
             const j = slotMap[ci];
+
             if (!j) {
+                // Verifica se há jogo agendado para este slot
+                const slotMin = minuteSlots[ci];
+                const slotKey = `${hora.getUTCFullYear()}-${pad2(hora.getUTCMonth()+1)}-${pad2(hora.getUTCDate())} ${pad2(hora.getUTCHours())}:${pad2(slotMin)}`;
+                const ag = agendadosMap.get(slotKey);
+                if (ag) {
+                    const tc   = normalizarTime(ag.time_casa) || ag.time_casa || '';
+                    const tf   = normalizarTime(ag.time_fora) || ag.time_fora || '';
+                    const oddC = parseFloat(ag.odd_casa   || 0).toFixed(2);
+                    const oddE = parseFloat(ag.odd_empate || 0).toFixed(2);
+                    const oddF = parseFloat(ag.odd_fora   || 0).toFixed(2);
+                    const tt   = `PRÓXIMO: ${tc} × ${tf} | C:${oddC} E:${oddE} F:${oddF}`;
+                    return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:44px;cursor:default">
+                        <span style="display:block;font-size:7px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
+                        <span style="display:block;font-size:9px;font-weight:800">${oddC}</span>
+                        <span style="display:block;font-size:7px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tf}</span>
+                    </td>`;
+                }
                 return `<td class="c-vazio" style="opacity:.3"></td>`;
             }
-            const hit   = fi ? checa(j, fi.id) : false;
-            const score = (j.gol_casa != null && j.gol_fora != null)
-                ? `${j.gol_casa}-${j.gol_fora}` : '–';
+
+            const hit        = fi ? checa(j, fi.id) : false;
+            const isOculto   = j.placar_oculto === 1 || j.placar_oculto === true;
+            const score      = isOculto ? '5+'
+                : (j.gol_casa != null && j.gol_fora != null) ? `${j.gol_casa}-${j.gol_fora}` : '–';
             const _d = j.data_partida ? new Date(j.data_partida) : null;
             const minStr = _d ? `${pad2(_d.getUTCHours())}:${pad2(_d.getUTCMinutes())}` : '';
             const isEstimado = j.resultado_estimado === 1 || j.resultado_estimado === true;
-            const ttSuffix = isEstimado ? ' [estimado]' : '';
+            const ttSuffix   = isOculto ? ' [5+ gols]' : isEstimado ? ' [estimado]' : '';
             const tt = `${minStr} ${j.time_casa} ${score} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]${ttSuffix}`;
-            // Células estimadas não entram no footer de % (dados não confiáveis)
-            if (!isEstimado) {
+            // Células estimadas e ocultas não entram no footer de %
+            if (!isEstimado && !isOculto) {
                 colHits[ci]  += hit ? 1 : 0;
                 colTotal[ci] += 1;
             }
-            const abbrev = n => (n||'').split(' ')[0].slice(0,8);
+            const abbrev = n => n || '';
             const cellContent = S.showNomes
                 ? `<span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_casa)}</span><span style="display:block;font-size:9px;font-weight:800">${score}</span><span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_fora)}</span>`
                 : score;
-            const opacityStyle = isEstimado ? 'opacity:0.35;' : '';
-            const baseStyle = S.showNomes ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
-            const cellStyle = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
-            return `<td class="${hit ? 'c-verde' : 'c-verm'}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
+            const opacityStyle = isEstimado ? 'opacity:0.35;' : isOculto ? 'opacity:0.7;' : '';
+            const baseStyle    = (S.showNomes || isOculto) ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
+            const cellStyle    = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
+            const cellClass    = isOculto ? 'c-verm' : hit ? 'c-verde' : 'c-verm';
+            return `<td class="${cellClass}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
         }).join('');
 
         tr.innerHTML = `
@@ -3583,6 +3621,9 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 </div><!-- /#main-wrap -->
+
+<!-- Onboarding Tour -->
+<script src="/tour.js" defer></script>
 
 <!-- WhatsApp flutuante -->
 <a class="wa-btn"

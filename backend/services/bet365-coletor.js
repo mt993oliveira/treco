@@ -25,7 +25,13 @@ const http   = require('http');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const DEBUG_PORT = parseInt(process.env.BET365_DEBUG_PORT) || 9222;
+const fs   = require('fs');
+const path = require('path');
+
+const DEBUG_PORT        = parseInt(process.env.BET365_DEBUG_PORT) || 9222;
+const SCREENSHOT_ATIVO  = process.env.BET365_SCREENSHOT === 'true';
+const SCREENSHOT_DIAS   = parseInt(process.env.BET365_SCREENSHOT_DIAS) || 30;
+const SCREENSHOT_DIR    = path.join(__dirname, '..', '..', 'img', 'screenshots');
 const URL_SOCCER = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR = ['super league'];
 
@@ -117,6 +123,8 @@ class Bet365Coletor {
              ALTER TABLE bet365_historico_partidas ADD gol_casa_ht TINYINT NULL`,
             `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='gol_fora_ht')
              ALTER TABLE bet365_historico_partidas ADD gol_fora_ht TINYINT NULL`,
+            `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='placar_oculto')
+             ALTER TABLE bet365_historico_partidas ADD placar_oculto BIT NOT NULL DEFAULT 0`,
         ];
         for (const mig of migracoes) {
             await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));
@@ -173,6 +181,44 @@ class Bet365Coletor {
         if (this.pool) {
             await this.pool.close().catch(() => {});
             this.pool = null;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // SCREENSHOTS — captura tela dos resultados para validação
+    // ─────────────────────────────────────────────────────────────
+
+    async _tirarScreenshot(pg, ligaNome) {
+        if (!SCREENSHOT_ATIVO) return;
+        try {
+            if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+            const agora    = new Date();
+            const ts       = `${agora.getUTCFullYear()}-${String(agora.getUTCMonth()+1).padStart(2,'0')}-${String(agora.getUTCDate()).padStart(2,'0')}` +
+                             `_${String(agora.getUTCHours()).padStart(2,'0')}-${String(agora.getUTCMinutes()).padStart(2,'0')}-${String(agora.getUTCSeconds()).padStart(2,'0')}`;
+            const nomeLimpo = ligaNome.replace(/[^a-zA-Z0-9]/g, '_');
+            const filename  = `${ts}_${nomeLimpo}.png`;
+            await pg.screenshot({ path: path.join(SCREENSHOT_DIR, filename), fullPage: false });
+            console.log(`   📸 Screenshot: ${filename}`);
+        } catch(e) {
+            console.warn(`   ⚠️  Screenshot falhou: ${e.message}`);
+        }
+    }
+
+    _limparScreenshotsAntigos() {
+        if (!SCREENSHOT_ATIVO) return;
+        try {
+            if (!fs.existsSync(SCREENSHOT_DIR)) return;
+            const limite = Date.now() - SCREENSHOT_DIAS * 86400000;
+            const files  = fs.readdirSync(SCREENSHOT_DIR).filter(f => f.endsWith('.png'));
+            let removidos = 0;
+            for (const f of files) {
+                const fp   = path.join(SCREENSHOT_DIR, f);
+                const stat = fs.statSync(fp);
+                if (stat.mtimeMs < limite) { fs.unlinkSync(fp); removidos++; }
+            }
+            if (removidos > 0) console.log(`   🗑  ${removidos} screenshot(s) antigo(s) removido(s)`);
+        } catch(e) {
+            console.warn(`   ⚠️  Limpeza screenshots: ${e.message}`);
         }
     }
 
@@ -315,9 +361,14 @@ class Bet365Coletor {
                 const timeFora  = t2El.textContent.trim();
                 const placar    = scEl.textContent.trim().replace(/\s+/g, '');
                 const parts     = placar.split(/[-–]/);
-                const golCasa   = parseInt(parts[0]) || 0;
-                const golFora   = parseInt(parts[1]) || 0;
-                const resultado = golCasa > golFora ? 'CASA' : golFora > golCasa ? 'FORA' : 'EMPATE';
+                const gcParse   = parseInt(parts[0]);
+                const gfParse   = parseInt(parts[1]);
+                // Quando a Bet365 não exibe o placar (5+ gols) o score vem como " - "
+                const placarOculto = isNaN(gcParse) || isNaN(gfParse);
+                const golCasa   = placarOculto ? 5 : (gcParse || 0);
+                const golFora   = placarOculto ? 0 : (gfParse || 0);
+                const resultado = placarOculto ? 'OCULTO'
+                    : golCasa > golFora ? 'CASA' : golFora > golCasa ? 'FORA' : 'EMPATE';
 
                 const mercados = [];
                 for (const p of grupo.querySelectorAll('.vrr-HeadToHeadParticipant')) {
@@ -336,7 +387,7 @@ class Bet365Coletor {
                     }
                 }
 
-                resultados.push({ liga, horario, timeCasa, timeFora, placar, golCasa, golFora, golCasaHT, golForaHT, resultado, mercados });
+                resultados.push({ liga, horario, timeCasa, timeFora, placar, golCasa, golFora, golCasaHT, golForaHT, resultado, mercados, placarOculto });
             }
             return resultados;
         }, liga);
@@ -365,6 +416,9 @@ class Bet365Coletor {
             const res = await this._extrairResultados(normalizarNomeLiga(liga.nome), pg);
             resultados.push(...res);
             console.log(`   📋 [${normalizarNomeLiga(liga.nome)}] ${res.length} resultado(s)`);
+
+            // Screenshot para validação dos resultados
+            await this._tirarScreenshot(pg, normalizarNomeLiga(liga.nome));
 
             // Volta para próximos — clica pelo nome para garantir a aba certa
             await pg.evaluate((nomeLiga) => {
@@ -446,6 +500,10 @@ class Bet365Coletor {
 
         const todosEventos    = [];
         const todosResultados = [];
+        const contadoresTotal = { eventosOk: 0, mercadosOk: 0, oddsOk: 0, histOk: 0 };
+
+        // Limpeza de screenshots antigos no início de cada ciclo
+        this._limparScreenshotsAntigos();
 
         for (let i = 0; i < ligasFiltradas.length; i++) {
             const liga = ligasFiltradas[i];
@@ -466,6 +524,14 @@ class Bet365Coletor {
                 const { eventos, resultados } = await this._coletarLiga(pg, liga);
                 todosEventos.push(...eventos);
                 todosResultados.push(...resultados);
+
+                // ── Commit por liga — salva imediatamente após coletar cada liga ──
+                console.log(`   💾 [${normalizarNomeLiga(liga.nome)}] Salvando no banco...`);
+                const cont = await this.salvarNoBanco({ eventos, resultados });
+                contadoresTotal.eventosOk  += cont.eventosOk;
+                contadoresTotal.mercadosOk += cont.mercadosOk;
+                contadoresTotal.oddsOk     += cont.oddsOk;
+                contadoresTotal.histOk     += cont.histOk;
             } catch(err) {
                 console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
             }
@@ -489,7 +555,7 @@ class Bet365Coletor {
         }
 
         console.log(`\n   ✅ Total: ${todosEventos.length} evento(s), ${todosResultados.length} resultado(s)`);
-        return { eventos: todosEventos, resultados: todosResultados };
+        return { eventos: todosEventos, resultados: todosResultados, contadores: contadoresTotal };
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -656,47 +722,53 @@ class Bet365Coletor {
 
                 // ── 2. Verifica se já existe com placar real ──
                 const existe = await pool.request().input('evId', sql.BigInt, eventoId)
-                    .query(`SELECT id, gol_casa, gol_fora FROM bet365_historico_partidas WHERE evento_id=@evId`);
+                    .query(`SELECT id, gol_casa, gol_fora, ISNULL(placar_oculto,0) AS placar_oculto FROM bet365_historico_partidas WHERE evento_id=@evId`);
 
-                const jaExiste  = existe.recordset.length > 0;
-                const scoreZero = jaExiste && existe.recordset[0].gol_casa === 0 && existe.recordset[0].gol_fora === 0;
-                const temScore  = (res.golCasa || 0) + (res.golFora || 0) > 0;
+                const jaExiste     = existe.recordset.length > 0;
+                const rec          = existe.recordset[0];
+                const scoreZero    = jaExiste && rec.gol_casa === 0 && rec.gol_fora === 0;
+                const eraOculto    = jaExiste && rec.placar_oculto === 1;
+                const temScore     = (res.golCasa || 0) + (res.golFora || 0) > 0;
+                const temScoreReal = temScore && !res.placarOculto;
 
-                if (jaExiste && !scoreZero) continue; // já tem placar real, pula
-                if (jaExiste && scoreZero && !temScore) continue; // 0-0 real, pula
+                if (jaExiste && !scoreZero && !eraOculto) continue; // já tem placar real, pula
+                if (jaExiste && scoreZero  && !temScore)  continue; // 0-0 real, pula
+                if (jaExiste && eraOculto  && !temScoreReal) continue; // ainda oculto, pula
 
                 // ── 4. Salva resultado ──
                 await pool.request()
-                    .input('evId',     sql.BigInt,       eventoId)
-                    .input('liga',     sql.NVarChar(200), res.liga)
-                    .input('timeCasa', sql.NVarChar(100), res.timeCasa)
-                    .input('timeFora', sql.NVarChar(100), res.timeFora)
-                    .input('golCasa',  sql.Int,           res.golCasa)
-                    .input('golFora',  sql.Int,           res.golFora)
-                    .input('golCHT',   sql.TinyInt,       res.golCasaHT ?? null)
-                    .input('golFHT',   sql.TinyInt,       res.golForaHT ?? null)
-                    .input('resultado',sql.NVarChar(10),  res.resultado)
-                    .input('oddCasa',  sql.Decimal(10,2), oddCasa)
-                    .input('oddEmp',   sql.Decimal(10,2), oddEmpate)
-                    .input('oddFora',  sql.Decimal(10,2), oddFora)
-                    .input('dataPart', sql.DateTime2,     dataPart)
+                    .input('evId',        sql.BigInt,       eventoId)
+                    .input('liga',        sql.NVarChar(200), res.liga)
+                    .input('timeCasa',    sql.NVarChar(100), res.timeCasa)
+                    .input('timeFora',    sql.NVarChar(100), res.timeFora)
+                    .input('golCasa',     sql.Int,           res.golCasa)
+                    .input('golFora',     sql.Int,           res.golFora)
+                    .input('golCHT',      sql.TinyInt,       res.golCasaHT ?? null)
+                    .input('golFHT',      sql.TinyInt,       res.golForaHT ?? null)
+                    .input('resultado',   sql.NVarChar(10),  res.resultado)
+                    .input('oddCasa',     sql.Decimal(10,2), oddCasa)
+                    .input('oddEmp',      sql.Decimal(10,2), oddEmpate)
+                    .input('oddFora',     sql.Decimal(10,2), oddFora)
+                    .input('dataPart',    sql.DateTime2,     dataPart)
+                    .input('placarOcult', sql.Bit,           res.placarOculto ? 1 : 0)
                     .query(`
                         MERGE bet365_historico_partidas AS t
                         USING (SELECT @evId AS evento_id) AS s ON t.evento_id=s.evento_id
-                        WHEN MATCHED AND t.gol_casa=0 AND t.gol_fora=0 THEN UPDATE SET
+                        WHEN MATCHED AND (t.gol_casa=0 AND t.gol_fora=0 OR t.placar_oculto=1) THEN UPDATE SET
                             t.gol_casa=@golCasa, t.gol_fora=@golFora,
                             t.gol_casa_ht=ISNULL(@golCHT,t.gol_casa_ht),
                             t.gol_fora_ht=ISNULL(@golFHT,t.gol_fora_ht),
                             t.resultado=@resultado, t.resultado_estimado=0,
+                            t.placar_oculto=@placarOcult,
                             t.data_partida=@dataPart,
                             t.odd_casa=CASE WHEN t.odd_casa=0 THEN @oddCasa ELSE t.odd_casa END,
                             t.odd_empate=CASE WHEN t.odd_empate=0 THEN @oddEmp ELSE t.odd_empate END,
                             t.odd_fora=CASE WHEN t.odd_fora=0 THEN @oddFora ELSE t.odd_fora END
                         WHEN NOT MATCHED THEN INSERT
                             (evento_id,liga,time_casa,time_fora,gol_casa,gol_fora,gol_casa_ht,gol_fora_ht,
-                             resultado,odd_casa,odd_empate,odd_fora,data_partida,resultado_estimado)
+                             resultado,odd_casa,odd_empate,odd_fora,data_partida,resultado_estimado,placar_oculto)
                         VALUES (@evId,@liga,@timeCasa,@timeFora,@golCasa,@golFora,@golCHT,@golFHT,
-                                @resultado,@oddCasa,@oddEmp,@oddFora,@dataPart,0);
+                                @resultado,@oddCasa,@oddEmp,@oddFora,@dataPart,0,@placarOcult);
                     `);
 
                 const acao = jaExiste ? '🔄 Atualizado' : '✅ Salvo';
@@ -788,8 +860,7 @@ class Bet365Coletor {
                 throw new Error('Ligas não apareceram após 3 tentativas — verifique se a página está aberta no Edge');
             }
 
-            const dados      = await this._extrairDados(this.page);
-            const contadores = await this.salvarNoBanco(dados);
+            const { contadores } = await this._extrairDados(this.page);
             await this._logColeta(inicio, 'SUCESSO', contadores, null);
 
             if (typeof global.wsBroadcast === 'function') {

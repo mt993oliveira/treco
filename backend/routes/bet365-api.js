@@ -66,6 +66,14 @@ async function garantirSchema(pool) {
             )
             ALTER TABLE bet365_historico_partidas ADD gol_fora_ht TINYINT NULL
         `);
+        await pool.query(`
+            IF NOT EXISTS (
+                SELECT 1 FROM sys.columns
+                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
+                AND name = 'placar_oculto'
+            )
+            ALTER TABLE bet365_historico_partidas ADD placar_oculto BIT NOT NULL DEFAULT 0
+        `);
         _schemaOk = true;
     } catch (e) {
         console.warn('⚠️ garantirSchema bet365_historico_partidas:', e.message);
@@ -453,7 +461,8 @@ router.get('/ultimos-resultados', async (req, res) => {
                     liga, time_casa, time_fora,
                     gol_casa, gol_fora, resultado,
                     data_partida,
-                    ISNULL(resultado_estimado, 0) AS resultado_estimado
+                    ISNULL(resultado_estimado, 0) AS resultado_estimado,
+                    ISNULL(placar_oculto, 0) AS placar_oculto
                 FROM bet365_historico_partidas
                 WHERE resultado_estimado = 0
                 ORDER BY data_partida DESC
@@ -485,7 +494,8 @@ router.get('/historico-tabela', async (req, res) => {
                 gol_casa, gol_fora, resultado,
                 odd_casa, odd_empate, odd_fora,
                 data_partida,
-                ISNULL(resultado_estimado, 0) AS resultado_estimado
+                ISNULL(resultado_estimado, 0) AS resultado_estimado,
+                ISNULL(placar_oculto, 0) AS placar_oculto
             FROM bet365_historico_partidas
             WHERE data_partida >= DATEADD(HOUR, -@horas, GETDATE())
         `;
