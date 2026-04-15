@@ -621,6 +621,8 @@
 
         <!-- Linha 2: sub-filtros do tipo selecionado -->
         <div id="filtros-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center"></div>
+        <!-- Linha 3: sub-filtros de odds (visível só quando Odds está ativo) -->
+        <div id="odds-subfiltros" style="display:none;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px"></div>
     </div>
 
     <!-- Chart + Legend -->
@@ -822,6 +824,28 @@
     </div>
 </div>
 
+<!-- ========== MODAL: JOGOS NO SLOT ========== -->
+<div class="modal-overlay" id="modal-slot">
+    <div class="modal-box" style="max-width:620px;width:96%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h2 style="font-size:14px;font-weight:700" id="modal-slot-titulo">Jogos no Slot</h2>
+            <button onclick="fecharModal('modal-slot')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div id="modal-slot-body" style="max-height:420px;overflow-y:auto;scrollbar-width:thin"></div>
+    </div>
+</div>
+
+<!-- ========== MODAL: RESULTADOS DA LIGA ========== -->
+<div class="modal-overlay" id="modal-liga-resultados">
+    <div class="modal-box" style="max-width:620px;width:96%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h2 style="font-size:14px;font-weight:700" id="modal-liga-res-titulo">Resultados da Liga</h2>
+            <button onclick="fecharModal('modal-liga-resultados')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div id="modal-liga-res-body" style="max-height:440px;overflow-y:auto;scrollbar-width:thin"></div>
+    </div>
+</div>
+
 <div id="tt"></div>
 
 <script>
@@ -1001,6 +1025,8 @@ const S = {
     grafTopo:      null,
     view:          'analise',
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
+    showOdds:      false,   // exibe odds 1X2 nas células do grid
+    filtroOdds:    'over1.5', // sub-filtro ativo no modo Odds
 };
 
 Object.values(FILTROS).flat().forEach(f => { S.linhas[f.id] = true; });
@@ -1036,6 +1062,20 @@ function checa(j, fid) {
         case 'esp-btts-u25': return c > 0 && f > 0 && t <= 2;
         case 'esp-casa-o15': return j.resultado === 'CASA' && t >= 2;
         case 'esp-fora-o15': return j.resultado === 'FORA' && t >= 2;
+        default: return false;
+    }
+}
+
+// Verifica se jogo atende ao sub-filtro de odds
+function checaOdds(j, fid) {
+    const t = (j.gol_casa || 0) + (j.gol_fora || 0);
+    const c = j.gol_casa || 0, f = j.gol_fora || 0;
+    switch(fid) {
+        case 'ambas-sim': return c > 0 && f > 0;
+        case 'ambas-nao': return !(c > 0 && f > 0);
+        case 'over1.5':   return t >= 2;
+        case 'over2.5':   return t >= 3;
+        case 'over3.5':   return t >= 4;
         default: return false;
     }
 }
@@ -1422,8 +1462,32 @@ function renderFiltros() {
         <button class="acao-btn${S.showNomes ? ' ativo' : ''}" id="btn-show-nomes"
             onclick="S.showNomes=!S.showNomes;renderFiltros();renderTabela()"
             title="Mostrar/ocultar nomes dos clubes nas células">🏷️ Clubes</button>
+        <button class="acao-btn${S.showOdds ? ' ativo' : ''}" id="btn-show-odds"
+            onclick="S.showOdds=!S.showOdds;renderFiltros();renderTabela()"
+            title="Mostrar odds pré-jogo 1X2 nas células">💹 Odds</button>
     `;
     c.appendChild(div);
+
+    // Sub-filtros de odds
+    const oSub = document.getElementById('odds-subfiltros');
+    if (oSub) {
+        if (S.showOdds) {
+            const opts = [
+                { id: 'ambas-sim', label: 'Ambas Sim' },
+                { id: 'ambas-nao', label: 'Ambas Não' },
+                { id: 'over1.5',   label: 'Over 1.5'  },
+                { id: 'over2.5',   label: 'Over 2.5'  },
+                { id: 'over3.5',   label: 'Over 3.5'  },
+            ];
+            oSub.style.display = 'flex';
+            oSub.innerHTML = `<span style="font-size:9px;color:#64748b;font-weight:700;align-self:center">DESTACAR:</span>` +
+                opts.map(o => `<button class="filtro-btn${S.filtroOdds === o.id ? ' ativo' : ''}"
+                    onclick="S.filtroOdds='${o.id}';renderFiltros();renderTabela()">${o.label}</button>`).join('');
+        } else {
+            oSub.style.display = 'none';
+            oSub.innerHTML = '';
+        }
+    }
 }
 
 function trocarSecao(s) {
@@ -2014,13 +2078,30 @@ function renderTabela() {
                 colTotal[ci] += 1;
             }
             const abbrev = n => n || '';
+            // Determina destaque: modo Odds usa checaOdds, caso contrário usa filtro ativo
+            const hitEfetivo = isOculto ? false : (S.showOdds ? checaOdds(j, S.filtroOdds) : hit);
+            // Linha de odds 1X2 (exibida quando modo Odds está ativo)
+            const oddC = parseFloat(j.odd_casa   || 0);
+            const oddE = parseFloat(j.odd_empate || 0);
+            const oddF = parseFloat(j.odd_fora   || 0);
+            const temOdds = S.showOdds && (oddC > 0 || oddE > 0 || oddF > 0);
+            const oddsLine = temOdds
+                ? `<span style="display:flex;gap:1px;margin-top:2px">`+
+                  `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:#4ade80">${oddC.toFixed(1)}</span>`+
+                  `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:#94a3b8">${oddE.toFixed(1)}</span>`+
+                  `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:#f87171">${oddF.toFixed(1)}</span>`+
+                  `</span>` : '';
+            const nmSlot = `data-action="slot" data-min="${minuteSlots[ci]}"`;
             const cellContent = S.showNomes
-                ? `<span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_casa)}</span><span style="display:block;font-size:9px;font-weight:800">${score}</span><span style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${abbrev(j.time_fora)}</span>`
-                : score;
+                ? `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
+                  `<span data-action="liga" style="display:block;font-size:9px;font-weight:800;cursor:pointer">${score}</span>`+
+                  `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
+                  oddsLine
+                : `<span data-action="liga" style="cursor:pointer">${score}</span>${oddsLine}`;
             const opacityStyle = isEstimado ? 'opacity:0.35;' : isOculto ? 'opacity:0.7;' : '';
-            const baseStyle    = (S.showNomes || isOculto) ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
+            const baseStyle    = (S.showNomes || isOculto || temOdds) ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
             const cellStyle    = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
-            const cellClass    = isOculto ? 'c-verm' : hit ? 'c-verde' : 'c-verm';
+            const cellClass    = isOculto ? 'c-verm' : hitEfetivo ? 'c-verde' : 'c-verm';
             return `<td class="${cellClass}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
         }).join('');
 
@@ -2041,6 +2122,9 @@ function renderTabela() {
 
         tbody.appendChild(tr);
     });
+
+    // Delegação de clique na grid — nomes de clube e placar
+    tbody.onclick = handleGridClick;
 
     // Footer — % de acerto por posição (jogo 1-20 dentro da hora)
     const footCells = Array.from({length: N}, (_, ci) => {
@@ -2176,6 +2260,108 @@ function renderRankOdds() {
 }
 
 function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
+
+// ============================================================
+// GRID CLICK — delegação de clique em nomes/placar da tabela
+// ============================================================
+function handleGridClick(e) {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    if (action === 'slot') {
+        abrirModalSlot(parseInt(el.dataset.min));
+    } else if (action === 'liga') {
+        abrirModalLigaResultados();
+    }
+}
+
+function abrirModalSlot(min) {
+    const minStr = pad2(min);
+    document.getElementById('modal-slot-titulo').textContent = `Jogos no slot :${minStr}`;
+    const fi = (FILTROS[S.secao] || []).find(f => f.id === S.filtro);
+    const jogos = S.partidas
+        .filter(p => p.data_partida && new Date(p.data_partida).getUTCMinutes() === min)
+        .sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida));
+
+    const body = document.getElementById('modal-slot-body');
+    if (!jogos.length) {
+        body.innerHTML = `<div style="color:#475569;text-align:center;padding:20px">Nenhum jogo encontrado neste slot.</div>`;
+    } else {
+        const hits = jogos.filter(j => fi && checa(j, fi.id)).length;
+        const pct  = Math.round(hits / jogos.length * 100);
+        const pcCor = pct >= 65 ? '#4ade80' : pct >= 45 ? '#fbbf24' : '#f87171';
+        body.innerHTML = `
+            <div style="padding:6px 10px;background:#060d1a;border-bottom:1px solid #1e293b;font-size:10px;display:flex;gap:10px">
+                <span style="color:#64748b">${jogos.length} partidas</span>
+                ${fi ? `<span style="color:${pcCor};font-weight:700">${fi.label}: ${pct}%</span>` : ''}
+            </div>` +
+        jogos.map(j => {
+            const d  = new Date(j.data_partida);
+            const dt = `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth()+1)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+            const sc = j.placar_oculto ? '5+' : (j.gol_casa != null ? `${j.gol_casa}-${j.gol_fora}` : '–');
+            const hit = fi ? checa(j, fi.id) : false;
+            const cor = j.placar_oculto ? '#f87171' : hit ? '#4ade80' : '#f87171';
+            const tc  = normalizarTime(j.time_casa) || j.time_casa || '';
+            const tf  = normalizarTime(j.time_fora) || j.time_fora || '';
+            const oC  = parseFloat(j.odd_casa    || 0).toFixed(2);
+            const oE  = parseFloat(j.odd_empate  || 0).toFixed(2);
+            const oF  = parseFloat(j.odd_fora    || 0).toFixed(2);
+            return `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid #0d1a2e">
+                <span style="font-size:9px;color:#475569;min-width:68px;flex-shrink:0">${dt}</span>
+                <span style="font-size:10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
+                <span style="font-size:11px;font-weight:800;color:${cor};min-width:30px;text-align:center;flex-shrink:0">${sc}</span>
+                <span style="font-size:10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">${tf}</span>
+                <span style="font-size:9px;color:#4ade80;min-width:28px;text-align:right;flex-shrink:0">${oC}</span>
+                <span style="font-size:9px;color:#94a3b8;min-width:28px;text-align:right;flex-shrink:0">${oE}</span>
+                <span style="font-size:9px;color:#f87171;min-width:28px;text-align:right;flex-shrink:0">${oF}</span>
+            </div>`;
+        }).join('');
+    }
+    document.getElementById('modal-slot').classList.add('aberto');
+}
+
+function abrirModalLigaResultados() {
+    const ligaLabel = S.ligaAtiva || 'Todas as ligas';
+    document.getElementById('modal-liga-res-titulo').textContent = `Resultados — ${ligaLabel}`;
+    const fi = (FILTROS[S.secao] || []).find(f => f.id === S.filtro);
+    const jogos = [...S.partidas].sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida));
+
+    const body = document.getElementById('modal-liga-res-body');
+    if (!jogos.length) {
+        body.innerHTML = `<div style="color:#475569;text-align:center;padding:20px">Nenhum resultado encontrado.</div>`;
+    } else {
+        const hits = jogos.filter(j => fi && checa(j, fi.id)).length;
+        const pct  = Math.round(hits / jogos.length * 100);
+        const pcCor = pct >= 65 ? '#4ade80' : pct >= 45 ? '#fbbf24' : '#f87171';
+        body.innerHTML = `
+            <div style="padding:6px 10px;background:#060d1a;border-bottom:1px solid #1e293b;font-size:10px;display:flex;gap:10px">
+                <span style="color:#64748b">${jogos.length} partidas</span>
+                ${fi ? `<span style="color:${pcCor};font-weight:700">${fi.label}: ${pct}%</span>` : ''}
+            </div>` +
+        jogos.map(j => {
+            const d  = j.data_partida ? new Date(j.data_partida) : null;
+            const dt = d ? `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth()+1)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '—';
+            const sc = j.placar_oculto ? '5+' : (j.gol_casa != null ? `${j.gol_casa}-${j.gol_fora}` : '–');
+            const hit = fi ? checa(j, fi.id) : false;
+            const cor = j.placar_oculto ? '#f87171' : hit ? '#4ade80' : '#f87171';
+            const tc  = normalizarTime(j.time_casa) || j.time_casa || '';
+            const tf  = normalizarTime(j.time_fora) || j.time_fora || '';
+            const oC  = parseFloat(j.odd_casa    || 0).toFixed(2);
+            const oE  = parseFloat(j.odd_empate  || 0).toFixed(2);
+            const oF  = parseFloat(j.odd_fora    || 0).toFixed(2);
+            return `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid #0d1a2e">
+                <span style="font-size:9px;color:#475569;min-width:68px;flex-shrink:0">${dt}</span>
+                <span style="font-size:10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
+                <span style="font-size:11px;font-weight:800;color:${cor};min-width:30px;text-align:center;flex-shrink:0">${sc}</span>
+                <span style="font-size:10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">${tf}</span>
+                <span style="font-size:9px;color:#4ade80;min-width:28px;text-align:right;flex-shrink:0">${oC}</span>
+                <span style="font-size:9px;color:#94a3b8;min-width:28px;text-align:right;flex-shrink:0">${oE}</span>
+                <span style="font-size:9px;color:#f87171;min-width:28px;text-align:right;flex-shrink:0">${oF}</span>
+            </div>`;
+        }).join('');
+    }
+    document.getElementById('modal-liga-resultados').classList.add('aberto');
+}
 
 // ============================================================
 // CLUBES — Histórico por time + próximos jogos
