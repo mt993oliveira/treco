@@ -879,6 +879,29 @@
                     <div id="prev-futuro" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center;border:1px dashed">2.10</div>
                 </div>
             </div>
+            <!-- Odds -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
+                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Odds pré-jogo</div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Fav &lt;2.00</span>
+                        <input id="gc-oddFav"    type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Médio 2–3</span>
+                        <input id="gc-oddMed"    type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Azarão &gt;3</span>
+                        <input id="gc-oddAzarao" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center">
+                        <span id="prev-odd-fav"    style="font-size:10px;font-weight:800;min-width:28px;text-align:center">1.75</span>
+                        <span id="prev-odd-med"    style="font-size:10px;font-weight:800;min-width:28px;text-align:center">2.50</span>
+                        <span id="prev-odd-azarao" style="font-size:10px;font-weight:800;min-width:28px;text-align:center">3.80</span>
+                    </div>
+                </div>
+            </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
             <button onclick="restaurarCoresGrid()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:11px;cursor:pointer" title="Restaurar cores originais">↺ Padrão</button>
@@ -1072,9 +1095,12 @@ function normalizarTime(nome) {
 // CORES DA GRID (persistidas no localStorage)
 // ============================================================
 const GRID_CORES_PADRAO = {
-    verdeBg:   '#14532d', verdeTxt:  '#4ade80',
-    vermBg:    '#3b0a0a', vermTxt:   '#f87171',
-    futuroBg:  '#0a1628', futuroTxt: '#3b82f6', futuroBrd: '#1e3a5f',
+    verdeBg:    '#14532d', verdeTxt:   '#4ade80',
+    vermBg:     '#3b0a0a', vermTxt:    '#f87171',
+    futuroBg:   '#0a1628', futuroTxt:  '#3b82f6', futuroBrd: '#1e3a5f',
+    oddFav:     '#4ade80',   // odd < 2.00 — favorito
+    oddMed:     '#fbbf24',   // odd 2.00–3.00 — médio
+    oddAzarao:  '#f87171',   // odd > 3.00 — azarão
 };
 function carregarCoresGrid() {
     try { return Object.assign({}, GRID_CORES_PADRAO, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
@@ -1978,6 +2004,8 @@ function renderTabela() {
     const gs = grupos();
     const filtrosDaSec = FILTROS[S.secao] || [];
     const fi = filtrosDaSec.find(f => f.id === S.filtro) || filtrosDaSec[0];
+    const gridCores = carregarCoresGrid();
+    const corOdd = v => v <= 0 ? '#64748b' : v < 2.0 ? gridCores.oddFav : v < 3.0 ? gridCores.oddMed : gridCores.oddAzarao;
 
     const thead = document.getElementById('tbl-head');
     const tbody = document.getElementById('tbl-body');
@@ -2101,13 +2129,41 @@ function renderTabela() {
                 if (ag) {
                     const tc   = normalizarTime(ag.time_casa) || ag.time_casa || '';
                     const tf   = normalizarTime(ag.time_fora) || ag.time_fora || '';
-                    const oddC = parseFloat(ag.odd_casa   || 0).toFixed(2);
-                    const oddE = parseFloat(ag.odd_empate || 0).toFixed(2);
-                    const oddF = parseFloat(ag.odd_fora   || 0).toFixed(2);
-                    const tt   = `PRÓXIMO: ${tc} × ${tf} | C:${oddC} E:${oddE} F:${oddF}`;
+                    const agOC = parseFloat(ag.odd_casa   || 0);
+                    const agOE = parseFloat(ag.odd_empate || 0);
+                    const agOF = parseFloat(ag.odd_fora   || 0);
+                    const fmtA = v => v > 0 ? v.toFixed(2) : '';
+                    const tt   = `PRÓXIMO: ${tc} × ${tf} | C:${fmtA(agOC)} E:${fmtA(agOE)} F:${fmtA(agOF)}`;
+                    const ccOC = corOdd(agOC), ccOF = corOdd(agOF);
+                    if (S.showNomes && S.showOdds) {
+                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:44px;cursor:default">
+                            ${agOC > 0 ? `<span style="display:block;font-size:6px;font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
+                            <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
+                            <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
+                            <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tf}</span>
+                            ${agOF > 0 ? `<span style="display:block;font-size:6px;font-weight:800;color:${ccOF};text-align:center;line-height:1.4">${fmtA(agOF)}</span>` : ''}
+                        </td>`;
+                    }
+                    if (S.showNomes) {
+                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:44px;cursor:default">
+                            <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
+                            <span style="display:block;font-size:9px;font-weight:800;color:${ccOC};text-align:center">${fmtA(agOC)}</span>
+                            <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tf}</span>
+                        </td>`;
+                    }
+                    if (S.showOdds) {
+                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:44px;cursor:default">
+                            <span style="display:block;font-size:9px;font-weight:800;color:${ccOC};text-align:center">${fmtA(agOC)}</span>
+                            <span style="display:flex;gap:2px;margin-top:1px">
+                                <span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${ccOC}">${fmtA(agOC)}</span>
+                                <span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${ccOF}">${fmtA(agOF)}</span>
+                            </span>
+                        </td>`;
+                    }
+                    // padrão: só oddC no centro
                     return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:44px;cursor:default">
                         <span style="display:block;font-size:7px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
-                        <span style="display:block;font-size:9px;font-weight:800">${oddC}</span>
+                        <span style="display:block;font-size:9px;font-weight:800">${fmtA(agOC)}</span>
                         <span style="display:block;font-size:7px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tf}</span>
                     </td>`;
                 }
@@ -2136,9 +2192,8 @@ function renderTabela() {
             const oddF = parseFloat(j.odd_fora   || 0);
             const temOdds = S.showOdds && (oddC > 0 || oddF > 0);
             const fmtOdd  = v => v > 0 ? v.toFixed(2) : '';
-            // Cores das odds: verde se favorito (< 2.00), amarelo se médio, vermelho se azarão
-            const corOddC = oddC > 0 ? (oddC < 2.0 ? '#4ade80' : oddC < 3.0 ? '#fbbf24' : '#f87171') : '#64748b';
-            const corOddF = oddF > 0 ? (oddF < 2.0 ? '#4ade80' : oddF < 3.0 ? '#fbbf24' : '#f87171') : '#64748b';
+            const corOddC = corOdd(oddC);
+            const corOddF = corOdd(oddF);
             const nmSlot  = `data-action="slot" data-min="${minuteSlots[ci]}"`;
             const cellContent = S.showNomes
                 ? (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
@@ -2340,12 +2395,20 @@ function _atualizarPreviewCores(c) {
     if (pm)  { pm.style.background = c.vermBg;   pm.style.color = c.vermTxt; }
     const pf = document.getElementById('prev-futuro');
     if (pf)  { pf.style.background = c.futuroBg; pf.style.color = c.futuroTxt; pf.style.borderColor = c.futuroBrd; }
+    const pof = document.getElementById('prev-odd-fav');
+    if (pof) pof.style.color = c.oddFav;
+    const pom = document.getElementById('prev-odd-med');
+    if (pom) pom.style.color = c.oddMed;
+    const poa = document.getElementById('prev-odd-azarao');
+    if (poa) poa.style.color = c.oddAzarao;
 }
 
 function previewCoresGrid() {
     const c = _coresDoForm();
     _atualizarPreviewCores(c);
-    aplicarCoresGrid(c);  // preview ao vivo na grid
+    aplicarCoresGrid(c);
+    // Re-renderiza a tabela para atualizar as cores das odds (não são CSS classes)
+    if (S.view === 'historico') renderTabela();
 }
 
 function salvarCoresGrid() {
