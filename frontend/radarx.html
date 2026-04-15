@@ -824,6 +824,72 @@
     </div>
 </div>
 
+<!-- ========== MODAL: CORES DA GRID ========== -->
+<div class="modal-overlay" id="modal-cores">
+    <div class="modal-box" style="max-width:360px;width:96%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h2 style="font-size:14px;font-weight:700">🎨 Cores da Grid</h2>
+            <button onclick="cancelarCoresGrid()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+            <!-- Verde -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
+                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Acerto (verde)</div>
+                <div style="display:flex;gap:12px;align-items:center">
+                    <div style="display:flex;align-items:center;gap:5px;flex:1">
+                        <span style="font-size:9px;color:#475569">Fundo</span>
+                        <input id="gc-verdeBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px;flex:1">
+                        <span style="font-size:9px;color:#475569">Texto</span>
+                        <input id="gc-verdeTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div id="prev-verde" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">1-0</div>
+                </div>
+            </div>
+            <!-- Vermelho -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
+                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Erro (vermelho)</div>
+                <div style="display:flex;gap:12px;align-items:center">
+                    <div style="display:flex;align-items:center;gap:5px;flex:1">
+                        <span style="font-size:9px;color:#475569">Fundo</span>
+                        <input id="gc-vermBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px;flex:1">
+                        <span style="font-size:9px;color:#475569">Texto</span>
+                        <input id="gc-vermTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div id="prev-verm" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">0-1</div>
+                </div>
+            </div>
+            <!-- Futuro -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
+                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Próximos jogos (azul)</div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Fundo</span>
+                        <input id="gc-futuroBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Texto</span>
+                        <input id="gc-futuroTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Borda</span>
+                        <input id="gc-futuroBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div id="prev-futuro" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center;border:1px dashed">2.10</div>
+                </div>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button onclick="restaurarCoresGrid()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:11px;cursor:pointer" title="Restaurar cores originais">↺ Padrão</button>
+            <button onclick="cancelarCoresGrid()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:11px;cursor:pointer">Cancelar</button>
+            <button onclick="salvarCoresGrid()" style="background:#1d4ed8;border:1px solid #2563eb;color:#fff;border-radius:5px;padding:7px 16px;font-size:11px;font-weight:700;cursor:pointer">Salvar</button>
+        </div>
+    </div>
+</div>
+
 <!-- ========== MODAL: JOGOS NO SLOT ========== -->
 <div class="modal-overlay" id="modal-slot">
     <div class="modal-box" style="max-width:620px;width:96%">
@@ -1005,6 +1071,28 @@ function normalizarTime(nome) {
 }
 
 // ============================================================
+// CORES DA GRID (persistidas no localStorage)
+// ============================================================
+const GRID_CORES_PADRAO = {
+    verdeBg:   '#14532d', verdeTxt:  '#4ade80',
+    vermBg:    '#3b0a0a', vermTxt:   '#f87171',
+    futuroBg:  '#0a1628', futuroTxt: '#3b82f6', futuroBrd: '#1e3a5f',
+};
+function carregarCoresGrid() {
+    try { return Object.assign({}, GRID_CORES_PADRAO, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
+    catch(e) { return Object.assign({}, GRID_CORES_PADRAO); }
+}
+function aplicarCoresGrid(c) {
+    let s = document.getElementById('grid-cores-style');
+    if (!s) { s = document.createElement('style'); s.id = 'grid-cores-style'; document.head.appendChild(s); }
+    s.textContent =
+        `.c-verde  { background: ${c.verdeBg}  !important; color: ${c.verdeTxt}  !important; }\n` +
+        `.c-verm   { background: ${c.vermBg}   !important; color: ${c.vermTxt}   !important; }\n` +
+        `.c-futuro { background: ${c.futuroBg} !important; color: ${c.futuroTxt} !important; border: 1px dashed ${c.futuroBrd} !important; }`;
+}
+// Aplica cores salvas imediatamente (antes de qualquer render)
+aplicarCoresGrid(carregarCoresGrid());
+
 // ESTADO
 // ============================================================
 const S = {
@@ -1457,6 +1545,7 @@ function renderFiltros() {
     const div = document.createElement('div');
     div.style.cssText = 'margin-left:auto;display:flex;gap:6px';
     div.innerHTML = `
+        <button class="acao-btn" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
         <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
         <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
         <button class="acao-btn${S.showNomes ? ' ativo' : ''}" id="btn-show-nomes"
@@ -2260,6 +2349,62 @@ function renderRankOdds() {
 }
 
 function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
+
+// ============================================================
+// CONFIGURAÇÃO DE CORES DA GRID
+// ============================================================
+function abrirModalCores() {
+    const cores = carregarCoresGrid();
+    Object.keys(GRID_CORES_PADRAO).forEach(k => {
+        const el = document.getElementById(`gc-${k}`);
+        if (el) el.value = cores[k];
+    });
+    _atualizarPreviewCores(cores);
+    document.getElementById('modal-cores').classList.add('aberto');
+}
+
+function _coresDoForm() {
+    const c = {};
+    Object.keys(GRID_CORES_PADRAO).forEach(k => { c[k] = document.getElementById(`gc-${k}`)?.value || GRID_CORES_PADRAO[k]; });
+    return c;
+}
+
+function _atualizarPreviewCores(c) {
+    const pv = document.getElementById('prev-verde');
+    if (pv)  { pv.style.background = c.verdeBg;  pv.style.color = c.verdeTxt; }
+    const pm = document.getElementById('prev-verm');
+    if (pm)  { pm.style.background = c.vermBg;   pm.style.color = c.vermTxt; }
+    const pf = document.getElementById('prev-futuro');
+    if (pf)  { pf.style.background = c.futuroBg; pf.style.color = c.futuroTxt; pf.style.borderColor = c.futuroBrd; }
+}
+
+function previewCoresGrid() {
+    const c = _coresDoForm();
+    _atualizarPreviewCores(c);
+    aplicarCoresGrid(c);  // preview ao vivo na grid
+}
+
+function salvarCoresGrid() {
+    const c = _coresDoForm();
+    localStorage.setItem('gridCores', JSON.stringify(c));
+    aplicarCoresGrid(c);
+    fecharModal('modal-cores');
+}
+
+function cancelarCoresGrid() {
+    // Descarta preview e restaura o que estava salvo
+    aplicarCoresGrid(carregarCoresGrid());
+    fecharModal('modal-cores');
+}
+
+function restaurarCoresGrid() {
+    aplicarCoresGrid(Object.assign({}, GRID_CORES_PADRAO));
+    Object.keys(GRID_CORES_PADRAO).forEach(k => {
+        const el = document.getElementById(`gc-${k}`);
+        if (el) el.value = GRID_CORES_PADRAO[k];
+    });
+    _atualizarPreviewCores(GRID_CORES_PADRAO);
+}
 
 // ============================================================
 // GRID CLICK — delegação de clique em nomes/placar da tabela
@@ -3802,7 +3947,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.querySelectorAll('.modal-overlay').forEach(el =>
-        el.addEventListener('click', e => { if (e.target === el) el.classList.remove('aberto'); }));
+        el.addEventListener('click', e => {
+            if (e.target !== el) return;
+            if (el.id === 'modal-cores') cancelarCoresGrid();
+            else el.classList.remove('aberto');
+        }));
 });
 </script>
 
