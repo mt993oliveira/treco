@@ -1646,9 +1646,11 @@ function grupos() {
     const byHour = new Map();
 
     // Popula com partidas existentes
+    // Força parsing como UTC (sem sufixo Z o browser adiciona fuso local, deslocando +3h em BRT)
     S.partidas.forEach(p => {
         if (!p.data_partida) return;
-        const d = new Date(p.data_partida);
+        const raw = typeof p.data_partida === 'string' ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z') : p.data_partida;
+        const d = new Date(raw);
         const key = horaKey(d);
         if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(utcHourStart(d)), jogos: [] });
         byHour.get(key).jogos.push(p);
@@ -1879,7 +1881,7 @@ function renderGrafico() {
 
     const labels = serie.map((p, i) => {
         if (i % 10 !== 0) return '';
-        const d = p.data_partida ? new Date(p.data_partida) : null;
+        const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
         return d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : `#${i+1}`;
     });
 
@@ -1947,7 +1949,7 @@ async function renderUltimosResultados() {
         }
 
         const rows = partidas.map(p => {
-            const dt = p.data_partida ? new Date(p.data_partida) : null;
+            const dt = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
             // Mostra em UTC para ser consistente com a grid (Bet365 usa UTC)
             const horaStr = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '—';
             const dataStr = dt ? `${pad2(dt.getUTCDate())}/${pad2(dt.getUTCMonth()+1)}` : '';
@@ -2041,8 +2043,8 @@ function renderTabela() {
     const amostra = S.partidas.slice(0, 5).map(p => ({
         liga: p.liga,
         data_partida_raw: p.data_partida,
-        hora_local: p.data_partida ? new Date(p.data_partida).toLocaleString('pt-BR') : null,
-        minuto: p.data_partida ? new Date(p.data_partida).getMinutes() : null,
+        hora_utc: p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).toISOString() : null,
+        minuto: p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getUTCMinutes() : null,
     }));
     console.table(amostra);
     console.groupEnd();
@@ -2992,7 +2994,7 @@ async function _diagCarregarStats() {
 
             // Monta tabela de últimos resultados no banco
             const ultimosRows = (d.ultimosHistorico || []).map(p => {
-                const dt = p.data_partida ? new Date(p.data_partida) : null;
+                const dt = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
                 const horaStr = dt ? dt.toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
                 const placar = (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa}-${p.gol_fora}` : '?-?';
                 const est = p.resultado_estimado ? ' ★est' : '';
