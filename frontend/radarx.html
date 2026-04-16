@@ -3992,6 +3992,12 @@ async function _carregarAtivos() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ usuarioId: u?.Id }),
         });
+        // Se o servidor retornar HTML (ex: 404 com rota ainda não carregada), trata com aviso simples
+        const ct = r.headers.get('content-type') || '';
+        if (!r.ok || !ct.includes('application/json')) {
+            el.innerHTML = '<span style="color:#334155">Reinicie o servidor para ativar este painel.</span>';
+            return;
+        }
         const d = await r.json();
         if (!d.success) { el.innerHTML = '<span style="color:#ef4444">Sem permissão</span>'; return; }
         cnt.textContent = d.total;
