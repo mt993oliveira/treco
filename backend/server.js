@@ -285,7 +285,7 @@ app.post('/api/test-connection', async (req, res) => {
     try {
         // Se nenhuma configuração for fornecida, usar as do ambiente
         const sqlConfig = req.body.sqlConfig || getDatabaseConfigFromEnv();
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         res.json({ success: true, message: 'Conexão bem-sucedida' });
     } catch (error) {
@@ -374,7 +374,7 @@ app.post('/api/despesas/mensais', requireAuth, async (req, res) => {
     const { mes, ano, sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         const result = await sql.query`
             SELECT dm.*, m.Descricao AS MovimentoDescricao
@@ -396,7 +396,7 @@ app.post('/api/despesas/mensais/save', requireAuth, async (req, res) => {
     const { id, descricao, valor, observacoes, mes, ano, usuarioId, sqlConfig, movimentoId } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         // Validar se movimentoId foi fornecido
         if (!movimentoId) {
@@ -456,7 +456,7 @@ app.post('/api/despesas/mensais/delete', requireAuth, async (req, res) => {
     const { id, mes, ano, usuarioId, sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         // Registrar histórico antes de excluir
         const oldData = await sql.query`
@@ -491,7 +491,7 @@ app.post('/api/historico', requireAuth, async (req, res) => {
     const { mes, ano, sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         const result = await sql.query`
             SELECT ha.*, u.Usuario, u.NomeCompleto
@@ -513,7 +513,7 @@ app.post('/api/movimento', requireAuth, async (req, res) => {
     const { tipo, sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         let query;
         if (tipo) {
@@ -544,7 +544,7 @@ app.post('/api/historico/todos', requireAuth, async (req, res) => {
     const { sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         const result = await sql.query`
             SELECT DISTINCT Mes, Ano
@@ -565,7 +565,7 @@ app.post('/api/historico/paginado', requireAuth, async (req, res) => {
     const { mes, ano, pagina = 1, itensPorPagina = 10, sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         const offset = (pagina - 1) * itensPorPagina;
 
@@ -609,7 +609,7 @@ app.post('/api/contas/receber', requireAuth, async (req, res) => {
     const { mes, ano, sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         const result = await sql.query`
             SELECT cr.*, m.Descricao AS MovimentoDescricao
@@ -630,7 +630,7 @@ app.post('/api/contas/receber/save', requireAuth, async (req, res) => {
     const { id, descricao, valor, observacoes, mes, ano, usuarioId, sqlConfig, movimentoId } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         // Validar se movimentoId foi fornecido
         if (!movimentoId) {
@@ -688,7 +688,7 @@ app.post('/api/contas/receber/delete', requireAuth, async (req, res) => {
     const { id, mes, ano, usuarioId, sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         // Registrar histórico antes de excluir
         const oldData = await sql.query`
@@ -721,7 +721,7 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
     const { sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         // Verificar se o usuário é master
         const userCheck = await sql.query`
