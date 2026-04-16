@@ -683,7 +683,8 @@ class Bet365Coletor {
                         WHERE league_name = @liga2
                           AND time_casa   = @timeCasa2
                           AND time_fora   = @timeFora2
-                        ORDER BY data_atualizacao DESC
+                          AND start_time_datetime <= GETUTCDATE()
+                        ORDER BY start_time_datetime DESC
                     `);
 
                 if (evDb.recordset.length > 0) {
