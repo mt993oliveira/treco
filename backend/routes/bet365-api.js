@@ -497,7 +497,7 @@ router.get('/historico-tabela', async (req, res) => {
                 ISNULL(resultado_estimado, 0) AS resultado_estimado,
                 ISNULL(placar_oculto, 0) AS placar_oculto
             FROM bet365_historico_partidas
-            WHERE data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
+            WHERE data_partida >= DATEADD(HOUR, -@horas, GETDATE())
         `;
 
         if (liga && liga !== 'all') {
@@ -515,7 +515,7 @@ router.get('/historico-tabela', async (req, res) => {
                 SELECT DISTINCT liga, COUNT(*) AS total
                 FROM bet365_historico_partidas
                 WHERE liga IS NOT NULL AND liga <> ''
-                  AND data_partida >= DATEADD(HOUR, -@horas2, GETUTCDATE())
+                  AND data_partida >= DATEADD(HOUR, -@horas2, GETDATE())
                 GROUP BY liga
                 ORDER BY total DESC
             `);

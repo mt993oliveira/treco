@@ -1651,13 +1651,13 @@ function grupos() {
         if (!p.data_partida) return;
         const raw = typeof p.data_partida === 'string' ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z') : p.data_partida;
         const d = new Date(raw);
+        if (isNaN(d)) return;
         const key = horaKey(d);
         if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(utcHourStart(d)), jogos: [] });
         byHour.get(key).jogos.push(p);
     });
 
-    // Garante todos os slots do período (mesmo sem dados)
-    // Bet365 usa UTC+1 — avançamos 1h para que a linha atual bata com o horário Bet365
+    // Garante slots vazios para o período selecionado (âncora na hora atual do cliente)
     const agora = new Date(Date.now() + BET365_OFFSET_MS);
     for (let h = 0; h < S.horas; h++) {
         const ms  = utcHourStart(new Date(agora.getTime() - h * 3600000));
@@ -1665,7 +1665,15 @@ function grupos() {
         if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(ms), jogos: [] });
     }
 
-    return [...byHour.values()].sort((a, b) => a.hora - b.hora);
+    // Remove grupos com timestamps no futuro (>1h à frente): artefato do bug de rollover do coletor
+    const limFuturo = agora.getTime() + 3600000;
+    const validos = [...byHour.values()].filter(g => g.hora.getTime() <= limFuturo);
+
+    // Ordena desc, limita a S.horas linhas (garante 6H=6 linhas, 12H=12 etc.), depois reverte para asc
+    return validos
+        .sort((a, b) => b.hora - a.hora)
+        .slice(0, S.horas)
+        .sort((a, b) => a.hora - b.hora);
 }
 
 // Série flat de todas as partidas para o gráfico

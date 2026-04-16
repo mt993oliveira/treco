@@ -578,11 +578,14 @@ class Bet365Coletor {
             try {
                 let startDt = null;
                 if (ev.horario && /^\d{1,2}[.:]\d{2}$/.test(ev.horario)) {
-                    const [h, m] = ev.horario.replace('.', ':').split(':').map(Number);
-                    let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), h, m, 0, 0);
-                    if (ms > Date.now() + 90 * 60000) ms -= 86400000; // futuro distante = ontem
-                    if (ms < Date.now() - 30 * 60000) ms += 86400000;  // >30min no passado = amanhã
-                    startDt = new Date(ms);
+                    const [hBRT, m] = ev.horario.replace('.', ':').split(':').map(Number);
+                    // Bet365 BR exibe horário em BRT (UTC-3). Converter para UTC real somando 3h.
+                    // Date.setUTCHours lida com overflow (ex: 23+3=26 → próximo dia hora 2)
+                    const d = new Date();
+                    d.setUTCHours(hBRT + 3, m, 0, 0);
+                    // Se resultado ficou mais de 12h no futuro, era o dia anterior
+                    if (d.getTime() > Date.now() + 12 * 3600000) d.setUTCDate(d.getUTCDate() - 1);
+                    startDt = d;
                 }
                 const agora = new Date();
                 await pool.request()
@@ -701,15 +704,16 @@ class Bet365Coletor {
                     if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
                 }
 
-                // Fallback 2: horario bruto (apenas se DB não encontrou dataPart)
+                // Fallback 2: horario bruto convertido BRT→UTC (apenas se DB não encontrou dataPart)
                 if (!dataPart) {
                     if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
                         const [hh, mm] = res.horario.replace('.', ':').split(':').map(Number);
-                        let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), hh, mm, 0, 0);
-                        if (ms > Date.now() + 90 * 60000) ms -= 86400000;
-                        dataPart = new Date(ms);
+                        const d = new Date();
+                        d.setUTCHours(hh + 3, mm, 0, 0); // BRT + 3h = UTC real
+                        if (d.getTime() > Date.now() + 12 * 3600000) d.setUTCDate(d.getUTCDate() - 1);
+                        dataPart = d;
                     } else {
-                        dataPart = new Date();
+                        dataPart = new Date(); // fallback: agora
                     }
                 }
 
