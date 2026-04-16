@@ -906,15 +906,18 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             `;
 
             // Enviar e-mail com dados do novo usuário via Formspree
+            // Formspree envia para o dono do form (mt993.oliveira@gmail.com).
+            // _replyto permite responder direto ao e-mail do novo usuário.
             try {
                 const licencaInicio = dataInicioLicenca ? new Date(dataInicioLicenca).toLocaleDateString('pt-BR') : '—';
                 const licencaFim = dataFimLicenca ? new Date(dataFimLicenca).toLocaleDateString('pt-BR') : '—';
-                await axios.post('https://formspree.io/f/xaqawaep', {
-                    _subject: `[RadarX] Novo usuário criado: ${usuario}`,
-                    name: 'Sistema RadarX',
+                const payload = {
+                    _subject: `[RadarX] Acesso criado: ${usuario}`,
+                    _replyto: email || 'sem-email@radarx.com.br',
+                    name: nomeCompleto || usuario,
                     email: email || 'sem-email@radarx.com.br',
                     message:
-                        `✅ Novo usuário cadastrado na plataforma RadarX\n\n` +
+                        `✅ Novo acesso criado na plataforma RadarX\n\n` +
                         `Nome: ${nomeCompleto}\n` +
                         `Usuário (login): ${usuario}\n` +
                         `E-mail: ${email || '—'}\n` +
@@ -923,9 +926,17 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         `Licença início: ${licencaInicio}\n` +
                         `Licença fim: ${licencaFim}\n` +
                         `Cadastrado em: ${new Date().toLocaleString('pt-BR')}`,
-                }, { headers: { Accept: 'application/json' } });
+                };
+                const fResp = await axios.post('https://formspree.io/f/xaqawaep', payload, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                });
+                console.log(`📧 Formspree OK (usuário ${usuario}):`, fResp.status, JSON.stringify(fResp.data));
             } catch (emailErr) {
-                console.warn('⚠️ Falha ao enviar e-mail via Formspree:', emailErr.message);
+                const detail = emailErr.response ? JSON.stringify(emailErr.response.data) : emailErr.message;
+                console.error(`⚠️ Falha ao enviar e-mail via Formspree para ${usuario}:`, detail);
             }
         }
 

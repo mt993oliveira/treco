@@ -771,7 +771,9 @@ router.get('/estatisticas-avancadas', async (req, res) => {
             FROM bet365_eventos WHERE ativo = 1
         `);
 
-        // 2. Estatísticas gerais do histórico (últimas 24h) — CORRIGE media_gols
+        // 2. Estatísticas gerais do histórico (últimas 24h)
+        // Usa GETUTCDATE() para consistência com data_partida armazenada em UTC
+        // ISNULL() nos campos bit garante que registros antigos com NULL não sejam excluídos
         const statsHistorico = await pool.query(`
             SELECT
                 COUNT(*) AS total_partidas,
@@ -785,10 +787,10 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                 SUM(CASE WHEN gol_casa+gol_fora>=4 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over35,
                 SUM(CASE WHEN gol_casa+gol_fora>=5 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over45
             FROM bet365_historico_partidas
-            WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
-              AND placar_oculto = 0
-              AND resultado_estimado = 0
-              AND resultado IS NOT NULL AND resultado != 'OCULTO'
+            WHERE (data_partida >= DATEADD(HOUR, -24, GETUTCDATE()) OR data_partida IS NULL)
+              AND ISNULL(placar_oculto, 0) = 0
+              AND ISNULL(resultado_estimado, 0) = 0
+              AND resultado IN ('CASA','EMPATE','FORA')
         `);
 
         // 3. Top 8 placares exatos (últimas 24h)
@@ -799,9 +801,9 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                 CAST(gol_casa AS INT) AS gc,
                 CAST(gol_fora AS INT) AS gf
             FROM bet365_historico_partidas
-            WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
-              AND placar_oculto = 0
-              AND resultado_estimado = 0
+            WHERE (data_partida >= DATEADD(HOUR, -24, GETUTCDATE()) OR data_partida IS NULL)
+              AND ISNULL(placar_oculto, 0) = 0
+              AND ISNULL(resultado_estimado, 0) = 0
             GROUP BY gol_casa, gol_fora
             ORDER BY frequencia DESC
         `);
@@ -819,10 +821,10 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                 SUM(CASE WHEN gol_casa+gol_fora>=2 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over15,
                 SUM(CASE WHEN gol_casa+gol_fora>=3 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over25
             FROM bet365_historico_partidas
-            WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
-              AND placar_oculto = 0
-              AND resultado_estimado = 0
-              AND resultado IS NOT NULL
+            WHERE (data_partida >= DATEADD(HOUR, -24, GETUTCDATE()) OR data_partida IS NULL)
+              AND ISNULL(placar_oculto, 0) = 0
+              AND ISNULL(resultado_estimado, 0) = 0
+              AND resultado IN ('CASA','EMPATE','FORA')
               AND liga IS NOT NULL AND liga <> ''
             GROUP BY liga
             ORDER BY total_jogos DESC
@@ -834,8 +836,8 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                 CASE WHEN gol_casa+gol_fora >= 5 THEN 5 ELSE gol_casa+gol_fora END AS total_gols,
                 COUNT(*) AS quantidade
             FROM bet365_historico_partidas
-            WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
-              AND placar_oculto = 0
+            WHERE (data_partida >= DATEADD(HOUR, -24, GETUTCDATE()) OR data_partida IS NULL)
+              AND ISNULL(placar_oculto, 0) = 0
             GROUP BY CASE WHEN gol_casa+gol_fora >= 5 THEN 5 ELSE gol_casa+gol_fora END
             ORDER BY total_gols
         `);
