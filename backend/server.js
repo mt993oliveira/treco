@@ -762,10 +762,11 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
 
 // Rota para salvar usuário - CORRIGIDA
 app.post('/api/usuarios/save', requireAuth, async (req, res) => {
-    const { id, nomeCompleto, usuario, email, senha, tipoUsuario, sqlConfig } = req.body;
+    const { id, nomeCompleto, usuario, email, senha, tipoUsuario, ativo, sqlConfig } = req.body;
+    const ativoVal = ativo !== undefined ? (ativo ? 1 : 0) : null;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         // Verificar se o usuário é master para criar/editar usuários
         const userCheck = await sql.query`
@@ -872,6 +873,11 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 }
             }
 
+            // Atualizar Ativo se informado
+            if (ativoVal !== null) {
+                await sql.query`UPDATE Usuarios SET Ativo = ${ativoVal} WHERE Id = ${id}`;
+            }
+
             // Registrar no histórico de usuários
             const historicoUsuario = usuario || (await sql.query`SELECT Usuario FROM Usuarios WHERE Id = ${id}`).recordset[0]?.Usuario || 'usuário';
             await sql.query`
@@ -935,7 +941,7 @@ app.post('/api/usuarios/delete', requireAuth, async (req, res) => {
     const { id, sqlConfig } = req.body;
 
     try {
-        await connectSQL(sqlConfig);
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
         // Apenas masters podem excluir usuários
         const userCheck = await sql.query`

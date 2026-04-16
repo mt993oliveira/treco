@@ -537,6 +537,15 @@
                         style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;color-scheme:dark"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                 </div>
+                <div>
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">STATUS</label>
+                    <select id="usr-ativo"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                        <option value="1">Ativo</option>
+                        <option value="0">Inativo</option>
+                    </select>
+                </div>
             </div>
             <div id="usr-form-msg" style="display:none;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px"></div>
             <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -1085,8 +1094,8 @@ const TEAM_ALIASES = {
     'wales':       'País de Gales',
 };
 
-// Bet365 BR usa UTC+1 para horários virtuais — somamos 1h ao agora do grid
-const BET365_OFFSET_MS = 1 * 3600 * 1000;
+// Offset alinhado com fuso do servidor SQL (BRT = UTC-3); grid usa UTC puro
+const BET365_OFFSET_MS = 0;
 
 function normalizarLiga(nome) {
     const key = (nome || '').toLowerCase().trim();
@@ -2156,7 +2165,7 @@ function renderTabela() {
                     if (S.showNomes) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:44px;cursor:default">
                             <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
-                            <span style="display:block;font-size:9px;font-weight:800;color:${ccOC};text-align:center">${fmtA(agOC)}</span>
+                            <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
                             <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tf}</span>
                         </td>`;
                     }
@@ -2169,11 +2178,9 @@ function renderTabela() {
                             </span>
                         </td>`;
                     }
-                    // padrão: só oddC no centro
+                    // padrão: sem nomes e sem odds → só traço no centro
                     return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:44px;cursor:default">
-                        <span style="display:block;font-size:7px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
-                        <span style="display:block;font-size:9px;font-weight:800">${fmtA(agOC)}</span>
-                        <span style="display:block;font-size:7px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tf}</span>
+                        <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
                     </td>`;
                 }
                 return `<td class="c-vazio" style="opacity:.3"></td>`;
@@ -2195,7 +2202,8 @@ function renderTabela() {
             }
             const abbrev = n => n || '';
             // Destaque sempre pelo filtro/condição selecionado na seção
-            const hitEfetivo = isOculto ? false : hit;
+            // Over 4.5: células ocultas (5+) são verdes quando esse filtro está ativo
+            const hitEfetivo = isOculto ? (fi?.id === 'over4.5') : hit;
             // Odds pré-jogo (exibidas quando modo Odds está ativo)
             const oddC = parseFloat(j.odd_casa   || 0);
             const oddF = parseFloat(j.odd_fora   || 0);
@@ -3978,6 +3986,7 @@ function abrirFormUsuario(id) {
     document.getElementById('usr-tipo').value     = 'user';
     document.getElementById('usr-lic-ini').value  = '';
     document.getElementById('usr-lic-fim').value  = '';
+    document.getElementById('usr-ativo').value    = '1';
 
     if (id) {
         const u = _todosUsuarios.find(x => x.Id === id);
@@ -3988,6 +3997,7 @@ function abrirFormUsuario(id) {
             document.getElementById('usr-login').value   = u.Usuario || '';
             document.getElementById('usr-email').value   = u.Email || '';
             document.getElementById('usr-tipo').value    = u.TipoUsuario || 'user';
+            document.getElementById('usr-ativo').value   = u.Ativo ? '1' : '0';
             if (u.DataInicioLicenca) document.getElementById('usr-lic-ini').value = new Date(u.DataInicioLicenca).toISOString().split('T')[0];
             if (u.DataFimLicenca)    document.getElementById('usr-lic-fim').value = new Date(u.DataFimLicenca).toISOString().split('T')[0];
         }
@@ -4015,6 +4025,7 @@ async function salvarUsuario(e) {
         usuario:          document.getElementById('usr-login').value.trim(),
         email:            document.getElementById('usr-email').value.trim(),
         tipoUsuario:      document.getElementById('usr-tipo').value,
+        ativo:            document.getElementById('usr-ativo').value === '1',
         dataInicioLicenca: document.getElementById('usr-lic-ini').value || null,
         dataFimLicenca:    document.getElementById('usr-lic-fim').value || null,
         usuarioId:        _getUser()?.Id,
