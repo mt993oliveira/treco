@@ -1672,22 +1672,29 @@ function grupos() {
         byHour.get(key).jogos.push(p);
     });
 
-    // Garante slots vazios para o período selecionado (âncora na hora atual do cliente)
+    // Garante slots para o período selecionado + próxima hora (prévia de agendados)
     const agora = new Date(Date.now() + BET365_OFFSET_MS);
+
+    // Slots do passado: S.horas horas para trás
     for (let h = 0; h < S.horas; h++) {
         const ms  = utcHourStart(new Date(agora.getTime() - h * 3600000));
         const key = horaKey(new Date(ms));
         if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(ms), jogos: [] });
     }
 
-    // Remove grupos com timestamps no futuro (>1h à frente): artefato do bug de rollover do coletor
-    const limFuturo = agora.getTime() + 3600000;
+    // Slot da PRÓXIMA hora (mostra células azuis de jogos agendados)
+    const proxMs  = utcHourStart(new Date(agora.getTime() + 3600000));
+    const proxKey = horaKey(new Date(proxMs));
+    if (!byHour.has(proxKey)) byHour.set(proxKey, { key: proxKey, hora: new Date(proxMs), jogos: [] });
+
+    // Filtra artefatos muito no futuro (>2h): evita entradas de rollover do coletor antigo
+    const limFuturo = agora.getTime() + 2 * 3600000;
     const validos = [...byHour.values()].filter(g => g.hora.getTime() <= limFuturo);
 
-    // Ordena desc, limita a S.horas linhas (garante 6H=6 linhas, 12H=12 etc.), depois reverte para asc
+    // Ordena desc, limita a S.horas+1 linhas (S.horas passado + 1 próxima), depois reverte para asc
     return validos
         .sort((a, b) => b.hora - a.hora)
-        .slice(0, S.horas)
+        .slice(0, S.horas + 1)
         .sort((a, b) => a.hora - b.hora);
 }
 
