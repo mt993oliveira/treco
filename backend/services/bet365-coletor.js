@@ -683,7 +683,7 @@ class Bet365Coletor {
                         WHERE league_name = @liga2
                           AND time_casa   = @timeCasa2
                           AND time_fora   = @timeFora2
-                          AND start_time_datetime <= GETUTCDATE()
+                          AND start_time_datetime BETWEEN DATEADD(HOUR,-4,GETUTCDATE()) AND DATEADD(MINUTE,5,GETUTCDATE())
                         ORDER BY start_time_datetime DESC
                     `);
 
@@ -705,17 +705,10 @@ class Bet365Coletor {
                     if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
                 }
 
-                // Fallback 2: horario bruto convertido BRT→UTC (apenas se DB não encontrou dataPart)
+                // Fallback 2: nenhum evento passado encontrado no DB → usa instante atual
+                // (res.horario retorna valor de odds como "0.55", não é hora válida)
                 if (!dataPart) {
-                    if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
-                        const [hh, mm] = res.horario.replace('.', ':').split(':').map(Number);
-                        const d = new Date();
-                        d.setUTCHours(hh + 3, mm, 0, 0); // BRT + 3h = UTC real
-                        if (d.getTime() > Date.now() + 12 * 3600000) d.setUTCDate(d.getUTCDate() - 1);
-                        dataPart = d;
-                    } else {
-                        dataPart = new Date(); // fallback: agora
-                    }
+                    dataPart = new Date();
                 }
 
                 // Hash inclui data UTC + HH:MM para unicidade por dia e horário
