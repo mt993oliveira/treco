@@ -759,58 +759,95 @@ router.get('/estatisticas-avancadas', async (req, res) => {
     try {
         const pool = await getDbPool();
 
-        const statsGerais = await pool.query(`
+        // 1. Eventos ao vivo/agendados + médias de odds dos agendados
+        const statsEventos = await pool.query(`
             SELECT
                 COUNT(*) AS total_eventos,
                 SUM(CASE WHEN status = 'EM_ANDAMENTO' THEN 1 ELSE 0 END) AS ao_vivo,
-                SUM(CASE WHEN status = 'AGENDADO' THEN 1 ELSE 0 END) AS agendados,
-                AVG(CAST(odd_casa AS FLOAT))   AS media_odd_casa,
-                AVG(CAST(odd_empate AS FLOAT)) AS media_odd_empate,
-                AVG(CAST(odd_fora AS FLOAT))   AS media_odd_fora
-            FROM bet365_eventos
-            WHERE ativo = 1
+                SUM(CASE WHEN status = 'AGENDADO'     THEN 1 ELSE 0 END) AS agendados,
+                AVG(CASE WHEN status='AGENDADO' AND odd_casa   >0 THEN CAST(odd_casa   AS FLOAT) END) AS media_odd_casa,
+                AVG(CASE WHEN status='AGENDADO' AND odd_empate >0 THEN CAST(odd_empate AS FLOAT) END) AS media_odd_empate,
+                AVG(CASE WHEN status='AGENDADO' AND odd_fora   >0 THEN CAST(odd_fora   AS FLOAT) END) AS media_odd_fora
+            FROM bet365_eventos WHERE ativo = 1
         `);
 
-        const distribuicaoGols = await pool.query(`
+        // 2. Estatísticas gerais do histórico (últimas 24h) — CORRIGE media_gols
+        const statsHistorico = await pool.query(`
             SELECT
-                (gol_casa + gol_fora) AS total_gols,
-                COUNT(*) AS quantidade
+                COUNT(*) AS total_partidas,
+                AVG(CAST(gol_casa + gol_fora AS FLOAT)) AS media_gols,
+                SUM(CASE WHEN resultado='CASA'   THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_casa,
+                SUM(CASE WHEN resultado='EMPATE' THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_empate,
+                SUM(CASE WHEN resultado='FORA'   THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_fora,
+                SUM(CASE WHEN gol_casa>0 AND gol_fora>0 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_btts,
+                SUM(CASE WHEN gol_casa+gol_fora>=2 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over15,
+                SUM(CASE WHEN gol_casa+gol_fora>=3 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over25,
+                SUM(CASE WHEN gol_casa+gol_fora>=4 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over35,
+                SUM(CASE WHEN gol_casa+gol_fora>=5 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over45
             FROM bet365_historico_partidas
             WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
-            GROUP BY (gol_casa + gol_fora)
-            ORDER BY total_gols
+              AND placar_oculto = 0
+              AND resultado_estimado = 0
+              AND resultado IS NOT NULL AND resultado != 'OCULTO'
         `);
 
+        // 3. Top 8 placares exatos (últimas 24h)
+        const topPlacares = await pool.query(`
+            SELECT TOP 8
+                CAST(gol_casa AS VARCHAR) + '-' + CAST(gol_fora AS VARCHAR) AS placar,
+                COUNT(*) AS frequencia,
+                CAST(gol_casa AS INT) AS gc,
+                CAST(gol_fora AS INT) AS gf
+            FROM bet365_historico_partidas
+            WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
+              AND placar_oculto = 0
+              AND resultado_estimado = 0
+            GROUP BY gol_casa, gol_fora
+            ORDER BY frequencia DESC
+        `);
+
+        // 4. Performance por liga (últimas 24h)
         const performanceLiga = await pool.query(`
-            SELECT TOP 20
+            SELECT
                 liga,
                 COUNT(*) AS total_jogos,
-                AVG(CAST(gol_casa + gol_fora AS FLOAT)) AS media_gols,
-                SUM(CASE WHEN resultado = 'CASA'   THEN 1 ELSE 0 END) AS vitorias_casa,
-                SUM(CASE WHEN resultado = 'EMPATE' THEN 1 ELSE 0 END) AS empates,
-                SUM(CASE WHEN resultado = 'FORA'   THEN 1 ELSE 0 END) AS vitorias_fora
+                AVG(CAST(gol_casa+gol_fora AS FLOAT)) AS media_gols,
+                SUM(CASE WHEN resultado='CASA'   THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_casa,
+                SUM(CASE WHEN resultado='EMPATE' THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_empate,
+                SUM(CASE WHEN resultado='FORA'   THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_fora,
+                SUM(CASE WHEN gol_casa>0 AND gol_fora>0 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_btts,
+                SUM(CASE WHEN gol_casa+gol_fora>=2 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over15,
+                SUM(CASE WHEN gol_casa+gol_fora>=3 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over25
             FROM bet365_historico_partidas
-            WHERE liga IS NOT NULL AND liga <> ''
+            WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
+              AND placar_oculto = 0
+              AND resultado_estimado = 0
+              AND resultado IS NOT NULL
+              AND liga IS NOT NULL AND liga <> ''
             GROUP BY liga
             ORDER BY total_jogos DESC
         `);
 
-        const heatmapResultados = await pool.query(`
-            SELECT gol_casa, gol_fora, COUNT(*) AS frequencia
+        // 5. Distribuição de gols agrupada (0–5+)
+        const distribuicaoGols = await pool.query(`
+            SELECT
+                CASE WHEN gol_casa+gol_fora >= 5 THEN 5 ELSE gol_casa+gol_fora END AS total_gols,
+                COUNT(*) AS quantidade
             FROM bet365_historico_partidas
             WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())
-            GROUP BY gol_casa, gol_fora
-            ORDER BY frequencia DESC
+              AND placar_oculto = 0
+            GROUP BY CASE WHEN gol_casa+gol_fora >= 5 THEN 5 ELSE gol_casa+gol_fora END
+            ORDER BY total_gols
         `);
 
         res.json({
             success: true,
             timestamp: new Date().toISOString(),
             data: {
-                gerais: statsGerais.recordset[0],
-                distribuicaoGols: distribuicaoGols.recordset,
+                gerais: Object.assign({}, statsEventos.recordset[0], statsHistorico.recordset[0]),
+                topPlacares:    topPlacares.recordset,
                 performanceLiga: performanceLiga.recordset,
-                heatmapResultados: heatmapResultados.recordset.slice(0, 20)
+                distribuicaoGols: distribuicaoGols.recordset,
             }
         });
 

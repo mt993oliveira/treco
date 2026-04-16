@@ -220,16 +220,19 @@
         /* ESTATÍSTICAS AVANÇADAS */
         .stats-avancadas-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             margin-top: 10px;
         }
+        @media (max-width: 900px) { .stats-avancadas-grid { grid-template-columns: repeat(2,1fr); } }
+        @media (max-width: 560px) { .stats-avancadas-grid { grid-template-columns: 1fr; } }
         .stat-card {
             background: #0f172a;
             border: 1px solid #1e293b;
             border-radius: 8px;
             padding: 12px;
         }
+        .stat-card-wide { grid-column: 1 / -1; }
         .stat-card-titulo {
             font-size: 9px;
             font-weight: 700;
@@ -244,16 +247,22 @@
             color: #e2e8f0;
             margin-bottom: 4px;
         }
-        .stat-card-desc {
-            font-size: 10px;
-            color: #64748b;
-        }
-        .stat-card-trend {
-            font-size: 10px;
-            margin-top: 6px;
-        }
+        .stat-card-desc { font-size: 10px; color: #64748b; }
+        .stat-card-trend { font-size: 10px; margin-top: 6px; }
         .stat-card-trend.subindo { color: #4ade80; }
-        .stat-card-trend.caindo { color: #f87171; }
+        .stat-card-trend.caindo  { color: #f87171; }
+        .sbar-row { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+        .sbar-label { font-size:9px; color:#64748b; min-width:62px; }
+        .sbar-track { flex:1; background:#1e293b; border-radius:3px; height:6px; overflow:hidden; }
+        .sbar-fill  { height:6px; border-radius:3px; transition: width .4s; }
+        .sbar-pct   { font-size:9px; font-weight:700; min-width:34px; text-align:right; }
+        .liga-tbl   { width:100%; border-collapse:collapse; font-size:9px; }
+        .liga-tbl th { color:#334155; font-weight:700; padding:4px 6px; text-align:center; border-bottom:1px solid #1e293b; white-space:nowrap; }
+        .liga-tbl th:first-child { text-align:left; }
+        .liga-tbl td { padding:5px 6px; text-align:center; border-bottom:1px solid #0d1526; color:#94a3b8; }
+        .liga-tbl td:first-child { text-align:left; color:#e2e8f0; font-weight:700; white-space:nowrap; }
+        .liga-tbl tr:last-child td { border-bottom:none; }
+        .liga-tbl tr:hover td { background:#0a1220; }
     /* WhatsApp float button */
     .wa-btn {
         position: fixed;
@@ -3604,72 +3613,172 @@ async function carregarEstatisticasAvancadas() {
 
 function renderizarEstatisticasAvancadas(data) {
     const grid = document.getElementById('stats-avancadas-grid');
-    const gerais = data.gerais || {};
-    const distribuicao = data.distribuicaoGols || [];
-    const performance = data.performanceLiga || [];
-    
-    // Calcular tendências (comparando com média histórica)
-    const mediaGols = parseFloat(gerais.media_gols) || 0;
-    const tendenciaGols = mediaGols > 2.5 ? 'subindo' : mediaGols < 1.5 ? 'caindo' : 'estavel';
-    
+    const g  = data.gerais         || {};
+    const pl = data.performanceLiga|| [];
+    const tp = data.topPlacares    || [];
+
+    const pct  = v => (parseFloat(v) || 0).toFixed(1);
+    const f2   = v => (parseFloat(v) || 0).toFixed(2);
+    const cor  = (v, hi=65, mid=45) => v >= hi ? '#4ade80' : v >= mid ? '#fbbf24' : '#f87171';
+    const sbar = (label, val, color) => {
+        const v = parseFloat(val) || 0;
+        return `<div class="sbar-row">
+            <span class="sbar-label">${label}</span>
+            <div class="sbar-track"><div class="sbar-fill" style="width:${Math.min(v,100).toFixed(1)}%;background:${color}"></div></div>
+            <span class="sbar-pct" style="color:${color}">${v.toFixed(1)}%</span>
+        </div>`;
+    };
+
+    // Tendência da média de gols
+    const mediaGols = parseFloat(g.media_gols) || 0;
+    const tendencia = mediaGols >= 2.5 ? 'subindo' : mediaGols < 1.8 ? 'caindo' : 'estavel';
+    const tendLabel = tendencia === 'subindo' ? '▲ Alta' : tendencia === 'caindo' ? '▼ Baixa' : '• Estável';
+
     let html = '';
-    
-    // Card: Total de Eventos
-    html += `
-        <div class="stat-card">
-            <div class="stat-card-titulo">Eventos Ativos</div>
-            <div class="stat-card-valor">${gerais.total_eventos || 0}</div>
-            <div class="stat-card-desc">
-                <span style="color:#4ade80">${gerais.ao_vivo || 0} ao vivo</span> • 
-                <span style="color:#a5b4fc">${gerais.agendados || 0} agendados</span>
+
+    // ── Card 1: Eventos ao vivo + agendados ──
+    html += `<div class="stat-card">
+        <div class="stat-card-titulo">Eventos Ativos</div>
+        <div class="stat-card-valor">${(g.ao_vivo||0) + (g.agendados||0)}</div>
+        <div class="stat-card-desc" style="margin-top:4px">
+            <span style="color:#4ade80;font-weight:700">${g.ao_vivo||0}</span> ao vivo &nbsp;•&nbsp;
+            <span style="color:#a5b4fc;font-weight:700">${g.agendados||0}</span> agendados
+        </div>
+    </div>`;
+
+    // ── Card 2: Média de Gols (24h, CORRIGIDO) ──
+    html += `<div class="stat-card">
+        <div class="stat-card-titulo">Média de Gols <span style="font-weight:400;color:#334155">(24h)</span></div>
+        <div class="stat-card-valor" style="color:${cor(mediaGols*40,80,60)}">${f2(mediaGols)}</div>
+        <div class="stat-card-trend ${tendencia}">${tendLabel}</div>
+        <div class="stat-card-desc" style="margin-top:5px">${g.total_partidas||0} partidas analisadas</div>
+    </div>`;
+
+    // ── Card 3: Over / Under (24h) ──
+    html += `<div class="stat-card">
+        <div class="stat-card-titulo">Over Gols <span style="font-weight:400;color:#334155">(24h)</span></div>
+        <div style="margin-top:6px">
+            ${sbar('Over 1.5', g.pct_over15, '#4ade80')}
+            ${sbar('Over 2.5', g.pct_over25, '#60a5fa')}
+            ${sbar('Over 3.5', g.pct_over35, '#fbbf24')}
+            ${sbar('Over 4.5', g.pct_over45, '#f87171')}
+        </div>
+    </div>`;
+
+    // ── Card 4: Resultado FT (24h) ──
+    html += `<div class="stat-card">
+        <div class="stat-card-titulo">Resultado FT <span style="font-weight:400;color:#334155">(24h)</span></div>
+        <div style="margin-top:6px">
+            ${sbar('Casa',   g.pct_casa,    '#4ade80')}
+            ${sbar('Empate', g.pct_empate,  '#a78bfa')}
+            ${sbar('Fora',   g.pct_fora,    '#f87171')}
+            ${sbar('Ambas ✓', g.pct_btts,  '#22d3ee')}
+        </div>
+    </div>`;
+
+    // ── Card 5: Odds médias dos agendados ──
+    const mOC = parseFloat(g.media_odd_casa)    || 0;
+    const mOE = parseFloat(g.media_odd_empate)  || 0;
+    const mOF = parseFloat(g.media_odd_fora)    || 0;
+    html += `<div class="stat-card">
+        <div class="stat-card-titulo">Odds Médias <span style="font-weight:400;color:#334155">(agendados)</span></div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+            <div style="flex:1;background:#060d1a;border:1px solid #1e293b;border-radius:6px;padding:8px 4px;text-align:center">
+                <div style="font-size:8px;color:#64748b;margin-bottom:3px">Casa</div>
+                <div style="font-size:15px;font-weight:800;color:#4ade80">${f2(mOC)}</div>
+            </div>
+            <div style="flex:1;background:#060d1a;border:1px solid #1e293b;border-radius:6px;padding:8px 4px;text-align:center">
+                <div style="font-size:8px;color:#64748b;margin-bottom:3px">Empate</div>
+                <div style="font-size:15px;font-weight:800;color:#94a3b8">${f2(mOE)}</div>
+            </div>
+            <div style="flex:1;background:#060d1a;border:1px solid #1e293b;border-radius:6px;padding:8px 4px;text-align:center">
+                <div style="font-size:8px;color:#64748b;margin-bottom:3px">Fora</div>
+                <div style="font-size:15px;font-weight:800;color:#f87171">${f2(mOF)}</div>
             </div>
         </div>
-    `;
-    
-    // Card: Média de Gols
-    html += `
-        <div class="stat-card">
-            <div class="stat-card-titulo">Média de Gols</div>
-            <div class="stat-card-valor">${mediaGols.toFixed(2)}</div>
-            <div class="stat-card-trend ${tendenciaGols}">
-                ${tendenciaGols === 'subindo' ? '▲' : tendenciaGols === 'caindo' ? '▼' : '•'} 
-                Tendência: ${tendenciaGols === 'subindo' ? 'Alta' : tendenciaGols === 'caindo' ? 'Baixa' : 'Estável'}
-            </div>
-            <div class="stat-card-desc" style="margin-top:6px">
-                Over 1.5: ${distribuicao.filter(d => (d.total_gols || 0) >= 2).reduce((s,d) => s + (d.quantidade||0), 0)} jogos
-            </div>
+    </div>`;
+
+    // ── Card 6: Placares mais frequentes ──
+    const totalPl = tp.reduce((s, p) => s + (p.frequencia||0), 0);
+    html += `<div class="stat-card">
+        <div class="stat-card-titulo">Placares Frequentes <span style="font-weight:400;color:#334155">(24h)</span></div>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
+            ${tp.slice(0,6).map((p, i) => {
+                const pctP = totalPl ? (p.frequencia/totalPl*100) : 0;
+                const resCor = p.gc > p.gf ? '#4ade80' : p.gc < p.gf ? '#f87171' : '#a78bfa';
+                return `<div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:9px;color:#475569;min-width:14px;text-align:right">${i+1}.</span>
+                    <span style="font-size:11px;font-weight:800;min-width:28px;color:${resCor}">${escHtml(p.placar)}</span>
+                    <div style="flex:1;background:#1e293b;border-radius:3px;height:5px;overflow:hidden">
+                        <div style="width:${pctP.toFixed(1)}%;height:5px;background:${resCor};border-radius:3px"></div>
+                    </div>
+                    <span style="font-size:9px;color:#64748b;min-width:44px;text-align:right">${p.frequencia}x (${pctP.toFixed(1)}%)</span>
+                </div>`;
+            }).join('')}
         </div>
-    `;
-    
-    // Card: Liga Mais Ativa
-    const ligaTop = performance[0];
-    if (ligaTop) {
-        html += `
-            <div class="stat-card">
-                <div class="stat-card-titulo">Liga Mais Ativa</div>
-                <div class="stat-card-valor" style="font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ligaTop.liga)}</div>
-                <div class="stat-card-desc">
-                    ${ligaTop.total_jogos || 0} jogos • Média: ${(ligaTop.media_gols || 0).toFixed(2)} gols
-                </div>
+    </div>`;
+
+    // ── Card 7: BTTS % destaque ──
+    const btts = parseFloat(g.pct_btts) || 0;
+    const bttsCor = cor(btts, 55, 40);
+    html += `<div class="stat-card">
+        <div class="stat-card-titulo">Ambas Marcam <span style="font-weight:400;color:#334155">(24h)</span></div>
+        <div class="stat-card-valor" style="color:${bttsCor}">${pct(btts)}%</div>
+        <div class="stat-card-desc" style="margin-top:4px">dos jogos com gol dos 2 lados</div>
+        <div style="margin-top:10px;background:#1e293b;border-radius:4px;height:8px;overflow:hidden">
+            <div style="width:${Math.min(btts,100).toFixed(1)}%;height:8px;background:${bttsCor};border-radius:4px"></div>
+        </div>
+    </div>`;
+
+    // ── Card 8: Performance por liga (tabela full-width) ──
+    if (pl.length) {
+        const ligaAlias = l => {
+            const map = {'world cup':'Copa do Mundo','euro cup':'Euro Cup',
+                'premier league':'Premier League','premiership':'Premier League',
+                'express cup':'Express Cup','super liga sul-americana':'Super Liga Sul-Americana'};
+            return map[(l||'').toLowerCase()] || l;
+        };
+        html += `<div class="stat-card stat-card-wide">
+            <div class="stat-card-titulo">Performance por Liga <span style="font-weight:400;color:#334155">(24h)</span></div>
+            <div style="overflow-x:auto;margin-top:8px">
+            <table class="liga-tbl">
+                <thead><tr>
+                    <th>Liga</th>
+                    <th>Jogos</th>
+                    <th>Média Gols</th>
+                    <th>Over 1.5</th>
+                    <th>Over 2.5</th>
+                    <th>Casa</th>
+                    <th>Empate</th>
+                    <th>Fora</th>
+                    <th>BTTS</th>
+                </tr></thead>
+                <tbody>
+                ${pl.map(r => {
+                    const cO15 = cor(r.pct_over15, 70, 55);
+                    const cO25 = cor(r.pct_over25, 45, 30);
+                    const cCasa = cor(r.pct_casa, 50, 35);
+                    const cEmp  = '#a78bfa';
+                    const cFora = cor(r.pct_fora, 50, 35);
+                    const cBtts = cor(r.pct_btts, 55, 40);
+                    return `<tr>
+                        <td>${escHtml(ligaAlias(r.liga))}</td>
+                        <td>${r.total_jogos}</td>
+                        <td style="color:#60a5fa;font-weight:700">${f2(r.media_gols)}</td>
+                        <td style="color:${cO15};font-weight:700">${pct(r.pct_over15)}%</td>
+                        <td style="color:${cO25};font-weight:700">${pct(r.pct_over25)}%</td>
+                        <td style="color:${cCasa};font-weight:700">${pct(r.pct_casa)}%</td>
+                        <td style="color:${cEmp};font-weight:700">${pct(r.pct_empate)}%</td>
+                        <td style="color:${cFora};font-weight:700">${pct(r.pct_fora)}%</td>
+                        <td style="color:${cBtts};font-weight:700">${pct(r.pct_btts)}%</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
             </div>
-        `;
+        </div>`;
     }
-    
-    // Card: Distribuição de Gols
-    const over25 = distribuicao.filter(d => (d.total_gols || 0) >= 3).reduce((s,d) => s + (d.quantidade||0), 0);
-    const under25 = distribuicao.filter(d => (d.total_gols || 0) < 3).reduce((s,d) => s + (d.quantidade||0), 0);
-    const pctOver = ((over25 / (over25 + under25 + 0.001)) * 100).toFixed(1);
-    
-    html += `
-        <div class="stat-card">
-            <div class="stat-card-titulo">Over 2.5 Gols</div>
-            <div class="stat-card-valor" style="color:${pctOver >= 50 ? '#4ade80' : pctOver >= 35 ? '#fbbf24' : '#f87171'}">${pctOver}%</div>
-            <div class="stat-card-desc">
-                ${over25} de ${over25 + under25} jogos com 3+ gols
-            </div>
-        </div>
-    `;
-    
+
     grid.innerHTML = html;
 }
 
