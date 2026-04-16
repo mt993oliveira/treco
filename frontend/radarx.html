@@ -2258,7 +2258,7 @@ function renderTabela() {
             const opacityStyle = isEstimado ? 'opacity:0.35;' : isOculto ? 'opacity:0.7;' : '';
             const baseStyle    = (S.showNomes || isOculto || temOdds) ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
             const cellStyle    = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
-            const cellClass    = isOculto ? 'c-verm' : hitEfetivo ? 'c-verde' : 'c-verm';
+            const cellClass    = hitEfetivo ? 'c-verde' : 'c-verm';
             return `<td class="${cellClass}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
         }).join('');
 
