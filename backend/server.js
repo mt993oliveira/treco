@@ -905,38 +905,51 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 VALUES (${req.body.usuarioId}, GETDATE(), ${'Novo usuário criado: ' + usuario})
             `;
 
-            // Enviar e-mail com dados do novo usuário via Formspree
-            // Formspree envia para o dono do form (mt993.oliveira@gmail.com).
-            // _replyto permite responder direto ao e-mail do novo usuário.
-            try {
-                const licencaInicio = dataInicioLicenca ? new Date(dataInicioLicenca).toLocaleDateString('pt-BR') : '—';
-                const licencaFim = dataFimLicenca ? new Date(dataFimLicenca).toLocaleDateString('pt-BR') : '—';
-                const payload = {
-                    _subject: `[RadarX] Acesso criado: ${usuario}`,
-                    _replyto: email || 'sem-email@radarx.com.br',
-                    name: nomeCompleto || usuario,
-                    email: email || 'sem-email@radarx.com.br',
-                    message:
-                        `✅ Novo acesso criado na plataforma RadarX\n\n` +
-                        `Nome: ${nomeCompleto}\n` +
-                        `Usuário (login): ${usuario}\n` +
-                        `E-mail: ${email || '—'}\n` +
-                        `Tipo: ${tipoUsuario}\n` +
-                        `Senha inicial: ${senha}\n` +
-                        `Licença início: ${licencaInicio}\n` +
-                        `Licença fim: ${licencaFim}\n` +
-                        `Cadastrado em: ${new Date().toLocaleString('pt-BR')}`,
-                };
-                const fResp = await axios.post('https://formspree.io/f/xaqawaep', payload, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                });
-                console.log(`📧 Formspree OK (usuário ${usuario}):`, fResp.status, JSON.stringify(fResp.data));
-            } catch (emailErr) {
-                const detail = emailErr.response ? JSON.stringify(emailErr.response.data) : emailErr.message;
-                console.error(`⚠️ Falha ao enviar e-mail via Formspree para ${usuario}:`, detail);
+            // Enviar e-mail direto para o usuário criado via Nodemailer (Gmail SMTP)
+            if (email) {
+                try {
+                    const nodemailer = require('nodemailer');
+                    const licencaInicio = dataInicioLicenca ? new Date(dataInicioLicenca).toLocaleDateString('pt-BR') : '—';
+                    const licencaFim = dataFimLicenca ? new Date(dataFimLicenca).toLocaleDateString('pt-BR') : '—';
+
+                    const transporter = nodemailer.createTransport({
+                        service: 'gmail',
+                        auth: {
+                            user: process.env.SMTP_USER,
+                            pass: process.env.SMTP_PASS,
+                        },
+                    });
+
+                    const mailOptions = {
+                        from: `"RadarX" <${process.env.SMTP_USER}>`,
+                        to: email,
+                        cc: process.env.SMTP_USER,   // cópia para o admin
+                        subject: `[RadarX] Seu acesso foi criado`,
+                        html: `
+                            <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
+                                <h2 style="color:#3b82f6;margin-bottom:4px;">🎯 RadarX</h2>
+                                <p style="color:#94a3b8;margin-top:0;">Análise de Futebol Virtual</p>
+                                <hr style="border-color:#1e293b;margin:20px 0;">
+                                <p>Olá, <strong>${nomeCompleto || usuario}</strong>!</p>
+                                <p>Seu acesso à plataforma <strong>RadarX</strong> foi criado com sucesso.</p>
+                                <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+                                    <tr><td style="padding:8px;color:#94a3b8;">Usuário (login):</td><td style="padding:8px;font-weight:bold;">${usuario}</td></tr>
+                                    <tr style="background:#1e293b;"><td style="padding:8px;color:#94a3b8;">Senha inicial:</td><td style="padding:8px;font-weight:bold;">${senha}</td></tr>
+                                    <tr><td style="padding:8px;color:#94a3b8;">Tipo de conta:</td><td style="padding:8px;">${tipoUsuario}</td></tr>
+                                    <tr style="background:#1e293b;"><td style="padding:8px;color:#94a3b8;">Licença até:</td><td style="padding:8px;">${licencaFim}</td></tr>
+                                </table>
+                                <p style="font-size:13px;color:#94a3b8;">Acesse a plataforma em <a href="https://radarx.com.br" style="color:#3b82f6;">radarx.com.br</a> e troque sua senha no primeiro login.</p>
+                                <hr style="border-color:#1e293b;margin:20px 0;">
+                                <p style="font-size:11px;color:#475569;">Este é um e-mail automático. Não responda.</p>
+                            </div>
+                        `,
+                    };
+
+                    const info = await transporter.sendMail(mailOptions);
+                    console.log(`📧 E-mail enviado para ${email} (usuário ${usuario}):`, info.messageId);
+                } catch (emailErr) {
+                    console.error(`⚠️ Falha ao enviar e-mail para ${email}:`, emailErr.message);
+                }
             }
         }
 

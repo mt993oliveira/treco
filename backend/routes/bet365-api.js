@@ -771,9 +771,9 @@ router.get('/estatisticas-avancadas', async (req, res) => {
             FROM bet365_eventos WHERE ativo = 1
         `);
 
-        // 2. Estatísticas gerais do histórico (últimas 24h)
-        // Usa GETUTCDATE() para consistência com data_partida armazenada em UTC
-        // ISNULL() nos campos bit garante que registros antigos com NULL não sejam excluídos
+        // 2. Estatísticas gerais do histórico — usa TODOS os registros com resultado real
+        // Não filtra por data pois muitos registros têm data_partida NULL (bug legado do coletor).
+        // Filtra apenas por resultado válido e flags de qualidade.
         const statsHistorico = await pool.query(`
             SELECT
                 COUNT(*) AS total_partidas,
@@ -787,13 +787,12 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                 SUM(CASE WHEN gol_casa+gol_fora>=4 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over35,
                 SUM(CASE WHEN gol_casa+gol_fora>=5 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over45
             FROM bet365_historico_partidas
-            WHERE (data_partida >= DATEADD(HOUR, -24, GETUTCDATE()) OR data_partida IS NULL)
-              AND ISNULL(placar_oculto, 0) = 0
+            WHERE ISNULL(placar_oculto, 0) = 0
               AND ISNULL(resultado_estimado, 0) = 0
               AND resultado IN ('CASA','EMPATE','FORA')
         `);
 
-        // 3. Top 8 placares exatos (últimas 24h)
+        // 3. Top 8 placares exatos — todos os registros reais
         const topPlacares = await pool.query(`
             SELECT TOP 8
                 CAST(gol_casa AS VARCHAR) + '-' + CAST(gol_fora AS VARCHAR) AS placar,
@@ -801,14 +800,14 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                 CAST(gol_casa AS INT) AS gc,
                 CAST(gol_fora AS INT) AS gf
             FROM bet365_historico_partidas
-            WHERE (data_partida >= DATEADD(HOUR, -24, GETUTCDATE()) OR data_partida IS NULL)
-              AND ISNULL(placar_oculto, 0) = 0
+            WHERE ISNULL(placar_oculto, 0) = 0
               AND ISNULL(resultado_estimado, 0) = 0
+              AND resultado IN ('CASA','EMPATE','FORA')
             GROUP BY gol_casa, gol_fora
             ORDER BY frequencia DESC
         `);
 
-        // 4. Performance por liga (últimas 24h)
+        // 4. Performance por liga — todos os registros reais
         const performanceLiga = await pool.query(`
             SELECT
                 liga,
@@ -821,8 +820,7 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                 SUM(CASE WHEN gol_casa+gol_fora>=2 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over15,
                 SUM(CASE WHEN gol_casa+gol_fora>=3 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over25
             FROM bet365_historico_partidas
-            WHERE (data_partida >= DATEADD(HOUR, -24, GETUTCDATE()) OR data_partida IS NULL)
-              AND ISNULL(placar_oculto, 0) = 0
+            WHERE ISNULL(placar_oculto, 0) = 0
               AND ISNULL(resultado_estimado, 0) = 0
               AND resultado IN ('CASA','EMPATE','FORA')
               AND liga IS NOT NULL AND liga <> ''
@@ -830,14 +828,15 @@ router.get('/estatisticas-avancadas', async (req, res) => {
             ORDER BY total_jogos DESC
         `);
 
-        // 5. Distribuição de gols agrupada (0–5+)
+        // 5. Distribuição de gols agrupada (0–5+) — todos os registros reais
         const distribuicaoGols = await pool.query(`
             SELECT
                 CASE WHEN gol_casa+gol_fora >= 5 THEN 5 ELSE gol_casa+gol_fora END AS total_gols,
                 COUNT(*) AS quantidade
             FROM bet365_historico_partidas
-            WHERE (data_partida >= DATEADD(HOUR, -24, GETUTCDATE()) OR data_partida IS NULL)
-              AND ISNULL(placar_oculto, 0) = 0
+            WHERE ISNULL(placar_oculto, 0) = 0
+              AND ISNULL(resultado_estimado, 0) = 0
+              AND resultado IN ('CASA','EMPATE','FORA')
             GROUP BY CASE WHEN gol_casa+gol_fora >= 5 THEN 5 ELSE gol_casa+gol_fora END
             ORDER BY total_gols
         `);

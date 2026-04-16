@@ -25,6 +25,7 @@
     "jsonwebtoken": "^9.0.2",
     "mssql": "^9.3.2",
     "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.5",
     "puppeteer": "^24.40.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
