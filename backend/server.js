@@ -3,6 +3,9 @@ const sql = require('mssql');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
+
+// Map de sessões ativas: userId -> { id, usuario, nome, tipo, lastSeen, ip }
+const activeSessions = new Map();
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -905,51 +908,29 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 VALUES (${req.body.usuarioId}, GETDATE(), ${'Novo usuário criado: ' + usuario})
             `;
 
-            // Enviar e-mail direto para o usuário criado via Nodemailer (Gmail SMTP)
-            if (email) {
-                try {
-                    const nodemailer = require('nodemailer');
-                    const licencaInicio = dataInicioLicenca ? new Date(dataInicioLicenca).toLocaleDateString('pt-BR') : '—';
-                    const licencaFim = dataFimLicenca ? new Date(dataFimLicenca).toLocaleDateString('pt-BR') : '—';
-
-                    const transporter = nodemailer.createTransport({
-                        service: 'gmail',
-                        auth: {
-                            user: process.env.SMTP_USER,
-                            pass: process.env.SMTP_PASS,
-                        },
-                    });
-
-                    const mailOptions = {
-                        from: `"RadarX" <${process.env.SMTP_USER}>`,
-                        to: email,
-                        cc: process.env.SMTP_USER,   // cópia para o admin
-                        subject: `[RadarX] Seu acesso foi criado`,
-                        html: `
-                            <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
-                                <h2 style="color:#3b82f6;margin-bottom:4px;">🎯 RadarX</h2>
-                                <p style="color:#94a3b8;margin-top:0;">Análise de Futebol Virtual</p>
-                                <hr style="border-color:#1e293b;margin:20px 0;">
-                                <p>Olá, <strong>${nomeCompleto || usuario}</strong>!</p>
-                                <p>Seu acesso à plataforma <strong>RadarX</strong> foi criado com sucesso.</p>
-                                <table style="width:100%;border-collapse:collapse;margin:20px 0;">
-                                    <tr><td style="padding:8px;color:#94a3b8;">Usuário (login):</td><td style="padding:8px;font-weight:bold;">${usuario}</td></tr>
-                                    <tr style="background:#1e293b;"><td style="padding:8px;color:#94a3b8;">Senha inicial:</td><td style="padding:8px;font-weight:bold;">${senha}</td></tr>
-                                    <tr><td style="padding:8px;color:#94a3b8;">Tipo de conta:</td><td style="padding:8px;">${tipoUsuario}</td></tr>
-                                    <tr style="background:#1e293b;"><td style="padding:8px;color:#94a3b8;">Licença até:</td><td style="padding:8px;">${licencaFim}</td></tr>
-                                </table>
-                                <p style="font-size:13px;color:#94a3b8;">Acesse a plataforma em <a href="https://radarx.com.br" style="color:#3b82f6;">radarx.com.br</a> e troque sua senha no primeiro login.</p>
-                                <hr style="border-color:#1e293b;margin:20px 0;">
-                                <p style="font-size:11px;color:#475569;">Este é um e-mail automático. Não responda.</p>
-                            </div>
-                        `,
-                    };
-
-                    const info = await transporter.sendMail(mailOptions);
-                    console.log(`📧 E-mail enviado para ${email} (usuário ${usuario}):`, info.messageId);
-                } catch (emailErr) {
-                    console.error(`⚠️ Falha ao enviar e-mail para ${email}:`, emailErr.message);
-                }
+            // Enviar e-mail de boas-vindas via Formspree (mesmo mecanismo do formulário de contato)
+            try {
+                const licencaInicio = dataInicioLicenca ? new Date(dataInicioLicenca).toLocaleDateString('pt-BR') : '—';
+                const licencaFim    = dataFimLicenca    ? new Date(dataFimLicenca).toLocaleDateString('pt-BR')    : '—';
+                const fResp = await axios.post('https://formspree.io/f/xaqawaep', {
+                    name: nomeCompleto || usuario,
+                    email: email || 'sem-email@radarx.com.br',
+                    _subject: `[RadarX] Novo acesso criado: ${usuario}`,
+                    message:
+                        `✅ Novo acesso criado na plataforma RadarX\n\n` +
+                        `Nome: ${nomeCompleto}\n` +
+                        `Usuário (login): ${usuario}\n` +
+                        `E-mail: ${email || '—'}\n` +
+                        `Tipo: ${tipoUsuario}\n` +
+                        `Senha inicial: ${senha}\n` +
+                        `Licença início: ${licencaInicio}\n` +
+                        `Licença fim: ${licencaFim}\n` +
+                        `Cadastrado em: ${new Date().toLocaleString('pt-BR')}`,
+                }, { headers: { Accept: 'application/json', 'Content-Type': 'application/json' } });
+                console.log(`📧 Formspree OK (usuário ${usuario}):`, fResp.status);
+            } catch (emailErr) {
+                const detail = emailErr.response ? JSON.stringify(emailErr.response.data) : emailErr.message;
+                console.error(`⚠️ Falha e-mail Formspree (${usuario}):`, detail);
             }
         }
 
@@ -1014,6 +995,52 @@ app.post('/api/contato', async (req, res) => {
     } catch (err) {
         console.error('Erro ao enviar contato via Formspree:', err.message);
         res.status(500).json({ success: false, message: 'Erro ao enviar mensagem.' });
+    }
+});
+
+// ──────────────────────────────────────────────────────
+// SESSÕES ATIVAS — ping e listagem (master only)
+// ──────────────────────────────────────────────────────
+
+/**
+ * POST /api/usuarios/ping
+ * Frontend chama a cada 2 min para manter a sessão viva no mapa em memória.
+ */
+app.post('/api/usuarios/ping', async (req, res) => {
+    const { usuarioId, usuario, nome, tipo } = req.body;
+    if (!usuarioId) return res.json({ ok: false });
+    activeSessions.set(String(usuarioId), {
+        id: String(usuarioId),
+        usuario: usuario || '?',
+        nome: nome || '?',
+        tipo: tipo || 'user',
+        lastSeen: new Date(),
+        ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?',
+    });
+    res.json({ ok: true });
+});
+
+/**
+ * POST /api/usuarios/ativos
+ * Retorna usuários com lastSeen nos últimos 15 min. Apenas para master.
+ */
+app.post('/api/usuarios/ativos', requireAuth, async (req, res) => {
+    try {
+        // Verifica se o solicitante é master
+        await connectSQL(getDatabaseConfigFromEnv());
+        const chk = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!chk.recordset.length || chk.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso negado' });
+        }
+
+        const limite = Date.now() - 15 * 60 * 1000;
+        const ativos = [...activeSessions.values()]
+            .filter(s => s.lastSeen.getTime() >= limite)
+            .sort((a, b) => b.lastSeen - a.lastSeen);
+
+        res.json({ success: true, total: ativos.length, data: ativos });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
     }
 });
 

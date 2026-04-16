@@ -471,6 +471,21 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Usuários Online Agora (master only) -->
+        <div style="margin-top:20px;border-top:1px solid #1e293b;padding-top:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div style="font-size:11px;font-weight:700;color:#94a3b8">
+                    🟢 ONLINE AGORA
+                    <span id="online-count" style="background:#0f4c20;color:#4ade80;font-size:9px;font-weight:700;
+                        padding:2px 7px;border-radius:9px;margin-left:6px">0</span>
+                </div>
+                <button onclick="_carregarAtivos()"
+                    style="background:#0f172a;border:1px solid #334155;color:#64748b;border-radius:4px;
+                           padding:3px 10px;font-size:9px;cursor:pointer">↺ Atualizar</button>
+            </div>
+            <div id="online-lista" style="font-size:10px;color:#475569">Carregando...</div>
+        </div>
     </div>
 </div>
 
@@ -2354,44 +2369,87 @@ function abrirModalOdds() {
 }
 
 function renderRankOdds() {
-    const faixas = [
-        {l:'< 1.50', mn:0, mx:1.50},
-        {l:'2.00–2.49', mn:2.00, mx:2.50}, {l:'2.50–2.99', mn:2.50, mx:3.00},
-        {l:'3.00–3.99', mn:3.00, mx:4.00}, {l:'≥ 4.00', mn:4.00, mx:9999},
+    // Faixas ajustadas para futebol virtual (odds comprimidas: casa ~1.20–3.50, fora ~1.80–9.00)
+    const faixasCasa = [
+        {l:'< 1.40',      mn:0,    mx:1.40},
+        {l:'1.40 – 1.69', mn:1.40, mx:1.70},
+        {l:'1.70 – 1.99', mn:1.70, mx:2.00},
+        {l:'2.00 – 2.99', mn:2.00, mx:3.00},
+        {l:'≥ 3.00',      mn:3.00, mx:9999},
+    ];
+    const faixasFora = [
+        {l:'< 2.00',      mn:0,    mx:2.00},
+        {l:'2.00 – 2.99', mn:2.00, mx:3.00},
+        {l:'3.00 – 3.99', mn:3.00, mx:4.00},
+        {l:'4.00 – 5.99', mn:4.00, mx:6.00},
+        {l:'≥ 6.00',      mn:6.00, mx:9999},
+    ];
+    const faixasEmp = [
+        {l:'< 3.50',      mn:0,    mx:3.50},
+        {l:'3.50 – 3.99', mn:3.50, mx:4.00},
+        {l:'4.00 – 4.49', mn:4.00, mx:4.50},
+        {l:'4.50 – 4.99', mn:4.50, mx:5.00},
+        {l:'≥ 5.00',      mn:5.00, mx:9999},
     ];
 
-    const calc = (mn, mx, campo, res) => {
-        const p = S.partidas.filter(j => { const o = parseFloat(j[campo])||0; return o>=mn && o<mx; });
-        if (!p.length) return {j:0,pv:0,po15:0,po25:0};
+    const calc = (faixas, campo, res) => faixas.map(f => {
+        const p = S.partidas.filter(j => {
+            const o = parseFloat(j[campo]) || 0;
+            return o >= f.mn && o < f.mx;
+        });
+        if (!p.length) return { l: f.l, j: 0 };
+        const total  = p.length;
+        const gols   = j => (j.gol_casa||0) + (j.gol_fora||0);
         return {
-            j: p.length,
-            pv:   +(p.filter(j=>j.resultado===res).length / p.length * 100).toFixed(1),
-            po15: +(p.filter(j=>(j.gol_casa||0)+(j.gol_fora||0)>=2).length / p.length * 100).toFixed(1),
-            po25: +(p.filter(j=>(j.gol_casa||0)+(j.gol_fora||0)>=3).length / p.length * 100).toFixed(1),
+            l:    f.l,
+            j:    total,
+            pv:   +(p.filter(j => j.resultado === res).length / total * 100).toFixed(1),
+            mg:   +(p.reduce((s,j) => s + gols(j), 0) / total).toFixed(2),
+            po15: +(p.filter(j => gols(j) >= 2).length / total * 100).toFixed(1),
+            po25: +(p.filter(j => gols(j) >= 3).length / total * 100).toFixed(1),
+            btts: +(p.filter(j => (j.gol_casa||0)>0 && (j.gol_fora||0)>0).length / total * 100).toFixed(1),
         };
+    });
+
+    const cor = (v, hi, mid) => v >= hi ? '#4ade80' : v >= mid ? '#fbbf24' : '#f87171';
+
+    const tbl = (titulo, faixas, campo, res) => {
+        const rows = calc(faixas, campo, res);
+        const temDados = rows.some(r => r.j > 0);
+        return `
+        <div style="font-size:10px;font-weight:700;color:#64748b;margin:10px 0 6px">${titulo}</div>
+        ${!temDados ? `<div style="font-size:10px;color:#334155;padding:8px">Nenhum jogo com odds nessas faixas no período selecionado.</div>` : `
+        <table class="modal-table" style="margin-bottom:10px;font-size:10px">
+            <thead><tr>
+                <th>Odd</th>
+                <th style="text-align:center">Jogos</th>
+                <th style="text-align:center">%Vence</th>
+                <th style="text-align:center">Méd.Gols</th>
+                <th style="text-align:center">O1.5%</th>
+                <th style="text-align:center">O2.5%</th>
+                <th style="text-align:center">BTTS%</th>
+            </tr></thead>
+            <tbody>${rows.map(d => d.j === 0
+                ? `<tr><td style="color:#334155">${d.l}</td><td colspan="6" style="text-align:center;color:#1e293b">—</td></tr>`
+                : `<tr>
+                    <td style="color:#94a3b8">${d.l}</td>
+                    <td style="text-align:center;color:#64748b">${d.j}</td>
+                    <td style="text-align:center;color:${cor(d.pv,55,35)};font-weight:700">${d.pv}%</td>
+                    <td style="text-align:center;color:${cor(d.mg,2.5,1.5)}">${d.mg}</td>
+                    <td style="text-align:center;color:${cor(d.po15,65,45)}">${d.po15}%</td>
+                    <td style="text-align:center;color:${cor(d.po25,50,30)}">${d.po25}%</td>
+                    <td style="text-align:center;color:${cor(d.btts,55,35)}">${d.btts}%</td>
+                </tr>`
+            ).join('')}</tbody>
+        </table>`}`;
     };
 
-    const tbl = (titulo, campo, res) => `
-        <div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:6px">${titulo}</div>
-        <table class="modal-table" style="margin-bottom:14px">
-            <thead><tr><th>Odd</th><th style="text-align:center">Jogos</th>
-                <th style="text-align:center">%Vence</th><th style="text-align:center">O1.5%</th><th style="text-align:center">O2.5%</th></tr></thead>
-            <tbody>${faixas.map(f => {
-                const d = calc(f.mn, f.mx, campo, res);
-                const cv = d.pv>=55 ? '#4ade80' : d.pv>=35 ? '#fbbf24' : '#f87171';
-                const co = d.po15>=60 ? '#4ade80' : d.po15>=40 ? '#fbbf24' : '#f87171';
-                return `<tr><td>${f.l}</td>
-                    <td style="text-align:center;color:#64748b">${d.j}</td>
-                    <td style="text-align:center;color:${cv}">${d.j?d.pv+'%':'–'}</td>
-                    <td style="text-align:center;color:${co}">${d.j?d.po15+'%':'–'}</td>
-                    <td style="text-align:center;color:#475569">${d.j?d.po25+'%':'–'}</td>
-                </tr>`;
-            }).join('')}</tbody>
-        </table>`;
-
+    const total = S.partidas.filter(j => j.resultado).length;
     document.getElementById('rank-odds-body').innerHTML =
-        tbl('Odd Casa (quando casa vence)', 'odd_casa', 'CASA') +
-        tbl('Odd Fora (quando fora vence)', 'odd_fora', 'FORA');
+        `<div style="font-size:9px;color:#475569;margin-bottom:12px">Base: ${total} jogo(s) com resultado no período atual. As faixas agrupam jogos pela odd pré-jogo — as colunas mostram o que aconteceu nesses jogos.</div>` +
+        tbl('🏠 Odd Casa — desempenho do time da casa por faixa de odd',  faixasCasa, 'odd_casa',    'CASA') +
+        tbl('✈️ Odd Visitante — desempenho do visitante por faixa de odd', faixasFora, 'odd_fora',    'FORA') +
+        tbl('🤝 Odd Empate — frequência de empate por faixa de odd',       faixasEmp,  'odd_empate',  'EMPATE');
 }
 
 function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
@@ -3920,6 +3978,57 @@ async function abrirGerenciarUsuarios() {
     document.getElementById('usr-busca').value = '';
     document.getElementById('modal-usuarios').classList.add('aberto');
     await _carregarUsuarios();
+    _carregarAtivos();
+}
+
+async function _carregarAtivos() {
+    const el = document.getElementById('online-lista');
+    const cnt = document.getElementById('online-count');
+    if (!el) return;
+    try {
+        const u = _getUser();
+        const r = await fetch('/api/usuarios/ativos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u?.Id }),
+        });
+        const d = await r.json();
+        if (!d.success) { el.innerHTML = '<span style="color:#ef4444">Sem permissão</span>'; return; }
+        cnt.textContent = d.total;
+        if (!d.data.length) {
+            el.innerHTML = '<span style="color:#334155">Nenhum usuário ativo no momento.</span>';
+            return;
+        }
+        const ago = ms => {
+            const s = Math.floor((Date.now() - ms) / 1000);
+            if (s < 60) return `há ${s}s`;
+            return `há ${Math.floor(s/60)}min`;
+        };
+        const TIPO = { master: '⭐', admin: '🔑', user: '👤' };
+        el.innerHTML = d.data.map(s => {
+            const ic  = TIPO[s.tipo] || '👤';
+            const when = ago(new Date(s.lastSeen).getTime());
+            return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0d1421">
+                <span style="color:#4ade80;font-size:8px">●</span>
+                <span style="flex:1;color:#e2e8f0">${ic} ${escHtml(s.nome)} <span style="color:#475569">@${escHtml(s.usuario)}</span></span>
+                <span style="color:#334155;font-size:9px">${when}</span>
+                <span style="color:#1e293b;font-size:9px">${escHtml(s.ip)}</span>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        if (el) el.innerHTML = `<span style="color:#ef4444">${escHtml(e.message)}</span>`;
+    }
+}
+
+// Ping periódico para manter sessão ativa no servidor
+function _pingSession() {
+    const u = _getUser();
+    if (!u) return;
+    fetch('/api/usuarios/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuarioId: u.Id, usuario: u.Usuario, nome: u.NomeCompleto, tipo: u.TipoUsuario }),
+    }).catch(() => {});
 }
 
 async function _carregarUsuarios() {
@@ -4095,6 +4204,10 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarTudo();
     conectarWS();
     setInterval(carregarTudo, 120000);
+
+    // Ping de sessão: imediato + a cada 2 minutos
+    _pingSession();
+    setInterval(_pingSession, 2 * 60 * 1000);
 
     // Define hoje como data padrão no filtro de diagnóstico
     const filtroDia = document.getElementById('diag-filtro-dia');
