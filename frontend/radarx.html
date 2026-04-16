@@ -1647,9 +1647,13 @@ function renderLegenda() {
 // ============================================================
 function pad2(n) { return String(n).padStart(2,'0'); }
 
+// Bet365 BR exibe horários em BRT (UTC-3). Converte Date UTC para BRT para exibição.
+function toBRT(d) { return new Date(d.getTime() - 3 * 3600000); }
+
 function horaKey(d) {
-    // Usa UTC para agrupar pelo horário da Bet365 (não fuso local do browser)
-    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:00`;
+    // Agrupa por hora BRT (= horário exibido na Bet365)
+    const b = toBRT(d);
+    return `${b.getUTCFullYear()}-${pad2(b.getUTCMonth()+1)}-${pad2(b.getUTCDate())} ${pad2(b.getUTCHours())}:00`;
 }
 
 function utcHourStart(d) {
@@ -1912,7 +1916,8 @@ function renderGrafico() {
     const labels = serie.map((p, i) => {
         if (i % 10 !== 0) return '';
         const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-        return d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : `#${i+1}`;
+        const db = d ? toBRT(d) : null;
+        return db ? `${pad2(db.getUTCHours())}:${pad2(db.getUTCMinutes())}` : `#${i+1}`;
     });
 
     const cfg = {
@@ -1980,9 +1985,10 @@ async function renderUltimosResultados() {
 
         const rows = partidas.map(p => {
             const dt = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-            // Mostra em UTC para ser consistente com a grid (Bet365 usa UTC)
-            const horaStr = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '—';
-            const dataStr = dt ? `${pad2(dt.getUTCDate())}/${pad2(dt.getUTCMonth()+1)}` : '';
+            const dtB = dt ? toBRT(dt) : null;
+            // Mostra em BRT (= horário exibido na Bet365)
+            const horaStr = dtB ? `${pad2(dtB.getUTCHours())}:${pad2(dtB.getUTCMinutes())}` : '—';
+            const dataStr = dtB ? `${pad2(dtB.getUTCDate())}/${pad2(dtB.getUTCMonth()+1)}` : '';
             const liga = normalizarLiga(p.liga) || p.liga || '—';
             const placar = (p.placar_oculto === 1 || p.placar_oculto === true) ? '5+'
                 : (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa} - ${p.gol_fora}` : '? - ?';
@@ -2125,8 +2131,9 @@ function renderTabela() {
 
     gsDesc.forEach(grupo => {
         const hora    = grupo.hora;
-        // Exibe horário UTC — os tempos da Bet365 são armazenados e exibidos em UTC
-        const horaStr = `${pad2(hora.getUTCDate())}/${pad2(hora.getUTCMonth()+1)} ${pad2(hora.getUTCHours())}:00`;
+        // Exibe em BRT (= horário Bet365) independente do fuso do browser
+        const brtH = toBRT(hora);
+        const horaStr = `${pad2(brtH.getUTCDate())}/${pad2(brtH.getUTCMonth()+1)} ${pad2(brtH.getUTCHours())}:00`;
 
         // Mapeia cada jogo ao slot do seu minuto exato dentro da hora
         const slotMap = new Array(N).fill(null);
@@ -2223,7 +2230,8 @@ function renderTabela() {
             const score      = isOculto ? '5+'
                 : (j.gol_casa != null && j.gol_fora != null) ? `${j.gol_casa}-${j.gol_fora}` : '–';
             const _d = j.data_partida ? new Date(j.data_partida) : null;
-            const minStr = _d ? `${pad2(_d.getUTCHours())}:${pad2(_d.getUTCMinutes())}` : '';
+            const _db = _d ? toBRT(_d) : null;
+            const minStr = _db ? `${pad2(_db.getUTCHours())}:${pad2(_db.getUTCMinutes())}` : '';
             const isEstimado = j.resultado_estimado === 1 || j.resultado_estimado === true;
             const ttSuffix   = isOculto ? ' [5+ gols]' : isEstimado ? ' [estimado]' : '';
             const tt = `${minStr} ${j.time_casa} ${score} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]${ttSuffix}`;
@@ -2561,7 +2569,8 @@ function abrirModalSlot(min) {
             </div>` +
         jogos.map(j => {
             const d  = new Date(j.data_partida);
-            const dt = `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth()+1)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+            const db = toBRT(d);
+            const dt = `${pad2(db.getUTCDate())}/${pad2(db.getUTCMonth()+1)} ${pad2(db.getUTCHours())}:${pad2(db.getUTCMinutes())}`;
             const sc = j.placar_oculto ? '5+' : (j.gol_casa != null ? `${j.gol_casa}-${j.gol_fora}` : '–');
             const hit = fi ? checa(j, fi.id) : false;
             const cor = j.placar_oculto ? '#f87171' : hit ? '#4ade80' : '#f87171';
@@ -2604,7 +2613,8 @@ function abrirModalLigaResultados() {
             </div>` +
         jogos.map(j => {
             const d  = j.data_partida ? new Date(j.data_partida) : null;
-            const dt = d ? `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth()+1)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '—';
+            const db2 = d ? toBRT(d) : null;
+            const dt = db2 ? `${pad2(db2.getUTCDate())}/${pad2(db2.getUTCMonth()+1)} ${pad2(db2.getUTCHours())}:${pad2(db2.getUTCMinutes())}` : '—';
             const sc = j.placar_oculto ? '5+' : (j.gol_casa != null ? `${j.gol_casa}-${j.gol_fora}` : '–');
             const hit = fi ? checa(j, fi.id) : false;
             const cor = j.placar_oculto ? '#f87171' : hit ? '#4ade80' : '#f87171';
@@ -2799,7 +2809,8 @@ async function renderDetalheClube(nomeTime) {
         const corBg  = res==='V'?'#14532d':res==='E'?'#1e1b4b':'#3b0a0a';
         const lado   = isC ? 'Casa' : 'Fora';
         const _pd = p.data_partida ? new Date(p.data_partida) : null;
-        const data   = _pd ? `${pad2(_pd.getUTCDate())}/${pad2(_pd.getUTCMonth()+1)} ${pad2(_pd.getUTCHours())}:${pad2(_pd.getUTCMinutes())}` : '';
+        const _pdb = _pd ? toBRT(_pd) : null;
+        const data   = _pdb ? `${pad2(_pdb.getUTCDate())}/${pad2(_pdb.getUTCMonth()+1)} ${pad2(_pdb.getUTCHours())}:${pad2(_pdb.getUTCMinutes())}` : '';
         return `<tr>
             <td style="padding:4px 8px;color:#475569;font-size:10px">${data}</td>
             <td style="padding:4px 8px;font-size:10px;color:#94a3b8">${lado}</td>
