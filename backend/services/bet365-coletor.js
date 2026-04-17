@@ -578,17 +578,13 @@ class Bet365Coletor {
             try {
                 let startDt = null;
                 if (ev.horario && /^\d{1,2}[.:]\d{2}$/.test(ev.horario)) {
-                    const [hBRT, m] = ev.horario.replace('.', ':').split(':').map(Number);
-                    // Bet365 BR exibe horário em BRT (UTC-3). Converter para UTC real somando 3h.
-                    // Date.setUTCHours lida com overflow (ex: 23+3=26 → próximo dia hora 2)
-                    const d = new Date();
-                    d.setUTCHours(hBRT + 3, m, 0, 0);
-                    // Ajuste de data: setUTCHours mantém o dia atual, mas o horário pode ser
-                    // de amanhã (ex: "00:47 BRT" às 20:49 BRT → 03:47 UTC = 20h no passado)
-                    // ou de ontem (ex: jogo coletado após meia-noite referindo ao dia anterior)
-                    if (d.getTime() < Date.now() - 12 * 3600000) d.setUTCDate(d.getUTCDate() + 1); // muito no passado → é amanhã
-                    if (d.getTime() > Date.now() + 12 * 3600000) d.setUTCDate(d.getUTCDate() - 1); // muito no futuro → era ontem
-                    startDt = d;
+                    const [h, m] = ev.horario.replace('.', ':').split(':').map(Number);
+                    // Convenção: salva o horário da Bet365 diretamente como UTC.
+                    // O frontend lê UTC e exibe como está — sem conversão de fuso.
+                    let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), h, m, 0, 0);
+                    if (ms > Date.now() + 90 * 60000) ms -= 86400000; // muito futuro → é de ontem
+                    if (ms < Date.now() - 30 * 60000) ms += 86400000; // >30min atrás → é amanhã
+                    startDt = new Date(ms);
                 }
                 const agora = new Date();
                 await pool.request()
@@ -715,26 +711,33 @@ class Bet365Coletor {
                     if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
                 }
 
-                // Fallback 2: sem start_time do evento → busca registro recente no histórico
-                // para reutilizar o mesmo data_partida (= mesmo eventoId) e evitar duplicatas.
+                // Fallback 2: sem start_time do evento → tenta horario bruto ou busca registro recente
                 if (!dataPart) {
-                    const recente = await pool.request()
-                        .input('liga3',     sql.NVarChar(200), res.liga)
-                        .input('timeCasa3', sql.NVarChar(100), res.timeCasa)
-                        .input('timeFora3', sql.NVarChar(100), res.timeFora)
-                        .query(`
-                            SELECT TOP 1 data_partida FROM bet365_historico_partidas
-                            WHERE liga = @liga3 AND time_casa = @timeCasa3 AND time_fora = @timeFora3
-                              AND data_partida >= DATEADD(MINUTE, -30, GETUTCDATE())
-                            ORDER BY data_partida DESC
-                        `);
-                    if (recente.recordset.length > 0) {
-                        // Reutiliza timestamp existente → mesmo eventoId → MERGE atualiza (sem duplicata)
-                        dataPart = new Date(recente.recordset[0].data_partida);
+                    if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
+                        // Horário da Bet365 salvo diretamente como UTC (mesma convenção dos eventos)
+                        const [hh, mm] = res.horario.replace('.', ':').split(':').map(Number);
+                        let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), hh, mm, 0, 0);
+                        if (ms > Date.now() + 90 * 60000) ms -= 86400000;
+                        dataPart = new Date(ms);
                     } else {
-                        // Primeiro registro: usa instante atual com segundos zerados
-                        dataPart = new Date();
-                        dataPart.setUTCSeconds(0, 0);
+                        // Sem horário válido → busca registro recente no histórico para reutilizar
+                        // o mesmo data_partida (= mesmo eventoId) e evitar duplicatas
+                        const recente = await pool.request()
+                            .input('liga3',     sql.NVarChar(200), res.liga)
+                            .input('timeCasa3', sql.NVarChar(100), res.timeCasa)
+                            .input('timeFora3', sql.NVarChar(100), res.timeFora)
+                            .query(`
+                                SELECT TOP 1 data_partida FROM bet365_historico_partidas
+                                WHERE liga = @liga3 AND time_casa = @timeCasa3 AND time_fora = @timeFora3
+                                  AND data_partida >= DATEADD(MINUTE, -30, GETUTCDATE())
+                                ORDER BY data_partida DESC
+                            `);
+                        if (recente.recordset.length > 0) {
+                            dataPart = new Date(recente.recordset[0].data_partida);
+                        } else {
+                            dataPart = new Date();
+                            dataPart.setUTCSeconds(0, 0);
+                        }
                     }
                 }
 
