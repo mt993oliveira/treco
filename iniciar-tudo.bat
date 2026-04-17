@@ -8,6 +8,11 @@ echo   CONTROLFINANCE - BET365 FUTEBOL VIRTUAL
 echo ============================================
 echo.
 
+echo [0/2] Atualizando codigo do servidor...
+cd /d C:\PRODUCAO
+git pull origin master
+echo.
+
 echo [1/2] Abrindo Edge com debug...
 start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --remote-debugging-port=9222 ^
