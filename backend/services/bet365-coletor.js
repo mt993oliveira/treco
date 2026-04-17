@@ -692,10 +692,17 @@ class Bet365Coletor {
 
                 if (evDb.recordset.length > 0) {
                     const ev = evDb.recordset[0];
-                    if (ev.start_time_datetime) dataPart = new Date(ev.start_time_datetime);
+                    // Sempre aproveita as odds do evento encontrado
                     oddCasa   = parseFloat(ev.odd_casa)   || 0;
                     oddEmpate = parseFloat(ev.odd_empate) || 0;
                     oddFora   = parseFloat(ev.odd_fora)   || 0;
+                    // Só usa o timestamp se o evento é recente (< 2h atrás)
+                    // Eventos mais antigos indicam par de times errado ou jogo de outra rodada
+                    if (ev.start_time_datetime) {
+                        const found = new Date(ev.start_time_datetime);
+                        const diffMs = Date.now() - found.getTime();
+                        if (diffMs >= 0 && diffMs < 2 * 3600000) dataPart = found;
+                    }
                 }
 
                 // Fallback 1: memória do ciclo atual
