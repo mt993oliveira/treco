@@ -583,8 +583,11 @@ class Bet365Coletor {
                     // Date.setUTCHours lida com overflow (ex: 23+3=26 → próximo dia hora 2)
                     const d = new Date();
                     d.setUTCHours(hBRT + 3, m, 0, 0);
-                    // Se resultado ficou mais de 12h no futuro, era o dia anterior
-                    if (d.getTime() > Date.now() + 12 * 3600000) d.setUTCDate(d.getUTCDate() - 1);
+                    // Ajuste de data: setUTCHours mantém o dia atual, mas o horário pode ser
+                    // de amanhã (ex: "00:47 BRT" às 20:49 BRT → 03:47 UTC = 20h no passado)
+                    // ou de ontem (ex: jogo coletado após meia-noite referindo ao dia anterior)
+                    if (d.getTime() < Date.now() - 12 * 3600000) d.setUTCDate(d.getUTCDate() + 1); // muito no passado → é amanhã
+                    if (d.getTime() > Date.now() + 12 * 3600000) d.setUTCDate(d.getUTCDate() - 1); // muito no futuro → era ontem
                     startDt = d;
                 }
                 const agora = new Date();
@@ -707,8 +710,11 @@ class Bet365Coletor {
 
                 // Fallback 2: nenhum evento passado encontrado no DB → usa instante atual
                 // (res.horario retorna valor de odds como "0.55", não é hora válida)
+                // Zera os segundos para estabilizar o eventoId entre ciclos consecutivos
+                // (evita inserir o mesmo resultado com IDs diferentes a cada minuto)
                 if (!dataPart) {
                     dataPart = new Date();
+                    dataPart.setUTCSeconds(0, 0);
                 }
 
                 // Hash inclui data UTC + HH:MM para unicidade por dia e horário
