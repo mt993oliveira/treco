@@ -715,13 +715,27 @@ class Bet365Coletor {
                     if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
                 }
 
-                // Fallback 2: nenhum evento passado encontrado no DB → usa instante atual
-                // (res.horario retorna valor de odds como "0.55", não é hora válida)
-                // Zera os segundos para estabilizar o eventoId entre ciclos consecutivos
-                // (evita inserir o mesmo resultado com IDs diferentes a cada minuto)
+                // Fallback 2: sem start_time do evento → busca registro recente no histórico
+                // para reutilizar o mesmo data_partida (= mesmo eventoId) e evitar duplicatas.
                 if (!dataPart) {
-                    dataPart = new Date();
-                    dataPart.setUTCSeconds(0, 0);
+                    const recente = await pool.request()
+                        .input('liga3',     sql.NVarChar(200), res.liga)
+                        .input('timeCasa3', sql.NVarChar(100), res.timeCasa)
+                        .input('timeFora3', sql.NVarChar(100), res.timeFora)
+                        .query(`
+                            SELECT TOP 1 data_partida FROM bet365_historico_partidas
+                            WHERE liga = @liga3 AND time_casa = @timeCasa3 AND time_fora = @timeFora3
+                              AND data_partida >= DATEADD(MINUTE, -30, GETUTCDATE())
+                            ORDER BY data_partida DESC
+                        `);
+                    if (recente.recordset.length > 0) {
+                        // Reutiliza timestamp existente → mesmo eventoId → MERGE atualiza (sem duplicata)
+                        dataPart = new Date(recente.recordset[0].data_partida);
+                    } else {
+                        // Primeiro registro: usa instante atual com segundos zerados
+                        dataPart = new Date();
+                        dataPart.setUTCSeconds(0, 0);
+                    }
                 }
 
                 // Hash inclui data UTC + HH:MM para unicidade por dia e horário

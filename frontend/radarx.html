@@ -2135,23 +2135,30 @@ function renderTabela() {
         const brtH = toBRT(hora);
         const horaStr = `${pad2(brtH.getUTCDate())}/${pad2(brtH.getUTCMonth()+1)} ${pad2(brtH.getUTCHours())}:00`;
 
-        // Mapeia cada jogo ao slot do seu minuto exato dentro da hora
+        // Deduplicar: para cada par (time_casa x time_fora) manter apenas o registro mais recente.
+        // Isso elimina duplicatas no banco que causam jogos em colunas erradas.
+        const dedupMap = new Map();
+        grupo.jogos.forEach(j => {
+            const key = `${j.time_casa}|${j.time_fora}`;
+            const ex = dedupMap.get(key);
+            if (!ex || new Date(j.data_partida) > new Date(ex.data_partida)) dedupMap.set(key, j);
+        });
+
+        // Mapeia cada jogo ao slot do seu minuto exato dentro da hora.
+        // Regra: jogo coletado às 21:04 → linha 21:00, coluna :04. Ponto final.
         const slotMap = new Array(N).fill(null);
-        const sorted = [...grupo.jogos].sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
+        const sorted = [...dedupMap.values()].sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
         sorted.forEach(j => {
             if (!j.data_partida) return;
-            const min = new Date(j.data_partida).getUTCMinutes(); // UTC = horário Bet365
-            // Busca o índice exato na lista de minutos canônicos da liga
+            const min = new Date(j.data_partida).getUTCMinutes();
             let idx = minuteSlots.indexOf(min);
             if (idx < 0) {
-                // Minuto não está na lista (ex: dado antigo) → slot mais próximo
+                // Minuto não está na lista → slot mais próximo
                 idx = minuteSlots.findIndex(m => m >= min);
                 if (idx < 0) idx = N - 1;
             }
+            // Nunca vazar para slot adjacente — cada jogo fica exatamente na sua coluna
             if (!slotMap[idx]) slotMap[idx] = j;
-            else {
-                for (let s = idx + 1; s < N; s++) { if (!slotMap[s]) { slotMap[s] = j; break; } }
-            }
         });
 
         const jogosComDados = slotMap.filter(Boolean);
