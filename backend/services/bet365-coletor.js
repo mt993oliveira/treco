@@ -582,8 +582,11 @@ class Bet365Coletor {
                     // Convenção: salva o horário da Bet365 diretamente como UTC.
                     // O frontend lê UTC e exibe como está — sem conversão de fuso.
                     let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), h, m, 0, 0);
-                    if (ms > Date.now() + 90 * 60000) ms -= 86400000; // muito futuro → é de ontem
-                    if (ms < Date.now() - 30 * 60000) ms += 86400000; // >30min atrás → é amanhã
+                    // Rollover: compara contra "BRT now" (= real UTC - 3h) para evitar adicionar
+                    // 1 dia a eventos atuais que, na convenção BRT-as-UTC, parecem 3h no passado.
+                    const nowBRT = Date.now() - 3 * 3600000;
+                    if (ms > nowBRT + 90 * 60000) ms -= 86400000; // muito futuro → é de ontem
+                    if (ms < nowBRT - 30 * 60000) ms += 86400000; // >30min atrás → é amanhã
                     startDt = new Date(ms);
                 }
                 const agora = new Date();
@@ -711,33 +714,27 @@ class Bet365Coletor {
                     if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
                 }
 
-                // Fallback 2: sem start_time do evento → tenta horario bruto ou busca registro recente
+                // Fallback 2: sem start_time do evento → busca registro recente no histórico
+                // para reutilizar o mesmo data_partida (= mesmo eventoId) e evitar duplicatas.
+                // Se não encontrar, usa BRT "agora" (real UTC - 3h) como timestamp.
                 if (!dataPart) {
-                    if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
-                        // Horário da Bet365 salvo diretamente como UTC (mesma convenção dos eventos)
-                        const [hh, mm] = res.horario.replace('.', ':').split(':').map(Number);
-                        let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), hh, mm, 0, 0);
-                        if (ms > Date.now() + 90 * 60000) ms -= 86400000;
-                        dataPart = new Date(ms);
+                    const recente = await pool.request()
+                        .input('liga3',     sql.NVarChar(200), res.liga)
+                        .input('timeCasa3', sql.NVarChar(100), res.timeCasa)
+                        .input('timeFora3', sql.NVarChar(100), res.timeFora)
+                        .query(`
+                            SELECT TOP 1 data_partida FROM bet365_historico_partidas
+                            WHERE liga = @liga3 AND time_casa = @timeCasa3 AND time_fora = @timeFora3
+                              AND data_partida >= DATEADD(MINUTE, -30, GETUTCDATE())
+                            ORDER BY data_partida DESC
+                        `);
+                    if (recente.recordset.length > 0) {
+                        // Reutiliza timestamp existente → mesmo eventoId → MERGE atualiza (sem duplicata)
+                        dataPart = new Date(recente.recordset[0].data_partida);
                     } else {
-                        // Sem horário válido → busca registro recente no histórico para reutilizar
-                        // o mesmo data_partida (= mesmo eventoId) e evitar duplicatas
-                        const recente = await pool.request()
-                            .input('liga3',     sql.NVarChar(200), res.liga)
-                            .input('timeCasa3', sql.NVarChar(100), res.timeCasa)
-                            .input('timeFora3', sql.NVarChar(100), res.timeFora)
-                            .query(`
-                                SELECT TOP 1 data_partida FROM bet365_historico_partidas
-                                WHERE liga = @liga3 AND time_casa = @timeCasa3 AND time_fora = @timeFora3
-                                  AND data_partida >= DATEADD(MINUTE, -30, GETUTCDATE())
-                                ORDER BY data_partida DESC
-                            `);
-                        if (recente.recordset.length > 0) {
-                            dataPart = new Date(recente.recordset[0].data_partida);
-                        } else {
-                            dataPart = new Date();
-                            dataPart.setUTCSeconds(0, 0);
-                        }
+                        // Primeiro registro: usa BRT agora (= real UTC - 3h) para manter convenção
+                        dataPart = new Date(Date.now() - 3 * 3600000);
+                        dataPart.setUTCSeconds(0, 0);
                     }
                 }
 
