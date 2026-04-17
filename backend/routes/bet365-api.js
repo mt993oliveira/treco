@@ -498,7 +498,7 @@ router.get('/historico-tabela', async (req, res) => {
                 ISNULL(placar_oculto, 0) AS placar_oculto
             FROM bet365_historico_partidas
             WHERE data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
-              AND data_partida <= GETUTCDATE()
+              AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
         `;
 
         if (liga && liga !== 'all') {
@@ -517,7 +517,7 @@ router.get('/historico-tabela', async (req, res) => {
                 FROM bet365_historico_partidas
                 WHERE liga IS NOT NULL AND liga <> ''
                   AND data_partida >= DATEADD(HOUR, -@horas2, GETUTCDATE())
-                  AND data_partida <= GETUTCDATE()
+                  AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
                 GROUP BY liga
                 ORDER BY total DESC
             `);

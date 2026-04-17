@@ -1110,7 +1110,7 @@ const TEAM_ALIASES = {
 };
 
 // Offset alinhado com fuso do servidor SQL (BRT = UTC-3); grid usa UTC puro
-const BET365_OFFSET_MS = 0;
+const BET365_OFFSET_MS = 1 * 3600 * 1000; // Bet365 exibe UTC+1 (BST/Reino Unido)
 
 function normalizarLiga(nome) {
     const key = (nome || '').toLowerCase().trim();

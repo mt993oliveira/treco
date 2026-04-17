@@ -582,11 +582,11 @@ class Bet365Coletor {
                     // Convenção: salva o horário da Bet365 diretamente como UTC.
                     // O frontend lê UTC e exibe como está — sem conversão de fuso.
                     let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), h, m, 0, 0);
-                    // Rollover: compara contra "BRT now" (= real UTC - 3h) para evitar adicionar
-                    // 1 dia a eventos atuais que, na convenção BRT-as-UTC, parecem 3h no passado.
-                    const nowBRT = Date.now() - 3 * 3600000;
-                    if (ms > nowBRT + 90 * 60000) ms -= 86400000; // muito futuro → é de ontem
-                    if (ms < nowBRT - 30 * 60000) ms += 86400000; // >30min atrás → é amanhã
+                    // Bet365 exibe UTC+1 (BST). O "agora" na convenção armazenada é Date.now()+1h.
+                    // Rollover: compara contra esse "now Bet365" para não errar o dia.
+                    const nowB365 = Date.now() + 1 * 3600000;
+                    if (ms > nowB365 + 90 * 60000) ms -= 86400000; // muito futuro → era ontem
+                    if (ms < nowB365 - 30 * 60000) ms += 86400000; // >30min atrás → é amanhã
                     startDt = new Date(ms);
                 }
                 const agora = new Date();
@@ -685,7 +685,8 @@ class Bet365Coletor {
                         WHERE league_name = @liga2
                           AND time_casa   = @timeCasa2
                           AND time_fora   = @timeFora2
-                          AND start_time_datetime BETWEEN DATEADD(HOUR,-4,GETUTCDATE()) AND DATEADD(MINUTE,5,GETUTCDATE())
+                          -- Bet365 armazena UTC+1: janela de -3h a +65min em relação ao UTC real
+                          AND start_time_datetime BETWEEN DATEADD(HOUR,-3,GETUTCDATE()) AND DATEADD(MINUTE,65,GETUTCDATE())
                         ORDER BY start_time_datetime DESC
                     `);
 
@@ -695,13 +696,7 @@ class Bet365Coletor {
                     oddCasa   = parseFloat(ev.odd_casa)   || 0;
                     oddEmpate = parseFloat(ev.odd_empate) || 0;
                     oddFora   = parseFloat(ev.odd_fora)   || 0;
-                    // Só usa o timestamp se o evento é recente (< 2h atrás)
-                    // Eventos mais antigos indicam par de times errado ou jogo de outra rodada
-                    if (ev.start_time_datetime) {
-                        const found = new Date(ev.start_time_datetime);
-                        const diffMs = Date.now() - found.getTime();
-                        if (diffMs >= 0 && diffMs < 2 * 3600000) dataPart = found;
-                    }
+                    if (ev.start_time_datetime) dataPart = new Date(ev.start_time_datetime);
                 }
 
                 // Fallback 1: memória do ciclo atual
@@ -732,8 +727,8 @@ class Bet365Coletor {
                         // Reutiliza timestamp existente → mesmo eventoId → MERGE atualiza (sem duplicata)
                         dataPart = new Date(recente.recordset[0].data_partida);
                     } else {
-                        // Primeiro registro: usa BRT agora (= real UTC - 3h) para manter convenção
-                        dataPart = new Date(Date.now() - 3 * 3600000);
+                        // Primeiro registro: usa "Bet365 agora" (= real UTC + 1h) para manter convenção
+                        dataPart = new Date(Date.now() + 1 * 3600000);
                         dataPart.setUTCSeconds(0, 0);
                     }
                 }
