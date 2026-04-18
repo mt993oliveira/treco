@@ -1128,8 +1128,8 @@ router.get('/analise/mercados', async (req, res) => {
         // ── Denominador CORRETO: total de jogos com aquele mercado na liga
         // (window function SUM OVER PARTITION) — NOT COUNT(evento_id) por seleção
         // que dá sempre 100% pois cada jogo só registra a seleção vencedora.
-        const havingMinVE  = minVEN  > 0     ? `AND ve >= @minVE`       : '';
-        const havingVB     = soValueBets === '1' ? `AND ve >= 0.95`      : '';
+        const havingMinVE  = minVEN  > 0     ? `AND ve_raw >= @minVE`   : '';
+        const havingVB     = soValueBets === '1' ? `AND ve_raw >= 0.95`  : '';
 
         const result = await request.query(`
             WITH base AS (
@@ -1375,9 +1375,9 @@ router.get('/analise/resumo', async (req, res) => {
 
         const diasWhere  = diasNum < 9999 ? `AND data_partida >= DATEADD(DAY,-${diasNum},GETUTCDATE())` : '';
         const ligaWhere  = (liga && liga !== 'all') ? `AND liga = '${liga.replace(/'/g,"''")}'` : '';
-        const vbHaving   = soValueBets === '1' || minVEN > 0
-            ? `AND (COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) >= ${minVEN}`
-            : `AND (COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) >= 0.90`;
+        // threshold de VE para value bets (referencia ve_raw do CTE)
+        const veThreshold = (soValueBets === '1' || minVEN > 0) ? Math.max(minVEN, 0) : 0.90;
+        const vbWhere    = `AND ve_raw >= ${veThreshold}`;
 
         const [vol, porLiga, topMkt, valueBets] = await Promise.all([
             // Volume geral (filtrado pelo período e liga)
@@ -1441,7 +1441,7 @@ router.get('/analise/resumo', async (req, res) => {
                     CAST(pct_raw AS DECIMAL(6,1)) AS pct,
                     CAST(ve_raw  AS DECIMAL(8,3)) AS valor_esperado
                 FROM calc
-                WHERE 1=1 ${vbHaving}
+                WHERE 1=1 ${vbWhere}
                 ORDER BY valor_esperado DESC
             `)
         ]);
