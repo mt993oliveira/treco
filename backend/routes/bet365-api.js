@@ -1071,4 +1071,291 @@ router.post('/limpar-ligas-erradas', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/bet365/analise/mercados
+ * Frequência e valor esperado de cada mercado/seleção por liga
+ * ?liga=Euro Cup&dias=7
+ */
+router.get('/analise/mercados', async (req, res) => {
+    try {
+        const { liga, dias = 7 } = req.query;
+        const diasNum = Math.min(parseInt(dias) || 7, 90);
+        const pool    = await getDbPool();
+        const request = pool.request().input('dias', sql.Int, diasNum);
+
+        let whereliga = '';
+        if (liga && liga !== 'all') {
+            whereliga = 'AND m.liga = @liga';
+            request.input('liga', sql.NVarChar(200), liga);
+        }
+
+        const result = await request.query(`
+            SELECT
+                m.liga,
+                m.mercado,
+                m.selecao,
+                COUNT(*)                                      AS vezes,
+                COUNT(DISTINCT m.evento_id)                   AS jogos_total,
+                CAST(COUNT(*) * 100.0 /
+                    NULLIF(COUNT(DISTINCT m.evento_id), 0)
+                    AS DECIMAL(5,1))                          AS pct_jogos,
+                AVG(CAST(m.odd_paga AS FLOAT))                AS odd_media,
+                -- Valor esperado: frequência × odd média (> 1.0 = value bet)
+                CAST(
+                    (COUNT(*) * 1.0 / NULLIF(COUNT(DISTINCT m.evento_id), 0))
+                    * AVG(CAST(m.odd_paga AS FLOAT))
+                    AS DECIMAL(5,3))                          AS valor_esperado
+            FROM bet365_resultados_mercados m
+            WHERE m.data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())
+            ${whereliga}
+            GROUP BY m.liga, m.mercado, m.selecao
+            HAVING COUNT(DISTINCT m.evento_id) >= 5
+            ORDER BY m.liga, m.mercado, vezes DESC
+        `);
+
+        // Agrupa por liga → mercado → seleções
+        const agrupado = {};
+        for (const r of result.recordset) {
+            if (!agrupado[r.liga]) agrupado[r.liga] = {};
+            if (!agrupado[r.liga][r.mercado]) agrupado[r.liga][r.mercado] = [];
+            agrupado[r.liga][r.mercado].push({
+                selecao:        r.selecao,
+                vezes:          r.vezes,
+                pct_jogos:      parseFloat(r.pct_jogos),
+                odd_media:      parseFloat((r.odd_media || 0).toFixed(2)),
+                valor_esperado: parseFloat(r.valor_esperado),
+                value_bet:      parseFloat(r.valor_esperado) >= 0.95
+            });
+        }
+
+        res.json({ success: true, dias: diasNum, data: agrupado });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * GET /api/bet365/analise/tendencias
+ * Compara frequência recente (últimos 20 jogos) vs histórico total por liga+mercado
+ * ?liga=Premiership
+ */
+router.get('/analise/tendencias', async (req, res) => {
+    try {
+        const { liga } = req.query;
+        const pool     = await getDbPool();
+        const request  = pool.request();
+
+        let whereliga = '';
+        if (liga && liga !== 'all') {
+            whereliga = 'AND liga = @liga';
+            request.input('liga', sql.NVarChar(200), liga);
+        }
+
+        // Histórico total por liga+mercado+seleção
+        const total = await pool.request().query(`
+            SELECT liga, mercado, selecao,
+                   COUNT(*) AS vezes,
+                   COUNT(DISTINCT evento_id) AS jogos
+            FROM bet365_resultados_mercados
+            WHERE 1=1 ${whereliga.replace('@liga', liga ? `'${liga.replace("'","''")}'` : "''")}
+            GROUP BY liga, mercado, selecao
+        `).catch(() => ({ recordset: [] }));
+
+        // Últimos 20 jogos por liga
+        const recente = await request.query(`
+            WITH ult AS (
+                SELECT liga, evento_id,
+                       ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
+                FROM bet365_resultados_mercados
+                ${whereliga}
+                GROUP BY liga, evento_id
+            )
+            SELECT m.liga, m.mercado, m.selecao,
+                   COUNT(*) AS vezes,
+                   COUNT(DISTINCT m.evento_id) AS jogos
+            FROM bet365_resultados_mercados m
+            INNER JOIN ult u ON u.liga = m.liga AND u.evento_id = m.evento_id AND u.rn <= 20
+            GROUP BY m.liga, m.mercado, m.selecao
+        `);
+
+        // Monta map do histórico total
+        const mapTotal = {};
+        for (const r of total.recordset) {
+            const k = `${r.liga}|${r.mercado}|${r.selecao}`;
+            mapTotal[k] = { vezes: r.vezes, jogos: r.jogos };
+        }
+
+        // Calcula tendência comparando recente vs total
+        const tendencias = [];
+        for (const r of recente.recordset) {
+            const k     = `${r.liga}|${r.mercado}|${r.selecao}`;
+            const hist  = mapTotal[k];
+            if (!hist || hist.jogos < 10 || r.jogos < 5) continue;
+
+            const pct_hist   = hist.vezes / hist.jogos * 100;
+            const pct_rec    = r.vezes    / r.jogos    * 100;
+            const variacao   = +(pct_rec - pct_hist).toFixed(1);
+            const tendencia  = variacao >= 10 ? 'subindo' : variacao <= -10 ? 'caindo' : 'estavel';
+
+            if (tendencia === 'estavel') continue; // só retorna mercados em movimento
+
+            tendencias.push({
+                liga:       r.liga,
+                mercado:    r.mercado,
+                selecao:    r.selecao,
+                pct_hist:   +pct_hist.toFixed(1),
+                pct_rec:    +pct_rec.toFixed(1),
+                variacao,
+                tendencia,
+                jogos_hist: hist.jogos,
+                jogos_rec:  r.jogos
+            });
+        }
+
+        tendencias.sort((a, b) => Math.abs(b.variacao) - Math.abs(a.variacao));
+
+        res.json({ success: true, total: tendencias.length, data: tendencias });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * GET /api/bet365/analise/sugestoes-avancadas
+ * Para cada evento futuro ativo, sugere os mercados com maior taxa histórica de acerto
+ */
+router.get('/analise/sugestoes-avancadas', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        // Eventos agendados
+        const eventos = await pool.query(`
+            SELECT id AS evento_id, league_name AS liga, time_casa, time_fora,
+                   start_time_datetime AS horario, odd_casa, odd_empate, odd_fora
+            FROM bet365_eventos
+            WHERE ativo = 1 AND status = 'AGENDADO'
+            ORDER BY start_time_datetime ASC
+        `);
+
+        if (eventos.recordset.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        // Estatísticas de mercados por liga (últimos 30 dias)
+        const statsLiga = await pool.query(`
+            SELECT
+                liga, mercado, selecao,
+                COUNT(*) AS vezes,
+                COUNT(DISTINCT evento_id) AS jogos,
+                CAST(COUNT(*) * 100.0 / NULLIF(COUNT(DISTINCT evento_id),0) AS DECIMAL(5,1)) AS pct,
+                AVG(CAST(odd_paga AS FLOAT)) AS odd_media
+            FROM bet365_resultados_mercados
+            WHERE data_partida >= DATEADD(DAY, -30, GETUTCDATE())
+            GROUP BY liga, mercado, selecao
+            HAVING COUNT(DISTINCT evento_id) >= 10
+        `);
+
+        // Monta mapa liga → lista de mercados ordenados por %
+        const mapLiga = {};
+        for (const r of statsLiga.recordset) {
+            if (!mapLiga[r.liga]) mapLiga[r.liga] = [];
+            mapLiga[r.liga].push({
+                mercado:   r.mercado,
+                selecao:   r.selecao,
+                pct:       parseFloat(r.pct),
+                odd_media: parseFloat((r.odd_media || 0).toFixed(2)),
+                jogos:     r.jogos,
+                valor_esp: parseFloat(((r.vezes / r.jogos) * (r.odd_media || 1)).toFixed(3))
+            });
+        }
+        for (const liga of Object.keys(mapLiga)) {
+            mapLiga[liga].sort((a, b) => b.pct - a.pct);
+        }
+
+        // Monta sugestões por evento
+        const sugestoes = eventos.recordset.map(ev => {
+            const mercadosLiga = mapLiga[ev.liga] || [];
+            const top = mercadosLiga.slice(0, 8); // top 8 mercados da liga
+            return {
+                evento_id:  ev.evento_id,
+                liga:       ev.liga,
+                time_casa:  ev.time_casa,
+                time_fora:  ev.time_fora,
+                horario:    ev.horario,
+                odd_casa:   ev.odd_casa,
+                odd_empate: ev.odd_empate,
+                odd_fora:   ev.odd_fora,
+                sugestoes:  top
+            };
+        });
+
+        res.json({ success: true, total: sugestoes.length, data: sugestoes });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * GET /api/bet365/analise/resumo
+ * Resumo geral da tabela de mercados para o painel de análise
+ */
+router.get('/analise/resumo', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+
+        const [vol, porLiga, topMkt, valueBets] = await Promise.all([
+            // Volume geral
+            pool.query(`
+                SELECT
+                    COUNT(DISTINCT evento_id) AS jogos,
+                    COUNT(*) AS mercados_total,
+                    COUNT(DISTINCT mercado) AS tipos_mercado,
+                    MIN(data_partida) AS primeiro_jogo,
+                    MAX(data_partida) AS ultimo_jogo
+                FROM bet365_resultados_mercados
+            `),
+            // Por liga
+            pool.query(`
+                SELECT liga,
+                    COUNT(DISTINCT evento_id) AS jogos,
+                    COUNT(*) AS mercados
+                FROM bet365_resultados_mercados
+                GROUP BY liga ORDER BY jogos DESC
+            `),
+            // Top 10 seleções mais frequentes
+            pool.query(`
+                SELECT TOP 10 mercado, selecao, COUNT(*) AS vezes,
+                    CAST(COUNT(*)*100.0/NULLIF((SELECT COUNT(DISTINCT evento_id) FROM bet365_resultados_mercados),0) AS DECIMAL(5,1)) AS pct
+                FROM bet365_resultados_mercados
+                GROUP BY mercado, selecao ORDER BY vezes DESC
+            `),
+            // Value bets: mercados onde valor_esperado >= 0.95 (frequência × odd média)
+            pool.query(`
+                SELECT TOP 10 liga, mercado, selecao,
+                    COUNT(DISTINCT evento_id) AS jogos,
+                    CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT evento_id),0) AS DECIMAL(5,1)) AS pct,
+                    CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media,
+                    CAST((COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,3)) AS valor_esperado
+                FROM bet365_resultados_mercados
+                WHERE data_partida >= DATEADD(DAY,-7,GETUTCDATE())
+                GROUP BY liga, mercado, selecao
+                HAVING COUNT(DISTINCT evento_id) >= 10
+                    AND (COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) >= 0.95
+                ORDER BY valor_esperado DESC
+            `)
+        ]);
+
+        res.json({
+            success:    true,
+            timestamp:  new Date().toISOString(),
+            volume:     vol.recordset[0],
+            por_liga:   porLiga.recordset,
+            top_selecoes: topMkt.recordset,
+            value_bets: valueBets.recordset
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 module.exports = router;
