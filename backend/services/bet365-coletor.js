@@ -680,7 +680,7 @@ class Bet365Coletor {
                     .input('timeCasa2', sql.NVarChar(100), res.timeCasa)
                     .input('timeFora2', sql.NVarChar(100), res.timeFora)
                     .query(`
-                        SELECT TOP 1 start_time_datetime, odd_casa, odd_empate, odd_fora
+                        SELECT TOP 1 id, start_time_datetime, odd_casa, odd_empate, odd_fora
                         FROM bet365_eventos
                         WHERE league_name = @liga2
                           AND time_casa   = @timeCasa2
@@ -690,9 +690,13 @@ class Bet365Coletor {
                         ORDER BY start_time_datetime DESC
                     `);
 
+                // eventoIdFixo: quando encontramos o evento, usamos o ID dele diretamente.
+                // Isso garante que bet365_historico.evento_id = bet365_eventos.id,
+                // permitindo JOIN correto para buscar mercados e odds completos.
+                let eventoIdFixo = null;
                 if (evDb.recordset.length > 0) {
                     const ev = evDb.recordset[0];
-                    // Sempre aproveita as odds do evento encontrado
+                    eventoIdFixo = ev.id;
                     oddCasa   = parseFloat(ev.odd_casa)   || 0;
                     oddEmpate = parseFloat(ev.odd_empate) || 0;
                     oddFora   = parseFloat(ev.odd_fora)   || 0;
@@ -733,10 +737,16 @@ class Bet365Coletor {
                     }
                 }
 
-                // Hash inclui data UTC + HH:MM para unicidade por dia e horário
-                const dataKey = `${dataPart.getUTCFullYear()}-${String(dataPart.getUTCMonth()+1).padStart(2,'0')}-${String(dataPart.getUTCDate()).padStart(2,'0')}`;
-                const timeKey = `${String(dataPart.getUTCHours()).padStart(2,'0')}:${String(dataPart.getUTCMinutes()).padStart(2,'0')}`;
-                const eventoId = this._gerarId(res.liga, res.timeCasa, res.timeFora, `${dataKey}|${timeKey}`);
+                // Usa o ID do evento encontrado (garante JOIN com bet365_eventos).
+                // Fallback: gera hash por data+hora (para resultados sem evento correspondente).
+                let eventoId;
+                if (eventoIdFixo) {
+                    eventoId = eventoIdFixo;
+                } else {
+                    const dataKey = `${dataPart.getUTCFullYear()}-${String(dataPart.getUTCMonth()+1).padStart(2,'0')}-${String(dataPart.getUTCDate()).padStart(2,'0')}`;
+                    const timeKey = `${String(dataPart.getUTCHours()).padStart(2,'0')}:${String(dataPart.getUTCMinutes()).padStart(2,'0')}`;
+                    eventoId = this._gerarId(res.liga, res.timeCasa, res.timeFora, `${dataKey}|${timeKey}`);
+                }
 
                 // ── 2. Verifica se já existe com placar real ──
                 const existe = await pool.request().input('evId', sql.BigInt, eventoId)
