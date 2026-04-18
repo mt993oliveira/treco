@@ -592,6 +592,12 @@
 <!-- ========== VIEW: ANÁLISE ========== -->
 <div id="view-analise-content" style="padding:14px 16px">
 
+    <!-- Value Bets — mercados pagos reais com retorno esperado positivo -->
+    <div id="analise-value-bets" style="display:none;margin-bottom:14px;background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (7 DIAS)</div>
+        <div id="analise-vb-lista"></div>
+    </div>
+
     <!-- Cards de ligas -->
     <div style="margin-bottom:14px">
         <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">DESEMPENHO POR LIGA — SUGESTÕES DE APOSTA</div>
@@ -1425,10 +1431,16 @@ function filtrarPartidas() {
 
 async function carregarSugestoes() {
     try {
-        const r = await fetch(`/api/bet365/sugestoes?n=${S.rankingN}`);
-        const d = await r.json();
-        if (!d.success) return;
-        S.sugestoes = d.data || [];
+        const [rSug, rMkt, rRes] = await Promise.all([
+            fetch(`/api/bet365/sugestoes?n=${S.rankingN}`).then(r => r.json()),
+            fetch('/api/bet365/analise/mercados?dias=7').then(r => r.json()).catch(() => ({ data: {} })),
+            fetch('/api/bet365/analise/resumo').then(r => r.json()).catch(() => ({}))
+        ]);
+        if (!rSug.success) return;
+        S.sugestoes     = rSug.data || [];
+        S.mktDados      = rMkt.data || {};
+        S.mktValueBets  = (rRes.value_bets || []);
+        S.mktTopSel     = (rRes.top_selecoes || []);
         if (S.view === 'analise') renderAnalise();
     } catch {}
 }
@@ -1449,6 +1461,30 @@ function renderAnalise() {
     }
 
     c.innerHTML = '';
+
+    // ── Value Bets do topo (baseado em mercados pagos reais) ──
+    const vbSection = document.getElementById('analise-value-bets');
+    if (vbSection) {
+        const vb = S.mktValueBets || [];
+        if (vb.length) {
+            vbSection.style.display = '';
+            document.getElementById('analise-vb-lista').innerHTML =
+                '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+                vb.slice(0,6).map(v => `
+                    <div style="background:#052e16;border:1px solid #166534;border-radius:6px;padding:8px 12px;flex:1;min-width:160px">
+                        <div style="font-size:9px;color:#475569">${v.liga}</div>
+                        <div style="font-size:10px;color:#94a3b8">${v.mercado}</div>
+                        <div style="font-size:12px;font-weight:800;color:#4ade80">→ ${v.selecao}</div>
+                        <div style="font-size:10px;margin-top:4px;display:flex;gap:6px">
+                            <span style="color:#fbbf24;font-weight:700">${v.pct}%</span>
+                            <span style="color:#60a5fa">odd ${v.odd_media}</span>
+                            <span style="background:#166534;color:#4ade80;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:800">VE ${v.valor_esperado}</span>
+                        </div>
+                    </div>`).join('') + '</div>';
+        } else {
+            vbSection.style.display = 'none';
+        }
+    }
 
     // Constrói mapa de sugestões por nome canônico
     const sugestoesMap = new Map();
@@ -1521,6 +1557,28 @@ function renderAnalise() {
         const streakBadge2 = melhor.streak_tipo === 'verde' ? 'badge-verde' : 'badge-verm';
         const streakIcon2  = melhor.streak_tipo === 'verde' ? '🟢' : '🔴';
 
+        // Top mercados pagos da liga (nova tabela)
+        const mktLiga = S.mktDados?.[liga.liga] || {};
+        const topMktLiga = [];
+        for (const mercado of Object.keys(mktLiga)) {
+            const sels = mktLiga[mercado];
+            if (sels.length) topMktLiga.push({ mercado, sel: sels[0] });
+        }
+        topMktLiga.sort((a,b) => b.sel.pct_jogos - a.sel.pct_jogos);
+        const top3Mkt = topMktLiga.slice(0, 3);
+
+        const mktHtml = top3Mkt.length ? `
+            <div style="background:#060810;border-radius:6px;padding:8px;margin-bottom:8px;border:1px solid #0d1f0d">
+                <div style="font-size:9px;color:#4ade80;font-weight:700;margin-bottom:5px">🎯 TOP MERCADOS PAGOS <span style="color:#334155">(7D)</span></div>
+                ${top3Mkt.map(m => `
+                    <div style="display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid #0f172a">
+                        <span style="font-size:9px;color:#475569;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.mercado}</span>
+                        <span style="font-size:10px;color:#e2e8f0;font-weight:700;white-space:nowrap">→ ${m.sel.selecao}</span>
+                        <span style="font-size:11px;font-weight:800;color:${m.sel.pct_jogos>=65?'#4ade80':m.sel.pct_jogos>=50?'#fbbf24':'#94a3b8'};min-width:36px;text-align:right">${m.sel.pct_jogos}%</span>
+                        ${m.sel.valor_esperado>=0.95?'<span style="font-size:8px;background:#166534;color:#4ade80;padding:1px 4px;border-radius:3px;font-weight:800">VE</span>':''}
+                    </div>`).join('')}
+            </div>` : '';
+
         const div = document.createElement('div');
         div.className = 'liga-card' + (selecionado ? ' selecionado' : '');
         div.onclick = () => { S.ligaCardSel = selecionado ? null : liga.liga; renderAnalise(); };
@@ -1534,6 +1592,7 @@ function renderAnalise() {
                 <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">TOP APOSTAS <span style="color:#334155">(últimos ${melhor.n_custom}J)</span></div>
                 ${linhasTop5}
             </div>
+            ${mktHtml}
             <div style="display:flex;gap:5px;flex-wrap:wrap">
                 <span class="badge ${streakBadge2}">${streakIcon2} ${melhor.streak} seguidos</span>
                 <span class="stat-pill">Geral <b>${melhor.tx_geral}%</b></span>
@@ -1556,6 +1615,31 @@ function renderAnalise() {
 
 function renderAnaliseDetalhe(liga) {
     const s = liga.stats;
+
+    // Mercados pagos desta liga
+    const mktLiga = S.mktDados?.[liga.liga] || {};
+    const mktRows = [];
+    for (const mercado of Object.keys(mktLiga)) {
+        for (const sel of mktLiga[mercado]) {
+            mktRows.push({ mercado, ...sel });
+        }
+    }
+    mktRows.sort((a,b) => b.pct_jogos - a.pct_jogos);
+    const mktDetalheHtml = mktRows.length ? `
+        <div style="margin-top:12px;border-top:1px solid #1e293b;padding-top:10px">
+            <div style="font-size:9px;font-weight:700;color:#4ade80;letter-spacing:.06em;margin-bottom:8px">🎯 MERCADOS PAGOS — ${liga.liga}</div>
+            ${mktRows.slice(0,10).map(r => {
+                const ve = r.valor_esperado || 0;
+                const cor = r.pct_jogos>=65?'#4ade80':r.pct_jogos>=50?'#fbbf24':'#f87171';
+                return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #0f172a;font-size:10px">
+                    <span style="color:#475569;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.mercado} → <b style="color:#e2e8f0">${r.selecao}</b></span>
+                    <span style="color:${cor};font-weight:800">${r.pct_jogos}%</span>
+                    <span style="color:#60a5fa">${r.odd_media}</span>
+                    ${ve>=0.95?'<span style="background:#166534;color:#4ade80;padding:1px 4px;border-radius:3px;font-size:8px;font-weight:800">VALUE</span>':''}
+                </div>`;
+            }).join('')}
+        </div>` : '';
+
     document.getElementById('detalhe-stats').innerHTML = `
         <div style="font-size:11px;font-weight:800;color:#e2e8f0;margin-bottom:10px">
             ${liga.liga.replace(/virtual/i,'').trim()}
@@ -1570,6 +1654,7 @@ function renderAnaliseDetalhe(liga) {
             ${statBar('Empate', s.pctEmpate, 100, '#a78bfa', '%')}
             ${statBar('Fora Vence', s.pctFora, 100, '#fb923c', '%')}
         </div>
+        ${mktDetalheHtml}
     `;
 
     const nAtual = S.rankingN;
