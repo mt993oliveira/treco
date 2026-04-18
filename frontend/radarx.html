@@ -1618,6 +1618,63 @@ async function carregarSugestoes(forceRender = false) {
 }
 
 // ============================================================
+// MERCADOS DIVERSIFICADOS — seleciona 1 melhor por categoria de mercado
+// em vez de sempre mostrar Over 0.5, Under 3.5, etc.
+// ============================================================
+function _mktDiversificado(mktLiga, maxItems = 6) {
+    const CATS = [
+        { cat: 'FT',         match: m => m === 'Resultado Final' },
+        { cat: 'HT',         match: m => m === 'Intervalo Resultado' },
+        { cat: 'HT/FT',      match: m => m.includes('Intervalo/Final') || m.includes('Intervalo / Final') },
+        { cat: 'Gols',       match: m => m.startsWith('Total de Gols') },
+        { cat: 'BTTS',       match: m => m === 'Ambos Marcam' },
+        { cat: 'Casa Marca', match: m => m.includes('Casa Marcar') || m.includes('Time da Casa Marcar') },
+        { cat: 'Fora Marca', match: m => m.includes('Visitante Marcar') || m.includes('Visitante Marca') },
+        { cat: 'Dupla',      match: m => m.includes('Chance Dupla') },
+    ];
+
+    // Flatten mktLiga { mercado: [selecoes] }
+    const flat = [];
+    for (const [mercado, sels] of Object.entries(mktLiga || {})) {
+        for (const s of (sels || [])) flat.push({ mercado, ...s });
+    }
+    if (flat.length === 0) return [];
+
+    // Pool filtrado: pct 15–80%, odd_media <= 15 (exclui mercados óbvios ou absurdos)
+    const filtered = flat.filter(m =>
+        m.pct_jogos >= 15 && m.pct_jogos <= 80 &&
+        (parseFloat(m.odd_media) || 999) <= 15
+    );
+    // Se filtro esvazia tudo (pouco histórico), usa pool completo
+    const pool = filtered.length > 0 ? filtered : flat;
+
+    // 1 melhor VE por categoria (primeira categoria que faz match)
+    const bestPerCat = new Map();
+    for (const m of pool) {
+        const ve = parseFloat(m.valor_esperado) || 0;
+        for (const { cat, match } of CATS) {
+            if (match(m.mercado)) {
+                const ex = bestPerCat.get(cat);
+                if (!ex || ve > (parseFloat(ex.valor_esperado) || 0)) {
+                    bestPerCat.set(cat, { ...m, _cat: cat });
+                }
+                break;
+            }
+        }
+    }
+
+    // Preenche slots restantes com os melhores não-escolhidos por VE
+    const usedKeys = new Set([...bestPerCat.values()].map(m => `${m.mercado}|${m.selecao}`));
+    const extras = pool
+        .filter(m => !usedKeys.has(`${m.mercado}|${m.selecao}`))
+        .sort((a, b) => (parseFloat(b.valor_esperado) || 0) - (parseFloat(a.valor_esperado) || 0));
+
+    return [...bestPerCat.values(), ...extras]
+        .sort((a, b) => (parseFloat(b.valor_esperado) || 0) - (parseFloat(a.valor_esperado) || 0))
+        .slice(0, maxItems);
+}
+
+// ============================================================
 // ANÁLISE CARDS
 // ============================================================
 function renderAnalise() {
@@ -1739,8 +1796,7 @@ function renderAnalise() {
         for (const [mercado, sels] of Object.entries(mktLiga)) {
             for (const s of (sels || [])) allMktRows.push({ mercado, ...s });
         }
-        allMktRows.sort((a,b) => b.pct_jogos - a.pct_jogos);
-        const top5Mkt = allMktRows.slice(0, 5);
+        const top5Mkt = _mktDiversificado(mktLiga, 5);
         const totalMktJogos = allMktRows.length > 0 ? (allMktRows[0].total_jogos || 0) : 0;
         const mktAviso = totalMktJogos < 20 ? `<span style="color:#f59e0b;font-size:8px"> ⚠️ ${totalMktJogos}j</span>` : '';
 
@@ -1750,8 +1806,9 @@ function renderAnalise() {
                 ${top5Mkt.map((m, i) => {
                     const cor = m.pct_jogos>=65?'#4ade80':m.pct_jogos>=50?'#fbbf24':'#94a3b8';
                     const ve = parseFloat(m.valor_esperado)||0;
+                    const catTag = m._cat ? `<span style="background:#0d1f3a;color:#60a5fa;font-size:8px;font-weight:700;padding:0 3px;border-radius:2px;margin-right:3px">${m._cat}</span>` : '';
                     return `<div style="display:flex;align-items:center;gap:4px;padding:4px 0;${i<top5Mkt.length-1?'border-bottom:1px solid #0f172a;':''}">
-                        <span style="font-size:9px;color:#475569;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${m.mercado}">${m.mercado}</span>
+                        <span style="font-size:9px;color:#475569;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${m.mercado}">${catTag}${m.mercado}</span>
                         <span style="font-size:10px;color:#e2e8f0;font-weight:700;white-space:nowrap">→ ${m.selecao}</span>
                         <span style="font-size:11px;font-weight:800;color:${cor};min-width:34px;text-align:right">${m.pct_jogos}%</span>
                         <span style="font-size:9px;color:#64748b;min-width:28px;text-align:right">${parseFloat(m.odd_media||0).toFixed(2)}</span>
@@ -3941,7 +3998,7 @@ function _hmRenderIACards(jogos, todasPartidas) {
         for (const [mercado, sels] of Object.entries(mktLigaIA)) {
             for (const s of (sels || [])) mktFlatIA.push({ mercado, ...s });
         }
-        mktFlatIA.sort((a,b) => b.pct_jogos - a.pct_jogos);
+        const mktDiversIA = _mktDiversificado(mktLigaIA, 5);
         const mktJogosIA = mktFlatIA.length > 0 ? (mktFlatIA[0].total_jogos || 0) : 0;
         const mktAvisoIA = mktJogosIA < 15 ? ` ⚠️${mktJogosIA}j` : '';
 
@@ -3949,9 +4006,10 @@ function _hmRenderIACards(jogos, todasPartidas) {
             const pct = m.pct_jogos;
             const cor = pct>=70?'#4ade80':pct>=55?'#fbbf24':pct>=40?'#94a3b8':'#f87171';
             const ve = parseFloat(m.valor_esperado||0);
+            const catBadge = m._cat ? `<span style="background:#1e293b;color:#64748b;padding:0 3px;border-radius:2px;font-size:8px;font-weight:700;margin-right:2px">${m._cat}</span>` : '';
             return `<div style="margin-bottom:5px">
                 <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:1px;gap:4px">
-                    <span style="color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${m.mercado} → ${m.selecao}">${m.mercado} → <b style="color:#e2e8f0">${m.selecao}</b></span>
+                    <span style="color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${m.mercado} → ${m.selecao}">${catBadge}${m.mercado} → <b style="color:#e2e8f0">${m.selecao}</b></span>
                     <div style="display:flex;gap:4px;flex-shrink:0">
                         <b style="color:${cor}">${pct}%</b>
                         <span style="color:#64748b">${parseFloat(m.odd_media||0).toFixed(2)}</span>
@@ -3965,7 +4023,7 @@ function _hmRenderIACards(jogos, todasPartidas) {
         };
 
         // ── Top sugestões: mercados pagos como PRIMARY, 1X2 edge como referência ──
-        const mktSugestoes = mktFlatIA.slice(0, 5).map((m, i) => ({
+        const mktSugestoes = mktDiversIA.map((m, i) => ({
             cat: 'Mercado', label: `${m.mercado} → ${m.selecao}`,
             labelShort: m.selecao,
             mercado: m.mercado,
@@ -4066,8 +4124,8 @@ function _hmRenderIACards(jogos, todasPartidas) {
             <!-- Mercados pagos da liga -->
             <div style="background:#0f172a;border-radius:5px;padding:8px;margin-bottom:8px">
                 <div style="font-size:9px;color:#60a5fa;font-weight:700;margin-bottom:6px">🎯 MERCADOS PAGOS NA LIGA<span style="color:#f59e0b">${mktAvisoIA}</span> · ${mktJogosIA} jogos</div>
-                ${mktFlatIA.length > 0
-                    ? `<div>${mktFlatIA.slice(0,5).map(mkMktBar).join('')}</div>`
+                ${mktDiversIA.length > 0
+                    ? `<div>${mktDiversIA.map(mkMktBar).join('')}</div>`
                     : `<div style="color:#334155;font-size:10px;text-align:center;padding:8px 0">⏳ Aguardando dados de mercados...</div>`
                 }
             </div>
