@@ -1125,30 +1125,34 @@ router.get('/analise/mercados', async (req, res) => {
 
         const whereClause = whereParts.length ? 'WHERE ' + whereParts.join(' AND ') : '';
 
-        const havingParts = ['COUNT(DISTINCT m.evento_id) >= @minJogos'];
-        if (minPctN > 0) havingParts.push(`CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT m.evento_id),0) AS DECIMAL(5,1)) >= @minPct`);
-        if (minVEN  > 0) havingParts.push(`CAST((COUNT(*)*1.0/NULLIF(COUNT(DISTINCT m.evento_id),0))*AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,3)) >= @minVE`);
-        if (soValueBets === '1') havingParts.push(`CAST((COUNT(*)*1.0/NULLIF(COUNT(DISTINCT m.evento_id),0))*AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,3)) >= 0.95`);
+        // ── Denominador CORRETO: total de jogos com aquele mercado na liga
+        // (window function SUM OVER PARTITION) — NOT COUNT(evento_id) por seleção
+        // que dá sempre 100% pois cada jogo só registra a seleção vencedora.
+        const havingMinVE  = minVEN  > 0     ? `AND ve >= @minVE`       : '';
+        const havingVB     = soValueBets === '1' ? `AND ve >= 0.95`      : '';
 
         const result = await request.query(`
+            WITH base AS (
+                SELECT
+                    m.liga,
+                    m.mercado,
+                    m.selecao,
+                    COUNT(*)                                                AS vezes,
+                    SUM(COUNT(*)) OVER (PARTITION BY m.liga, m.mercado)    AS total_jogos,
+                    CAST(AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,2))   AS odd_media
+                FROM bet365_resultados_mercados m
+                ${whereClause}
+                GROUP BY m.liga, m.mercado, m.selecao
+            )
             SELECT
-                m.liga,
-                m.mercado,
-                m.selecao,
-                COUNT(*)                                                           AS vezes,
-                COUNT(DISTINCT m.evento_id)                                        AS total_jogos,
-                CAST(COUNT(*) * 100.0 /
-                    NULLIF(COUNT(DISTINCT m.evento_id), 0) AS DECIMAL(5,1))        AS pct_jogos,
-                CAST(AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,2))              AS odd_media,
-                CAST(
-                    (COUNT(*) * 1.0 / NULLIF(COUNT(DISTINCT m.evento_id), 0))
-                    * AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,3))             AS valor_esperado
-            FROM bet365_resultados_mercados m
-            ${whereClause}
-            GROUP BY m.liga, m.mercado, m.selecao
-            HAVING ${havingParts.join(' AND ')}
-            ORDER BY m.liga, m.mercado,
-                     CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT m.evento_id),0) AS DECIMAL(5,1)) DESC
+                liga, mercado, selecao, vezes, total_jogos, odd_media,
+                CAST(vezes * 100.0 / NULLIF(total_jogos, 0) AS DECIMAL(5,1))          AS pct_jogos,
+                CAST((vezes * 1.0  / NULLIF(total_jogos, 0)) * odd_media AS DECIMAL(5,3)) AS ve
+            FROM base
+            WHERE total_jogos >= @minJogos
+              AND CAST(vezes * 100.0 / NULLIF(total_jogos, 0) AS DECIMAL(5,1)) >= @minPct
+              ${havingMinVE} ${havingVB}
+            ORDER BY liga, mercado, pct_jogos DESC
         `);
 
         // Agrupa por liga → mercado → seleções
@@ -1162,8 +1166,8 @@ router.get('/analise/mercados', async (req, res) => {
                 total_jogos:    r.total_jogos,
                 pct_jogos:      parseFloat(r.pct_jogos),
                 odd_media:      parseFloat(r.odd_media || 0),
-                valor_esperado: parseFloat(r.valor_esperado),
-                value_bet:      parseFloat(r.valor_esperado) >= 0.95
+                valor_esperado: parseFloat(r.ve || 0),
+                value_bet:      parseFloat(r.ve || 0) >= 0.95
             });
         }
 
@@ -1284,18 +1288,21 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
             return res.json({ success: true, data: [] });
         }
 
-        // Estatísticas de mercados por liga (últimos 30 dias)
+        // Estatísticas de mercados por liga — denominador correto (window function)
         const statsLiga = await pool.query(`
-            SELECT
-                liga, mercado, selecao,
-                COUNT(*) AS vezes,
-                COUNT(DISTINCT evento_id) AS jogos,
-                CAST(COUNT(*) * 100.0 / NULLIF(COUNT(DISTINCT evento_id),0) AS DECIMAL(5,1)) AS pct,
-                AVG(CAST(odd_paga AS FLOAT)) AS odd_media
-            FROM bet365_resultados_mercados
-            WHERE data_partida >= DATEADD(DAY, -30, GETUTCDATE())
-            GROUP BY liga, mercado, selecao
-            HAVING COUNT(DISTINCT evento_id) >= 10
+            WITH base AS (
+                SELECT liga, mercado, selecao,
+                    COUNT(*) AS vezes,
+                    SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
+                    CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media
+                FROM bet365_resultados_mercados
+                WHERE data_partida >= DATEADD(DAY, -30, GETUTCDATE())
+                GROUP BY liga, mercado, selecao
+            )
+            SELECT liga, mercado, selecao, vezes, total_jogos, odd_media,
+                CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(5,1)) AS pct
+            FROM base
+            WHERE total_jogos >= 10
         `);
 
         // Monta mapa liga → lista de mercados ordenados por %
@@ -1306,9 +1313,9 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
                 mercado:   r.mercado,
                 selecao:   r.selecao,
                 pct:       parseFloat(r.pct),
-                odd_media: parseFloat((r.odd_media || 0).toFixed(2)),
-                jogos:     r.jogos,
-                valor_esp: parseFloat(((r.vezes / r.jogos) * (r.odd_media || 1)).toFixed(3))
+                odd_media: parseFloat(r.odd_media || 0),
+                jogos:     r.total_jogos,
+                valor_esp: parseFloat(((r.vezes / (r.total_jogos || 1)) * (r.odd_media || 1)).toFixed(3))
             });
         }
         for (const liga of Object.keys(mapLiga)) {
@@ -1385,29 +1392,39 @@ router.get('/analise/resumo', async (req, res) => {
                 WHERE 1=1 ${diasWhere} ${ligaWhere}
                 GROUP BY liga ORDER BY jogos DESC
             `),
-            // Top 10 seleções mais frequentes (filtrado)
+            // Top 10 seleções mais frequentes — denominador correto (window function)
             pool.query(`
-                SELECT TOP 10 liga, mercado, selecao, COUNT(*) AS vezes,
-                    COUNT(DISTINCT evento_id) AS jogos,
-                    CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT evento_id),0) AS DECIMAL(5,1)) AS pct,
-                    CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media
-                FROM bet365_resultados_mercados
-                WHERE 1=1 ${diasWhere} ${ligaWhere}
-                GROUP BY liga, mercado, selecao
-                HAVING COUNT(DISTINCT evento_id) >= ${minJogosN}
-                ORDER BY vezes DESC
+                WITH base AS (
+                    SELECT liga, mercado, selecao,
+                        COUNT(*) AS vezes,
+                        SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
+                        CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media
+                    FROM bet365_resultados_mercados
+                    WHERE 1=1 ${diasWhere} ${ligaWhere}
+                    GROUP BY liga, mercado, selecao
+                )
+                SELECT TOP 10 liga, mercado, selecao, vezes, total_jogos, odd_media,
+                    CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(5,1)) AS pct
+                FROM base
+                WHERE total_jogos >= ${minJogosN}
+                ORDER BY pct DESC
             `),
-            // Value bets (filtrado por VE mínimo e período)
+            // Value bets — denominador correto (window function)
             pool.query(`
-                SELECT TOP 15 liga, mercado, selecao,
-                    COUNT(DISTINCT evento_id) AS jogos,
-                    CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT evento_id),0) AS DECIMAL(5,1)) AS pct,
-                    CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media,
-                    CAST((COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,3)) AS valor_esperado
-                FROM bet365_resultados_mercados
-                WHERE 1=1 ${diasWhere} ${ligaWhere}
-                GROUP BY liga, mercado, selecao
-                HAVING COUNT(DISTINCT evento_id) >= ${minJogosN}
+                WITH base AS (
+                    SELECT liga, mercado, selecao,
+                        COUNT(*) AS vezes,
+                        SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
+                        CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media
+                    FROM bet365_resultados_mercados
+                    WHERE 1=1 ${diasWhere} ${ligaWhere}
+                    GROUP BY liga, mercado, selecao
+                )
+                SELECT TOP 15 liga, mercado, selecao, vezes, total_jogos, odd_media,
+                    CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(5,1)) AS pct,
+                    CAST((vezes*1.0/NULLIF(total_jogos,0))*odd_media AS DECIMAL(5,3)) AS valor_esperado
+                FROM base
+                WHERE total_jogos >= ${minJogosN}
                     ${vbHaving}
                 ORDER BY valor_esperado DESC
             `)
