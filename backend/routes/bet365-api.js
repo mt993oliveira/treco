@@ -504,6 +504,7 @@ router.get('/historico-tabela', async (req, res) => {
             SELECT
                 id, evento_id, liga, time_casa, time_fora,
                 gol_casa, gol_fora, resultado,
+                gol_casa_ht, gol_fora_ht,
                 odd_casa, odd_empate, odd_fora,
                 data_partida,
                 ISNULL(resultado_estimado, 0) AS resultado_estimado,
