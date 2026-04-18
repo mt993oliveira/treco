@@ -771,12 +771,12 @@ class Bet365Coletor {
 
                 // Usa o ID do evento encontrado (garante JOIN com bet365_eventos).
                 // Fallback: gera hash por data+hora (para resultados sem evento correspondente).
+                const dataKey = `${dataPart.getUTCFullYear()}-${String(dataPart.getUTCMonth()+1).padStart(2,'0')}-${String(dataPart.getUTCDate()).padStart(2,'0')}`;
+                const timeKey = `${String(dataPart.getUTCHours()).padStart(2,'0')}:${String(dataPart.getUTCMinutes()).padStart(2,'0')}`;
                 let eventoId;
                 if (eventoIdFixo) {
                     eventoId = eventoIdFixo;
                 } else {
-                    const dataKey = `${dataPart.getUTCFullYear()}-${String(dataPart.getUTCMonth()+1).padStart(2,'0')}-${String(dataPart.getUTCDate()).padStart(2,'0')}`;
-                    const timeKey = `${String(dataPart.getUTCHours()).padStart(2,'0')}:${String(dataPart.getUTCMinutes()).padStart(2,'0')}`;
                     eventoId = this._gerarId(res.liga, res.timeCasa, res.timeFora, `${dataKey}|${timeKey}`);
                 }
 
