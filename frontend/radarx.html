@@ -578,6 +578,7 @@
     <button class="view-btn ativo" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
     <button class="view-btn" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
+    <button class="view-btn" id="view-mercados" onclick="setView('mercados')">📈 Mercados</button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
     <div class="master-only" style="width:1px;height:20px;background:#1e293b;margin:0 4px"></div>
     <button class="view-btn master-only" id="btn-buscar-resultados" onclick="buscarResultados()" title="Forçar busca de resultados finalizados"
@@ -823,6 +824,96 @@
                 </thead>
                 <tbody id="diag-logs-tbody">
                     <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando logs...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========== VIEW: MERCADOS ========== -->
+<div id="view-mercados-content" style="display:none;padding:12px 16px">
+
+    <!-- Filtros -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:12px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">LIGA</span>
+            <button class="secao-btn ativo" id="mkt-liga-all" onclick="setMktFiltro('liga','all')">Todas</button>
+            <button class="secao-btn" id="mkt-liga-World Cup" onclick="setMktFiltro('liga','World Cup')">World Cup</button>
+            <button class="secao-btn" id="mkt-liga-Euro Cup" onclick="setMktFiltro('liga','Euro Cup')">Euro Cup</button>
+            <button class="secao-btn" id="mkt-liga-Premiership" onclick="setMktFiltro('liga','Premiership')">Premiership</button>
+            <button class="secao-btn" id="mkt-liga-Express Cup" onclick="setMktFiltro('liga','Express Cup')">Express Cup</button>
+            <button class="secao-btn" id="mkt-liga-Super Liga Sul-Americana" onclick="setMktFiltro('liga','Super Liga Sul-Americana')">Super Liga</button>
+            <div style="width:1px;height:16px;background:#1e293b;margin:0 2px"></div>
+            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
+            <button class="secao-btn" id="mkt-dias-1" onclick="setMktFiltro('dias',1)">1D</button>
+            <button class="secao-btn ativo" id="mkt-dias-7" onclick="setMktFiltro('dias',7)">7D</button>
+            <button class="secao-btn" id="mkt-dias-30" onclick="setMktFiltro('dias',30)">30D</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">MERCADO</span>
+            <button class="secao-btn ativo" id="mkt-tipo-all" onclick="setMktFiltro('tipo','all')">Todos</button>
+            <button class="secao-btn" id="mkt-tipo-Resultado Final" onclick="setMktFiltro('tipo','Resultado Final')">Resultado FT</button>
+            <button class="secao-btn" id="mkt-tipo-Ambos Marcam" onclick="setMktFiltro('tipo','Ambos Marcam')">Ambas Marcam</button>
+            <button class="secao-btn" id="mkt-tipo-over" onclick="setMktFiltro('tipo','over')">Over/Under</button>
+            <button class="secao-btn" id="mkt-tipo-Total Exato de Gols" onclick="setMktFiltro('tipo','Total Exato de Gols')">Gols Exatos</button>
+            <button class="secao-btn" id="mkt-tipo-Intervalo Resultado" onclick="setMktFiltro('tipo','Intervalo Resultado')">HT Resultado</button>
+            <button class="secao-btn" id="mkt-tipo-Resultado Correto - Intervalo" onclick="setMktFiltro('tipo','Resultado Correto - Intervalo')">HT Placar</button>
+            <button class="secao-btn" id="mkt-tipo-Intervalo/Final do Jogo" onclick="setMktFiltro('tipo','Intervalo/Final do Jogo')">HT/FT</button>
+            <button class="secao-btn" id="mkt-tipo-Resultado Correto" onclick="setMktFiltro('tipo','Resultado Correto')">Placar Correto</button>
+            <button class="secao-btn" id="mkt-tipo-Chance Dupla" onclick="setMktFiltro('tipo','Chance Dupla')">Dupla Chance</button>
+        </div>
+    </div>
+
+    <!-- Resumo geral -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px" id="mkt-resumo-cards">
+        <div style="color:#334155;font-size:12px;padding:24px">Carregando...</div>
+    </div>
+
+    <!-- Value Bets -->
+    <div style="background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px;margin-bottom:12px" id="mkt-value-bets-wrap">
+        <div style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM RETORNO ESPERADO POSITIVO</div>
+        <div id="mkt-value-bets" style="color:#334155;font-size:12px">Carregando...</div>
+    </div>
+
+    <!-- Tendências -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📈 TENDÊNCIAS — MERCADOS EM MOVIMENTO (RECENTE VS HISTÓRICO)</div>
+        <div id="mkt-tendencias" style="color:#334155;font-size:12px">Carregando...</div>
+    </div>
+
+    <!-- Gráfico de mercados -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📊 FREQUÊNCIA DOS MERCADOS</div>
+        <div style="max-height:380px;overflow-y:auto" id="mkt-grafico-wrap">
+            <canvas id="mkt-chart" height="300"></canvas>
+        </div>
+    </div>
+
+    <!-- Sugestões IA para próximos jogos -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em;margin-bottom:8px">🤖 IA — SUGESTÕES PARA PRÓXIMOS JOGOS (BASE: MERCADOS PAGOS)</div>
+        <div id="mkt-sugestoes-ia" style="color:#334155;font-size:12px">Carregando...</div>
+    </div>
+
+    <!-- Tabela completa de mercados -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📋 TABELA COMPLETA DE MERCADOS</div>
+        <div style="overflow-x:auto">
+            <table class="tabela-hist" id="mkt-tabela" style="font-size:11px">
+                <thead>
+                    <tr>
+                        <th class="th-l" style="min-width:120px">Liga</th>
+                        <th class="th-l" style="min-width:200px">Mercado</th>
+                        <th class="th-l" style="min-width:160px">Seleção</th>
+                        <th>Vezes</th>
+                        <th>% Jogos</th>
+                        <th>Odd Média</th>
+                        <th>V.Esperado</th>
+                        <th>Value?</th>
+                    </tr>
+                </thead>
+                <tbody id="mkt-tabela-body">
+                    <tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Carregando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1219,12 +1310,16 @@ function setView(v) {
     document.getElementById('view-historico-content').style.display     = v === 'historico'    ? '' : 'none';
     document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
     document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
-    ['analise','historico','clubes','diagnostico'].forEach(id =>
-        document.getElementById('view-' + id).className = 'view-btn' + (v === id ? ' ativo' : ''));
+    document.getElementById('view-mercados-content').style.display      = v === 'mercados'     ? '' : 'none';
+    ['analise','historico','clubes','diagnostico','mercados'].forEach(id => {
+        const el = document.getElementById('view-' + id);
+        if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
+    });
     if (v === 'historico')   { carregarHistorico(); renderProximosJogos(); renderUltimosResultados(); }
     if (v === 'analise')     { renderAnalise(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); }
+    if (v === 'mercados')    { carregarMercados(); }
 }
 
 // ============================================================
@@ -4245,6 +4340,241 @@ document.addEventListener('DOMContentLoaded', () => {
             else el.classList.remove('aberto');
         }));
 });
+
+// ============================================================
+// VIEW: MERCADOS — análise inteligente baseada em bet365_resultados_mercados
+// ============================================================
+const MKT = { liga: 'all', dias: 7, tipo: 'all', chart: null, dados: null };
+
+function setMktFiltro(chave, valor) {
+    MKT[chave] = valor;
+    // Atualiza botões ativos
+    document.querySelectorAll(`[id^="mkt-${chave}-"]`).forEach(b => b.classList.remove('ativo'));
+    const btnId = `mkt-${chave}-${String(valor).replace(/[^a-zA-Z0-9]/g,'_')}`;
+    // Fallback: busca pelo onclick
+    document.querySelectorAll(`[id^="mkt-${chave}-"]`).forEach(b => {
+        if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${valor}'`)) b.classList.add('ativo');
+        if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(`,${valor})`)) b.classList.add('ativo');
+    });
+    carregarMercados();
+}
+
+async function carregarMercados() {
+    try {
+        const params = new URLSearchParams({ dias: MKT.dias });
+        if (MKT.liga !== 'all') params.set('liga', MKT.liga);
+
+        const [resumoRes, mktRes, tendRes, iaRes] = await Promise.all([
+            fetch('/api/bet365/analise/resumo').then(r => r.json()),
+            fetch('/api/bet365/analise/mercados?' + params).then(r => r.json()),
+            fetch('/api/bet365/analise/tendencias' + (MKT.liga !== 'all' ? '?liga=' + encodeURIComponent(MKT.liga) : '')).then(r => r.json()),
+            fetch('/api/bet365/analise/sugestoes-avancadas').then(r => r.json())
+        ]);
+
+        MKT.dados = { resumo: resumoRes, mercados: mktRes, tendencias: tendRes, ia: iaRes };
+        renderMktResumo(resumoRes);
+        renderMktValueBets(resumoRes);
+        renderMktTendencias(tendRes);
+        renderMktGrafico(mktRes);
+        renderMktSugestoesIA(iaRes);
+        renderMktTabela(mktRes);
+    } catch(e) {
+        console.error('Erro carregarMercados:', e);
+    }
+}
+
+function renderMktResumo(res) {
+    const v = res.volume || {};
+    const c = document.getElementById('mkt-resumo-cards');
+    if (!c) return;
+    const cards = [
+        { label: 'Jogos Analisados', valor: v.jogos || 0, cor: '#60a5fa' },
+        { label: 'Mercados Gravados', valor: (v.mercados_total || 0).toLocaleString('pt-BR'), cor: '#a78bfa' },
+        { label: 'Tipos de Mercado', valor: v.tipos_mercado || 0, cor: '#34d399' },
+        { label: 'Ligas', valor: (res.por_liga || []).length, cor: '#fbbf24' },
+    ];
+    c.innerHTML = cards.map(k => `
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;flex:1;min-width:130px">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:6px">${k.label.toUpperCase()}</div>
+            <div style="font-size:24px;font-weight:800;color:${k.cor}">${k.valor}</div>
+        </div>
+    `).join('');
+}
+
+function renderMktValueBets(res) {
+    const el = document.getElementById('mkt-value-bets');
+    if (!el) return;
+    const vb = (res.value_bets || []);
+    if (!vb.length) { el.innerHTML = '<span style="color:#475569">Ainda sem dados suficientes. Continue coletando.</span>'; return; }
+    el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">` + vb.map(v => `
+        <div style="background:#052e16;border:1px solid #166534;border-radius:6px;padding:8px 12px;min-width:200px;flex:1">
+            <div style="font-size:9px;color:#475569;margin-bottom:2px">${v.liga}</div>
+            <div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:2px">${v.mercado}</div>
+            <div style="font-size:12px;color:#4ade80;font-weight:800">→ ${v.selecao}</div>
+            <div style="display:flex;gap:8px;margin-top:6px;font-size:10px">
+                <span style="color:#94a3b8">${v.jogos} jogos</span>
+                <span style="color:#fbbf24;font-weight:700">${v.pct}%</span>
+                <span style="color:#60a5fa">odd ${v.odd_media}</span>
+                <span style="background:#166534;color:#4ade80;padding:1px 5px;border-radius:3px;font-weight:800">VE: ${v.valor_esperado}</span>
+            </div>
+        </div>
+    `).join('') + '</div>';
+}
+
+function renderMktTendencias(res) {
+    const el = document.getElementById('mkt-tendencias');
+    if (!el) return;
+    const t = (res.data || []).slice(0, 16);
+    if (!t.length) { el.innerHTML = '<span style="color:#475569">Aguardando dados suficientes para detectar tendências.</span>'; return; }
+    el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">` + t.map(r => {
+        const up = r.tendencia === 'subindo';
+        const cor = up ? '#4ade80' : '#f87171';
+        const bg  = up ? '#052e16' : '#3b0a0a';
+        const brd = up ? '#166534' : '#7f1d1d';
+        const ico = up ? '▲' : '▼';
+        return `
+        <div style="background:${bg};border:1px solid ${brd};border-radius:6px;padding:8px 12px;min-width:190px;flex:1">
+            <div style="font-size:9px;color:#475569;margin-bottom:2px">${r.liga}</div>
+            <div style="font-size:10px;font-weight:700;color:#94a3b8">${r.mercado}</div>
+            <div style="font-size:12px;color:${cor};font-weight:800;margin:3px 0">${ico} ${r.selecao}</div>
+            <div style="font-size:10px;display:flex;gap:8px">
+                <span style="color:#475569">hist: ${r.pct_hist}%</span>
+                <span style="color:${cor};font-weight:700">rec: ${r.pct_rec}%</span>
+                <span style="color:${cor};font-weight:800">${up ? '+' : ''}${r.variacao}%</span>
+            </div>
+        </div>`;
+    }).join('') + '</div>';
+}
+
+function renderMktGrafico(res) {
+    const canvas = document.getElementById('mkt-chart');
+    if (!canvas) return;
+
+    // Flatten dados filtrados por tipo
+    const dados = res.data || {};
+    const rows = [];
+    for (const liga of Object.keys(dados)) {
+        if (MKT.liga !== 'all' && liga !== MKT.liga) continue;
+        for (const mercado of Object.keys(dados[liga])) {
+            if (MKT.tipo !== 'all' && !mercado.includes(MKT.tipo)) continue;
+            for (const sel of dados[liga][mercado]) {
+                rows.push({ label: `${mercado} → ${sel.selecao}`, pct: sel.pct_jogos, odd: sel.odd_media, ve: sel.valor_esperado });
+            }
+        }
+    }
+    rows.sort((a,b) => b.pct - a.pct);
+    const top = rows.slice(0, 25);
+
+    if (MKT.chart) { MKT.chart.destroy(); MKT.chart = null; }
+    if (!top.length) { canvas.parentElement.innerHTML = '<div style="color:#334155;padding:24px;text-align:center">Sem dados para os filtros selecionados</div>'; return; }
+
+    // Recria canvas se necessário
+    canvas.parentElement.innerHTML = '<canvas id="mkt-chart"></canvas>';
+    const ctx = document.getElementById('mkt-chart').getContext('2d');
+
+    MKT.chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: top.map(r => r.label.length > 40 ? r.label.slice(0,40)+'…' : r.label),
+            datasets: [{
+                label: '% de Jogos',
+                data: top.map(r => r.pct),
+                backgroundColor: top.map(r => r.ve >= 0.95 ? '#14532d' : r.pct >= 60 ? '#1e3a5f' : '#1e293b'),
+                borderColor:     top.map(r => r.ve >= 0.95 ? '#4ade80' : r.pct >= 60 ? '#60a5fa' : '#334155'),
+                borderWidth: 1,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const r = top[ctx.dataIndex];
+                            return ` ${r.pct}% | odd ${r.odd} | VE: ${r.ve}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e293b' }, max: 100 },
+                y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#0f172a' } }
+            }
+        }
+    });
+}
+
+function renderMktSugestoesIA(res) {
+    const el = document.getElementById('mkt-sugestoes-ia');
+    if (!el) return;
+    const jogos = (res.data || []).filter(j => MKT.liga === 'all' || j.liga === MKT.liga).slice(0, 8);
+    if (!jogos.length) { el.innerHTML = '<span style="color:#475569">Nenhum jogo agendado no momento.</span>'; return; }
+
+    el.innerHTML = jogos.map(j => {
+        const top3 = (j.sugestoes || []).slice(0, 3);
+        const hora = j.horario ? new Date(j.horario) : null;
+        const horaStr = hora ? `${String(hora.getUTCHours()).padStart(2,'0')}:${String(hora.getUTCMinutes()).padStart(2,'0')}` : '--:--';
+        return `
+        <div class="ia-card" style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <div>
+                    <span style="font-size:9px;color:#475569">${j.liga}</span>
+                    <div style="font-size:13px;font-weight:700;color:#e2e8f0">${j.time_casa} <span style="color:#475569">x</span> ${j.time_fora}</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:11px;color:#60a5fa;font-weight:700">${horaStr}</div>
+                    <div style="font-size:9px;color:#334155">${j.odd_casa} / ${j.odd_empate} / ${j.odd_fora}</div>
+                </div>
+            </div>
+            ${top3.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + top3.map((s, i) => `
+                <div class="ia-best-bet" style="flex:1;min-width:150px${i===0?';border-color:#22c55e':''}"}>
+                    <div style="font-size:9px;color:#475569">${s.mercado}</div>
+                    <div style="font-size:12px;font-weight:800;color:${i===0?'#4ade80':'#94a3b8'}">→ ${s.selecao}</div>
+                    <div style="font-size:10px;margin-top:3px;display:flex;gap:6px">
+                        <span style="color:#fbbf24;font-weight:700">${s.pct}%</span>
+                        <span style="color:#60a5fa">odd ${s.odd_media}</span>
+                        <span style="color:${s.valor_esp>=0.95?'#4ade80':'#475569'}">${s.valor_esp>=0.95?'✓ VALUE':''}</span>
+                    </div>
+                </div>`).join('') + '</div>' : '<span style="color:#334155;font-size:10px">Sem histórico suficiente para essa liga</span>'}
+        </div>`;
+    }).join('');
+}
+
+function renderMktTabela(res) {
+    const tbody = document.getElementById('mkt-tabela-body');
+    if (!tbody) return;
+    const dados = res.data || {};
+    const rows = [];
+    for (const liga of Object.keys(dados)) {
+        if (MKT.liga !== 'all' && liga !== MKT.liga) continue;
+        for (const mercado of Object.keys(dados[liga])) {
+            if (MKT.tipo !== 'all' && !mercado.includes(MKT.tipo)) continue;
+            for (const sel of dados[liga][mercado]) {
+                rows.push({ liga, mercado, ...sel });
+            }
+        }
+    }
+    rows.sort((a,b) => b.pct_jogos - a.pct_jogos);
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Sem dados</td></tr>'; return; }
+
+    tbody.innerHTML = rows.map(r => {
+        const ve = r.valor_esperado || 0;
+        const veCor = ve >= 0.95 ? '#4ade80' : ve >= 0.80 ? '#fbbf24' : '#475569';
+        const pctCor = r.pct_jogos >= 70 ? '#4ade80' : r.pct_jogos >= 50 ? '#fbbf24' : '#f87171';
+        return `<tr>
+            <td class="td-l">${r.liga}</td>
+            <td class="td-l" style="color:#94a3b8">${r.mercado}</td>
+            <td class="td-l" style="color:#e2e8f0;font-weight:700">${r.selecao}</td>
+            <td>${r.vezes}</td>
+            <td style="color:${pctCor};font-weight:800">${r.pct_jogos}%</td>
+            <td style="color:#60a5fa">${r.odd_media}</td>
+            <td style="color:${veCor};font-weight:700">${ve}</td>
+            <td>${ve >= 0.95 ? '<span style="color:#4ade80;font-weight:800">✓ VALUE</span>' : ''}</td>
+        </tr>`;
+    }).join('');
+}
 </script>
 
 </div><!-- /#main-wrap -->
