@@ -217,6 +217,17 @@
             margin-top: 6px;
         }
 
+        /* FILTROS ANÁLISE */
+        .fa-btn {
+            background: #0f172a; color: #475569; border: 1px solid #1e293b;
+            border-radius: 4px; font-size: 9px; font-weight: 700; padding: 3px 7px;
+            cursor: pointer; transition: all .15s;
+        }
+        .fa-btn:hover { border-color: #334155; color: #94a3b8; }
+        .fa-btn-ativo { background: #1e3a5f; color: #60a5fa; border-color: #3b82f6; }
+        .fa-btn-reload { background: #1e3a5f; color: #60a5fa; border-color: #3b82f6; padding: 4px 12px; font-size: 10px; }
+        .fa-btn-reload:hover { background: #1d4ed8; color: #fff; }
+
         /* ESTATÍSTICAS AVANÇADAS */
         .stats-avancadas-grid {
             display: grid;
@@ -592,9 +603,110 @@
 <!-- ========== VIEW: ANÁLISE ========== -->
 <div id="view-analise-content" style="padding:14px 16px">
 
+    <!-- ── BARRA DE FILTROS DINÂMICOS ── -->
+    <div id="analise-filtros-bar" style="background:#0a0f1e;border:1px solid #1e3a5f;border-radius:8px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.08em;margin-bottom:8px">🔧 FILTROS DA ANÁLISE</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 20px;align-items:flex-end">
+
+            <!-- Período -->
+            <div>
+                <div style="font-size:8px;color:#475569;margin-bottom:4px">PERÍODO</div>
+                <div style="display:flex;gap:3px">
+                    <button onclick="faSet('dias',1)"      id="fa-dias-1"    class="fa-btn">1D</button>
+                    <button onclick="faSet('dias',3)"      id="fa-dias-3"    class="fa-btn">3D</button>
+                    <button onclick="faSet('dias',7)"      id="fa-dias-7"    class="fa-btn fa-btn-ativo">7D</button>
+                    <button onclick="faSet('dias',14)"     id="fa-dias-14"   class="fa-btn">14D</button>
+                    <button onclick="faSet('dias',30)"     id="fa-dias-30"   class="fa-btn">30D</button>
+                    <button onclick="faSet('dias','tudo')" id="fa-dias-tudo" class="fa-btn">Tudo</button>
+                </div>
+            </div>
+
+            <!-- Liga -->
+            <div>
+                <div style="font-size:8px;color:#475569;margin-bottom:4px">LIGA</div>
+                <select id="fa-liga-sel" onchange="faSet('liga',this.value)"
+                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
+                    <option value="all">Todas</option>
+                    <option value="Express Cup">Express Cup</option>
+                    <option value="Euro Cup">Euro Cup</option>
+                    <option value="Premier League">Premier League</option>
+                    <option value="Copa do Mundo">Copa do Mundo</option>
+                </select>
+            </div>
+
+            <!-- Mínimo de amostras -->
+            <div>
+                <div style="font-size:8px;color:#475569;margin-bottom:4px">MÍN. AMOSTRAS</div>
+                <div style="display:flex;gap:3px">
+                    <button onclick="faSet('minJogos',3)"  id="fa-minj-3"  class="fa-btn">3</button>
+                    <button onclick="faSet('minJogos',5)"  id="fa-minj-5"  class="fa-btn fa-btn-ativo">5</button>
+                    <button onclick="faSet('minJogos',10)" id="fa-minj-10" class="fa-btn">10</button>
+                    <button onclick="faSet('minJogos',20)" id="fa-minj-20" class="fa-btn">20</button>
+                    <button onclick="faSet('minJogos',50)" id="fa-minj-50" class="fa-btn">50</button>
+                </div>
+            </div>
+
+            <!-- Frequência mínima -->
+            <div>
+                <div style="font-size:8px;color:#475569;margin-bottom:4px">FREQ. MÍN.</div>
+                <div style="display:flex;gap:3px">
+                    <button onclick="faSet('minPct',0)"  id="fa-pct-0"  class="fa-btn fa-btn-ativo">—</button>
+                    <button onclick="faSet('minPct',50)" id="fa-pct-50" class="fa-btn">&#8805;50%</button>
+                    <button onclick="faSet('minPct',60)" id="fa-pct-60" class="fa-btn">&#8805;60%</button>
+                    <button onclick="faSet('minPct',70)" id="fa-pct-70" class="fa-btn">&#8805;70%</button>
+                    <button onclick="faSet('minPct',80)" id="fa-pct-80" class="fa-btn">&#8805;80%</button>
+                </div>
+            </div>
+
+            <!-- Tipo de mercado -->
+            <div>
+                <div style="font-size:8px;color:#475569;margin-bottom:4px">TIPO DE MERCADO</div>
+                <select id="fa-tipo-sel" onchange="faSet('tipoMercado',this.value)"
+                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
+                    <option value="Todos">Todos</option>
+                    <option value="Gols">Total de Gols</option>
+                    <option value="Resultado">Resultado Final</option>
+                    <option value="Ambas">Ambos Marcam</option>
+                    <option value="Intervalo">Intervalo</option>
+                    <option value="Handicap">Handicap</option>
+                    <option value="Correto">Resultado Correto</option>
+                    <option value="Chance">Chance Dupla</option>
+                </select>
+            </div>
+
+            <!-- Janela recente (tendências/IA) -->
+            <div>
+                <div style="font-size:8px;color:#475569;margin-bottom:4px">JANELA RECENTE</div>
+                <div style="display:flex;gap:3px">
+                    <button onclick="faSet('nRecente',10)" id="fa-nrec-10" class="fa-btn">10J</button>
+                    <button onclick="faSet('nRecente',20)" id="fa-nrec-20" class="fa-btn fa-btn-ativo">20J</button>
+                    <button onclick="faSet('nRecente',30)" id="fa-nrec-30" class="fa-btn">30J</button>
+                    <button onclick="faSet('nRecente',50)" id="fa-nrec-50" class="fa-btn">50J</button>
+                </div>
+            </div>
+
+            <!-- Só Value Bets -->
+            <div style="display:flex;align-items:center;gap:6px;padding-bottom:2px">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;color:#94a3b8">
+                    <input type="checkbox" id="fa-vb-chk" onchange="faSet('soValueBets',this.checked)"
+                        style="accent-color:#4ade80;width:14px;height:14px">
+                    Só VALUE BETS
+                </label>
+            </div>
+
+            <!-- Botão recarregar -->
+            <div style="padding-bottom:2px">
+                <button onclick="carregarSugestoes(true)" class="fa-btn fa-btn-reload">🔄 Aplicar</button>
+            </div>
+
+        </div>
+        <!-- Linha de status dos filtros ativos -->
+        <div id="fa-status" style="margin-top:7px;font-size:9px;color:#334155"></div>
+    </div>
+
     <!-- Value Bets — mercados pagos reais com retorno esperado positivo -->
     <div id="analise-value-bets" style="display:none;margin-bottom:14px;background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px">
-        <div style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (7 DIAS)</div>
+        <div id="analise-vb-titulo" style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO</div>
         <div id="analise-vb-lista"></div>
     </div>
 
@@ -1268,6 +1380,18 @@ const S = {
     view:          'analise',
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
+
+    // ── Filtros dinâmicos da aba Análise ──
+    fa: {
+        dias:        7,       // período: 1,3,7,14,30,'tudo'
+        liga:        'all',   // 'all' ou nome canônico
+        minJogos:    5,       // mínimo de jogos/amostras
+        minPct:      0,       // frequência mínima %
+        tipoMercado: 'Todos', // 'Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'
+        soValueBets: false,   // só value bets (VE >= 0.95)
+        minVE:       0,       // VE mínimo para value bets
+        nRecente:    20,      // janela de jogos recentes para tendências
+    },
 };
 
 Object.values(FILTROS).flat().forEach(f => { S.linhas[f.id] = true; });
@@ -1429,18 +1553,89 @@ function filtrarPartidas() {
     return S.todasPartidas.filter(p => p.liga === S.ligaAtiva);
 }
 
-async function carregarSugestoes() {
+// ── Constrói URL com params de S.fa ──────────────────────────────────────
+function _faParams(extra = {}) {
+    const p = { ...S.fa, ...extra };
+    const qs = new URLSearchParams();
+    if (p.dias !== undefined)        qs.set('dias',       p.dias);
+    if (p.liga && p.liga !== 'all')  qs.set('liga',       p.liga);
+    if (p.minJogos !== undefined)    qs.set('minJogos',   p.minJogos);
+    if (p.minPct > 0)                qs.set('minPct',     p.minPct);
+    if (p.tipoMercado && p.tipoMercado !== 'Todos') qs.set('tipoMercado', p.tipoMercado);
+    if (p.soValueBets)               qs.set('soValueBets','1');
+    if (p.minVE > 0)                 qs.set('minVE',      p.minVE);
+    if (p.nRecente !== undefined)    qs.set('nRecente',   p.nRecente);
+    return qs.toString() ? '?' + qs.toString() : '';
+}
+
+// ── Atualiza um filtro da análise e re-aplica (sem reload) ───────────────
+function faSet(campo, valor) {
+    S.fa[campo] = valor;
+
+    // Atualiza visuais dos botões de grupo
+    const grupMap = {
+        dias:      { prefix: 'fa-dias', vals: [1,3,7,14,30,'tudo'] },
+        minJogos:  { prefix: 'fa-minj', vals: [3,5,10,20,50] },
+        minPct:    { prefix: 'fa-pct',  vals: [0,50,60,70,80] },
+        nRecente:  { prefix: 'fa-nrec', vals: [10,20,30,50] },
+    };
+    if (grupMap[campo]) {
+        const g = grupMap[campo];
+        g.vals.forEach(v => {
+            const el = document.getElementById(`${g.prefix}-${v}`);
+            if (el) el.className = 'fa-btn' + (String(v) === String(valor) ? ' fa-btn-ativo' : '');
+        });
+    }
+
+    _faAtualizarStatus();
+    // Mudança de liga sincroniza também o filtro de liga da aba (S.ligaAtiva)
+    if (campo === 'liga') {
+        S.ligaAtiva = valor === 'all' ? null : valor;
+        S.partidas  = filtrarPartidas();
+        renderLigas();
+    }
+}
+
+// ── Mostra resumo dos filtros ativos ─────────────────────────────────────
+function _faAtualizarStatus() {
+    const el = document.getElementById('fa-status');
+    if (!el) return;
+    const f = S.fa;
+    const partes = [];
+    partes.push(`📅 ${f.dias === 'tudo' ? 'Todo o histórico' : f.dias + ' dias'}`);
+    if (f.liga && f.liga !== 'all') partes.push(`🏆 ${f.liga}`);
+    partes.push(`⚽ mín. ${f.minJogos} jogos`);
+    if (f.minPct > 0) partes.push(`📊 freq ≥${f.minPct}%`);
+    if (f.tipoMercado && f.tipoMercado !== 'Todos') partes.push(`🎯 ${f.tipoMercado}`);
+    if (f.soValueBets) partes.push(`💎 só VALUE BETS`);
+    partes.push(`🔁 janela ${f.nRecente}J`);
+    el.textContent = partes.join('  ·  ');
+}
+
+async function carregarSugestoes(forceRender = false) {
     try {
+        const mktUrl = `/api/bet365/analise/mercados${_faParams()}`;
+        const resUrl = `/api/bet365/analise/resumo${_faParams({ minVE: S.fa.soValueBets ? 0.95 : 0 })}`;
+
         const [rSug, rMkt, rRes] = await Promise.all([
             fetch(`/api/bet365/sugestoes?n=${S.rankingN}`).then(r => r.json()),
-            fetch('/api/bet365/analise/mercados?dias=7').then(r => r.json()).catch(() => ({ data: {} })),
-            fetch('/api/bet365/analise/resumo').then(r => r.json()).catch(() => ({}))
+            fetch(mktUrl).then(r => r.json()).catch(() => ({ data: {} })),
+            fetch(resUrl).then(r => r.json()).catch(() => ({}))
         ]);
         if (!rSug.success) return;
-        S.sugestoes     = rSug.data || [];
-        S.mktDados      = rMkt.data || {};
-        S.mktValueBets  = (rRes.value_bets || []);
-        S.mktTopSel     = (rRes.top_selecoes || []);
+        S.sugestoes    = rSug.data || [];
+        S.mktDados     = rMkt.data || {};
+        S.mktValueBets = (rRes.value_bets || []);
+        S.mktTopSel    = (rRes.top_selecoes || []);
+
+        // Atualiza título dos value bets com o período atual
+        const vbTit = document.getElementById('analise-vb-titulo');
+        if (vbTit) {
+            const label = S.fa.dias === 'tudo' ? 'TODO O HISTÓRICO' : `${S.fa.dias} DIAS`;
+            vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (${label})`;
+        }
+
+        _faAtualizarStatus();
         if (S.view === 'analise') renderAnalise();
     } catch {}
 }
@@ -3897,7 +4092,7 @@ async function carregarEstatisticasAvancadas() {
         const res = await fetch(`/api/bet365/estatisticas-avancadas`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        
+
         if (json.success && json.data?.gerais) {
             renderizarEstatisticasAvancadas(json.data);
             document.getElementById('stats-avancadas-grid').style.display = 'grid';
@@ -3907,6 +4102,18 @@ async function carregarEstatisticasAvancadas() {
         console.error('Erro ao carregar estatísticas:', err);
         document.getElementById('stats-loading').textContent = 'Erro ao carregar estatísticas';
     }
+}
+
+// ── Inicializa status da barra de filtros ────────────────────────────────
+function _faInit() {
+    // Sincroniza o select de liga caso S.fa.liga já esteja definida
+    const ligaSel = document.getElementById('fa-liga-sel');
+    if (ligaSel) ligaSel.value = S.fa.liga || 'all';
+    const tipoSel = document.getElementById('fa-tipo-sel');
+    if (tipoSel) tipoSel.value = S.fa.tipoMercado || 'Todos';
+    const vbChk = document.getElementById('fa-vb-chk');
+    if (vbChk) vbChk.checked = !!S.fa.soValueBets;
+    _faAtualizarStatus();
 }
 
 function renderizarEstatisticasAvancadas(data) {
@@ -4483,6 +4690,7 @@ function _usrMsg(txt, ok) {
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
     _initUserMenu();
+    _faInit();
     carregarTudo();
     conectarWS();
     setInterval(carregarTudo, 120000);

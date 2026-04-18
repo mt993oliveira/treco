@@ -1074,43 +1074,81 @@ router.post('/limpar-ligas-erradas', async (req, res) => {
 /**
  * GET /api/bet365/analise/mercados
  * Frequência e valor esperado de cada mercado/seleção por liga
- * ?liga=Euro Cup&dias=7
+ * ?liga=Euro Cup&dias=7&minJogos=5&minPct=0&tipoMercado=Gols&soValueBets=0&minVE=0
  */
 router.get('/analise/mercados', async (req, res) => {
     try {
-        const { liga, dias = 7 } = req.query;
-        const diasNum = Math.min(parseInt(dias) || 7, 90);
-        const pool    = await getDbPool();
-        const request = pool.request().input('dias', sql.Int, diasNum);
+        const {
+            liga,
+            dias       = 7,
+            minJogos   = 3,
+            minPct     = 0,
+            tipoMercado = '',
+            soValueBets = '0',
+            minVE      = 0,
+        } = req.query;
 
-        let whereliga = '';
-        if (liga && liga !== 'all') {
-            whereliga = 'AND m.liga = @liga';
-            request.input('liga', sql.NVarChar(200), liga);
+        const diasNum   = dias === 'tudo' ? 9999 : Math.min(parseInt(dias) || 7, 365);
+        const minJogosN = Math.max(1, parseInt(minJogos) || 3);
+        const minPctN   = Math.max(0, parseFloat(minPct)  || 0);
+        const minVEN    = Math.max(0, parseFloat(minVE)   || 0);
+        const pool      = await getDbPool();
+        const request   = pool.request()
+            .input('minJogos',  sql.Int,   minJogosN)
+            .input('minPct',    sql.Float, minPctN)
+            .input('minVE',     sql.Float, minVEN);
+
+        const whereParts = [];
+        if (diasNum < 9999) {
+            request.input('dias', sql.Int, diasNum);
+            whereParts.push('m.data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())');
         }
+        if (liga && liga !== 'all') {
+            request.input('liga', sql.NVarChar(200), liga);
+            whereParts.push('m.liga = @liga');
+        }
+        if (tipoMercado && tipoMercado !== 'Todos') {
+            // mapeia rótulos amigáveis para palavras-chave SQL
+            const mktMap = {
+                'Gols':       'Total de Gols',
+                'Resultado':  'Resultado Final',
+                'Ambas':      'Ambos Marcam',
+                'Intervalo':  'Intervalo',
+                'Handicap':   'Handicap',
+                'Correto':    'Resultado Correto',
+                'Chance':     'Chance Dupla',
+            };
+            const kw = mktMap[tipoMercado] || tipoMercado;
+            request.input('tipoMercado', sql.NVarChar(200), `%${kw}%`);
+            whereParts.push('m.mercado LIKE @tipoMercado');
+        }
+
+        const whereClause = whereParts.length ? 'WHERE ' + whereParts.join(' AND ') : '';
+
+        const havingParts = ['COUNT(DISTINCT m.evento_id) >= @minJogos'];
+        if (minPctN > 0) havingParts.push(`CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT m.evento_id),0) AS DECIMAL(5,1)) >= @minPct`);
+        if (minVEN  > 0) havingParts.push(`CAST((COUNT(*)*1.0/NULLIF(COUNT(DISTINCT m.evento_id),0))*AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,3)) >= @minVE`);
+        if (soValueBets === '1') havingParts.push(`CAST((COUNT(*)*1.0/NULLIF(COUNT(DISTINCT m.evento_id),0))*AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,3)) >= 0.95`);
 
         const result = await request.query(`
             SELECT
                 m.liga,
                 m.mercado,
                 m.selecao,
-                COUNT(*)                                      AS vezes,
-                COUNT(DISTINCT m.evento_id)                   AS jogos_total,
+                COUNT(*)                                                           AS vezes,
+                COUNT(DISTINCT m.evento_id)                                        AS total_jogos,
                 CAST(COUNT(*) * 100.0 /
-                    NULLIF(COUNT(DISTINCT m.evento_id), 0)
-                    AS DECIMAL(5,1))                          AS pct_jogos,
-                AVG(CAST(m.odd_paga AS FLOAT))                AS odd_media,
-                -- Valor esperado: frequência × odd média (> 1.0 = value bet)
+                    NULLIF(COUNT(DISTINCT m.evento_id), 0) AS DECIMAL(5,1))        AS pct_jogos,
+                CAST(AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,2))              AS odd_media,
                 CAST(
                     (COUNT(*) * 1.0 / NULLIF(COUNT(DISTINCT m.evento_id), 0))
-                    * AVG(CAST(m.odd_paga AS FLOAT))
-                    AS DECIMAL(5,3))                          AS valor_esperado
+                    * AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,3))             AS valor_esperado
             FROM bet365_resultados_mercados m
-            WHERE m.data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())
-            ${whereliga}
+            ${whereClause}
             GROUP BY m.liga, m.mercado, m.selecao
-            HAVING COUNT(DISTINCT m.evento_id) >= 5
-            ORDER BY m.liga, m.mercado, vezes DESC
+            HAVING ${havingParts.join(' AND ')}
+            ORDER BY m.liga, m.mercado,
+                     CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT m.evento_id),0) AS DECIMAL(5,1)) DESC
         `);
 
         // Agrupa por liga → mercado → seleções
@@ -1121,14 +1159,15 @@ router.get('/analise/mercados', async (req, res) => {
             agrupado[r.liga][r.mercado].push({
                 selecao:        r.selecao,
                 vezes:          r.vezes,
+                total_jogos:    r.total_jogos,
                 pct_jogos:      parseFloat(r.pct_jogos),
-                odd_media:      parseFloat((r.odd_media || 0).toFixed(2)),
+                odd_media:      parseFloat(r.odd_media || 0),
                 valor_esperado: parseFloat(r.valor_esperado),
                 value_bet:      parseFloat(r.valor_esperado) >= 0.95
             });
         }
 
-        res.json({ success: true, dias: diasNum, data: agrupado });
+        res.json({ success: true, dias: diasNum, filtros: { minJogos: minJogosN, minPct: minPctN, tipoMercado, soValueBets }, data: agrupado });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1136,85 +1175,89 @@ router.get('/analise/mercados', async (req, res) => {
 
 /**
  * GET /api/bet365/analise/tendencias
- * Compara frequência recente (últimos 20 jogos) vs histórico total por liga+mercado
- * ?liga=Premiership
+ * Compara frequência recente vs histórico total por liga+mercado
+ * ?liga=Premiership&nRecente=20&minJogosHist=10&minJogosRec=5&minVariacao=10
  */
 router.get('/analise/tendencias', async (req, res) => {
     try {
-        const { liga } = req.query;
-        const pool     = await getDbPool();
-        const request  = pool.request();
+        const {
+            liga,
+            nRecente    = 20,
+            minJogosHist = 10,
+            minJogosRec  = 5,
+            minVariacao  = 10,
+            dias         = 0,   // 0 = todo o histórico
+        } = req.query;
 
-        let whereliga = '';
-        if (liga && liga !== 'all') {
-            whereliga = 'AND liga = @liga';
-            request.input('liga', sql.NVarChar(200), liga);
-        }
+        const nRecenteN     = Math.max(5,  parseInt(nRecente)    || 20);
+        const minJogosHistN = Math.max(3,  parseInt(minJogosHist) || 10);
+        const minJogosRecN  = Math.max(1,  parseInt(minJogosRec)  || 5);
+        const minVariacaoN  = Math.max(1,  parseFloat(minVariacao) || 10);
+        const diasNum       = parseInt(dias) || 0;
 
-        // Histórico total por liga+mercado+seleção
-        const total = await pool.request().query(`
+        const pool    = await getDbPool();
+        const req1    = pool.request().input('nRecente', sql.Int, nRecenteN);
+        const req2    = pool.request();
+
+        const ligaWhere1 = liga && liga !== 'all' ? (req1.input('liga', sql.NVarChar(200), liga), 'AND liga = @liga') : '';
+        const ligaWhere2 = liga && liga !== 'all' ? (req2.input('liga2', sql.NVarChar(200), liga), 'AND liga = @liga2') : '';
+        const diasWhere  = diasNum > 0 ? `AND data_partida >= DATEADD(DAY,-${diasNum},GETUTCDATE())` : '';
+
+        // Histórico total (ou filtrado por período)
+        const total = await req2.query(`
             SELECT liga, mercado, selecao,
                    COUNT(*) AS vezes,
                    COUNT(DISTINCT evento_id) AS jogos
             FROM bet365_resultados_mercados
-            WHERE 1=1 ${whereliga.replace('@liga', liga ? `'${liga.replace("'","''")}'` : "''")}
+            WHERE 1=1 ${ligaWhere2} ${diasWhere}
             GROUP BY liga, mercado, selecao
         `).catch(() => ({ recordset: [] }));
 
-        // Últimos 20 jogos por liga
-        const recente = await request.query(`
+        // Últimos N jogos por liga
+        const recente = await req1.query(`
             WITH ult AS (
                 SELECT liga, evento_id,
                        ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
                 FROM bet365_resultados_mercados
-                ${whereliga}
+                WHERE 1=1 ${ligaWhere1} ${diasWhere}
                 GROUP BY liga, evento_id
             )
             SELECT m.liga, m.mercado, m.selecao,
                    COUNT(*) AS vezes,
                    COUNT(DISTINCT m.evento_id) AS jogos
             FROM bet365_resultados_mercados m
-            INNER JOIN ult u ON u.liga = m.liga AND u.evento_id = m.evento_id AND u.rn <= 20
+            INNER JOIN ult u ON u.liga = m.liga AND u.evento_id = m.evento_id AND u.rn <= @nRecente
+            WHERE 1=1 ${ligaWhere1}
             GROUP BY m.liga, m.mercado, m.selecao
         `);
 
-        // Monta map do histórico total
         const mapTotal = {};
         for (const r of total.recordset) {
-            const k = `${r.liga}|${r.mercado}|${r.selecao}`;
-            mapTotal[k] = { vezes: r.vezes, jogos: r.jogos };
+            mapTotal[`${r.liga}|${r.mercado}|${r.selecao}`] = { vezes: r.vezes, jogos: r.jogos };
         }
 
-        // Calcula tendência comparando recente vs total
         const tendencias = [];
         for (const r of recente.recordset) {
-            const k     = `${r.liga}|${r.mercado}|${r.selecao}`;
-            const hist  = mapTotal[k];
-            if (!hist || hist.jogos < 10 || r.jogos < 5) continue;
+            const hist = mapTotal[`${r.liga}|${r.mercado}|${r.selecao}`];
+            if (!hist || hist.jogos < minJogosHistN || r.jogos < minJogosRecN) continue;
 
-            const pct_hist   = hist.vezes / hist.jogos * 100;
-            const pct_rec    = r.vezes    / r.jogos    * 100;
-            const variacao   = +(pct_rec - pct_hist).toFixed(1);
-            const tendencia  = variacao >= 10 ? 'subindo' : variacao <= -10 ? 'caindo' : 'estavel';
-
-            if (tendencia === 'estavel') continue; // só retorna mercados em movimento
+            const pct_hist  = hist.vezes / hist.jogos * 100;
+            const pct_rec   = r.vezes    / r.jogos    * 100;
+            const variacao  = +(pct_rec - pct_hist).toFixed(1);
+            const tendencia = variacao >= minVariacaoN ? 'subindo' : variacao <= -minVariacaoN ? 'caindo' : 'estavel';
+            if (tendencia === 'estavel') continue;
 
             tendencias.push({
-                liga:       r.liga,
-                mercado:    r.mercado,
-                selecao:    r.selecao,
+                liga: r.liga, mercado: r.mercado, selecao: r.selecao,
                 pct_hist:   +pct_hist.toFixed(1),
                 pct_rec:    +pct_rec.toFixed(1),
-                variacao,
-                tendencia,
-                jogos_hist: hist.jogos,
-                jogos_rec:  r.jogos
+                variacao, tendencia,
+                jogos_hist: hist.jogos, jogos_rec: r.jogos
             });
         }
 
         tendencias.sort((a, b) => Math.abs(b.variacao) - Math.abs(a.variacao));
-
-        res.json({ success: true, total: tendencias.length, data: tendencias });
+        res.json({ success: true, total: tendencias.length, filtros: { nRecente: nRecenteN, minJogosHist: minJogosHistN, minVariacao: minVariacaoN }, data: tendencias });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1298,13 +1341,31 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
 /**
  * GET /api/bet365/analise/resumo
  * Resumo geral da tabela de mercados para o painel de análise
+ * ?dias=7&liga=all&minJogos=5&minVE=0.95&soValueBets=0
  */
 router.get('/analise/resumo', async (req, res) => {
     try {
-        const pool = await getDbPool();
+        const {
+            dias       = 7,
+            liga,
+            minJogos   = 5,
+            minVE      = 0.95,
+            soValueBets = '0',
+        } = req.query;
+
+        const diasNum   = dias === 'tudo' ? 9999 : Math.min(parseInt(dias) || 7, 365);
+        const minJogosN = Math.max(1, parseInt(minJogos) || 5);
+        const minVEN    = Math.max(0, parseFloat(minVE)  || 0.95);
+        const pool      = await getDbPool();
+
+        const diasWhere  = diasNum < 9999 ? `AND data_partida >= DATEADD(DAY,-${diasNum},GETUTCDATE())` : '';
+        const ligaWhere  = (liga && liga !== 'all') ? `AND liga = '${liga.replace(/'/g,"''")}'` : '';
+        const vbHaving   = soValueBets === '1' || minVEN > 0
+            ? `AND (COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) >= ${minVEN}`
+            : `AND (COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) >= 0.90`;
 
         const [vol, porLiga, topMkt, valueBets] = await Promise.all([
-            // Volume geral
+            // Volume geral (filtrado pelo período e liga)
             pool.query(`
                 SELECT
                     COUNT(DISTINCT evento_id) AS jogos,
@@ -1313,34 +1374,41 @@ router.get('/analise/resumo', async (req, res) => {
                     MIN(data_partida) AS primeiro_jogo,
                     MAX(data_partida) AS ultimo_jogo
                 FROM bet365_resultados_mercados
+                WHERE 1=1 ${diasWhere} ${ligaWhere}
             `),
-            // Por liga
+            // Por liga (filtrado)
             pool.query(`
                 SELECT liga,
                     COUNT(DISTINCT evento_id) AS jogos,
                     COUNT(*) AS mercados
                 FROM bet365_resultados_mercados
+                WHERE 1=1 ${diasWhere} ${ligaWhere}
                 GROUP BY liga ORDER BY jogos DESC
             `),
-            // Top 10 seleções mais frequentes
+            // Top 10 seleções mais frequentes (filtrado)
             pool.query(`
-                SELECT TOP 10 mercado, selecao, COUNT(*) AS vezes,
-                    CAST(COUNT(*)*100.0/NULLIF((SELECT COUNT(DISTINCT evento_id) FROM bet365_resultados_mercados),0) AS DECIMAL(5,1)) AS pct
+                SELECT TOP 10 liga, mercado, selecao, COUNT(*) AS vezes,
+                    COUNT(DISTINCT evento_id) AS jogos,
+                    CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT evento_id),0) AS DECIMAL(5,1)) AS pct,
+                    CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media
                 FROM bet365_resultados_mercados
-                GROUP BY mercado, selecao ORDER BY vezes DESC
+                WHERE 1=1 ${diasWhere} ${ligaWhere}
+                GROUP BY liga, mercado, selecao
+                HAVING COUNT(DISTINCT evento_id) >= ${minJogosN}
+                ORDER BY vezes DESC
             `),
-            // Value bets: mercados onde valor_esperado >= 0.95 (frequência × odd média)
+            // Value bets (filtrado por VE mínimo e período)
             pool.query(`
-                SELECT TOP 10 liga, mercado, selecao,
+                SELECT TOP 15 liga, mercado, selecao,
                     COUNT(DISTINCT evento_id) AS jogos,
                     CAST(COUNT(*)*100.0/NULLIF(COUNT(DISTINCT evento_id),0) AS DECIMAL(5,1)) AS pct,
                     CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media,
                     CAST((COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,3)) AS valor_esperado
                 FROM bet365_resultados_mercados
-                WHERE data_partida >= DATEADD(DAY,-7,GETUTCDATE())
+                WHERE 1=1 ${diasWhere} ${ligaWhere}
                 GROUP BY liga, mercado, selecao
-                HAVING COUNT(DISTINCT evento_id) >= 10
-                    AND (COUNT(*)*1.0/NULLIF(COUNT(DISTINCT evento_id),0))*AVG(CAST(odd_paga AS FLOAT)) >= 0.95
+                HAVING COUNT(DISTINCT evento_id) >= ${minJogosN}
+                    ${vbHaving}
                 ORDER BY valor_esperado DESC
             `)
         ]);
@@ -1348,6 +1416,7 @@ router.get('/analise/resumo', async (req, res) => {
         res.json({
             success:    true,
             timestamp:  new Date().toISOString(),
+            filtros:    { dias: diasNum, liga: liga || 'all', minJogos: minJogosN, minVE: minVEN },
             volume:     vol.recordset[0],
             por_liga:   porLiga.recordset,
             top_selecoes: topMkt.recordset,
