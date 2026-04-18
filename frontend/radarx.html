@@ -1610,7 +1610,10 @@ async function carregarSugestoes(forceRender = false) {
         }
 
         _faAtualizarStatus();
-        if (S.view === 'analise') renderAnalise();
+        if (S.view === 'analise') {
+            renderAnalise();
+            renderHeatmapIA(); // atualiza IA cards com os novos mktDados da liga
+        }
     } catch {}
 }
 
@@ -1662,8 +1665,12 @@ function renderAnalise() {
         if (canon && !sugestoesMap.has(canon)) sugestoesMap.set(canon, { ...l, liga: canon });
     });
 
-    // Garante que todas as ligas canônicas aparecem (mesmo sem dados ainda)
-    const sugestoesCanon = LIGAS_CANONICAS.map(nome =>
+    // Filtra pelas ligas a exibir: se S.ligaAtiva definida → só ela; senão → todas canônicas
+    const ligasParaExibir = S.ligaAtiva
+        ? [S.ligaAtiva]
+        : LIGAS_CANONICAS;
+
+    const sugestoesCanon = ligasParaExibir.map(nome =>
         sugestoesMap.get(nome) || { liga: nome, total: 0, amostras: 0, melhor: null, filtros: [], stats: null }
     );
 
@@ -3818,8 +3825,12 @@ function _hmBlendTeamFreqs(ligaFreqs, todasPartidas, timeCasa, timeFora, liga) {
 function _hmRenderIACards(jogos, todasPartidas) {
     if (!jogos || jogos.length === 0) return '';
 
+    const ligaLabel = S.ligaAtiva ? ` — ${S.ligaAtiva}` : '';
     let html = `<div style="margin-top:16px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">🤖 ANÁLISE IA — PRÓXIMOS JOGOS</div>`;
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em">🤖 ANÁLISE IA — PRÓXIMOS JOGOS${ligaLabel}</div>
+            <div style="font-size:9px;color:#475569">${jogos.length} jogo${jogos.length!==1?'s':''} agendado${jogos.length!==1?'s':''}</div>
+        </div>`;
 
     jogos.forEach(jogo => {
         const liga = normalizarLiga(jogo.liga) || jogo.liga || '';
@@ -3969,20 +3980,43 @@ function _hmRenderIACards(jogos, todasPartidas) {
             </div>`;
         }).join('');
 
+        // ── Horário do jogo ──
+        const BET365_OFFSET_MS = 1 * 3600 * 1000;
+        let horaLabel = '';
+        if (jogo.horario || jogo.start_time_datetime) {
+            const dt = new Date(jogo.horario || jogo.start_time_datetime);
+            const h = dt.getUTCHours().toString().padStart(2,'0');
+            const m2 = dt.getUTCMinutes().toString().padStart(2,'0');
+            horaLabel = `${h}:${m2}`;
+        }
+
+        // ── minutos para início (segundos_para_inicio do evento) ──
+        const secsLabel = jogo.seconds_to_start != null
+            ? `em ${Math.round(jogo.seconds_to_start / 60)}min`
+            : tempoLabel;
+
         html += `<div class="ia-card">
+            <!-- Cabeçalho do jogo -->
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
                 <div>
-                    <div style="font-size:12px;font-weight:700;color:#e2e8f0">${timeCasa} <span style="color:#475569">vs</span> ${timeFora}</div>
-                    <div style="font-size:10px;color:#475569;margin-top:2px">${liga}${tempoLabel}</div>
+                    <div style="font-size:13px;font-weight:800;color:#e2e8f0">${timeCasa} <span style="color:#475569;font-weight:400">vs</span> ${timeFora}</div>
+                    <div style="font-size:10px;color:#64748b;margin-top:2px">${liga}${horaLabel ? ' · ' + horaLabel : ''}${secsLabel ? ' <span style="color:#f59e0b;font-weight:700">⏱ ' + secsLabel + '</span>' : ''}</div>
                 </div>
                 <div style="font-size:9px;color:#64748b;text-align:right">${confianca}<br><span style="color:#334155">${n} amostras</span></div>
             </div>
-            <!-- Tabela 1X2 -->
+
+            <!-- 🏆 TOP SUGESTÕES — destaque no topo -->
+            <div style="background:#051c10;border:1px solid #166534;border-radius:6px;padding:8px;margin-bottom:8px">
+                <div style="font-size:9px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:6px">🏆 SUGESTÕES DE APOSTA</div>
+                ${top3Sug.length ? top3Html : '<div style="color:#334155;font-size:10px;text-align:center;padding:4px 0">Calculando...</div>'}
+            </div>
+
+            <!-- Probabilidades 1X2 -->
             <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:5px;overflow:hidden;margin-bottom:8px">
                 <thead>
                     <tr style="background:#0c1220">
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:left">Resultado</th>
-                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Freq%</th>
+                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Prob%</th>
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Odd</th>
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Impl%</th>
                         <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Edge</th>
@@ -3992,23 +4026,17 @@ function _hmRenderIACards(jogos, todasPartidas) {
                 <tbody>${evs.map(mkRow).join('')}</tbody>
             </table>
 
-            <!-- Mercados pagos da liga (PRIMARY) -->
+            <!-- Mercados pagos da liga -->
             <div style="background:#0f172a;border-radius:5px;padding:8px;margin-bottom:8px">
                 <div style="font-size:9px;color:#60a5fa;font-weight:700;margin-bottom:6px">🎯 MERCADOS PAGOS NA LIGA<span style="color:#f59e0b">${mktAvisoIA}</span> · ${mktJogosIA} jogos</div>
                 ${mktFlatIA.length > 0
-                    ? `<div>${mktFlatIA.slice(0,6).map(mkMktBar).join('')}</div>`
+                    ? `<div>${mktFlatIA.slice(0,5).map(mkMktBar).join('')}</div>`
                     : `<div style="color:#334155;font-size:10px;text-align:center;padding:8px 0">⏳ Aguardando dados de mercados...</div>`
                 }
             </div>
 
-            <!-- Top 3 sugestões (mercados como primary) -->
-            <div class="ia-risky-bet">
-                <div style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.08em;margin-bottom:6px">🏆 TOP SUGESTÕES</div>
-                ${top3Html}
-            </div>
-
             <!-- Top placares -->
-            <div style="margin-top:8px">
+            <div>
                 <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">TOP PLACARES NA LIGA</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">${placaresHtml}</div>
             </div>
