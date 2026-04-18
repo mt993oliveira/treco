@@ -621,20 +621,6 @@
                 </div>
             </div>
 
-            <!-- Liga -->
-            <div>
-                <div style="font-size:8px;color:#475569;margin-bottom:4px">LIGA</div>
-                <select id="fa-liga-sel" onchange="faSet('liga',this.value)"
-                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
-                    <option value="all">Todas</option>
-                    <option value="Copa do Mundo">Copa do Mundo</option>
-                    <option value="Euro Cup">Euro Cup</option>
-                    <option value="Premier League">Premier League</option>
-                    <option value="Express Cup">Express Cup</option>
-                    <option value="Super Liga Sul-Americana">Super Liga Sul-Americana</option>
-                </select>
-            </div>
-
             <!-- Mínimo de amostras -->
             <div>
                 <div style="font-size:8px;color:#475569;margin-bottom:4px">MÍN. AMOSTRAS</div>
@@ -955,14 +941,6 @@
     <!-- Filtros -->
     <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:12px">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">LIGA</span>
-            <button class="secao-btn ativo" id="mkt-liga-all" onclick="setMktFiltro('liga','all')">Todas</button>
-            <button class="secao-btn" id="mkt-liga-Copa do Mundo" onclick="setMktFiltro('liga','Copa do Mundo')">Copa do Mundo</button>
-            <button class="secao-btn" id="mkt-liga-Euro Cup" onclick="setMktFiltro('liga','Euro Cup')">Euro Cup</button>
-            <button class="secao-btn" id="mkt-liga-Premier League" onclick="setMktFiltro('liga','Premier League')">Premier League</button>
-            <button class="secao-btn" id="mkt-liga-Express Cup" onclick="setMktFiltro('liga','Express Cup')">Express Cup</button>
-            <button class="secao-btn" id="mkt-liga-Super Liga Sul-Americana" onclick="setMktFiltro('liga','Super Liga Sul-Americana')">Super Liga</button>
-            <div style="width:1px;height:16px;background:#1e293b;margin:0 2px"></div>
             <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
             <button class="secao-btn" id="mkt-dias-1" onclick="setMktFiltro('dias',1)">1D</button>
             <button class="secao-btn ativo" id="mkt-dias-7" onclick="setMktFiltro('dias',7)">7D</button>
@@ -1385,7 +1363,7 @@ const S = {
     // ── Filtros dinâmicos da aba Análise ──
     fa: {
         dias:        7,       // período: 1,3,7,14,30,'tudo'
-        liga:        'all',   // 'all' ou nome canônico
+        // liga vem de S.ligaAtiva (tabs principais) — não definida aqui
         minJogos:    5,       // mínimo de jogos/amostras
         minPct:      0,       // frequência mínima %
         tipoMercado: 'Todos', // 'Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'
@@ -1559,7 +1537,8 @@ function _faParams(extra = {}) {
     const p = { ...S.fa, ...extra };
     const qs = new URLSearchParams();
     if (p.dias !== undefined)        qs.set('dias',       p.dias);
-    if (p.liga && p.liga !== 'all')  qs.set('liga',       p.liga);
+    // Liga vem sempre dos tabs principais (S.ligaAtiva), não de S.fa
+    if (S.ligaAtiva)                 qs.set('liga',       S.ligaAtiva);
     if (p.minJogos !== undefined)    qs.set('minJogos',   p.minJogos);
     if (p.minPct > 0)                qs.set('minPct',     p.minPct);
     if (p.tipoMercado && p.tipoMercado !== 'Todos') qs.set('tipoMercado', p.tipoMercado);
@@ -1589,12 +1568,6 @@ function faSet(campo, valor) {
     }
 
     _faAtualizarStatus();
-    // Mudança de liga sincroniza também o filtro de liga da aba (S.ligaAtiva)
-    if (campo === 'liga') {
-        S.ligaAtiva = valor === 'all' ? null : valor;
-        S.partidas  = filtrarPartidas();
-        renderLigas();
-    }
 }
 
 // ── Mostra resumo dos filtros ativos ─────────────────────────────────────
@@ -1604,7 +1577,7 @@ function _faAtualizarStatus() {
     const f = S.fa;
     const partes = [];
     partes.push(`📅 ${f.dias === 'tudo' ? 'Todo o histórico' : f.dias + ' dias'}`);
-    if (f.liga && f.liga !== 'all') partes.push(`🏆 ${f.liga}`);
+    partes.push(`🏆 ${S.ligaAtiva || 'Todas'}`);
     partes.push(`⚽ mín. ${f.minJogos} jogos`);
     if (f.minPct > 0) partes.push(`📊 freq ≥${f.minPct}%`);
     if (f.tipoMercado && f.tipoMercado !== 'Todos') partes.push(`🎯 ${f.tipoMercado}`);
@@ -1951,6 +1924,9 @@ function renderLigas() {
             b.classList.add('ativo');
             renderTabela(); renderGrafico(); renderProximosJogos(); renderHeatmapIA(); renderUltimosResultados();
             document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
+            // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
+            if (S.view === 'analise') { _faAtualizarStatus(); carregarSugestoes(true); }
+            if (S.view === 'mercados') { MKT.liga = liga; carregarMercados(); }
         };
         c.appendChild(b);
     };
@@ -4107,9 +4083,6 @@ async function carregarEstatisticasAvancadas() {
 
 // ── Inicializa status da barra de filtros ────────────────────────────────
 function _faInit() {
-    // Sincroniza o select de liga caso S.fa.liga já esteja definida
-    const ligaSel = document.getElementById('fa-liga-sel');
-    if (ligaSel) ligaSel.value = S.fa.liga || 'all';
     const tipoSel = document.getElementById('fa-tipo-sel');
     if (tipoSel) tipoSel.value = S.fa.tipoMercado || 'Todos';
     const vbChk = document.getElementById('fa-vb-chk');
@@ -4735,13 +4708,16 @@ function setMktFiltro(chave, valor) {
 
 async function carregarMercados() {
     try {
+        // Liga vem dos tabs principais (S.ligaAtiva), não de MKT.liga
+        const ligaAtual = S.ligaAtiva || null;
         const params = new URLSearchParams({ dias: MKT.dias });
-        if (MKT.liga !== 'all') params.set('liga', MKT.liga);
+        if (ligaAtual) params.set('liga', ligaAtual);
 
+        const ligaQs = ligaAtual ? '?liga=' + encodeURIComponent(ligaAtual) : '';
         const [resumoRes, mktRes, tendRes, iaRes] = await Promise.all([
-            fetch('/api/bet365/analise/resumo').then(r => r.json()),
+            fetch('/api/bet365/analise/resumo' + (ligaAtual ? '?liga=' + encodeURIComponent(ligaAtual) : '')).then(r => r.json()),
             fetch('/api/bet365/analise/mercados?' + params).then(r => r.json()),
-            fetch('/api/bet365/analise/tendencias' + (MKT.liga !== 'all' ? '?liga=' + encodeURIComponent(MKT.liga) : '')).then(r => r.json()),
+            fetch('/api/bet365/analise/tendencias' + ligaQs).then(r => r.json()),
             fetch('/api/bet365/analise/sugestoes-avancadas').then(r => r.json())
         ]);
 
