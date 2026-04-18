@@ -388,12 +388,42 @@ class Bet365Coletor {
                     : golCasa > golFora ? 'CASA' : golFora > golCasa ? 'FORA' : 'EMPATE';
 
                 const mercados = [];
+
+                // Padrão 1: vrr-HeadToHeadParticipant (mercados em linha: nome + vencedor + odd)
                 for (const p of grupo.querySelectorAll('.vrr-HeadToHeadParticipant')) {
                     const mkt = p.querySelector('.vrr-HeadToHeadParticipant_Market');
                     const win = p.querySelector('.vrr-HeadToHeadParticipant_Winner');
                     const prc = p.querySelector('.vrr-HeadToHeadParticipant_Price');
                     if (mkt && win) mercados.push({ mercado: mkt.textContent.trim(), selecao: win.textContent.trim(), odd: prc ? parseFloat(prc.textContent.trim()) || 0 : 0 });
                 }
+
+                // Padrão 2: vrr-ResultMarketGroup (grupos de mercado com múltiplas seleções)
+                for (const grpMkt of grupo.querySelectorAll('.vrr-ResultMarketGroup')) {
+                    const nomeMkt = grpMkt.querySelector('.vrr-ResultMarketGroup_Title, .vrr-ResultMarketGroup_Name')?.textContent.trim();
+                    if (!nomeMkt) continue;
+                    for (const sel of grpMkt.querySelectorAll('.vrr-ResultParticipant')) {
+                        const selNome = sel.querySelector('.vrr-ResultParticipant_Name, .vrr-ResultParticipant_Winner')?.textContent.trim();
+                        const selOdd  = sel.querySelector('.vrr-ResultParticipant_Price, .vrr-ResultParticipant_Odds')?.textContent.trim();
+                        if (selNome) mercados.push({ mercado: nomeMkt, selecao: selNome, odd: parseFloat(selOdd) || 0 });
+                    }
+                }
+
+                // Padrão 3: qualquer elemento com classe vrr- não capturado acima
+                // Varre todos os nós filhos diretos buscando pares mercado/seleção/odd
+                if (mercados.length === 0) {
+                    const allEls = grupo.querySelectorAll('[class*="vrr-"]');
+                    const seen   = new Set();
+                    allEls.forEach(el => {
+                        const cls = el.className || '';
+                        if (cls.includes('Market') || cls.includes('Winner') || cls.includes('Price')) {
+                            const txt = el.textContent.trim();
+                            if (txt && !seen.has(txt)) { seen.add(txt); }
+                        }
+                    });
+                }
+
+                // HTML bruto do grupo para diagnóstico de seletores
+                const htmlDebug = grupo.outerHTML;
 
                 let golCasaHT = null, golForaHT = null;
                 for (const m of mercados) {
@@ -404,7 +434,7 @@ class Bet365Coletor {
                     }
                 }
 
-                resultados.push({ liga, horario, timeCasa, timeFora, placar, golCasa, golFora, golCasaHT, golForaHT, resultado, mercados, placarOculto });
+                resultados.push({ liga, horario, timeCasa, timeFora, placar, golCasa, golFora, golCasaHT, golForaHT, resultado, mercados, placarOculto, htmlDebug });
             }
             return resultados;
         }, liga);
@@ -433,6 +463,15 @@ class Bet365Coletor {
             const res = await this._extrairResultados(normalizarNomeLiga(liga.nome), pg);
             resultados.push(...res);
             console.log(`   📋 [${normalizarNomeLiga(liga.nome)}] ${res.length} resultado(s)`);
+
+            // Salva HTML do primeiro resultado para análise de seletores (remove após análise)
+            if (res.length > 0 && res[0].htmlDebug) {
+                const htmlPath = path.join(__dirname, '..', '..', 'resultado-html-debug.html');
+                if (!fs.existsSync(htmlPath)) {
+                    fs.writeFileSync(htmlPath, res[0].htmlDebug, 'utf8');
+                    console.log(`   📄 HTML debug salvo: resultado-html-debug.html`);
+                }
+            }
 
             // Screenshot para validação dos resultados
             await this._tirarScreenshot(pg, normalizarNomeLiga(liga.nome));
