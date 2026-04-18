@@ -2501,13 +2501,45 @@ function renderTabela() {
         // Exibe UTC diretamente — coletor salva horário Bet365 como UTC
         const horaStr = `${pad2(hora.getUTCDate())}/${pad2(hora.getUTCMonth()+1)} ${pad2(hora.getUTCHours())}:00`;
 
-        // Deduplicar: para cada par (time_casa x time_fora) manter apenas o registro mais recente.
-        // Isso elimina duplicatas no banco que causam jogos em colunas erradas.
+        // Deduplicar: para cada par (time_casa x time_fora) manter o registro com
+        // data_partida MAIS ANTIGA (= hora real do jogo, não hora de coleta do resultado).
+        // Se o coletor de resultados salva o registro com data_partida = hora atual (:59)
+        // em vez da hora de início do jogo (:53), o registro mais recente causa deslocamento
+        // de coluna. Usamos o mais antigo para posição correta e herdamos o resultado final.
         const dedupMap = new Map();
         grupo.jogos.forEach(j => {
             const key = `${j.time_casa}|${j.time_fora}`;
             const ex = dedupMap.get(key);
-            if (!ex || new Date(j.data_partida) > new Date(ex.data_partida)) dedupMap.set(key, j);
+            if (!ex) {
+                dedupMap.set(key, j);
+            } else {
+                const jMs  = new Date(j.data_partida).getTime();
+                const exMs = new Date(ex.data_partida).getTime();
+                if (jMs < exMs) {
+                    // j é mais antigo → usa como base (hora correta), herda resultado do ex
+                    dedupMap.set(key, {
+                        ...j,
+                        gol_casa:  ex.gol_casa  ?? j.gol_casa,
+                        gol_fora:  ex.gol_fora  ?? j.gol_fora,
+                        resultado: ex.resultado || j.resultado,
+                        gol_casa_ht:  ex.gol_casa_ht  ?? j.gol_casa_ht,
+                        gol_fora_ht:  ex.gol_fora_ht  ?? j.gol_fora_ht,
+                    });
+                } else if (exMs < jMs) {
+                    // ex já é mais antigo → só herda resultado de j se ex ainda não tem
+                    if (!ex.resultado && j.resultado) {
+                        dedupMap.set(key, {
+                            ...ex,
+                            gol_casa:  j.gol_casa  ?? ex.gol_casa,
+                            gol_fora:  j.gol_fora  ?? ex.gol_fora,
+                            resultado: j.resultado,
+                            gol_casa_ht:  j.gol_casa_ht  ?? ex.gol_casa_ht,
+                            gol_fora_ht:  j.gol_fora_ht  ?? ex.gol_fora_ht,
+                        });
+                    }
+                }
+                // se mesmos ms → mantém ex (sem ação)
+            }
         });
 
         // Mapeia cada jogo ao slot do seu minuto exato dentro da hora.
@@ -2516,7 +2548,8 @@ function renderTabela() {
         const sorted = [...dedupMap.values()].sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
         sorted.forEach(j => {
             if (!j.data_partida) return;
-            const min = new Date(j.data_partida).getUTCMinutes();
+            const _dpRaw = typeof j.data_partida === 'string' ? j.data_partida.replace(' ','T').replace(/Z?$/,'Z') : j.data_partida;
+            const min = new Date(_dpRaw).getUTCMinutes();
             let idx = minuteSlots.indexOf(min);
             if (idx < 0) {
                 // Minuto não está na lista → slot mais próximo
