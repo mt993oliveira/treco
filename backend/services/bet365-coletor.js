@@ -125,6 +125,23 @@ class Bet365Coletor {
              ALTER TABLE bet365_historico_partidas ADD gol_fora_ht TINYINT NULL`,
             `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='placar_oculto')
              ALTER TABLE bet365_historico_partidas ADD placar_oculto BIT NOT NULL DEFAULT 0`,
+            `IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID('bet365_resultados_mercados') AND type='U')
+             CREATE TABLE bet365_resultados_mercados (
+                 id            BIGINT        NOT NULL PRIMARY KEY,
+                 evento_id     BIGINT        NOT NULL,
+                 liga          NVARCHAR(200) NOT NULL,
+                 time_casa     NVARCHAR(100) NOT NULL,
+                 time_fora     NVARCHAR(100) NOT NULL,
+                 data_partida  DATETIME2     NULL,
+                 mercado       NVARCHAR(200) NOT NULL,
+                 selecao       NVARCHAR(200) NOT NULL,
+                 odd_paga      DECIMAL(10,2) NOT NULL DEFAULT 0,
+                 data_registro DATETIME2     NOT NULL DEFAULT GETUTCDATE()
+             )`,
+            `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('bet365_resultados_mercados') AND name='IX_b365_resmkt_evento')
+             CREATE INDEX IX_b365_resmkt_evento ON bet365_resultados_mercados (evento_id)`,
+            `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('bet365_resultados_mercados') AND name='IX_b365_resmkt_liga_data')
+             CREATE INDEX IX_b365_resmkt_liga_data ON bet365_resultados_mercados (liga, data_partida)`,
         ];
         for (const mig of migracoes) {
             await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));
@@ -406,8 +423,8 @@ class Bet365Coletor {
         if (temBtnRes) {
             await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
             await this._delay(2000);
-            // Clica Show More até 5 vezes para carregar resultados da última hora
-            for (let sm = 0; sm < 5; sm++) {
+            // Clica Show More até 10 vezes para garantir cobertura ampla de resultados
+            for (let sm = 0; sm < 10; sm++) {
                 const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
                 if (!temMore) break;
                 await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
@@ -802,6 +819,29 @@ class Bet365Coletor {
                 const acao = jaExiste ? '🔄 Atualizado' : '✅ Salvo';
                 console.log(`   ${acao}: [${res.liga}] ${res.timeCasa} ${res.golCasa}-${res.golFora} ${res.timeFora} (UTC ${timeKey})`);
                 histOk++;
+
+                // ── 5. Salva mercados pagos (seleção vencedora + odd paga por mercado) ──
+                for (const mkt of (res.mercados || [])) {
+                    if (!mkt.mercado || !mkt.selecao) continue;
+                    const mktId = this._gerarMercadoId(eventoId, `resultado|${mkt.mercado}|${mkt.selecao}`);
+                    await pool.request()
+                        .input('id',          sql.BigInt,        mktId)
+                        .input('eventoId',    sql.BigInt,        eventoId)
+                        .input('liga',        sql.NVarChar(200), res.liga)
+                        .input('timeCasa',    sql.NVarChar(100), res.timeCasa)
+                        .input('timeFora',    sql.NVarChar(100), res.timeFora)
+                        .input('dataPart',    sql.DateTime2,     dataPart)
+                        .input('mercado',     sql.NVarChar(200), mkt.mercado)
+                        .input('selecao',     sql.NVarChar(200), mkt.selecao)
+                        .input('oddPaga',     sql.Decimal(10,2), mkt.odd || 0)
+                        .query(`
+                            MERGE bet365_resultados_mercados AS t
+                            USING (SELECT @id AS id) AS s ON t.id = s.id
+                            WHEN NOT MATCHED THEN INSERT
+                                (id, evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga)
+                            VALUES (@id, @eventoId, @liga, @timeCasa, @timeFora, @dataPart, @mercado, @selecao, @oddPaga);
+                        `);
+                }
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
             }
