@@ -2552,9 +2552,13 @@ function renderTabela() {
             const min = new Date(_dpRaw).getUTCMinutes();
             let idx = minuteSlots.indexOf(min);
             if (idx < 0) {
-                // Minuto não está na lista → slot mais próximo
-                idx = minuteSlots.findIndex(m => m >= min);
-                if (idx < 0) idx = N - 1;
+                // Minuto não está na lista → slot MAIS PRÓXIMO (não apenas o próximo)
+                let bestIdx = 0, bestDist = Infinity;
+                minuteSlots.forEach((m, i) => {
+                    const d = Math.abs(m - min);
+                    if (d < bestDist) { bestDist = d; bestIdx = i; }
+                });
+                idx = bestIdx;
             }
             // Nunca vazar para slot adjacente — cada jogo fica exatamente na sua coluna
             if (!slotMap[idx]) slotMap[idx] = j;
