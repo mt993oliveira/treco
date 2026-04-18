@@ -1137,22 +1137,29 @@ router.get('/analise/mercados', async (req, res) => {
                     m.liga,
                     m.mercado,
                     m.selecao,
-                    COUNT(*)                                                AS vezes,
-                    SUM(COUNT(*)) OVER (PARTITION BY m.liga, m.mercado)    AS total_jogos,
-                    CAST(AVG(CAST(m.odd_paga AS FLOAT)) AS DECIMAL(5,2))   AS odd_media
+                    COUNT(*)                                             AS vezes,
+                    SUM(COUNT(*)) OVER (PARTITION BY m.liga, m.mercado) AS total_jogos,
+                    AVG(CAST(m.odd_paga AS FLOAT))                      AS odd_media_f
                 FROM bet365_resultados_mercados m
                 ${whereClause}
                 GROUP BY m.liga, m.mercado, m.selecao
+            ),
+            calc AS (
+                SELECT *,
+                    vezes * 100.0 / NULLIF(total_jogos, 0)             AS pct_raw,
+                    (vezes * 1.0  / NULLIF(total_jogos, 0)) * odd_media_f AS ve_raw
+                FROM base
+                WHERE total_jogos >= @minJogos
             )
             SELECT
-                liga, mercado, selecao, vezes, total_jogos, odd_media,
-                CAST(vezes * 100.0 / NULLIF(total_jogos, 0) AS DECIMAL(5,1))          AS pct_jogos,
-                CAST((vezes * 1.0  / NULLIF(total_jogos, 0)) * odd_media AS DECIMAL(5,3)) AS ve
-            FROM base
-            WHERE total_jogos >= @minJogos
-              AND CAST(vezes * 100.0 / NULLIF(total_jogos, 0) AS DECIMAL(5,1)) >= @minPct
+                liga, mercado, selecao, vezes, total_jogos,
+                CAST(odd_media_f  AS DECIMAL(7,2))  AS odd_media,
+                CAST(pct_raw      AS DECIMAL(6,1))  AS pct_jogos,
+                CAST(ve_raw       AS DECIMAL(8,3))  AS ve
+            FROM calc
+            WHERE pct_raw >= @minPct
               ${havingMinVE} ${havingVB}
-            ORDER BY liga, mercado, pct_jogos DESC
+            ORDER BY liga, mercado, pct_raw DESC
         `);
 
         // Agrupa por liga → mercado → seleções
@@ -1294,13 +1301,14 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
                 SELECT liga, mercado, selecao,
                     COUNT(*) AS vezes,
                     SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
-                    CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media
+                    AVG(CAST(odd_paga AS FLOAT)) AS odd_f
                 FROM bet365_resultados_mercados
                 WHERE data_partida >= DATEADD(DAY, -30, GETUTCDATE())
                 GROUP BY liga, mercado, selecao
             )
-            SELECT liga, mercado, selecao, vezes, total_jogos, odd_media,
-                CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(5,1)) AS pct
+            SELECT liga, mercado, selecao, vezes, total_jogos,
+                CAST(odd_f AS DECIMAL(7,2)) AS odd_media,
+                CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(6,1)) AS pct
             FROM base
             WHERE total_jogos >= 10
         `);
@@ -1398,13 +1406,14 @@ router.get('/analise/resumo', async (req, res) => {
                     SELECT liga, mercado, selecao,
                         COUNT(*) AS vezes,
                         SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
-                        CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media
+                        AVG(CAST(odd_paga AS FLOAT)) AS odd_f
                     FROM bet365_resultados_mercados
                     WHERE 1=1 ${diasWhere} ${ligaWhere}
                     GROUP BY liga, mercado, selecao
                 )
-                SELECT TOP 10 liga, mercado, selecao, vezes, total_jogos, odd_media,
-                    CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(5,1)) AS pct
+                SELECT TOP 10 liga, mercado, selecao, vezes, total_jogos,
+                    CAST(odd_f AS DECIMAL(7,2)) AS odd_media,
+                    CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(6,1)) AS pct
                 FROM base
                 WHERE total_jogos >= ${minJogosN}
                 ORDER BY pct DESC
@@ -1415,17 +1424,24 @@ router.get('/analise/resumo', async (req, res) => {
                     SELECT liga, mercado, selecao,
                         COUNT(*) AS vezes,
                         SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
-                        CAST(AVG(CAST(odd_paga AS FLOAT)) AS DECIMAL(5,2)) AS odd_media
+                        AVG(CAST(odd_paga AS FLOAT)) AS odd_f
                     FROM bet365_resultados_mercados
                     WHERE 1=1 ${diasWhere} ${ligaWhere}
                     GROUP BY liga, mercado, selecao
+                ),
+                calc AS (
+                    SELECT *,
+                        vezes*100.0/NULLIF(total_jogos,0)             AS pct_raw,
+                        (vezes*1.0/NULLIF(total_jogos,0))*odd_f       AS ve_raw
+                    FROM base
+                    WHERE total_jogos >= ${minJogosN}
                 )
-                SELECT TOP 15 liga, mercado, selecao, vezes, total_jogos, odd_media,
-                    CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(5,1)) AS pct,
-                    CAST((vezes*1.0/NULLIF(total_jogos,0))*odd_media AS DECIMAL(5,3)) AS valor_esperado
-                FROM base
-                WHERE total_jogos >= ${minJogosN}
-                    ${vbHaving}
+                SELECT TOP 15 liga, mercado, selecao, vezes, total_jogos,
+                    CAST(odd_f   AS DECIMAL(7,2)) AS odd_media,
+                    CAST(pct_raw AS DECIMAL(6,1)) AS pct,
+                    CAST(ve_raw  AS DECIMAL(8,3)) AS valor_esperado
+                FROM calc
+                WHERE 1=1 ${vbHaving}
                 ORDER BY valor_esperado DESC
             `)
         ]);
