@@ -1441,8 +1441,10 @@ router.get('/analise/resumo', async (req, res) => {
                     CAST(pct_raw AS DECIMAL(6,1)) AS pct,
                     CAST(ve_raw  AS DECIMAL(8,3)) AS valor_esperado
                 FROM calc
-                WHERE 1=1 ${vbWhere}
-                ORDER BY valor_esperado DESC
+                WHERE pct_raw >= 10          -- exclui Scorecast/Wincast (frequência < 10%)
+                  AND odd_f <= 30            -- exclui odds absurdas (mercados compostos)
+                  ${vbWhere}
+                ORDER BY ve_raw DESC
             `)
         ]);
 
