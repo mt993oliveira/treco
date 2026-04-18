@@ -839,14 +839,6 @@
                     onblur="if(this.value)setHorasCustom(this.value)">
                 <span style="font-size:9px;color:#475569">H</span>
             </div>
-            <div style="width:1px;height:16px;background:#1e293b;margin:0 4px"></div>
-            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">CONDIÇÃO</span>
-            <button class="secao-btn ativo" data-s="over"         onclick="trocarSecao('over')">Over Gols</button>
-            <button class="secao-btn"       data-s="under"        onclick="trocarSecao('under')">Under Gols</button>
-            <button class="secao-btn"       data-s="ambas"        onclick="trocarSecao('ambas')">Ambas Marcam</button>
-            <button class="secao-btn"       data-s="resultado_ft" onclick="trocarSecao('resultado_ft')">Resultado FT</button>
-            <button class="secao-btn"       data-s="gols_exatos"  onclick="trocarSecao('gols_exatos')">Gols Exatos</button>
-            <button class="secao-btn"       data-s="especial"     onclick="trocarSecao('especial')">Especial</button>
         </div>
 
         <!-- Linha 2: sub-filtros multi-seleção -->
@@ -877,10 +869,6 @@
                 <canvas id="grafico"></canvas>
                 <canvas id="grafico-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
             </div>
-        </div>
-        <div style="width:155px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px;flex-shrink:0">
-            <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:7px">LINHAS</div>
-            <div id="legenda"></div>
         </div>
     </div>
 
@@ -1206,50 +1194,88 @@
 })();
 
 // ============================================================
-// FILTROS CONFIG
+// FILTROS CONFIG — lista plana com todas as opções do gráfico
 // ============================================================
+const TODOS_FILTROS = [
+    // BTTS
+    { id:'ambas-sim',  label:'Ambas',      cor:'#06b6d4' },
+    { id:'ambas-nao',  label:'AmbNão',     cor:'#0e7490' },
+    // Over FT
+    { id:'over1.5',    label:'O1.5',       cor:'#10b981' },
+    { id:'over2.5',    label:'O2.5',       cor:'#3b82f6' },
+    { id:'over3.5',    label:'O3.5',       cor:'#8b5cf6' },
+    { id:'over0.5',    label:'O0.5',       cor:'#fbbf24' },
+    { id:'over4.5',    label:'O4.5',       cor:'#ec4899' },
+    // Under FT
+    { id:'under1.5',   label:'U1.5',       cor:'#f97316' },
+    { id:'under2.5',   label:'U2.5',       cor:'#ef4444' },
+    { id:'under3.5',   label:'U3.5',       cor:'#dc2626' },
+    { id:'under0.5',   label:'U0.5',       cor:'#94a3b8' },
+    // Gols exatos FT
+    { id:'gols-5p',    label:'5+',         cor:'#f472b6' },
+    // FT Resultado
+    { id:'ft-casa',    label:'FTC',        cor:'#84cc16' },
+    { id:'ft-fora',    label:'FTV',        cor:'#fb923c' },
+    { id:'ft-empate',  label:'Empate',     cor:'#a78bfa' },
+    // Marca
+    { id:'casa-marca', label:'CM',         cor:'#4ade80' },
+    { id:'fora-marca', label:'FM',         cor:'#fbbf24' },
+    // Gols exatos
+    { id:'gols-0',     label:'0G',         cor:'#475569' },
+    { id:'gols-1',     label:'1G',         cor:'#94a3b8' },
+    { id:'gols-2',     label:'2G',         cor:'#60a5fa' },
+    { id:'gols-3',     label:'3G',         cor:'#818cf8' },
+    { id:'gols-4',     label:'4G',         cor:'#c084fc' },
+    // HT Placares exatos
+    { id:'ht-0-0',     label:'0-0 HT',    cor:'#64748b' },
+    { id:'ht-1-0',     label:'1-0 HT',    cor:'#4ade80' },
+    { id:'ht-0-1',     label:'0-1 HT',    cor:'#f87171' },
+    { id:'ht-1-1',     label:'1-1 HT',    cor:'#a78bfa' },
+    { id:'ht-2-0',     label:'2-0 HT',    cor:'#86efac' },
+    { id:'ht-0-2',     label:'0-2 HT',    cor:'#fca5a5' },
+    // HT Resultado
+    { id:'ht-casa',    label:'Casa HT',   cor:'#65a30d' },
+    { id:'ht-empate',  label:'EmpHT',     cor:'#c4b5fd' },
+    { id:'ht-fora',    label:'Fora HT',   cor:'#f97316' },
+    // HT Gols
+    { id:'ht-over',    label:'OverHT',    cor:'#22d3ee' },
+    { id:'ht-under',   label:'UnderHT',   cor:'#0891b2' },
+    { id:'ht-gols',    label:'Gols HT',   cor:'#67e8f9' },
+    // HT/FT Duplo resultado
+    { id:'htft-cc',    label:'casa-casa',      cor:'#166534' },
+    { id:'htft-ce',    label:'casa-empate',    cor:'#15803d' },
+    { id:'htft-cf',    label:'casa-fora',      cor:'#16a34a' },
+    { id:'htft-ec',    label:'empate-casa',    cor:'#4c1d95' },
+    { id:'htft-ee',    label:'empate-empate',  cor:'#6d28d9' },
+    { id:'htft-ef',    label:'empate-fora',    cor:'#7c3aed' },
+    { id:'htft-fc',    label:'fora-casa',      cor:'#7f1d1d' },
+    { id:'htft-fe',    label:'fora-empate',    cor:'#991b1b' },
+    { id:'htft-ff',    label:'fora-fora',      cor:'#b91c1c' },
+    // Especial
+    { id:'esp-btts-o25', label:'BTTS+O2.5', cor:'#2dd4bf' },
+    { id:'esp-btts-u25', label:'BTTS+U2.5', cor:'#38bdf8' },
+    { id:'esp-casa-o15', label:'Casa+O1.5', cor:'#34d399' },
+    { id:'esp-fora-o15', label:'Fora+O1.5', cor:'#fb923c' },
+    // Referência
+    { id:'equilibrio',   label:'Equilíbrio', cor:'#64748b', dashed:true },
+];
+
+// Compatibilidade legada — mantém FILTROS para renderTabela (S.filtro/secao)
 const FILTROS = {
-    over: [
-        { id: 'over0.5', label: 'Over 0.5', cor: '#fbbf24' },
-        { id: 'over1.5', label: 'Over 1.5', cor: '#10b981' },
-        { id: 'over2.5', label: 'Over 2.5', cor: '#3b82f6' },
-        { id: 'over3.5', label: 'Over 3.5', cor: '#8b5cf6' },
-        { id: 'over4.5', label: 'Over 4.5', cor: '#ec4899' },
-    ],
-    under: [
-        { id: 'under0.5', label: 'Under 0.5', cor: '#94a3b8' },
-        { id: 'under1.5', label: 'Under 1.5', cor: '#f97316' },
-        { id: 'under2.5', label: 'Under 2.5', cor: '#ef4444' },
-        { id: 'under3.5', label: 'Under 3.5', cor: '#dc2626' },
-    ],
-    ambas: [
-        { id: 'ambas-sim', label: 'Sim (BTTS)', cor: '#06b6d4' },
-        { id: 'ambas-nao', label: 'Não (BTTS)', cor: '#0e7490' },
-    ],
-    resultado_ft: [
-        { id: 'ft-casa',   label: 'Casa',   cor: '#84cc16' },
-        { id: 'ft-empate', label: 'Empate', cor: '#a78bfa' },
-        { id: 'ft-fora',   label: 'Fora',   cor: '#fb923c' },
-    ],
-    gols_exatos: [
-        { id: 'gols-0',  label: '0 Gols', cor: '#475569' },
-        { id: 'gols-1',  label: '1 Gol',  cor: '#94a3b8' },
-        { id: 'gols-2',  label: '2 Gols', cor: '#60a5fa' },
-        { id: 'gols-3',  label: '3 Gols', cor: '#818cf8' },
-        { id: 'gols-4',  label: '4 Gols', cor: '#c084fc' },
-        { id: 'gols-5p', label: '5+ Gols',cor: '#f472b6' },
-    ],
-    especial: [
-        { id: 'esp-btts-o25', label: 'BTTS + O2.5', cor: '#2dd4bf' },
-        { id: 'esp-btts-u25', label: 'BTTS + U2.5', cor: '#38bdf8' },
-        { id: 'esp-casa-o15', label: 'Casa + O1.5', cor: '#4ade80' },
-        { id: 'esp-fora-o15', label: 'Fora + O1.5', cor: '#fb923c' },
-    ],
+    over:         TODOS_FILTROS.filter(f => f.id.startsWith('over')),
+    under:        TODOS_FILTROS.filter(f => f.id.startsWith('under')),
+    ambas:        TODOS_FILTROS.filter(f => f.id.startsWith('ambas')),
+    resultado_ft: TODOS_FILTROS.filter(f => f.id.startsWith('ft-')),
+    gols_exatos:  TODOS_FILTROS.filter(f => f.id.startsWith('gols-')),
+    especial:     TODOS_FILTROS.filter(f => f.id.startsWith('esp-')),
+    ht:           TODOS_FILTROS.filter(f => f.id.startsWith('ht-')),
+    htft:         TODOS_FILTROS.filter(f => f.id.startsWith('htft-')),
 };
 
 const DEFAULTS = {
     over: 'over1.5', under: 'under2.5', ambas: 'ambas-sim',
     resultado_ft: 'ft-casa', gols_exatos: 'gols-2', especial: 'esp-btts-o25',
+    ht: 'ht-casa', htft: 'htft-cc',
 };
 
 // Ligas canônicas — as ligas coletadas do site
@@ -1394,39 +1420,84 @@ const S = {
     },
 };
 
-Object.values(FILTROS).flat().forEach(f => { S.linhas[f.id] = true; });
+// Por padrão todos desligados — usuário liga o que quer ver
+TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
+// Liga O1.5 e BTTS como defaults iniciais
+['over1.5', 'over2.5', 'ambas-sim', 'ft-casa', 'ft-empate', 'ft-fora'].forEach(id => { S.linhas[id] = true; });
+S.filtro = 'over1.5';
 
 // ============================================================
 // LÓGICA DE FILTROS (client-side)
 // ============================================================
 function checa(j, fid) {
-    const t = (j.gol_casa || 0) + (j.gol_fora || 0);
-    const c = j.gol_casa || 0, f = j.gol_fora || 0;
+    const t  = (j.gol_casa || 0) + (j.gol_fora || 0);
+    const c  = j.gol_casa  || 0,  f  = j.gol_fora  || 0;
+    const ht = (j.gol_casa_ht || 0) + (j.gol_fora_ht || 0);
+    const ch = j.gol_casa_ht || 0, fh = j.gol_fora_ht || 0;
+    // resultado HT derivado dos gols HT quando não temos campo direto
+    const rht = j.resultado_ht || (ch > fh ? 'CASA' : fh > ch ? 'FORA' : 'EMPATE');
+    const rft = j.resultado    || (c  > f  ? 'CASA' : f  > c  ? 'FORA' : 'EMPATE');
     switch (fid) {
+        // Over FT
         case 'over0.5':      return t >= 1;
         case 'over1.5':      return t >= 2;
         case 'over2.5':      return t >= 3;
         case 'over3.5':      return t >= 4;
         case 'over4.5':      return t >= 5;
+        // Under FT
         case 'under0.5':     return t === 0;
         case 'under1.5':     return t <= 1;
         case 'under2.5':     return t <= 2;
         case 'under3.5':     return t <= 3;
+        // BTTS
         case 'ambas-sim':    return c > 0 && f > 0;
         case 'ambas-nao':    return !(c > 0 && f > 0);
-        case 'ft-casa':      return j.resultado === 'CASA';
-        case 'ft-empate':    return j.resultado === 'EMPATE';
-        case 'ft-fora':      return j.resultado === 'FORA';
+        // Marca
+        case 'casa-marca':   return c > 0;
+        case 'fora-marca':   return f > 0;
+        // FT resultado
+        case 'ft-casa':      return rft === 'CASA';
+        case 'ft-empate':    return rft === 'EMPATE';
+        case 'ft-fora':      return rft === 'FORA';
+        // Gols exatos FT
         case 'gols-0':       return t === 0;
         case 'gols-1':       return t === 1;
         case 'gols-2':       return t === 2;
         case 'gols-3':       return t === 3;
         case 'gols-4':       return t === 4;
         case 'gols-5p':      return t >= 5;
+        // HT placares exatos
+        case 'ht-0-0':       return ch === 0 && fh === 0;
+        case 'ht-1-0':       return ch === 1 && fh === 0;
+        case 'ht-0-1':       return ch === 0 && fh === 1;
+        case 'ht-1-1':       return ch === 1 && fh === 1;
+        case 'ht-2-0':       return ch === 2 && fh === 0;
+        case 'ht-0-2':       return ch === 0 && fh === 2;
+        // HT resultado
+        case 'ht-casa':      return rht === 'CASA';
+        case 'ht-empate':    return rht === 'EMPATE';
+        case 'ht-fora':      return rht === 'FORA';
+        // HT gols
+        case 'ht-over':      return ht >= 2;   // Over 1.5 HT
+        case 'ht-under':     return ht <= 1;   // Under 1.5 HT
+        case 'ht-gols':      return ht > 0;    // Qualquer gol no 1T
+        // HT/FT duplo resultado
+        case 'htft-cc':      return rht === 'CASA'   && rft === 'CASA';
+        case 'htft-ce':      return rht === 'CASA'   && rft === 'EMPATE';
+        case 'htft-cf':      return rht === 'CASA'   && rft === 'FORA';
+        case 'htft-ec':      return rht === 'EMPATE' && rft === 'CASA';
+        case 'htft-ee':      return rht === 'EMPATE' && rft === 'EMPATE';
+        case 'htft-ef':      return rht === 'EMPATE' && rft === 'FORA';
+        case 'htft-fc':      return rht === 'FORA'   && rft === 'CASA';
+        case 'htft-fe':      return rht === 'FORA'   && rft === 'EMPATE';
+        case 'htft-ff':      return rht === 'FORA'   && rft === 'FORA';
+        // Especial / combo
         case 'esp-btts-o25': return c > 0 && f > 0 && t >= 3;
         case 'esp-btts-u25': return c > 0 && f > 0 && t <= 2;
-        case 'esp-casa-o15': return j.resultado === 'CASA' && t >= 2;
-        case 'esp-fora-o15': return j.resultado === 'FORA' && t >= 2;
+        case 'esp-casa-o15': return rft === 'CASA' && t >= 2;
+        case 'esp-fora-o15': return rft === 'FORA' && t >= 2;
+        // Equilíbrio — linha de referência 50%
+        case 'equilibrio':   return Math.random() < 0.5; // sempre 50% — linha plana
         default: return false;
     }
 }
@@ -2021,68 +2092,93 @@ function renderLigas() {
 // ============================================================
 // FILTROS / SEÇÃO
 // ============================================================
+// Grupos para organizar a legenda em linhas temáticas
+const GRUPOS_LEGENDA = [
+    { label: 'BTTS',      ids: ['ambas-sim','ambas-nao'] },
+    { label: 'Over FT',   ids: ['over0.5','over1.5','over2.5','over3.5','over4.5'] },
+    { label: 'Under FT',  ids: ['under0.5','under1.5','under2.5','under3.5'] },
+    { label: 'Gols FT',   ids: ['gols-0','gols-1','gols-2','gols-3','gols-4','gols-5p'] },
+    { label: 'Result FT', ids: ['ft-casa','ft-fora','ft-empate','casa-marca','fora-marca'] },
+    { label: 'HT Placar', ids: ['ht-0-0','ht-1-0','ht-0-1','ht-1-1','ht-2-0','ht-0-2'] },
+    { label: 'HT Result', ids: ['ht-casa','ht-empate','ht-fora','ht-over','ht-under','ht-gols'] },
+    { label: 'HT/FT',     ids: ['htft-cc','htft-ce','htft-cf','htft-ec','htft-ee','htft-ef','htft-fc','htft-fe','htft-ff'] },
+    { label: 'Especial',  ids: ['esp-btts-o25','esp-btts-u25','esp-casa-o15','esp-fora-o15','equilibrio'] },
+];
+const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
+
 function renderFiltros() {
     const c = document.getElementById('filtros-row');
     c.innerHTML = '';
-    const filtrosSec = FILTROS[S.secao] || [];
+    c.style.flexDirection = 'column';
+    c.style.gap = '4px';
 
-    // Botões Todos / Limpar seleção
-    const btnTodos = document.createElement('button');
-    btnTodos.className = 'filtro-btn';
-    btnTodos.textContent = 'Todos';
-    btnTodos.title = 'Selecionar todos';
-    btnTodos.onclick = () => {
-        filtrosSec.forEach(f => { S.linhas[f.id] = true; });
-        S.filtro = filtrosSec[0]?.id || '';
-        renderFiltros(); renderTabela(); renderGrafico();
-    };
-    c.appendChild(btnTodos);
-
-    const btnNenhum = document.createElement('button');
-    btnNenhum.className = 'filtro-btn';
-    btnNenhum.textContent = 'Limpar';
-    btnNenhum.title = 'Desmarcar todos';
-    btnNenhum.onclick = () => {
-        filtrosSec.forEach(f => { S.linhas[f.id] = false; });
-        renderFiltros(); renderTabela(); renderGrafico();
-    };
-    c.appendChild(btnNenhum);
-
-    // Separador
-    const sep = document.createElement('div');
-    sep.style.cssText = 'width:1px;height:16px;background:#1e293b';
-    c.appendChild(sep);
-
-    // Sub-filtros como multi-seleção toggle
-    filtrosSec.forEach(f => {
-        const b = document.createElement('button');
-        b.className = 'filtro-btn' + (S.linhas[f.id] ? ' ativo' : '');
-        b.textContent = f.label;
-        b.style.borderLeftColor = f.cor;
-        b.onclick = () => {
-            S.linhas[f.id] = !S.linhas[f.id];
-            // S.filtro = primeiro ativo (para tabela + MACD)
-            const ativos = filtrosSec.filter(f2 => S.linhas[f2.id]);
-            if (ativos.length > 0) S.filtro = ativos[0].id;
-            renderFiltros(); renderTabela(); renderGrafico();
-        };
-        c.appendChild(b);
-    });
-
-    const div = document.createElement('div');
-    div.style.cssText = 'margin-left:auto;display:flex;gap:6px';
-    div.innerHTML = `
+    // Linha de controles globais
+    const ctrlRow = document.createElement('div');
+    ctrlRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid #1e293b;margin-bottom:2px';
+    ctrlRow.innerHTML = `
+        <button class="filtro-btn" onclick="_lgTodos()" title="Ligar tudo">Todos</button>
+        <button class="filtro-btn" onclick="_lgLimpar()" title="Desligar tudo">Limpar</button>
+        <div style="width:1px;height:14px;background:#1e293b"></div>
         <button class="acao-btn" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
-        <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
-        <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
-        <button class="acao-btn${S.showNomes ? ' ativo' : ''}" id="btn-show-nomes"
+        <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking</button>
+        <button class="acao-btn" onclick="abrirModalOdds()">📊 Odds</button>
+        <button class="acao-btn${S.showNomes ? ' ativo' : ''}"
             onclick="S.showNomes=!S.showNomes;renderFiltros();renderTabela()"
-            title="Mostrar/ocultar nomes dos clubes nas células">🏷️ Clubes</button>
-        <button class="acao-btn${S.showOdds ? ' ativo' : ''}" id="btn-show-odds"
+            title="Mostrar nomes dos clubes">🏷️ Clubes</button>
+        <button class="acao-btn${S.showOdds ? ' ativo' : ''}"
             onclick="S.showOdds=!S.showOdds;renderFiltros();renderTabela()"
-            title="Mostrar odds pré-jogo 1X2 nas células">💹 Odds</button>
+            title="Mostrar odds">💹 Odds</button>
     `;
-    c.appendChild(div);
+    c.appendChild(ctrlRow);
+
+    // Uma linha por grupo
+    GRUPOS_LEGENDA.forEach(grupo => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+
+        // Label do grupo
+        const gl = document.createElement('span');
+        gl.style.cssText = 'font-size:8px;font-weight:700;color:#334155;letter-spacing:.05em;min-width:52px;text-align:right;padding-right:4px;flex-shrink:0';
+        gl.textContent = grupo.label;
+        row.appendChild(gl);
+
+        grupo.ids.forEach(id => {
+            const fi = _filtroById(id);
+            if (!fi) return;
+            const ativo = S.linhas[id];
+            const item = document.createElement('div');
+            item.title = fi.label;
+            item.style.cssText = `display:inline-flex;align-items:center;gap:3px;cursor:pointer;padding:2px 6px;
+                border-radius:3px;border:1px solid ${ativo ? fi.cor : '#1e293b'};
+                background:${ativo ? fi.cor + '22' : 'transparent'};
+                transition:all .12s;user-select:none`;
+            item.innerHTML = `
+                <span style="width:12px;height:8px;border-radius:2px;border:2px solid ${fi.cor};
+                    background:${ativo ? fi.cor : 'transparent'};
+                    ${fi.dashed ? 'border-style:dashed' : ''}"></span>
+                <span style="font-size:9px;font-weight:${ativo?'700':'400'};
+                    color:${ativo ? '#e2e8f0' : '#475569'}">${fi.label}</span>
+            `;
+            item.onclick = () => {
+                S.linhas[id] = !S.linhas[id];
+                const ativos = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
+                if (ativos.length > 0) S.filtro = ativos[0].id;
+                renderFiltros(); renderTabela(); renderGrafico();
+            };
+            row.appendChild(item);
+        });
+        c.appendChild(row);
+    });
+}
+
+function _lgTodos() {
+    TODOS_FILTROS.forEach(f => { S.linhas[f.id] = true; });
+    S.filtro = 'over1.5';
+    renderFiltros(); renderTabela(); renderGrafico();
+}
+function _lgLimpar() {
+    TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
+    renderFiltros(); renderTabela(); renderGrafico();
 }
 
 function trocarSecao(s) {
@@ -2103,28 +2199,7 @@ function setHoras(n) {
 // LEGENDA
 // ============================================================
 function renderLegenda() {
-    const c = document.getElementById('legenda');
-    c.innerHTML = '';
-    (FILTROS[S.secao] || []).forEach(f => {
-        const item = document.createElement('div');
-        item.className = 'legenda-item' + (S.linhas[f.id] ? '' : ' off');
-        item.innerHTML = `<span class="legenda-cor" style="background:${f.cor}"></span><span>${f.label}</span>`;
-        item.onclick = () => { S.linhas[f.id] = !S.linhas[f.id]; renderLegenda(); renderGrafico(); };
-        c.appendChild(item);
-    });
-    const mm1 = document.getElementById('mm1')?.value || 12;
-    const mm2 = document.getElementById('mm2')?.value || 26;
-    const div = document.createElement('div');
-    div.style.cssText = 'border-top:1px solid #1e293b;margin-top:5px;padding-top:5px';
-    div.innerHTML = `
-        <div class="legenda-item" style="cursor:default;opacity:.7">
-            <span class="legenda-cor" style="background:#60a5fa"></span><span>MACD(${mm1}/${mm2})</span>
-        </div>
-        <div class="legenda-item" style="cursor:default;opacity:.7">
-            <span class="legenda-cor" style="background:#f472b6"></span><span>Sinal</span>
-        </div>
-    `;
-    c.appendChild(div);
+    // Legenda integrada ao filtros-row — não precisa de painel separado
 }
 
 // ============================================================
@@ -2343,12 +2418,12 @@ function renderGrafico() {
     const mm2 = parseInt(document.getElementById('mm2')?.value) || 26;
     const mms = parseInt(document.getElementById('mms')?.value) || 9;
 
-    const opcoes = FILTROS[S.secao] || [];
+    const opcoes = TODOS_FILTROS;
     const datasets = [];
 
-    // Filtro primário (para scatter + MACD) = primeiro ativo, ou default
-    const ativos = opcoes.filter(f => S.linhas[f.id]);
-    const fi = opcoes.find(f => f.id === S.filtro) || ativos[0] || opcoes[0];
+    // Filtro primário (para scatter + MACD) = S.filtro, ou primeiro ativo
+    const ativos = opcoes.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
+    const fi = opcoes.find(f => f.id === S.filtro && S.linhas[f.id]) || ativos[0];
 
     // Scatter do filtro primário
     if (fi) {
@@ -2391,13 +2466,21 @@ function renderGrafico() {
     // Linhas MA para TODOS os outros filtros ativos (multi-seleção)
     opcoes.forEach(f => {
         if (!S.linhas[f.id] || f.id === fi?.id) return;
+        // Equilíbrio = linha plana constante em 50%
+        if (f.id === 'equilibrio') {
+            datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => 50),
+                borderColor: '#64748b', backgroundColor:'transparent',
+                borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0 });
+            return;
+        }
         const pts2 = serie.map(j => checa(j, f.id) ? 100 : 0);
         const mm = pts2.map((_, i) => {
             const w = pts2.slice(Math.max(0,i-9), i+1);
             return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);
         });
         datasets.push({ type:'line', label: f.label, data: mm, borderColor: f.cor,
-            backgroundColor:'transparent', borderWidth:1.5, pointRadius:0, tension:0.4 });
+            backgroundColor:'transparent', borderWidth:1.5, pointRadius:0, tension:0.4,
+            ...(f.dashed ? { borderDash:[6,4] } : {}) });
     });
 
     const labels = serie.map((p, i) => {
