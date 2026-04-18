@@ -10,6 +10,18 @@ const router = express.Router();
 
 let sqlPool = null;
 
+// Mapeamento: nome canônico (frontend) → nome real no banco (bet365_resultados_mercados)
+// O frontend envia "Copa do Mundo" / "Premier League", o banco armazena "World Cup" / "Premiership"
+const LIGA_CANONICAL_TO_DB = {
+    'Copa do Mundo':   'World Cup',
+    'Premier League':  'Premiership',
+    // as demais já coincidem: Euro Cup, Express Cup, Super Liga Sul-Americana
+};
+function ligaParaBanco(liga) {
+    if (!liga || liga === 'all') return liga;
+    return LIGA_CANONICAL_TO_DB[liga] || liga;
+}
+
 async function getDbPool() {
     if (sqlPool && sqlPool.connected) {
         return sqlPool;
@@ -1104,7 +1116,7 @@ router.get('/analise/mercados', async (req, res) => {
             whereParts.push('m.data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())');
         }
         if (liga && liga !== 'all') {
-            request.input('liga', sql.NVarChar(200), liga);
+            request.input('liga', sql.NVarChar(200), ligaParaBanco(liga));
             whereParts.push('m.liga = @liga');
         }
         if (tipoMercado && tipoMercado !== 'Todos') {
@@ -1163,11 +1175,14 @@ router.get('/analise/mercados', async (req, res) => {
         `);
 
         // Agrupa por liga → mercado → seleções
+        // Normaliza nomes de liga para canônicos (o banco armazena raw, o frontend espera canônico)
+        const LIGA_DB_TO_CANONICAL = { 'World Cup': 'Copa do Mundo', 'Premiership': 'Premier League' };
         const agrupado = {};
         for (const r of result.recordset) {
-            if (!agrupado[r.liga]) agrupado[r.liga] = {};
-            if (!agrupado[r.liga][r.mercado]) agrupado[r.liga][r.mercado] = [];
-            agrupado[r.liga][r.mercado].push({
+            const ligaCanon = LIGA_DB_TO_CANONICAL[r.liga] || r.liga;
+            if (!agrupado[ligaCanon]) agrupado[ligaCanon] = {};
+            if (!agrupado[ligaCanon][r.mercado]) agrupado[ligaCanon][r.mercado] = [];
+            agrupado[ligaCanon][r.mercado].push({
                 selecao:        r.selecao,
                 vezes:          r.vezes,
                 total_jogos:    r.total_jogos,
@@ -1210,8 +1225,9 @@ router.get('/analise/tendencias', async (req, res) => {
         const req1    = pool.request().input('nRecente', sql.Int, nRecenteN);
         const req2    = pool.request();
 
-        const ligaWhere1 = liga && liga !== 'all' ? (req1.input('liga', sql.NVarChar(200), liga), 'AND liga = @liga') : '';
-        const ligaWhere2 = liga && liga !== 'all' ? (req2.input('liga2', sql.NVarChar(200), liga), 'AND liga = @liga2') : '';
+        const ligaDb2    = ligaParaBanco(liga);
+        const ligaWhere1 = ligaDb2 && ligaDb2 !== 'all' ? (req1.input('liga', sql.NVarChar(200), ligaDb2), 'AND liga = @liga') : '';
+        const ligaWhere2 = ligaDb2 && ligaDb2 !== 'all' ? (req2.input('liga2', sql.NVarChar(200), ligaDb2), 'AND liga = @liga2') : '';
         const diasWhere  = diasNum > 0 ? `AND data_partida >= DATEADD(DAY,-${diasNum},GETUTCDATE())` : '';
 
         // Histórico total (ou filtrado por período)
@@ -1374,7 +1390,8 @@ router.get('/analise/resumo', async (req, res) => {
         const pool      = await getDbPool();
 
         const diasWhere  = diasNum < 9999 ? `AND data_partida >= DATEADD(DAY,-${diasNum},GETUTCDATE())` : '';
-        const ligaWhere  = (liga && liga !== 'all') ? `AND liga = '${liga.replace(/'/g,"''")}'` : '';
+        const ligaDb     = ligaParaBanco(liga);
+        const ligaWhere  = (ligaDb && ligaDb !== 'all') ? `AND liga = '${ligaDb.replace(/'/g,"''")}'` : '';
         // threshold de VE para value bets (referencia ve_raw do CTE)
         const veThreshold = (soValueBets === '1' || minVEN > 0) ? Math.max(minVEN, 0) : 0.90;
         const vbWhere    = `AND ve_raw >= ${veThreshold}`;
@@ -1448,14 +1465,15 @@ router.get('/analise/resumo', async (req, res) => {
             `)
         ]);
 
+        const _dbToCanon = r => ({ ...r, liga: ({ 'World Cup':'Copa do Mundo', 'Premiership':'Premier League' }[r.liga] || r.liga) });
         res.json({
             success:    true,
             timestamp:  new Date().toISOString(),
             filtros:    { dias: diasNum, liga: liga || 'all', minJogos: minJogosN, minVE: minVEN },
             volume:     vol.recordset[0],
-            por_liga:   porLiga.recordset,
-            top_selecoes: topMkt.recordset,
-            value_bets: valueBets.recordset
+            por_liga:   porLiga.recordset.map(_dbToCanon),
+            top_selecoes: topMkt.recordset.map(_dbToCanon),
+            value_bets: valueBets.recordset.map(_dbToCanon)
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
