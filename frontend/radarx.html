@@ -589,7 +589,6 @@
     <button class="view-btn ativo" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
     <button class="view-btn" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
-    <button class="view-btn" id="view-mercados" onclick="setView('mercados')">📈 Mercados</button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
     <div class="master-only" style="width:1px;height:20px;background:#1e293b;margin:0 4px"></div>
     <button class="view-btn master-only" id="btn-buscar-resultados" onclick="buscarResultados()" title="Forçar busca de resultados finalizados"
@@ -737,6 +736,34 @@
     <!-- SEÇÕES DE MERCADOS — ANÁLISE DE APOSTAS               -->
     <!-- ══════════════════════════════════════════════════════ -->
 
+    <!-- Filtros dos mercados -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:12px;margin-top:14px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
+            <button class="secao-btn" id="mkt-dias-1" onclick="setMktFiltro('dias',1)">1D</button>
+            <button class="secao-btn ativo" id="mkt-dias-7" onclick="setMktFiltro('dias',7)">7D</button>
+            <button class="secao-btn" id="mkt-dias-30" onclick="setMktFiltro('dias',30)">30D</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">MERCADO</span>
+            <button class="secao-btn ativo" id="mkt-tipo-all" onclick="setMktFiltro('tipo','all')">Todos</button>
+            <button class="secao-btn" id="mkt-tipo-Resultado Final" onclick="setMktFiltro('tipo','Resultado Final')">Resultado FT</button>
+            <button class="secao-btn" id="mkt-tipo-Ambos Marcam" onclick="setMktFiltro('tipo','Ambos Marcam')">Ambas Marcam</button>
+            <button class="secao-btn" id="mkt-tipo-over" onclick="setMktFiltro('tipo','over')">Over/Under</button>
+            <button class="secao-btn" id="mkt-tipo-Total Exato de Gols" onclick="setMktFiltro('tipo','Total Exato de Gols')">Gols Exatos</button>
+            <button class="secao-btn" id="mkt-tipo-Intervalo Resultado" onclick="setMktFiltro('tipo','Intervalo Resultado')">HT Resultado</button>
+            <button class="secao-btn" id="mkt-tipo-Resultado Correto - Intervalo" onclick="setMktFiltro('tipo','Resultado Correto - Intervalo')">HT Placar</button>
+            <button class="secao-btn" id="mkt-tipo-Intervalo/Final do Jogo" onclick="setMktFiltro('tipo','Intervalo/Final do Jogo')">HT/FT</button>
+            <button class="secao-btn" id="mkt-tipo-Resultado Correto" onclick="setMktFiltro('tipo','Resultado Correto')">Placar Correto</button>
+            <button class="secao-btn" id="mkt-tipo-Chance Dupla" onclick="setMktFiltro('tipo','Chance Dupla')">Dupla Chance</button>
+        </div>
+    </div>
+
+    <!-- Resumo geral de mercados -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px" id="mkt-resumo-cards">
+        <div style="color:#334155;font-size:12px;padding:24px">Carregando...</div>
+    </div>
+
     <!-- VALUE BETS -->
     <div style="background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px;margin-bottom:12px;margin-top:14px">
         <div style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM RETORNO ESPERADO POSITIVO</div>
@@ -797,11 +824,21 @@
         <!-- Linha 1: período de tempo -->
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
             <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
+            <button class="secao-btn" data-h="1"  onclick="setHoras(1)">1H</button>
+            <button class="secao-btn" data-h="2"  onclick="setHoras(2)">2H</button>
+            <button class="secao-btn" data-h="3"  onclick="setHoras(3)">3H</button>
             <button class="secao-btn" data-h="6"  onclick="setHoras(6)">6H</button>
             <button class="secao-btn" data-h="12" onclick="setHoras(12)">12H</button>
             <button class="secao-btn ativo" data-h="24" onclick="setHoras(24)">24H</button>
             <button class="secao-btn" data-h="48" onclick="setHoras(48)">48H</button>
             <button class="secao-btn" data-h="72" onclick="setHoras(72)">72H</button>
+            <div style="display:flex;align-items:center;gap:3px;margin-left:2px">
+                <input type="number" id="horas-custom" min="1" max="720" placeholder="Nº"
+                    style="width:46px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 5px;font-size:11px;font-weight:700;text-align:center;outline:none"
+                    onkeydown="if(event.key==='Enter')setHorasCustom(this.value)"
+                    onblur="if(this.value)setHorasCustom(this.value)">
+                <span style="font-size:9px;color:#475569">H</span>
+            </div>
             <div style="width:1px;height:16px;background:#1e293b;margin:0 4px"></div>
             <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">CONDIÇÃO</span>
             <button class="secao-btn ativo" data-s="over"         onclick="trocarSecao('over')">Over Gols</button>
@@ -812,22 +849,34 @@
             <button class="secao-btn"       data-s="especial"     onclick="trocarSecao('especial')">Especial</button>
         </div>
 
-        <!-- Linha 2: sub-filtros do tipo selecionado -->
+        <!-- Linha 2: sub-filtros multi-seleção -->
         <div id="filtros-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center"></div>
     </div>
 
     <!-- Chart + Legend -->
     <div style="display:flex;gap:10px;margin-bottom:10px">
         <div style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Over 1.5 — Evolução</div>
-                <div style="display:flex;gap:8px;align-items:center;font-size:10px;color:#334155">
-                    <label>MM1<input class="mm-input" id="mm1" type="number" value="12" min="2" max="50" onchange="renderGrafico()"></label>
-                    <label>MM2<input class="mm-input" id="mm2" type="number" value="26" min="3" max="100" onchange="renderGrafico()"></label>
-                    <label>Sig<input class="mm-input" id="mms" type="number" value="9"  min="2" max="20"  onchange="renderGrafico()"></label>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <div style="display:flex;gap:6px;align-items:center;font-size:10px;color:#334155">
+                        <label>MM1<input class="mm-input" id="mm1" type="number" value="12" min="2" max="50" onchange="renderGrafico()"></label>
+                        <label>MM2<input class="mm-input" id="mm2" type="number" value="26" min="3" max="100" onchange="renderGrafico()"></label>
+                        <label>Sig<input class="mm-input" id="mms" type="number" value="9"  min="2" max="20"  onchange="renderGrafico()"></label>
+                    </div>
+                    <div style="width:1px;height:14px;background:#1e293b"></div>
+                    <button id="btn-caneta" class="acao-btn" onclick="toggleCaneta()" title="Riscar no gráfico">✏️ Caneta</button>
+                    <input type="color" id="caneta-cor" value="#f59e0b" title="Cor da caneta"
+                        style="width:24px;height:24px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0">
+                    <input type="range" id="caneta-esp" min="1" max="8" value="2" title="Espessura"
+                        style="width:50px;accent-color:#f59e0b">
+                    <button class="acao-btn" onclick="limparDesenho()" title="Apagar riscos do gráfico">🗑 Limpar</button>
                 </div>
             </div>
-            <div style="position:relative;height:190px"><canvas id="grafico"></canvas></div>
+            <div style="position:relative;height:190px">
+                <canvas id="grafico"></canvas>
+                <canvas id="grafico-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
+            </div>
         </div>
         <div style="width:155px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px;flex-shrink:0">
             <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:7px">LINHAS</div>
@@ -983,88 +1032,6 @@
                 </thead>
                 <tbody id="diag-logs-tbody">
                     <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando logs...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- ========== VIEW: MERCADOS ========== -->
-<div id="view-mercados-content" style="display:none;padding:12px 16px">
-
-    <!-- Filtros -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:12px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
-            <button class="secao-btn" id="mkt-dias-1" onclick="setMktFiltro('dias',1)">1D</button>
-            <button class="secao-btn ativo" id="mkt-dias-7" onclick="setMktFiltro('dias',7)">7D</button>
-            <button class="secao-btn" id="mkt-dias-30" onclick="setMktFiltro('dias',30)">30D</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">MERCADO</span>
-            <button class="secao-btn ativo" id="mkt-tipo-all" onclick="setMktFiltro('tipo','all')">Todos</button>
-            <button class="secao-btn" id="mkt-tipo-Resultado Final" onclick="setMktFiltro('tipo','Resultado Final')">Resultado FT</button>
-            <button class="secao-btn" id="mkt-tipo-Ambos Marcam" onclick="setMktFiltro('tipo','Ambos Marcam')">Ambas Marcam</button>
-            <button class="secao-btn" id="mkt-tipo-over" onclick="setMktFiltro('tipo','over')">Over/Under</button>
-            <button class="secao-btn" id="mkt-tipo-Total Exato de Gols" onclick="setMktFiltro('tipo','Total Exato de Gols')">Gols Exatos</button>
-            <button class="secao-btn" id="mkt-tipo-Intervalo Resultado" onclick="setMktFiltro('tipo','Intervalo Resultado')">HT Resultado</button>
-            <button class="secao-btn" id="mkt-tipo-Resultado Correto - Intervalo" onclick="setMktFiltro('tipo','Resultado Correto - Intervalo')">HT Placar</button>
-            <button class="secao-btn" id="mkt-tipo-Intervalo/Final do Jogo" onclick="setMktFiltro('tipo','Intervalo/Final do Jogo')">HT/FT</button>
-            <button class="secao-btn" id="mkt-tipo-Resultado Correto" onclick="setMktFiltro('tipo','Resultado Correto')">Placar Correto</button>
-            <button class="secao-btn" id="mkt-tipo-Chance Dupla" onclick="setMktFiltro('tipo','Chance Dupla')">Dupla Chance</button>
-        </div>
-    </div>
-
-    <!-- Resumo geral -->
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px" id="mkt-resumo-cards">
-        <div style="color:#334155;font-size:12px;padding:24px">Carregando...</div>
-    </div>
-
-    <!-- Value Bets -->
-    <div style="background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px;margin-bottom:12px" id="mkt-value-bets-wrap">
-        <div style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM RETORNO ESPERADO POSITIVO</div>
-        <div id="mkt-value-bets" style="color:#334155;font-size:12px">Carregando...</div>
-    </div>
-
-    <!-- Tendências -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📈 TENDÊNCIAS — MERCADOS EM MOVIMENTO (RECENTE VS HISTÓRICO)</div>
-        <div id="mkt-tendencias" style="color:#334155;font-size:12px">Carregando...</div>
-    </div>
-
-    <!-- Gráfico de mercados -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📊 FREQUÊNCIA DOS MERCADOS</div>
-        <div style="max-height:380px;overflow-y:auto" id="mkt-grafico-wrap">
-            <canvas id="mkt-chart" height="300"></canvas>
-        </div>
-    </div>
-
-    <!-- Sugestões IA para próximos jogos -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em;margin-bottom:8px">🤖 IA — SUGESTÕES PARA PRÓXIMOS JOGOS (BASE: MERCADOS PAGOS)</div>
-        <div id="mkt-sugestoes-ia" style="color:#334155;font-size:12px">Carregando...</div>
-    </div>
-
-    <!-- Tabela completa de mercados -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📋 TABELA COMPLETA DE MERCADOS</div>
-        <div style="overflow-x:auto">
-            <table class="tabela-hist" id="mkt-tabela" style="font-size:11px">
-                <thead>
-                    <tr>
-                        <th class="th-l" style="min-width:120px">Liga</th>
-                        <th class="th-l" style="min-width:200px">Mercado</th>
-                        <th class="th-l" style="min-width:160px">Seleção</th>
-                        <th>Vezes</th>
-                        <th>% Jogos</th>
-                        <th>Odd Média</th>
-                        <th>V.Esperado</th>
-                        <th>Value?</th>
-                    </tr>
-                </thead>
-                <tbody id="mkt-tabela-body">
-                    <tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Carregando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1473,8 +1440,7 @@ function setView(v) {
     document.getElementById('view-historico-content').style.display     = v === 'historico'    ? '' : 'none';
     document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
     document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
-    document.getElementById('view-mercados-content').style.display      = v === 'mercados'     ? '' : 'none';
-    ['analise','historico','clubes','diagnostico','mercados'].forEach(id => {
+    ['analise','historico','clubes','diagnostico'].forEach(id => {
         const el = document.getElementById('view-' + id);
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
@@ -1482,7 +1448,6 @@ function setView(v) {
     if (v === 'analise')     { renderAnalise(); carregarMercados(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); }
-    if (v === 'mercados')    { carregarMercados(); }
 }
 
 // ============================================================
@@ -2045,7 +2010,6 @@ function renderLigas() {
             document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
             if (S.view === 'analise') { _faAtualizarStatus(); carregarSugestoes(true); carregarMercados(); }
-            if (S.view === 'mercados') { MKT.liga = liga; carregarMercados(); }
         };
         c.appendChild(b);
     };
@@ -2060,13 +2024,51 @@ function renderLigas() {
 function renderFiltros() {
     const c = document.getElementById('filtros-row');
     c.innerHTML = '';
-    (FILTROS[S.secao] || []).forEach(f => {
+    const filtrosSec = FILTROS[S.secao] || [];
+
+    // Botões Todos / Limpar seleção
+    const btnTodos = document.createElement('button');
+    btnTodos.className = 'filtro-btn';
+    btnTodos.textContent = 'Todos';
+    btnTodos.title = 'Selecionar todos';
+    btnTodos.onclick = () => {
+        filtrosSec.forEach(f => { S.linhas[f.id] = true; });
+        S.filtro = filtrosSec[0]?.id || '';
+        renderFiltros(); renderTabela(); renderGrafico();
+    };
+    c.appendChild(btnTodos);
+
+    const btnNenhum = document.createElement('button');
+    btnNenhum.className = 'filtro-btn';
+    btnNenhum.textContent = 'Limpar';
+    btnNenhum.title = 'Desmarcar todos';
+    btnNenhum.onclick = () => {
+        filtrosSec.forEach(f => { S.linhas[f.id] = false; });
+        renderFiltros(); renderTabela(); renderGrafico();
+    };
+    c.appendChild(btnNenhum);
+
+    // Separador
+    const sep = document.createElement('div');
+    sep.style.cssText = 'width:1px;height:16px;background:#1e293b';
+    c.appendChild(sep);
+
+    // Sub-filtros como multi-seleção toggle
+    filtrosSec.forEach(f => {
         const b = document.createElement('button');
-        b.className = 'filtro-btn' + (S.filtro === f.id ? ' ativo' : '');
+        b.className = 'filtro-btn' + (S.linhas[f.id] ? ' ativo' : '');
         b.textContent = f.label;
-        b.onclick = () => { S.filtro = f.id; renderFiltros(); renderTabela(); renderGrafico(); };
+        b.style.borderLeftColor = f.cor;
+        b.onclick = () => {
+            S.linhas[f.id] = !S.linhas[f.id];
+            // S.filtro = primeiro ativo (para tabela + MACD)
+            const ativos = filtrosSec.filter(f2 => S.linhas[f2.id]);
+            if (ativos.length > 0) S.filtro = ativos[0].id;
+            renderFiltros(); renderTabela(); renderGrafico();
+        };
         c.appendChild(b);
     });
+
     const div = document.createElement('div');
     div.style.cssText = 'margin-left:auto;display:flex;gap:6px';
     div.innerHTML = `
@@ -2344,8 +2346,11 @@ function renderGrafico() {
     const opcoes = FILTROS[S.secao] || [];
     const datasets = [];
 
-    // Pontos individuais (0 = miss, 100 = hit) para o filtro ativo
-    const fi = opcoes.find(f => f.id === S.filtro) || opcoes[0];
+    // Filtro primário (para scatter + MACD) = primeiro ativo, ou default
+    const ativos = opcoes.filter(f => S.linhas[f.id]);
+    const fi = opcoes.find(f => f.id === S.filtro) || ativos[0] || opcoes[0];
+
+    // Scatter do filtro primário
     if (fi) {
         const pts = serie.map(j => checa(j, fi.id) ? 100 : 0);
         datasets.push({
@@ -2357,7 +2362,7 @@ function renderGrafico() {
             pointHoverRadius: 5,
         });
 
-        // Média móvel de 10 jogos
+        // Média móvel de 10 jogos (primário)
         const mm10 = pts.map((_, i) => {
             const w = pts.slice(Math.max(0, i-9), i+1);
             return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);
@@ -2383,7 +2388,7 @@ function renderGrafico() {
         }
     }
 
-    // Linhas adicionais para outros filtros ativos
+    // Linhas MA para TODOS os outros filtros ativos (multi-seleção)
     opcoes.forEach(f => {
         if (!S.linhas[f.id] || f.id === fi?.id) return;
         const pts2 = serie.map(j => checa(j, f.id) ? 100 : 0);
@@ -4892,22 +4897,20 @@ async function carregarMercados() {
         if (ligaAtual) params.set('liga', ligaAtual);
 
         const ligaQs = ligaAtual ? '?liga=' + encodeURIComponent(ligaAtual) : '';
+        // Parâmetros de tendências com threshold baixo para mostrar mais dados
+        const tendParams = new URLSearchParams({ minJogosHist: 3, minJogosRec: 3, minVariacao: 5 });
+        if (ligaAtual) tendParams.set('liga', ligaAtual);
+
         const [resumoRes, mktRes, tendRes, iaRes] = await Promise.all([
             fetch('/api/bet365/analise/resumo' + (ligaAtual ? '?liga=' + encodeURIComponent(ligaAtual) : '')).then(r => r.json()),
             fetch('/api/bet365/analise/mercados?' + params).then(r => r.json()),
-            fetch('/api/bet365/analise/tendencias' + ligaQs).then(r => r.json()),
+            fetch('/api/bet365/analise/tendencias?' + tendParams).then(r => r.json()),
             fetch('/api/bet365/analise/sugestoes-avancadas').then(r => r.json())
         ]);
 
         MKT.dados = { resumo: resumoRes, mercados: mktRes, tendencias: tendRes, ia: iaRes };
-        // Aba Mercados
+        // Popula seções na aba Análise
         renderMktResumo(resumoRes);
-        renderMktValueBets(resumoRes, 'mkt');
-        renderMktTendencias(tendRes, 'mkt');
-        renderMktGrafico(mktRes, 'mkt', 'chart');
-        renderMktSugestoesIA(iaRes, 'mkt');
-        renderMktTabela(mktRes, 'mkt');
-        // Aba Análise (mesmos dados, IDs diferentes)
         renderMktValueBets(resumoRes, 'analise-mkt');
         renderMktTendencias(tendRes, 'analise-mkt');
         renderMktGrafico(mktRes, 'analise-mkt', 'chartAnalise');
@@ -5110,6 +5113,107 @@ function renderMktTabela(res, prefix = 'mkt') {
         </tr>`;
     }).join('');
 }
+
+// ============================================================
+// PERÍODO CUSTOMIZADO
+// ============================================================
+function setHorasCustom(v) {
+    const n = parseInt(v);
+    if (!n || n < 1 || n > 720) return;
+    // Remove ativo dos botões preset
+    document.querySelectorAll('.secao-btn[data-h]').forEach(b => b.classList.remove('ativo'));
+    S.horas = n;
+    carregarHistorico();
+}
+
+// ============================================================
+// CANETA — desenho livre sobre o gráfico
+// ============================================================
+const DRAW = { ativo: false, drawing: false, ctx: null };
+
+function _drawInit() {
+    const canvas = document.getElementById('grafico-draw');
+    if (!canvas || DRAW.ctx) return;
+    const parent = canvas.parentElement;
+    canvas.width  = parent.offsetWidth  || 600;
+    canvas.height = parent.offsetHeight || 190;
+    DRAW.ctx = canvas.getContext('2d');
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        return { x: (t.clientX - rect.left) * (canvas.width  / rect.width),
+                 y: (t.clientY - rect.top)  * (canvas.height / rect.height) };
+    }
+    function startDraw(e) {
+        if (!DRAW.ativo) return;
+        DRAW.drawing = true;
+        const p = getPos(e);
+        DRAW.ctx.beginPath();
+        DRAW.ctx.moveTo(p.x, p.y);
+        e.preventDefault();
+    }
+    function moveDraw(e) {
+        if (!DRAW.ativo || !DRAW.drawing) return;
+        const p = getPos(e);
+        const cor  = document.getElementById('caneta-cor')?.value || '#f59e0b';
+        const esp  = parseInt(document.getElementById('caneta-esp')?.value) || 2;
+        DRAW.ctx.lineTo(p.x, p.y);
+        DRAW.ctx.strokeStyle = cor;
+        DRAW.ctx.lineWidth   = esp;
+        DRAW.ctx.lineCap     = 'round';
+        DRAW.ctx.lineJoin    = 'round';
+        DRAW.ctx.stroke();
+        e.preventDefault();
+    }
+    function stopDraw() { DRAW.drawing = false; }
+
+    canvas.addEventListener('mousedown',  startDraw);
+    canvas.addEventListener('mousemove',  moveDraw);
+    canvas.addEventListener('mouseup',    stopDraw);
+    canvas.addEventListener('mouseleave', stopDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove',  moveDraw,  { passive: false });
+    canvas.addEventListener('touchend',   stopDraw);
+}
+
+function toggleCaneta() {
+    DRAW.ativo = !DRAW.ativo;
+    const btn = document.getElementById('btn-caneta');
+    if (btn) btn.classList.toggle('ativo', DRAW.ativo);
+    const canvas = document.getElementById('grafico-draw');
+    if (canvas) canvas.style.pointerEvents = DRAW.ativo ? 'auto' : 'none';
+    _drawInit();
+}
+
+function limparDesenho() {
+    const canvas = document.getElementById('grafico-draw');
+    if (canvas && DRAW.ctx) {
+        DRAW.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+// ============================================================
+// AUTO-COLETA DE RESULTADOS — a cada 1 hora, silenciosamente
+// ============================================================
+(function _autoColeta() {
+    async function coletar() {
+        try {
+            const r = await fetch('/api/bet365/buscar-resultados', { method: 'POST' });
+            const d = await r.json();
+            if (d.success && d.salvos > 0) {
+                console.log(`[auto-coleta] ${d.salvos} resultado(s) salvo(s) — recarregando dados`);
+                await carregarTudo();
+            } else {
+                console.log('[auto-coleta] Nenhum resultado novo');
+            }
+        } catch(e) {
+            console.warn('[auto-coleta] Erro:', e.message);
+        }
+    }
+    // Primeira coleta após 2 minutos do carregamento, depois a cada 1 hora
+    setTimeout(() => { coletar(); setInterval(coletar, 60 * 60 * 1000); }, 2 * 60 * 1000);
+})();
 </script>
 
 </div><!-- /#main-wrap -->
