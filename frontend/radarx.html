@@ -732,6 +732,60 @@
             <div id="detalhe-filtros" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;flex:2;min-width:320px"></div>
         </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SEÇÕES DE MERCADOS — ANÁLISE DE APOSTAS               -->
+    <!-- ══════════════════════════════════════════════════════ -->
+
+    <!-- VALUE BETS -->
+    <div style="background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px;margin-bottom:12px;margin-top:14px">
+        <div style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM RETORNO ESPERADO POSITIVO</div>
+        <div id="analise-mkt-value-bets" style="color:#334155;font-size:12px">Carregando...</div>
+    </div>
+
+    <!-- TENDÊNCIAS -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📈 TENDÊNCIAS — MERCADOS EM MOVIMENTO (RECENTE VS HISTÓRICO)</div>
+        <div id="analise-mkt-tendencias" style="color:#334155;font-size:12px">Carregando...</div>
+    </div>
+
+    <!-- FREQUÊNCIA DOS MERCADOS -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📊 FREQUÊNCIA DOS MERCADOS</div>
+        <div style="max-height:380px;overflow-y:auto" id="analise-mkt-grafico-wrap">
+            <canvas id="analise-mkt-chart" height="300"></canvas>
+        </div>
+    </div>
+
+    <!-- IA SUGESTÕES PRÓXIMOS JOGOS -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em;margin-bottom:8px">🤖 IA — SUGESTÕES PARA PRÓXIMOS JOGOS (BASE: MERCADOS PAGOS)</div>
+        <div id="analise-mkt-sugestoes-ia" style="color:#334155;font-size:12px">Carregando...</div>
+    </div>
+
+    <!-- TABELA COMPLETA DE MERCADOS -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📋 TABELA COMPLETA DE MERCADOS</div>
+        <div style="overflow-x:auto">
+            <table class="tabela-hist" style="font-size:11px">
+                <thead>
+                    <tr>
+                        <th class="th-l" style="min-width:120px">Liga</th>
+                        <th class="th-l" style="min-width:200px">Mercado</th>
+                        <th class="th-l" style="min-width:160px">Seleção</th>
+                        <th>Vezes</th>
+                        <th>% Jogos</th>
+                        <th>Odd Média</th>
+                        <th>V.Esperado</th>
+                        <th>Value?</th>
+                    </tr>
+                </thead>
+                <tbody id="analise-mkt-tabela-body">
+                    <tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- ========== VIEW: HISTÓRICO ========== -->
@@ -1425,7 +1479,7 @@ function setView(v) {
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
     if (v === 'historico')   { carregarHistorico(); renderProximosJogos(); renderUltimosResultados(); }
-    if (v === 'analise')     { renderAnalise(); }
+    if (v === 'analise')     { renderAnalise(); carregarMercados(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); }
     if (v === 'mercados')    { carregarMercados(); }
@@ -1439,6 +1493,7 @@ async function carregarTudo() {
         carregarHistorico(),
         carregarSugestoes(),
         carregarEstatisticasAvancadas(),
+        carregarMercados(),
         renderProximosJogos(),
         renderUltimosResultados(),
     ]);
@@ -1989,7 +2044,7 @@ function renderLigas() {
             renderTabela(); renderGrafico(); renderProximosJogos(); renderHeatmapIA(); renderUltimosResultados();
             document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
-            if (S.view === 'analise') { _faAtualizarStatus(); carregarSugestoes(true); }
+            if (S.view === 'analise') { _faAtualizarStatus(); carregarSugestoes(true); carregarMercados(); }
             if (S.view === 'mercados') { MKT.liga = liga; carregarMercados(); }
         };
         c.appendChild(b);
@@ -4814,7 +4869,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 // VIEW: MERCADOS — análise inteligente baseada em bet365_resultados_mercados
 // ============================================================
-const MKT = { liga: 'all', dias: 7, tipo: 'all', chart: null, dados: null };
+const MKT = { liga: 'all', dias: 7, tipo: 'all', chart: null, chartAnalise: null, dados: null };
 
 function setMktFiltro(chave, valor) {
     MKT[chave] = valor;
@@ -4845,12 +4900,19 @@ async function carregarMercados() {
         ]);
 
         MKT.dados = { resumo: resumoRes, mercados: mktRes, tendencias: tendRes, ia: iaRes };
+        // Aba Mercados
         renderMktResumo(resumoRes);
-        renderMktValueBets(resumoRes);
-        renderMktTendencias(tendRes);
-        renderMktGrafico(mktRes);
-        renderMktSugestoesIA(iaRes);
-        renderMktTabela(mktRes);
+        renderMktValueBets(resumoRes, 'mkt');
+        renderMktTendencias(tendRes, 'mkt');
+        renderMktGrafico(mktRes, 'mkt', 'chart');
+        renderMktSugestoesIA(iaRes, 'mkt');
+        renderMktTabela(mktRes, 'mkt');
+        // Aba Análise (mesmos dados, IDs diferentes)
+        renderMktValueBets(resumoRes, 'analise-mkt');
+        renderMktTendencias(tendRes, 'analise-mkt');
+        renderMktGrafico(mktRes, 'analise-mkt', 'chartAnalise');
+        renderMktSugestoesIA(iaRes, 'analise-mkt');
+        renderMktTabela(mktRes, 'analise-mkt');
     } catch(e) {
         console.error('Erro carregarMercados:', e);
     }
@@ -4874,8 +4936,8 @@ function renderMktResumo(res) {
     `).join('');
 }
 
-function renderMktValueBets(res) {
-    const el = document.getElementById('mkt-value-bets');
+function renderMktValueBets(res, prefix = 'mkt') {
+    const el = document.getElementById(`${prefix}-value-bets`);
     if (!el) return;
     const vb = (res.value_bets || []);
     if (!vb.length) { el.innerHTML = '<span style="color:#475569">Ainda sem dados suficientes. Continue coletando.</span>'; return; }
@@ -4894,8 +4956,8 @@ function renderMktValueBets(res) {
     `).join('') + '</div>';
 }
 
-function renderMktTendencias(res) {
-    const el = document.getElementById('mkt-tendencias');
+function renderMktTendencias(res, prefix = 'mkt') {
+    const el = document.getElementById(`${prefix}-tendencias`);
     if (!el) return;
     const t = (res.data || []).slice(0, 16);
     if (!t.length) { el.innerHTML = '<span style="color:#475569">Aguardando dados suficientes para detectar tendências.</span>'; return; }
@@ -4919,8 +4981,8 @@ function renderMktTendencias(res) {
     }).join('') + '</div>';
 }
 
-function renderMktGrafico(res) {
-    const canvas = document.getElementById('mkt-chart');
+function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
+    const canvas = document.getElementById(`${prefix}-${chartKey}`);
     if (!canvas) return;
 
     // Flatten dados filtrados por tipo
@@ -4938,14 +5000,14 @@ function renderMktGrafico(res) {
     rows.sort((a,b) => b.pct - a.pct);
     const top = rows.slice(0, 25);
 
-    if (MKT.chart) { MKT.chart.destroy(); MKT.chart = null; }
+    if (MKT[chartKey]) { MKT[chartKey].destroy(); MKT[chartKey] = null; }
     if (!top.length) { canvas.parentElement.innerHTML = '<div style="color:#334155;padding:24px;text-align:center">Sem dados para os filtros selecionados</div>'; return; }
 
-    // Recria canvas se necessário
-    canvas.parentElement.innerHTML = '<canvas id="mkt-chart"></canvas>';
-    const ctx = document.getElementById('mkt-chart').getContext('2d');
+    // Recria canvas
+    canvas.parentElement.innerHTML = `<canvas id="${prefix}-${chartKey}"></canvas>`;
+    const ctx = document.getElementById(`${prefix}-${chartKey}`).getContext('2d');
 
-    MKT.chart = new Chart(ctx, {
+    MKT[chartKey] = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: top.map(r => r.label.length > 40 ? r.label.slice(0,40)+'…' : r.label),
@@ -4979,8 +5041,8 @@ function renderMktGrafico(res) {
     });
 }
 
-function renderMktSugestoesIA(res) {
-    const el = document.getElementById('mkt-sugestoes-ia');
+function renderMktSugestoesIA(res, prefix = 'mkt') {
+    const el = document.getElementById(`${prefix}-sugestoes-ia`);
     if (!el) return;
     const jogos = (res.data || []).filter(j => MKT.liga === 'all' || j.liga === MKT.liga).slice(0, 8);
     if (!jogos.length) { el.innerHTML = '<span style="color:#475569">Nenhum jogo agendado no momento.</span>'; return; }
@@ -5015,8 +5077,8 @@ function renderMktSugestoesIA(res) {
     }).join('');
 }
 
-function renderMktTabela(res) {
-    const tbody = document.getElementById('mkt-tabela-body');
+function renderMktTabela(res, prefix = 'mkt') {
+    const tbody = document.getElementById(`${prefix}-tabela-body`);
     if (!tbody) return;
     const dados = res.data || {};
     const rows = [];
