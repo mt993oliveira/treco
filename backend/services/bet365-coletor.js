@@ -765,7 +765,30 @@ class Bet365Coletor {
                     eventoId = this._gerarId(res.liga, res.timeCasa, res.timeFora, `${dataKey}|${timeKey}`);
                 }
 
-                // ── 2. Verifica se já existe com placar real ──
+                // ── 2. Salva mercados pagos (sempre — independente de o histórico já existir) ──
+                for (const mkt of (res.mercados || [])) {
+                    if (!mkt.mercado || !mkt.selecao) continue;
+                    const mktId = this._gerarMercadoId(eventoId, `resultado|${mkt.mercado}|${mkt.selecao}`);
+                    await pool.request()
+                        .input('id',       sql.BigInt,        mktId)
+                        .input('eventoId', sql.BigInt,        eventoId)
+                        .input('liga',     sql.NVarChar(200), res.liga)
+                        .input('timeCasa', sql.NVarChar(100), res.timeCasa)
+                        .input('timeFora', sql.NVarChar(100), res.timeFora)
+                        .input('dataPart', sql.DateTime2,     dataPart)
+                        .input('mercado',  sql.NVarChar(200), mkt.mercado)
+                        .input('selecao',  sql.NVarChar(200), mkt.selecao)
+                        .input('oddPaga',  sql.Decimal(10,2), mkt.odd || 0)
+                        .query(`
+                            MERGE bet365_resultados_mercados AS t
+                            USING (SELECT @id AS id) AS s ON t.id = s.id
+                            WHEN NOT MATCHED THEN INSERT
+                                (id, evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga)
+                            VALUES (@id, @eventoId, @liga, @timeCasa, @timeFora, @dataPart, @mercado, @selecao, @oddPaga);
+                        `);
+                }
+
+                // ── 3. Verifica se já existe com placar real ──
                 const existe = await pool.request().input('evId', sql.BigInt, eventoId)
                     .query(`SELECT id, gol_casa, gol_fora, ISNULL(placar_oculto,0) AS placar_oculto FROM bet365_historico_partidas WHERE evento_id=@evId`);
 
@@ -819,29 +842,6 @@ class Bet365Coletor {
                 const acao = jaExiste ? '🔄 Atualizado' : '✅ Salvo';
                 console.log(`   ${acao}: [${res.liga}] ${res.timeCasa} ${res.golCasa}-${res.golFora} ${res.timeFora} (UTC ${timeKey})`);
                 histOk++;
-
-                // ── 5. Salva mercados pagos (seleção vencedora + odd paga por mercado) ──
-                for (const mkt of (res.mercados || [])) {
-                    if (!mkt.mercado || !mkt.selecao) continue;
-                    const mktId = this._gerarMercadoId(eventoId, `resultado|${mkt.mercado}|${mkt.selecao}`);
-                    await pool.request()
-                        .input('id',          sql.BigInt,        mktId)
-                        .input('eventoId',    sql.BigInt,        eventoId)
-                        .input('liga',        sql.NVarChar(200), res.liga)
-                        .input('timeCasa',    sql.NVarChar(100), res.timeCasa)
-                        .input('timeFora',    sql.NVarChar(100), res.timeFora)
-                        .input('dataPart',    sql.DateTime2,     dataPart)
-                        .input('mercado',     sql.NVarChar(200), mkt.mercado)
-                        .input('selecao',     sql.NVarChar(200), mkt.selecao)
-                        .input('oddPaga',     sql.Decimal(10,2), mkt.odd || 0)
-                        .query(`
-                            MERGE bet365_resultados_mercados AS t
-                            USING (SELECT @id AS id) AS s ON t.id = s.id
-                            WHEN NOT MATCHED THEN INSERT
-                                (id, evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga)
-                            VALUES (@id, @eventoId, @liga, @timeCasa, @timeFora, @dataPart, @mercado, @selecao, @oddPaga);
-                        `);
-                }
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
             }
