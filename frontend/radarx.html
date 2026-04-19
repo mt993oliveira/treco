@@ -660,63 +660,6 @@
         </div>
     </div>
 
-    <!-- TABELA COMPLETA DE MERCADOS -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em">📋 TABELA COMPLETA DE MERCADOS</div>
-            <div style="display:flex;align-items:center;gap:6px">
-                <span id="mkt-tabela-count" style="font-size:9px;color:#334155"></span>
-                <button id="mkt-tabela-toggle" onclick="_tabelaMktToggle()"
-                    style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;font-size:10px;font-weight:700;padding:3px 10px;cursor:pointer">
-                    Mostrar ▼
-                </button>
-            </div>
-        </div>
-        <div id="mkt-tabela-wrap" style="display:none">
-            <!-- Filtros rápidos da tabela -->
-            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-                <span style="font-size:9px;color:#475569;font-weight:700">FILTRAR:</span>
-                <select id="mkt-tab-liga" onchange="_filtrarTabelaMkt()"
-                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
-                    <option value="">Todas as ligas</option>
-                </select>
-                <select id="mkt-tab-mercado" onchange="_filtrarTabelaMkt()"
-                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
-                    <option value="">Todos os mercados</option>
-                    <option value="Total de Gols">Total de Gols</option>
-                    <option value="Resultado Final">Resultado Final</option>
-                    <option value="Ambos Marcam">Ambos Marcam</option>
-                    <option value="Resultado Correto">Resultado Correto</option>
-                    <option value="Intervalo">Intervalo</option>
-                    <option value="Chance Dupla">Chance Dupla</option>
-                </select>
-                <label style="display:flex;align-items:center;gap:4px;font-size:9px;color:#94a3b8;cursor:pointer">
-                    <input type="checkbox" id="mkt-tab-sovalue" onchange="_filtrarTabelaMkt()" style="accent-color:#4ade80">
-                    Só Value Bets
-                </label>
-                <button onclick="_filtrarTabelaMkt()" style="background:#1e3a5f;border:1px solid #3b82f6;color:#60a5fa;border-radius:4px;font-size:9px;font-weight:700;padding:3px 8px;cursor:pointer">Aplicar</button>
-            </div>
-            <div style="overflow-x:auto">
-                <table class="tabela-hist" style="font-size:11px">
-                    <thead>
-                        <tr>
-                            <th class="th-l" style="min-width:120px">Liga</th>
-                            <th class="th-l" style="min-width:200px">Mercado</th>
-                            <th class="th-l" style="min-width:160px">Seleção</th>
-                            <th>Vezes</th>
-                            <th>% Jogos</th>
-                            <th>Odd Média</th>
-                            <th>V.Esperado</th>
-                            <th>Value?</th>
-                        </tr>
-                    </thead>
-                    <tbody id="analise-mkt-tabela-body">
-                        <tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Clique em "Mostrar" para carregar a tabela.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- ========== VIEW: HISTÓRICO ========== -->
@@ -909,6 +852,69 @@
                 </thead>
                 <tbody id="diag-logs-tbody">
                     <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando logs...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TABELA COMPLETA DE MERCADOS -->
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-top:12px">
+        <div style="padding:8px 12px;background:#0c1220;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">📋 TABELA COMPLETA DE MERCADOS</span>
+            <span style="font-size:9px;color:#475569">Dias:</span>
+            <select id="diag-mkt-dias" onchange="_diagCarregarMkt()"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:10px;outline:none">
+                <option value="7">7 dias</option>
+                <option value="14">14 dias</option>
+                <option value="30">30 dias</option>
+                <option value="tudo">Tudo</option>
+            </select>
+            <select id="diag-mkt-liga" onchange="_diagCarregarMkt()"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:10px;outline:none">
+                <option value="">Todas as ligas</option>
+                <option value="Copa do Mundo">Copa do Mundo</option>
+                <option value="Euro Cup">Euro Cup</option>
+                <option value="Premier League">Premier League</option>
+                <option value="Express Cup">Express Cup</option>
+                <option value="Super Liga Sul-Americana">Super Liga Sul-Americana</option>
+            </select>
+            <select id="diag-mkt-mercado" onchange="_diagFiltrarMkt()"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:10px;outline:none">
+                <option value="">Todos os mercados</option>
+                <option value="Total de Gols">Total de Gols</option>
+                <option value="Resultado Final">Resultado Final</option>
+                <option value="Ambos Marcam">Ambos Marcam</option>
+                <option value="Resultado Correto">Resultado Correto</option>
+                <option value="Intervalo">Intervalo</option>
+                <option value="Chance Dupla">Chance Dupla</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:4px;font-size:9px;color:#94a3b8;cursor:pointer">
+                <input type="checkbox" id="diag-mkt-sovalue" onchange="_diagFiltrarMkt()" style="accent-color:#4ade80">
+                Só Value
+            </label>
+            <span style="font-size:9px;color:#475569">Exibir:</span>
+            <button class="filtro-btn ativo" id="diag-mkt-lim-20"  onclick="_diagMktSetLimit(20)" >20</button>
+            <button class="filtro-btn"       id="diag-mkt-lim-50"  onclick="_diagMktSetLimit(50)" >50</button>
+            <button class="filtro-btn"       id="diag-mkt-lim-100" onclick="_diagMktSetLimit(100)">100</button>
+            <button class="filtro-btn"       id="diag-mkt-lim-all" onclick="_diagMktSetLimit(0)"  >Todos</button>
+            <span id="diag-mkt-count" style="font-size:9px;color:#334155;margin-left:4px"></span>
+        </div>
+        <div style="overflow-x:auto">
+            <table class="tabela-hist" style="font-size:11px;width:100%">
+                <thead>
+                    <tr>
+                        <th class="th-l" style="min-width:120px">Liga</th>
+                        <th class="th-l" style="min-width:200px">Mercado</th>
+                        <th class="th-l" style="min-width:160px">Seleção</th>
+                        <th>Vezes</th>
+                        <th>% Jogos</th>
+                        <th>Odd Média</th>
+                        <th>V.Esperado</th>
+                        <th>Value?</th>
+                    </tr>
+                </thead>
+                <tbody id="diag-mkt-tbody">
+                    <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -3682,6 +3688,7 @@ async function carregarDiagnostico() {
     await Promise.all([
         _diagCarregarLogs(),
         _diagCarregarStats(),
+        _diagCarregarMkt(),
     ]);
     _diagAtualizarWS();
 }
@@ -3836,6 +3843,85 @@ async function _diagCarregarStats() {
 
 function limparEstimados() {
     alert('Função removida — bet365_historico_partidas foi descontinuada. Os dados são coletados diretamente via bet365_resultados_mercados.');
+}
+
+// ============================================================
+// DIAGNÓSTICO — TABELA COMPLETA DE MERCADOS
+// ============================================================
+let _diagMktLimit = 20;
+let _diagMktDados = null;
+
+function _diagMktSetLimit(n) {
+    _diagMktLimit = n;
+    ['20','50','100','all'].forEach(id => {
+        const el = document.getElementById(`diag-mkt-lim-${id}`);
+        if (el) el.classList.toggle('ativo', (id === 'all' ? 0 : parseInt(id)) === n);
+    });
+    _diagRenderMktRows();
+}
+
+async function _diagCarregarMkt() {
+    const tbody = document.getElementById('diag-mkt-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" style="padding:24px;text-align:center;color:#475569">Carregando...</td></tr>';
+    try {
+        const dias  = document.getElementById('diag-mkt-dias')?.value  || '7';
+        const liga  = document.getElementById('diag-mkt-liga')?.value  || '';
+        const params = new URLSearchParams({ dias, minJogos: 1 });
+        if (liga) params.set('liga', liga);
+        const res = await fetch('/api/bet365/analise/mercados?' + params).then(r => r.json());
+        _diagMktDados = res.data || {};
+        _diagRenderMktRows();
+    } catch(e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="padding:24px;text-align:center;color:#f87171">Erro: ${e.message}</td></tr>`;
+    }
+}
+
+function _diagFiltrarMkt() { _diagRenderMktRows(); }
+
+function _diagRenderMktRows() {
+    const tbody = document.getElementById('diag-mkt-tbody');
+    if (!tbody || !_diagMktDados) return;
+
+    const filtMercado = document.getElementById('diag-mkt-mercado')?.value || '';
+    const filtVB      = document.getElementById('diag-mkt-sovalue')?.checked || false;
+
+    const rows = [];
+    for (const liga of Object.keys(_diagMktDados)) {
+        for (const mercado of Object.keys(_diagMktDados[liga])) {
+            if (filtMercado && !mercado.includes(filtMercado)) continue;
+            for (const sel of _diagMktDados[liga][mercado]) {
+                if (filtVB && (sel.valor_esperado || 0) < 0.95) continue;
+                rows.push({ liga, mercado, ...sel });
+            }
+        }
+    }
+    rows.sort((a, b) => b.pct_jogos - a.pct_jogos);
+
+    const total   = rows.length;
+    const limited = _diagMktLimit > 0 ? rows.slice(0, _diagMktLimit) : rows;
+    const cnt = document.getElementById('diag-mkt-count');
+    if (cnt) cnt.textContent = `${total} entradas${_diagMktLimit > 0 && total > _diagMktLimit ? ` (exibindo ${limited.length})` : ''}`;
+
+    if (!limited.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Nenhum resultado para os filtros selecionados.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = limited.map(r => {
+        const ve     = r.valor_esperado || 0;
+        const veCor  = ve >= 0.95 ? '#4ade80' : ve >= 0.80 ? '#fbbf24' : '#475569';
+        const pctCor = r.pct_jogos >= 70 ? '#4ade80' : r.pct_jogos >= 50 ? '#fbbf24' : '#f87171';
+        return `<tr>
+            <td class="td-l">${r.liga}</td>
+            <td class="td-l" style="color:#94a3b8">${r.mercado}</td>
+            <td class="td-l" style="color:#e2e8f0;font-weight:700">${r.selecao}</td>
+            <td>${r.vezes}</td>
+            <td style="color:${pctCor};font-weight:800">${r.pct_jogos}%</td>
+            <td style="color:#60a5fa">${r.odd_media}</td>
+            <td style="color:${veCor};font-weight:700">${ve}</td>
+            <td>${ve >= 0.95 ? '<span style="color:#4ade80;font-weight:800">✓ VALUE</span>' : ''}</td>
+        </tr>`;
+    }).join('');
 }
 
 async function limparLigasDescartadas() {
@@ -4571,7 +4657,6 @@ async function carregarMercados() {
         renderMktTendencias(tendRes, 'analise-mkt');
         renderMktGrafico(mktRes, 'analise-mkt', 'chart');
         renderMktSugestoesIA(iaRes, 'analise-mkt');
-        renderMktTabela(mktRes, 'analise-mkt');
     } catch(e) {
         console.error('Erro carregarMercados:', e);
     }
