@@ -859,15 +859,46 @@ router.get('/historico-mercados', async (req, res) => {
                 if (sc) { j.gol_casa = sc.casa; j.gol_fora = sc.fora; }
             }
 
-            // Fallback: deriva gols totais dos mercados Over/Under para exibição
+            // Fallback FT: "Time - Gols" → placar exato por time (ex: "Equador - 3 Gols")
             if (j.gol_casa === null) {
-                const o05 = mkts.some(m => m.mercado.includes('0.5') && m.selecao.startsWith('Mais'));
-                const o15 = mkts.some(m => m.mercado.includes('1.5') && m.selecao.startsWith('Mais'));
-                const o25 = mkts.some(m => m.mercado.includes('2.5') && m.selecao.startsWith('Mais'));
-                const o35 = mkts.some(m => m.mercado.includes('3.5') && m.selecao.startsWith('Mais'));
-                const o45 = mkts.some(m => m.mercado.includes('4.5') && m.selecao.startsWith('Mais'));
-                // Armazena total_gols derivado (exibição apenas — scores individuais desconhecidos)
-                j.total_gols = !o05 ? 0 : !o15 ? 1 : !o25 ? 2 : !o35 ? 3 : !o45 ? 4 : 5;
+                const tgMkts = mkts.filter(m => /time\s*-\s*gols/i.test(m.mercado));
+                for (const tg of tgMkts) {
+                    const numMatch = (tg.selecao || '').match(/(\d+)\s+gol/i);
+                    if (!numMatch) continue;
+                    const gols = parseInt(numMatch[1]);
+                    const selLow  = (tg.selecao || '').toLowerCase().trim();
+                    const casaLow = (j.time_casa || '').toLowerCase().trim();
+                    const foraLow = (j.time_fora || '').toLowerCase().trim();
+                    if (casaLow && selLow.startsWith(casaLow)) j.gol_casa = gols;
+                    else if (foraLow && selLow.startsWith(foraLow)) j.gol_fora = gols;
+                }
+                if (j.gol_casa !== null && j.gol_fora !== null) {
+                    j.total_gols = j.gol_casa + j.gol_fora;
+                }
+            }
+
+            // Deriva total_gols para exibição quando placar exato não disponível
+            if (j.gol_casa === null) {
+                // 1ª prioridade: "Total Exato de Gols" (mais preciso)
+                const texMkt = mkts.find(m => /total exato de gols/i.test(m.mercado));
+                if (texMkt) {
+                    const sel = texMkt.selecao || '';
+                    if (/5\+/i.test(sel))        j.total_gols = 5;
+                    else if (/4 gol/i.test(sel)) j.total_gols = 4;
+                    else if (/3 gol/i.test(sel)) j.total_gols = 3;
+                    else if (/2 gol/i.test(sel)) j.total_gols = 2;
+                    else if (/1 gol/i.test(sel)) j.total_gols = 1;
+                    else if (/0 gol/i.test(sel)) j.total_gols = 0;
+                }
+                // 2ª prioridade: Over/Under (aproximação)
+                if (j.total_gols == null) {
+                    const o05 = mkts.some(m => m.mercado.includes('0.5') && m.selecao.startsWith('Mais'));
+                    const o15 = mkts.some(m => m.mercado.includes('1.5') && m.selecao.startsWith('Mais'));
+                    const o25 = mkts.some(m => m.mercado.includes('2.5') && m.selecao.startsWith('Mais'));
+                    const o35 = mkts.some(m => m.mercado.includes('3.5') && m.selecao.startsWith('Mais'));
+                    const o45 = mkts.some(m => m.mercado.includes('4.5') && m.selecao.startsWith('Mais'));
+                    j.total_gols = !o05 ? 0 : !o15 ? 1 : !o25 ? 2 : !o35 ? 3 : !o45 ? 4 : 5;
+                }
             }
         }
 
