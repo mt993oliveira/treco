@@ -4622,11 +4622,20 @@ function setMktFiltro(chave, valor) {
     carregarMercados();
 }
 
+let _mktReqId = 0;
+
 async function carregarMercados() {
+    const reqId = ++_mktReqId;
     try {
         // Liga vem dos tabs principais (S.ligaAtiva), não de MKT.liga
         const ligaAtual = S.ligaAtiva || null;
         const dias = MKT.dias || S.fa.dias || 7;
+
+        // Mostra "Carregando..." nas seções enquanto busca
+        const vbEl = document.getElementById('analise-mkt-value-bets');
+        const tdEl = document.getElementById('analise-mkt-tendencias');
+        if (vbEl) vbEl.innerHTML = '<span style="color:#334155">Carregando...</span>';
+        if (tdEl) tdEl.innerHTML = '<span style="color:#334155">Carregando...</span>';
 
         // Parâmetros comuns
         const params = new URLSearchParams({ dias });
@@ -4647,6 +4656,9 @@ async function carregarMercados() {
             fetch('/api/bet365/analise/sugestoes-avancadas?' + iaParams).then(r => r.json())
         ]);
 
+        // Descarta resposta se uma requisição mais recente já foi disparada
+        if (reqId !== _mktReqId) return;
+
         MKT.dados = { resumo: resumoRes, mercados: mktRes, tendencias: tendRes, ia: iaRes };
         // Popula seções na aba Análise
         renderMktResumo(resumoRes);
@@ -4655,6 +4667,7 @@ async function carregarMercados() {
         renderMktGrafico(mktRes, 'analise-mkt', 'chart');
         renderMktSugestoesIA(iaRes, 'analise-mkt');
     } catch(e) {
+        if (reqId !== _mktReqId) return;
         console.error('Erro carregarMercados:', e);
     }
 }
