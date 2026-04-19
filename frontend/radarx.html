@@ -4530,8 +4530,8 @@ function renderMktTendencias(res, prefix = 'mkt') {
     const el = document.getElementById(`${prefix}-tendencias`);
     if (!el) return;
     const all = (res.data || []);
-    // Mostra top 16 por variação absoluta, excluindo mercados sempre 100% (ex: Resultado Final)
-    const t = all.filter(r => r.pct_hist < 98).slice(0, 16);
+    // Top 16 por variação absoluta; separa subindo/caindo de estáveis
+    const t = [...all].sort((a,b) => Math.abs(b.variacao) - Math.abs(a.variacao)).slice(0, 16);
     if (!t.length) { el.innerHTML = '<span style="color:#475569">Ainda sem dados suficientes para detectar tendências.</span>'; return; }
     el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">` + t.map(r => {
         const up     = r.tendencia === 'subindo';

@@ -633,7 +633,16 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                     COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END) AS com_resultado,
                     COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' THEN evento_id END),0) AS pct_over15,
                     COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' THEN evento_id END),0) AS pct_over25,
-                    COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' AND selecao='Sim' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' THEN evento_id END),0) AS pct_btts
+                    COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' AND selecao='Sim' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' THEN evento_id END),0) AS pct_btts,
+                    COUNT(DISTINCT CASE WHEN mercado='Resultado Final' AND selecao=time_casa THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END),0) AS pct_casa,
+                    COUNT(DISTINCT CASE WHEN mercado='Resultado Final' AND selecao='Empate'  THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END),0) AS pct_empate,
+                    COUNT(DISTINCT CASE WHEN mercado='Resultado Final' AND selecao=time_fora THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END),0) AS pct_fora,
+                    -- media_gols: E[X] = sum P(>n) para n=0..4 (identidade matemática)
+                    ISNULL(COUNT(DISTINCT CASE WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*1.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%0.5%' THEN evento_id END),0),0)
+                  + ISNULL(COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*1.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' THEN evento_id END),0),0)
+                  + ISNULL(COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*1.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' THEN evento_id END),0),0)
+                  + ISNULL(COUNT(DISTINCT CASE WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*1.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%3.5%' THEN evento_id END),0),0)
+                  + ISNULL(COUNT(DISTINCT CASE WHEN mercado LIKE '%4.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*1.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%4.5%' THEN evento_id END),0),0) AS media_gols
                 FROM bet365_resultados_mercados
                 WHERE liga IS NOT NULL AND liga <> ''
                 GROUP BY liga ORDER BY total_jogos DESC
@@ -1027,17 +1036,17 @@ router.get('/analise/tendencias', async (req, res) => {
         const ligaWhere2 = ligaDb2 && ligaDb2 !== 'all' ? (req2.input('liga2', sql.NVarChar(200), ligaDb2), 'AND liga = @liga2') : '';
         const diasWhere  = diasNum > 0 ? `AND data_partida >= DATEADD(DAY,-${diasNum},GETUTCDATE())` : '';
 
-        // Histórico total (ou filtrado por período)
+        // Histórico total — denominador correto: total de jogos com aquele mercado (não só aquela seleção)
         const total = await req2.query(`
             SELECT liga, mercado, selecao,
-                   COUNT(*) AS vezes,
-                   COUNT(DISTINCT evento_id) AS jogos
+                   COUNT(DISTINCT evento_id) AS vezes,
+                   SUM(COUNT(DISTINCT evento_id)) OVER (PARTITION BY liga, mercado) AS total_mkt
             FROM bet365_resultados_mercados
             WHERE 1=1 ${ligaWhere2} ${diasWhere}
             GROUP BY liga, mercado, selecao
         `).catch(() => ({ recordset: [] }));
 
-        // Últimos N jogos por liga
+        // Últimos N jogos por liga — mesmo denominador correto
         const recente = await req1.query(`
             WITH ult AS (
                 SELECT liga, evento_id,
@@ -1047,8 +1056,8 @@ router.get('/analise/tendencias', async (req, res) => {
                 GROUP BY liga, evento_id
             )
             SELECT m.liga, m.mercado, m.selecao,
-                   COUNT(*) AS vezes,
-                   COUNT(DISTINCT m.evento_id) AS jogos
+                   COUNT(DISTINCT m.evento_id) AS vezes,
+                   SUM(COUNT(DISTINCT m.evento_id)) OVER (PARTITION BY m.liga, m.mercado) AS total_mkt
             FROM bet365_resultados_mercados m
             INNER JOIN ult u ON u.liga = m.liga AND u.evento_id = m.evento_id AND u.rn <= @nRecente
             WHERE 1=1 ${ligaWhere1}
@@ -1057,16 +1066,17 @@ router.get('/analise/tendencias', async (req, res) => {
 
         const mapTotal = {};
         for (const r of total.recordset) {
-            mapTotal[`${r.liga}|${r.mercado}|${r.selecao}`] = { vezes: r.vezes, jogos: r.jogos };
+            mapTotal[`${r.liga}|${r.mercado}|${r.selecao}`] = { vezes: r.vezes, total_mkt: r.total_mkt };
         }
 
         const tendencias = [];
         for (const r of recente.recordset) {
             const hist = mapTotal[`${r.liga}|${r.mercado}|${r.selecao}`];
-            if (!hist || hist.jogos < minJogosHistN || r.jogos < minJogosRecN) continue;
+            if (!hist || hist.total_mkt < minJogosHistN || r.total_mkt < minJogosRecN) continue;
 
-            const pct_hist  = hist.vezes / hist.jogos * 100;
-            const pct_rec   = r.vezes    / r.jogos    * 100;
+            // pct = vezes / total_mkt (jogos com esse mercado) — percentual correto
+            const pct_hist  = hist.vezes / hist.total_mkt * 100;
+            const pct_rec   = r.vezes    / r.total_mkt    * 100;
             const variacao  = +(pct_rec - pct_hist).toFixed(1);
             const tendencia = variacao >= minVariacaoN ? 'subindo' : variacao <= -minVariacaoN ? 'caindo' : 'estavel';
             // Inclui sempre — frontend decide o que exibir
