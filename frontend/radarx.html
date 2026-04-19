@@ -712,8 +712,9 @@
     <!-- Controls bar — linha 1: período + filtro de condição -->
     <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:10px">
 
-        <!-- Linha 1: período de tempo -->
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <!-- Linha única: período + controles + blocos de filtros -->
+        <div id="filtros-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+            <!-- Período — renderizado estaticamente, sempre na mesma linha que os controles -->
             <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
             <button class="secao-btn" data-h="1"  onclick="setHoras(1)">1H</button>
             <button class="secao-btn" data-h="2"  onclick="setHoras(2)">2H</button>
@@ -723,17 +724,17 @@
             <button class="secao-btn ativo" data-h="24" onclick="setHoras(24)">24H</button>
             <button class="secao-btn" data-h="48" onclick="setHoras(48)">48H</button>
             <button class="secao-btn" data-h="72" onclick="setHoras(72)">72H</button>
-            <div style="display:flex;align-items:center;gap:3px;margin-left:2px">
+            <div style="display:flex;align-items:center;gap:3px">
                 <input type="number" id="horas-custom" min="1" max="720" placeholder="Nº"
-                    style="width:46px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 5px;font-size:11px;font-weight:700;text-align:center;outline:none"
+                    style="width:40px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:11px;font-weight:700;text-align:center;outline:none"
                     onkeydown="if(event.key==='Enter')setHorasCustom(this.value)"
                     onblur="if(this.value)setHorasCustom(this.value)">
                 <span style="font-size:9px;color:#475569">H</span>
             </div>
+            <!-- Separador visual -->
+            <div style="width:1px;height:16px;background:#1e293b;margin:0 2px"></div>
+            <!-- Controles e blocos de filtros são inseridos aqui por renderFiltros() -->
         </div>
-
-        <!-- Linha 2: sub-filtros multi-seleção -->
-        <div id="filtros-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center"></div>
     </div>
 
     <!-- Chart + Legend -->
@@ -2065,13 +2066,18 @@ const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
 
 function renderFiltros() {
     const c = document.getElementById('filtros-row');
-    c.innerHTML = '';
-    c.style.cssText = 'display:flex;flex-direction:column;gap:5px';
 
-    // ── Linha de controles globais ──────────────────────────────
-    const ctrlRow = document.createElement('div');
-    ctrlRow.style.cssText = 'display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding-bottom:5px;border-bottom:1px solid #1e293b';
-    ctrlRow.innerHTML = `
+    // Remove apenas o conteúdo dinâmico anterior (preserva o período estático)
+    // O container já contém: PERÍODO + separador — removemos tudo após o separador
+    const divider = c.querySelector('div[style*="width:1px"][style*="height:16px"]');
+    // Remove todos os elementos após o separador
+    let el = divider ? divider.nextSibling : null;
+    while (el) { const nx = el.nextSibling; c.removeChild(el); el = nx; }
+
+    // ── Controles (Todos, Limpar, ferramentas) — inline com o período ──
+    const ctrl = document.createElement('div');
+    ctrl.style.cssText = 'display:contents'; // não cria caixa, os filhos entram direto no flex
+    ctrl.innerHTML = `
         <button class="filtro-btn" onclick="_lgTodos()" title="Ligar tudo">Todos</button>
         <button class="filtro-btn" onclick="_lgLimpar()" title="Desligar tudo">Limpar</button>
         <div style="width:1px;height:14px;background:#1e293b"></div>
@@ -2085,7 +2091,12 @@ function renderFiltros() {
             onclick="S.showOdds=!S.showOdds;renderFiltros();renderTabela()"
             title="Mostrar odds">💹 Odds</button>
     `;
-    c.appendChild(ctrlRow);
+    c.appendChild(ctrl);
+
+    // ── Quebra de linha forçada antes dos blocos de filtros ────
+    const br = document.createElement('div');
+    br.style.cssText = 'width:100%;height:0;margin:0'; // força wrap
+    c.appendChild(br);
 
     // ── Grupos em blocos lado a lado ────────────────────────────
     const blocksRow = document.createElement('div');
