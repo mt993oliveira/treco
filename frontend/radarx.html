@@ -2023,12 +2023,11 @@ const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
 function renderFiltros() {
     const c = document.getElementById('filtros-row');
     c.innerHTML = '';
-    c.style.flexDirection = 'column';
-    c.style.gap = '4px';
+    c.style.cssText = 'display:flex;flex-direction:column;gap:5px';
 
-    // Linha de controles globais
+    // ── Linha de controles globais ──────────────────────────────
     const ctrlRow = document.createElement('div');
-    ctrlRow.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid #1e293b;margin-bottom:2px';
+    ctrlRow.style.cssText = 'display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding-bottom:5px;border-bottom:1px solid #1e293b';
     ctrlRow.innerHTML = `
         <button class="filtro-btn" onclick="_lgTodos()" title="Ligar tudo">Todos</button>
         <button class="filtro-btn" onclick="_lgLimpar()" title="Desligar tudo">Limpar</button>
@@ -2045,44 +2044,79 @@ function renderFiltros() {
     `;
     c.appendChild(ctrlRow);
 
-    // Uma linha por grupo
-    GRUPOS_LEGENDA.forEach(grupo => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+    // ── Grupos em blocos lado a lado ────────────────────────────
+    const blocksRow = document.createElement('div');
+    blocksRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;align-items:flex-start';
 
-        // Label do grupo
-        const gl = document.createElement('span');
-        gl.style.cssText = 'font-size:8px;font-weight:700;color:#334155;letter-spacing:.05em;min-width:52px;text-align:right;padding-right:4px;flex-shrink:0';
-        gl.textContent = grupo.label;
-        row.appendChild(gl);
+    GRUPOS_LEGENDA.forEach(grupo => {
+        // quantos filtros ativos neste grupo
+        const nAtivos = grupo.ids.filter(id => S.linhas[id]).length;
+
+        const bloco = document.createElement('div');
+        bloco.style.cssText = `
+            display:flex;flex-direction:column;gap:3px;
+            padding:4px 6px;border-radius:5px;
+            border:1px solid ${nAtivos ? '#334155' : '#1a2235'};
+            background:${nAtivos ? '#0d1730' : '#080e1a'};
+            min-width:0;flex-shrink:0
+        `;
+
+        // Label do grupo — clicável para ligar/desligar todos do grupo
+        const lbl = document.createElement('div');
+        lbl.style.cssText = `font-size:7.5px;font-weight:800;letter-spacing:.07em;
+            color:${nAtivos ? '#64748b' : '#1e2d45'};text-transform:uppercase;
+            cursor:pointer;user-select:none;white-space:nowrap`;
+        lbl.textContent = grupo.label;
+        lbl.title = nAtivos === grupo.ids.length ? 'Desligar grupo' : 'Ligar grupo';
+        lbl.onclick = () => {
+            const allOn = grupo.ids.every(id => S.linhas[id]);
+            grupo.ids.forEach(id => { S.linhas[id] = !allOn; });
+            const ativos = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
+            if (ativos.length > 0) S.filtro = ativos[0].id;
+            renderFiltros(); renderTabela(); renderGrafico();
+        };
+        bloco.appendChild(lbl);
+
+        // Pills dos filtros do grupo
+        const pills = document.createElement('div');
+        pills.style.cssText = 'display:flex;flex-wrap:wrap;gap:2px';
 
         grupo.ids.forEach(id => {
             const fi = _filtroById(id);
             if (!fi) return;
             const ativo = S.linhas[id];
-            const item = document.createElement('div');
-            item.title = fi.label;
-            item.style.cssText = `display:inline-flex;align-items:center;gap:3px;cursor:pointer;padding:2px 6px;
-                border-radius:3px;border:1px solid ${ativo ? fi.cor : '#1e293b'};
-                background:${ativo ? fi.cor + '22' : 'transparent'};
-                transition:all .12s;user-select:none`;
-            item.innerHTML = `
-                <span style="width:12px;height:8px;border-radius:2px;border:2px solid ${fi.cor};
+
+            const pill = document.createElement('div');
+            pill.title = fi.label;
+            pill.style.cssText = `
+                display:inline-flex;align-items:center;gap:2px;cursor:pointer;
+                padding:2px 5px;border-radius:3px;user-select:none;
+                border:1px solid ${ativo ? fi.cor + '99' : '#1e293b'};
+                background:${ativo ? fi.cor + '28' : 'transparent'};
+                transition:border-color .1s,background .1s
+            `;
+            pill.innerHTML = `
+                <span style="width:7px;height:7px;border-radius:1px;flex-shrink:0;
+                    border:1.5px solid ${fi.cor};
                     background:${ativo ? fi.cor : 'transparent'};
                     ${fi.dashed ? 'border-style:dashed' : ''}"></span>
-                <span style="font-size:9px;font-weight:${ativo?'700':'400'};
-                    color:${ativo ? '#e2e8f0' : '#475569'}">${fi.label}</span>
+                <span style="font-size:9px;font-weight:${ativo ? '700' : '400'};
+                    color:${ativo ? '#cbd5e1' : '#3d5166'};white-space:nowrap">${fi.label}</span>
             `;
-            item.onclick = () => {
+            pill.onclick = () => {
                 S.linhas[id] = !S.linhas[id];
                 const ativos = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
                 if (ativos.length > 0) S.filtro = ativos[0].id;
                 renderFiltros(); renderTabela(); renderGrafico();
             };
-            row.appendChild(item);
+            pills.appendChild(pill);
         });
-        c.appendChild(row);
+
+        bloco.appendChild(pills);
+        blocksRow.appendChild(bloco);
     });
+
+    c.appendChild(blocksRow);
 }
 
 function _lgTodos() {
