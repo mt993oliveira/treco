@@ -1065,9 +1065,12 @@ router.get('/analise/tendencias', async (req, res) => {
         const req1    = pool.request().input('nRecente', sql.Int, nRecenteN);
         const req2    = pool.request();
 
-        const ligaDb  = ligaParaBanco(liga);
-        const ligaW1  = ligaDb && ligaDb !== 'all' ? (req1.input('liga',  sql.NVarChar(200), ligaDb), 'AND liga = @liga')  : '';
-        const ligaW2  = ligaDb && ligaDb !== 'all' ? (req2.input('liga2', sql.NVarChar(200), ligaDb), 'AND liga = @liga2') : '';
+        const ligaDb    = ligaParaBanco(liga);
+        // ligaW1_base: usado em CTEs com tabela única (sem alias)
+        // ligaW1_join: usado em CTEs com JOIN — qualificado com m. para evitar ambiguidade
+        const ligaW1_base = ligaDb && ligaDb !== 'all' ? (req1.input('liga', sql.NVarChar(200), ligaDb), 'AND liga = @liga') : '';
+        const ligaW1_join = ligaDb && ligaDb !== 'all' ? 'AND m.liga = @liga' : '';
+        const ligaW2      = ligaDb && ligaDb !== 'all' ? (req2.input('liga2', sql.NVarChar(200), ligaDb), 'AND liga = @liga2') : '';
 
         // Histórico all-time — base rate por mercado/seleção (SEM filtro de dias)
         const total = await req2.query(`
@@ -1089,7 +1092,7 @@ router.get('/analise/tendencias', async (req, res) => {
                 SELECT liga, evento_id,
                        ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
                 FROM bet365_resultados_mercados
-                WHERE 1=1 ${ligaW1}
+                WHERE 1=1 ${ligaW1_base}
                 GROUP BY liga, evento_id
             ),
             base_rec AS (
@@ -1097,7 +1100,7 @@ router.get('/analise/tendencias', async (req, res) => {
                        COUNT(DISTINCT m.evento_id) AS vezes
                 FROM bet365_resultados_mercados m
                 INNER JOIN ult u ON u.liga = m.liga AND u.evento_id = m.evento_id AND u.rn <= @nRecente
-                WHERE 1=1 ${ligaW1}
+                WHERE 1=1 ${ligaW1_join}
                 GROUP BY m.liga, m.mercado, m.selecao
             )
             SELECT liga, mercado, selecao, vezes,
