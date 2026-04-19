@@ -811,10 +811,10 @@
 <!-- ========== VIEW: CLUBES ========== -->
 <div id="view-clubes-content" style="display:none;padding:12px 16px">
 
-    <!-- Liga filter -->
+    <!-- Cabeçalho Clubes -->
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-        <span style="font-size:10px;font-weight:700;color:#475569">LIGA:</span>
-        <div id="clubes-liga-tabs" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+        <span style="font-size:10px;font-weight:700;color:#334155;letter-spacing:.07em">⚽ FUTEBOL VIRTUAL</span>
+        <span style="font-size:9px;color:#1e3a5f">Copa do Mundo · Euro Cup · Premier League · Express Cup · Super Liga Sul-Americana</span>
         <input id="clubes-busca" type="text" placeholder="Buscar time..." oninput="filtrarClubes()"
             style="margin-left:auto;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:4px 10px;font-size:11px;width:160px;outline:none">
     </div>
@@ -3268,7 +3268,7 @@ function abrirModalLigaResultados() {
 // CLUBES — Histórico por time + próximos jogos
 // ============================================================
 
-let S_clubes = { ligaFiltro: null, busca: '', timeSel: null, proximosEvts: [] };
+let S_clubes = { busca: '', timeSel: null, proximosEvts: [] };
 
 // Monta mapa de stats por time a partir de S.todasPartidas
 function buildTimesMap(liga) {
@@ -3315,21 +3315,8 @@ function buildTimesMap(liga) {
 }
 
 function renderClubes() {
-    renderClubesLigaTabs();
     renderListaClubes();
     if (S_clubes.timeSel) renderDetalheClube(S_clubes.timeSel);
-}
-
-function renderClubesLigaTabs() {
-    const c = document.getElementById('clubes-liga-tabs');
-    // Seleciona a primeira liga se nenhuma estiver ativa
-    if (!S_clubes.ligaFiltro || !S.ligas.find(l => l.liga === S_clubes.ligaFiltro)) {
-        S_clubes.ligaFiltro = S.ligas[0]?.liga || null;
-    }
-    c.innerHTML = S.ligas.map(l => {
-        return `<button class="liga-tab${S_clubes.ligaFiltro === l.liga ? ' ativo' : ''}"
-            onclick="S_clubes.ligaFiltro='${l.liga.replace(/'/g,"\\'")}';renderClubes()">${l.liga}</button>`;
-    }).join('');
 }
 
 function filtrarClubes() {
@@ -3339,7 +3326,7 @@ function filtrarClubes() {
 
 function renderListaClubes() {
     const c = document.getElementById('clubes-lista');
-    const map = buildTimesMap(S_clubes.ligaFiltro);
+    const map = buildTimesMap(null); // todas as ligas — Futebol Virtual unificado
     let lista = [...map.values()].sort((a,b) => b.jogos - a.jogos);
 
     if (S_clubes.busca) {
@@ -3380,7 +3367,7 @@ async function renderDetalheClube(nomeTime) {
     const c = document.getElementById('clubes-detalhe');
     c.innerHTML = '<div style="padding:20px;color:#475569;font-size:11px">Carregando...</div>';
 
-    const map = buildTimesMap(S_clubes.ligaFiltro);
+    const map = buildTimesMap(null); // todas as ligas
     const t = map.get(nomeTime);
     if (!t) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Time não encontrado</div>'; return; }
 
