@@ -848,8 +848,12 @@ router.get('/historico-mercados', async (req, res) => {
             // Placar HT de "Resultado Correto - Intervalo"
             const htMkt = mkts.find(m => /correto.*intervalo|intervalo.*correto/i.test(m.mercado));
             if (htMkt) {
-                const sc = parseSelecaoScore(htMkt.selecao);
-                if (sc) { j.gol_casa_ht = sc.casa; j.gol_fora_ht = sc.fora; }
+                if (/qualquer outro resultado/i.test(htMkt.selecao)) {
+                    j.ht_outro = true; // HT teve 3+ gols — exibe "OUT" no frontend
+                } else {
+                    const sc = parseSelecaoScore(htMkt.selecao);
+                    if (sc) { j.gol_casa_ht = sc.casa; j.gol_fora_ht = sc.fora; }
+                }
             }
 
             // Placar FT de "Resultado Correto" (sem "Intervalo")
@@ -1052,47 +1056,53 @@ router.get('/analise/tendencias', async (req, res) => {
             dias         = 0,   // 0 = todo o histórico
         } = req.query;
 
-        const nRecenteN     = Math.max(5,  parseInt(nRecente)    || 20);
-        const minJogosHistN = Math.max(3,  parseInt(minJogosHist) || 10);
-        const minJogosRecN  = Math.max(1,  parseInt(minJogosRec)  || 5);
-        const minVariacaoN  = Math.max(1,  parseFloat(minVariacao) || 10);
-        const diasNum       = parseInt(dias) || 0;
+        const nRecenteN     = Math.max(5,  parseInt(nRecente)    || 30);
+        const minJogosHistN = Math.max(3,  parseInt(minJogosHist) || 5);
+        const minJogosRecN  = Math.max(1,  parseInt(minJogosRec)  || 3);
+        const minVariacaoN  = Math.max(0,  parseFloat(minVariacao) || 3);
 
         const pool    = await getDbPool();
         const req1    = pool.request().input('nRecente', sql.Int, nRecenteN);
         const req2    = pool.request();
 
-        const ligaDb2    = ligaParaBanco(liga);
-        const ligaWhere1 = ligaDb2 && ligaDb2 !== 'all' ? (req1.input('liga', sql.NVarChar(200), ligaDb2), 'AND liga = @liga') : '';
-        const ligaWhere2 = ligaDb2 && ligaDb2 !== 'all' ? (req2.input('liga2', sql.NVarChar(200), ligaDb2), 'AND liga = @liga2') : '';
-        const diasWhere  = diasNum > 0 ? `AND data_partida >= DATEADD(DAY,-${diasNum},GETUTCDATE())` : '';
+        const ligaDb  = ligaParaBanco(liga);
+        const ligaW1  = ligaDb && ligaDb !== 'all' ? (req1.input('liga',  sql.NVarChar(200), ligaDb), 'AND liga = @liga')  : '';
+        const ligaW2  = ligaDb && ligaDb !== 'all' ? (req2.input('liga2', sql.NVarChar(200), ligaDb), 'AND liga = @liga2') : '';
 
-        // Histórico total — denominador correto: total de jogos com aquele mercado (não só aquela seleção)
+        // Histórico all-time — base rate por mercado/seleção (SEM filtro de dias)
         const total = await req2.query(`
-            SELECT liga, mercado, selecao,
-                   COUNT(DISTINCT evento_id) AS vezes,
-                   SUM(COUNT(DISTINCT evento_id)) OVER (PARTITION BY liga, mercado) AS total_mkt
-            FROM bet365_resultados_mercados
-            WHERE 1=1 ${ligaWhere2} ${diasWhere}
-            GROUP BY liga, mercado, selecao
+            WITH base AS (
+                SELECT liga, mercado, selecao,
+                       COUNT(DISTINCT evento_id) AS vezes
+                FROM bet365_resultados_mercados
+                WHERE 1=1 ${ligaW2}
+                GROUP BY liga, mercado, selecao
+            )
+            SELECT liga, mercado, selecao, vezes,
+                   SUM(vezes) OVER (PARTITION BY liga, mercado) AS total_mkt
+            FROM base
         `).catch(() => ({ recordset: [] }));
 
-        // Últimos N jogos por liga — mesmo denominador correto
+        // Últimos N jogos por liga (ROW_NUMBER) — comportamento recente
         const recente = await req1.query(`
             WITH ult AS (
                 SELECT liga, evento_id,
                        ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
                 FROM bet365_resultados_mercados
-                WHERE 1=1 ${ligaWhere1} ${diasWhere}
+                WHERE 1=1 ${ligaW1}
                 GROUP BY liga, evento_id
+            ),
+            base_rec AS (
+                SELECT m.liga, m.mercado, m.selecao,
+                       COUNT(DISTINCT m.evento_id) AS vezes
+                FROM bet365_resultados_mercados m
+                INNER JOIN ult u ON u.liga = m.liga AND u.evento_id = m.evento_id AND u.rn <= @nRecente
+                WHERE 1=1 ${ligaW1}
+                GROUP BY m.liga, m.mercado, m.selecao
             )
-            SELECT m.liga, m.mercado, m.selecao,
-                   COUNT(DISTINCT m.evento_id) AS vezes,
-                   SUM(COUNT(DISTINCT m.evento_id)) OVER (PARTITION BY m.liga, m.mercado) AS total_mkt
-            FROM bet365_resultados_mercados m
-            INNER JOIN ult u ON u.liga = m.liga AND u.evento_id = m.evento_id AND u.rn <= @nRecente
-            WHERE 1=1 ${ligaWhere1}
-            GROUP BY m.liga, m.mercado, m.selecao
+            SELECT liga, mercado, selecao, vezes,
+                   SUM(vezes) OVER (PARTITION BY liga, mercado) AS total_mkt
+            FROM base_rec
         `);
 
         const mapTotal = {};

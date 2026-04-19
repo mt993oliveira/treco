@@ -2530,8 +2530,10 @@ function renderGrafico() {
             ...(f.dashed ? { borderDash:[6,4] } : {}) });
     });
 
+    // Intervalo adaptativo: ~12 labels independente do tamanho da série
+    const labelStep = Math.max(1, Math.ceil(serie.length / 12));
     const labels = serie.map((p, i) => {
-        if (i % 10 !== 0) return '';
+        if (i % labelStep !== 0) return '';
         const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
         return d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : `#${i+1}`;
     });
@@ -2544,7 +2546,8 @@ function renderGrafico() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1,
+                    backgroundColor: 'rgba(15,23,42,0.65)', borderColor: '#334155', borderWidth: 1,
+                    titleColor: '#94a3b8', bodyColor: '#cbd5e1',
                     callbacks: { label: ctx => ` ${ctx.dataset.label}: ${typeof ctx.raw === 'object' ? ctx.raw.y : ctx.raw}${ctx.dataset.type !== 'scatter' ? '%' : ''}` }
                 }
             },
@@ -2721,6 +2724,7 @@ function renderTabela() {
             ${fi ? `<span style="color:${fi.cor};font-size:9px">${fi.label}</span>` : 'HORA'}
         </th>
         <th style="min-width:36px;background:#0c1220">%</th>
+        <th style="min-width:28px;background:#0c1220;color:#fbbf24;font-size:9px" title="Média de gols nessa hora">⚽</th>
         ${minuteSlots.map(m => `<th title="Minuto ${m}">:${pad2(m)}</th>`).join('')}
     `;
 
@@ -2737,8 +2741,10 @@ function renderTabela() {
         return;
     }
 
-    const colHits  = Array(N).fill(0);
-    const colTotal = Array(N).fill(0);
+    const colHits   = Array(N).fill(0);
+    const colTotal  = Array(N).fill(0);
+    const colGols   = Array(N).fill(0);
+    const colGolsCt = Array(N).fill(0);
 
     // Mais recente primeiro (topo da tabela)
     const gsDesc = [...gs].reverse();
@@ -2892,7 +2898,8 @@ function renderTabela() {
                 : j.total_gols != null
                     ? `${j.total_gols}${j.resultado==='CASA'?'C':j.resultado==='FORA'?'F':j.resultado==='EMPATE'?'E':''}`
                     : j.resultado ? {CASA:'C',FORA:'F',EMPATE:'E'}[j.resultado]||'–' : '–';
-            const scoreHT = temHT ? `${j.gol_casa_ht}-${j.gol_fora_ht}` : null;
+            const scoreHT = j.ht_outro ? 'OUT'
+                : temHT ? `${j.gol_casa_ht}-${j.gol_fora_ht}` : null;
             // Score principal exibido na célula
             const score = scoreFT;
 
@@ -2908,6 +2915,11 @@ function renderTabela() {
                 colHits[ci]  += hit ? 1 : 0;
                 colTotal[ci] += 1;
             }
+            // Acumula gols por coluna
+            const gJogo = (j.gol_casa != null && j.gol_fora != null)
+                ? j.gol_casa + j.gol_fora
+                : j.total_gols != null ? j.total_gols : null;
+            if (gJogo != null && !isEstimado) { colGols[ci] += gJogo; colGolsCt[ci]++; }
             const abbrev = n => n || '';
             // Destaque sempre pelo filtro/condição selecionado na seção
             // Over 4.5: células ocultas (5+) são verdes quando esse filtro está ativo
@@ -2941,12 +2953,23 @@ function renderTabela() {
             return `<td class="${cellClass}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
         }).join('');
 
+        // Média de gols da linha (hora)
+        const golsJogos = jogosComDados
+            .map(j => j.gol_casa != null && j.gol_fora != null ? j.gol_casa + j.gol_fora
+                     : j.total_gols != null ? j.total_gols : null)
+            .filter(v => v != null);
+        const avgLinha = golsJogos.length ? (golsJogos.reduce((a,b) => a+b,0)/golsJogos.length).toFixed(1) : '–';
+        const golCor   = avgLinha === '–' ? '#334155'
+                       : parseFloat(avgLinha) >= 3.5 ? '#4ade80'
+                       : parseFloat(avgLinha) >= 2.5 ? '#fbbf24' : '#94a3b8';
+
         tr.innerHTML = `
             <td class="td-l" style="position:sticky;left:0;background:#0f172a;z-index:5;
                 font-size:10px;font-weight:700;color:#60a5fa;white-space:nowrap;min-width:74px">
                 ${horaStr}${temJogo ? `<span style="color:#334155;font-weight:400;margin-left:4px">(${jogosComDados.length})</span>` : ''}
             </td>
             <td class="td-pct ${pctC}">${pct !== null ? pct+'%' : '—'}</td>
+            <td style="font-size:9px;font-weight:800;color:${golCor};text-align:center;min-width:28px">${avgLinha}</td>
             ${cells}
         `;
 
@@ -2962,18 +2985,36 @@ function renderTabela() {
     // Delegação de clique na grid — nomes de clube e placar
     tbody.onclick = handleGridClick;
 
-    // Footer — % de acerto por posição (jogo 1-20 dentro da hora)
-    const footCells = Array.from({length: N}, (_, ci) => {
+    // Footer — % de acerto por posição
+    const footPct = Array.from({length: N}, (_, ci) => {
         if (!colTotal[ci]) return `<td style="color:#1e293b">–</td>`;
         const p = Math.round(colHits[ci] / colTotal[ci] * 100);
         const c = p >= 65 ? '#4ade80' : p >= 45 ? '#fbbf24' : '#f87171';
         return `<td style="color:${c};font-weight:800;font-size:10px">${p}%</td>`;
     }).join('');
 
-    tfoot.innerHTML = `
-        <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:9px;color:#475569;font-weight:700">% / POSIÇÃO</td>
-        <td class="td-pct"></td>
-        ${footCells}
+    // Footer — média de gols por posição (coluna)
+    const footGols = Array.from({length: N}, (_, ci) => {
+        if (!colGolsCt[ci]) return `<td style="color:#1e293b">–</td>`;
+        const avg = (colGols[ci] / colGolsCt[ci]).toFixed(1);
+        const c = parseFloat(avg) >= 3.5 ? '#4ade80' : parseFloat(avg) >= 2.5 ? '#fbbf24' : '#94a3b8';
+        return `<td style="color:${c};font-weight:700;font-size:9px">${avg}</td>`;
+    }).join('');
+
+    // tfoot é o <tr> interno — reescreve o <tfoot> pai para suportar 2 linhas
+    tfoot.parentElement.innerHTML = `
+        <tr>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:9px;color:#475569;font-weight:700">% / POSIÇÃO</td>
+            <td class="td-pct"></td>
+            <td></td>
+            ${footPct}
+        </tr>
+        <tr>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:9px;color:#fbbf24;font-weight:700">⚽ MÉD GOLS</td>
+            <td class="td-pct"></td>
+            <td></td>
+            ${footGols}
+        </tr>
     `;
 
     const totalPartidas = gs.reduce((s, g) => s + g.jogos.length, 0);
