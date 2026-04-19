@@ -2463,64 +2463,48 @@ function renderGrafico() {
     const opcoes = TODOS_FILTROS;
     const datasets = [];
 
-    // Filtro primário (para scatter + MACD) = S.filtro, ou primeiro ativo
-    const ativos = opcoes.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
-    const fi = opcoes.find(f => f.id === S.filtro && S.linhas[f.id]) || ativos[0];
+    // Todos os filtros ativos viram linhas — MM10 por filtro
+    const ativos = opcoes.filter(f => S.linhas[f.id]);
 
-    // Só o filtro primário — scatter de acertos/erros + média móvel + MACD
-    if (fi) {
-        const pts = serie.map(j => checa(j, fi.id) ? 100 : 0);
-        const pct = pts.filter(v => v).length;
-        const pctStr = serie.length ? ` (${Math.round(pct/serie.length*100)}%)` : '';
-
-        datasets.push({
-            type: 'scatter',
-            label: fi.label + pctStr,
-            data: pts.map((v, i) => ({ x: i, y: v })),
-            backgroundColor: pts.map(v => v ? '#1fcc5960' : '#dc262640'),
-            pointRadius: 3,
-            pointHoverRadius: 5,
-        });
-
-        // Média móvel de 10 jogos
+    ativos.forEach(f => {
+        if (f.id === 'equilibrio') {
+            datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => 50),
+                borderColor:'#64748b', backgroundColor:'transparent',
+                borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0 });
+            return;
+        }
+        const pts = serie.map(j => checa(j, f.id) ? 100 : 0);
         const mm10 = pts.map((_, i) => {
-            const w = pts.slice(Math.max(0, i-9), i+1);
+            const w = pts.slice(Math.max(0, i - 9), i + 1);
             return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);
         });
+        const pct = Math.round(pts.filter(v=>v).length / serie.length * 100);
         datasets.push({
             type: 'line',
-            label: `MM10`,
+            label: `${f.label} ${pct}%`,
             data: mm10,
-            borderColor: fi.cor,
-            backgroundColor: fi.cor + '18',
-            fill: true,
-            borderWidth: 2,
+            borderColor: f.cor,
+            backgroundColor: 'transparent',
+            borderWidth: S.filtro === f.id ? 2.5 : 1.5,
+            borderDash: f.dashed ? [6,4] : [],
             pointRadius: 0,
             tension: 0.4,
         });
+    });
 
-        // Linha de média geral (referência horizontal)
-        const mediaGeral = serie.length ? +(pct / serie.length * 100).toFixed(1) : 0;
+    // Filtro primário: adiciona scatter por cima da linha
+    const fi = opcoes.find(f => f.id === S.filtro && S.linhas[f.id]) || ativos[0];
+    if (fi && fi.id !== 'equilibrio') {
+        const pts = serie.map(j => checa(j, fi.id) ? 100 : 0);
         datasets.push({
-            type: 'line',
-            label: `Média ${mediaGeral}%`,
-            data: serie.map(() => mediaGeral),
-            borderColor: '#64748b',
-            backgroundColor: 'transparent',
-            borderWidth: 1,
-            borderDash: [6, 3],
-            pointRadius: 0,
-            tension: 0,
+            type: 'scatter',
+            label: fi.label,
+            data: pts.map((v, i) => ({ x: i, y: v })),
+            backgroundColor: pts.map(v => v ? fi.cor + '50' : '#dc262630'),
+            pointRadius: 2.5,
+            pointHoverRadius: 5,
+            order: -1,
         });
-
-        // MACD se tiver dados suficientes
-        if (serie.length >= mm2) {
-            const md = macd(pts, mm1, mm2, mms);
-            datasets.push({ type: 'line', label: `MACD`, data: md.ml, borderColor: '#60a5fa',
-                borderWidth: 1.5, borderDash: [4,2], pointRadius: 0, tension: 0.3, backgroundColor:'transparent' });
-            datasets.push({ type: 'line', label: `Sinal`, data: md.sig, borderColor: '#f472b6',
-                borderWidth: 1.5, borderDash: [2,3], pointRadius: 0, tension: 0.3, backgroundColor:'transparent' });
-        }
     }
 
     // Labels: mostra horário de cada jogo que seja o primeiro da sua hora UTC
@@ -2557,8 +2541,11 @@ function renderGrafico() {
 
     if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
     S.grafico = new Chart(document.getElementById('grafico').getContext('2d'), cfg);
-    if (fi) document.getElementById('g-titulo').textContent = `${fi.label} — ${serie.length} jogos`;
-    else document.getElementById('g-titulo').textContent = 'Nenhum filtro ativo';
+    const tituloEl = document.getElementById('g-titulo');
+    if (tituloEl) {
+        if (ativos.length === 0) tituloEl.textContent = 'Nenhum filtro ativo';
+        else tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos`;
+    }
 }
 
 // ============================================================
@@ -2995,6 +2982,7 @@ function renderTabela() {
     }).join('');
 
     // tfoot é o <tr> interno — reescreve o <tfoot> pai para suportar 2 linhas
+    if (!tfoot?.parentElement) return;
     tfoot.parentElement.innerHTML = `
         <tr>
             <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:9px;color:#475569;font-weight:700">% / POSIÇÃO</td>
