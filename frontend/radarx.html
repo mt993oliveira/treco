@@ -4460,19 +4460,25 @@ async function carregarMercados() {
     try {
         // Liga vem dos tabs principais (S.ligaAtiva), não de MKT.liga
         const ligaAtual = S.ligaAtiva || null;
-        const params = new URLSearchParams({ dias: MKT.dias });
+        const dias = MKT.dias || S.fa.dias || 7;
+
+        // Parâmetros comuns
+        const params = new URLSearchParams({ dias });
         if (ligaAtual) params.set('liga', ligaAtual);
 
-        const ligaQs = ligaAtual ? '?liga=' + encodeURIComponent(ligaAtual) : '';
-        // Parâmetros de tendências com threshold baixo para mostrar mais dados
-        const tendParams = new URLSearchParams({ minJogosHist: 5, minJogosRec: 3, minVariacao: 1 });
+        // Tendências: mesmo período + liga, threshold baixo
+        const tendParams = new URLSearchParams({ minJogosHist: 5, minJogosRec: 3, minVariacao: 1, dias });
         if (ligaAtual) tendParams.set('liga', ligaAtual);
 
+        // IA Sugestões: mesmo período + liga
+        const iaParams = new URLSearchParams({ dias });
+        if (ligaAtual) iaParams.set('liga', ligaAtual);
+
         const [resumoRes, mktRes, tendRes, iaRes] = await Promise.all([
-            fetch('/api/bet365/analise/resumo' + (ligaAtual ? '?liga=' + encodeURIComponent(ligaAtual) : '')).then(r => r.json()),
+            fetch('/api/bet365/analise/resumo?' + params).then(r => r.json()),
             fetch('/api/bet365/analise/mercados?' + params).then(r => r.json()),
             fetch('/api/bet365/analise/tendencias?' + tendParams).then(r => r.json()),
-            fetch('/api/bet365/analise/sugestoes-avancadas').then(r => r.json())
+            fetch('/api/bet365/analise/sugestoes-avancadas?' + iaParams).then(r => r.json())
         ]);
 
         MKT.dados = { resumo: resumoRes, mercados: mktRes, tendencias: tendRes, ia: iaRes };
@@ -4617,7 +4623,8 @@ function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
 function renderMktSugestoesIA(res, prefix = 'mkt') {
     const el = document.getElementById(`${prefix}-sugestoes-ia`);
     if (!el) return;
-    const jogos = (res.data || []).filter(j => MKT.liga === 'all' || j.liga === MKT.liga).slice(0, 8);
+    // Backend já filtra por liga; limita a 8 jogos no display
+    const jogos = (res.data || []).slice(0, 8);
     if (!jogos.length) { el.innerHTML = '<span style="color:#475569">Nenhum jogo agendado no momento.</span>'; return; }
 
     el.innerHTML = jogos.map(j => {

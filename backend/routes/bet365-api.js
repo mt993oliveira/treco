@@ -1085,7 +1085,7 @@ router.get('/analise/tendencias', async (req, res) => {
                 pct_hist:   +pct_hist.toFixed(1),
                 pct_rec:    +pct_rec.toFixed(1),
                 variacao, tendencia,
-                jogos_hist: hist.jogos, jogos_rec: r.jogos
+                jogos_hist: hist.total_mkt, jogos_rec: r.total_mkt
             });
         }
 
@@ -1099,17 +1099,37 @@ router.get('/analise/tendencias', async (req, res) => {
 /**
  * GET /api/bet365/analise/sugestoes-avancadas
  * Para cada evento futuro ativo, sugere os mercados com maior taxa histórica de acerto
+ * ?liga=Copa%20do%20Mundo&dias=30
  */
 router.get('/analise/sugestoes-avancadas', async (req, res) => {
     try {
-        const pool = await getDbPool();
+        const { liga, dias = 30 } = req.query;
+        const diasN    = parseInt(dias) || 30;
+        const ligaDb   = ligaParaBanco(liga);
+        const pool     = await getDbPool();
+        const reqEvt   = pool.request();
+        const reqStats = pool.request();
 
-        // Eventos agendados
-        const eventos = await pool.query(`
+        // Filtro de liga para eventos
+        let evtLigaWhere = '';
+        if (ligaDb && ligaDb !== 'all') {
+            reqEvt.input('ligaEvt', sql.NVarChar(200), ligaDb);
+            evtLigaWhere = 'AND league_name = @ligaEvt';
+        }
+
+        // Filtro de liga para estatísticas
+        let statsLigaWhere = '';
+        if (ligaDb && ligaDb !== 'all') {
+            reqStats.input('ligaSt', sql.NVarChar(200), ligaDb);
+            statsLigaWhere = 'AND liga = @ligaSt';
+        }
+
+        // Eventos agendados (filtrados por liga se especificada)
+        const eventos = await reqEvt.query(`
             SELECT id AS evento_id, league_name AS liga, time_casa, time_fora,
                    start_time_datetime AS horario, odd_casa, odd_empate, odd_fora
             FROM bet365_eventos
-            WHERE ativo = 1 AND status = 'AGENDADO'
+            WHERE ativo = 1 AND status = 'AGENDADO' ${evtLigaWhere}
             ORDER BY start_time_datetime ASC
         `);
 
@@ -1118,21 +1138,21 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
         }
 
         // Estatísticas de mercados por liga — denominador correto (window function)
-        const statsLiga = await pool.query(`
+        const statsLiga = await reqStats.query(`
             WITH base AS (
                 SELECT liga, mercado, selecao,
-                    COUNT(*) AS vezes,
-                    SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
+                    COUNT(DISTINCT evento_id) AS vezes,
+                    SUM(COUNT(DISTINCT evento_id)) OVER (PARTITION BY liga, mercado) AS total_jogos,
                     AVG(CAST(odd_paga AS FLOAT)) AS odd_f
                 FROM bet365_resultados_mercados
-                WHERE data_partida >= DATEADD(DAY, -30, GETUTCDATE())
+                WHERE data_partida >= DATEADD(DAY, -${diasN}, GETUTCDATE()) ${statsLigaWhere}
                 GROUP BY liga, mercado, selecao
             )
             SELECT liga, mercado, selecao, vezes, total_jogos,
                 CAST(odd_f AS DECIMAL(7,2)) AS odd_media,
                 CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(6,1)) AS pct
             FROM base
-            WHERE total_jogos >= 10
+            WHERE total_jogos >= 5
         `);
 
         // Monta mapa liga → lista de mercados ordenados por %
