@@ -2784,18 +2784,26 @@ function renderTabela() {
 
             const hit        = fi ? checa(j, fi.id) : false;
             const isOculto   = j.placar_oculto === 1 || j.placar_oculto === true;
-            // Score: usa placar exato se disponível; fallback: total_gols + resultado abreviado
-            const _scoreRaw = isOculto ? '5+'
-                : (j.gol_casa != null && j.gol_fora != null) ? `${j.gol_casa}-${j.gol_fora}`
+
+            // ── Score FT ──────────────────────────────────────────────
+            const temFT = j.gol_casa != null && j.gol_fora != null;
+            const temHT = j.gol_casa_ht != null && j.gol_fora_ht != null;
+            const scoreFT = isOculto ? '5+'
+                : temFT ? `${j.gol_casa}-${j.gol_fora}`
                 : j.total_gols != null
                     ? `${j.total_gols}${j.resultado==='CASA'?'C':j.resultado==='FORA'?'F':j.resultado==='EMPATE'?'E':''}`
                     : j.resultado ? {CASA:'C',FORA:'F',EMPATE:'E'}[j.resultado]||'–' : '–';
-            const score = _scoreRaw;
+            const scoreHT = temHT ? `${j.gol_casa_ht}-${j.gol_fora_ht}` : null;
+            // Score principal exibido na célula
+            const score = scoreFT;
+
             const _d = j.data_partida ? new Date(j.data_partida) : null;
             const minStr = _d ? `${pad2(_d.getUTCHours())}:${pad2(_d.getUTCMinutes())}` : '';
             const isEstimado = j.resultado_estimado === 1 || j.resultado_estimado === true;
             const ttSuffix   = isOculto ? ' [5+ gols]' : isEstimado ? ' [estimado]' : '';
-            const tt = `${minStr} ${j.time_casa} ${score} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]${ttSuffix}`;
+            const ttHT       = scoreHT ? ` HT:${scoreHT}` : '';
+            const tt = `${minStr} ${j.time_casa} ${scoreFT}${ttHT} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]${ttSuffix}`;
+
             // Células estimadas e ocultas não entram no footer de %
             if (!isEstimado && !isOculto) {
                 colHits[ci]  += hit ? 1 : 0;
@@ -2816,16 +2824,19 @@ function renderTabela() {
             const cellContent = S.showNomes
                 ? (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
                   `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
-                  `<span data-action="liga" style="display:block;font-size:9px;font-weight:800;cursor:pointer">${score}</span>`+
+                  `<span data-action="liga" style="display:block;font-size:10px;font-weight:800;cursor:pointer;line-height:1.3">${score}</span>`+
+                  (scoreHT ? `<span style="display:block;font-size:7px;font-weight:600;color:#64748b;line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
                   `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
                   (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
-                : `<span data-action="liga" style="cursor:pointer">${score}</span>`+
+                : `<span data-action="liga" style="cursor:pointer;display:block;line-height:1.25">${score}</span>`+
+                  (scoreHT ? `<span style="display:block;font-size:7px;color:#475569;line-height:1;text-align:center">${scoreHT}</span>` : '')+
                   (temOdds ? `<span style="display:flex;gap:2px;margin-top:1px">`+
                     `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddC}">${fmtOdd(oddC)}</span>`+
                     `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddF}">${fmtOdd(oddF)}</span>`+
                     `</span>` : '');
             const opacityStyle = isEstimado ? 'opacity:0.35;' : isOculto ? 'opacity:0.7;' : '';
-            const baseStyle    = (S.showNomes || isOculto || temOdds) ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
+            const hasHT    = scoreHT && !S.showNomes;
+            const baseStyle = (S.showNomes || isOculto || temOdds || hasHT) ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
             const cellStyle    = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
             const cellClass    = hitEfetivo ? 'c-verde' : 'c-verm';
             return `<td class="${cellClass}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;

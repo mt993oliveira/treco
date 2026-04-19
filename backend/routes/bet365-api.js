@@ -813,18 +813,33 @@ router.get('/historico-mercados', async (req, res) => {
                 else                               j.odd_empate = rfMkt.odd_paga;
             }
 
+            // Helper: "TeamName N-M" ou "Empate N-M" → { casa, fora }
+            // Formato Bet365: o vencedor aparece primeiro, depois N-M onde N=gols_vencedor, M=gols_perdedor
+            const parseSelecaoScore = (selecao) => {
+                if (!selecao) return null;
+                const m = selecao.match(/(\d+)\s*[-–]\s*(\d+)\s*$/);
+                if (!m) return null;
+                const n = parseInt(m[1]), k = parseInt(m[2]);
+                const s   = selecao.toLowerCase().trim();
+                const tf  = (j.time_fora || '').toLowerCase().trim();
+                // Se a seleção começa com o nome do time visitante: N=gols_fora, K=gols_casa
+                if (tf && s.startsWith(tf)) return { casa: k, fora: n };
+                // Caso contrário (time da casa venceu, ou "Empate"): N=gols_casa, K=gols_fora
+                return { casa: n, fora: k };
+            };
+
             // Placar HT de "Resultado Correto - Intervalo"
             const htMkt = mkts.find(m => /correto.*intervalo|intervalo.*correto/i.test(m.mercado));
             if (htMkt) {
-                const hm = htMkt.selecao.match(/^(\d+)\s*[-:–]\s*(\d+)$/);
-                if (hm) { j.gol_casa_ht = parseInt(hm[1]); j.gol_fora_ht = parseInt(hm[2]); }
+                const sc = parseSelecaoScore(htMkt.selecao);
+                if (sc) { j.gol_casa_ht = sc.casa; j.gol_fora_ht = sc.fora; }
             }
 
             // Placar FT de "Resultado Correto" (sem "Intervalo")
             const ftCorMkt = mkts.find(m => /resultado correto/i.test(m.mercado) && !/intervalo/i.test(m.mercado));
             if (ftCorMkt) {
-                const fm = ftCorMkt.selecao.match(/^(\d+)\s*[-:–]\s*(\d+)$/);
-                if (fm) { j.gol_casa = parseInt(fm[1]); j.gol_fora = parseInt(fm[2]); }
+                const sc = parseSelecaoScore(ftCorMkt.selecao);
+                if (sc) { j.gol_casa = sc.casa; j.gol_fora = sc.fora; }
             }
 
             // Fallback: deriva gols totais dos mercados Over/Under para exibição
