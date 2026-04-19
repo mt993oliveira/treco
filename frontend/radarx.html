@@ -603,14 +603,6 @@
         </div>
     </div>
 
-    <!-- Estatísticas Avançadas -->
-    <div style="margin-bottom:14px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">📊 ESTATÍSTICAS AVANÇADAS</div>
-        <div class="stats-avancadas-grid" id="stats-avancadas-grid" style="display:none">
-            <!-- Preenchido via JS -->
-        </div>
-        <div id="stats-loading" style="color:#334155;font-size:12px;padding:24px;text-align:center">Carregando estatísticas...</div>
-    </div>
 
     <!-- Detalhe da liga selecionada -->
     <div id="analise-detalhe" style="display:none">
@@ -1505,7 +1497,6 @@ async function carregarTudo() {
     await Promise.all([
         carregarHistorico(),
         carregarSugestoes(),
-        carregarEstatisticasAvancadas(),
     ]);
     await carregarMercados();
 }
