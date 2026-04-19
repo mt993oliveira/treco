@@ -627,28 +627,7 @@
     <!-- SEÇÕES DE MERCADOS — ANÁLISE DE APOSTAS               -->
     <!-- ══════════════════════════════════════════════════════ -->
 
-    <!-- Filtros dos mercados -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:12px;margin-top:14px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
-            <button class="secao-btn" id="mkt-dias-1" onclick="setMktFiltro('dias',1)">1D</button>
-            <button class="secao-btn ativo" id="mkt-dias-7" onclick="setMktFiltro('dias',7)">7D</button>
-            <button class="secao-btn" id="mkt-dias-30" onclick="setMktFiltro('dias',30)">30D</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">MERCADO</span>
-            <button class="secao-btn ativo" id="mkt-tipo-all" onclick="setMktFiltro('tipo','all')">Todos</button>
-            <button class="secao-btn" id="mkt-tipo-Resultado Final" onclick="setMktFiltro('tipo','Resultado Final')">Resultado FT</button>
-            <button class="secao-btn" id="mkt-tipo-Ambos Marcam" onclick="setMktFiltro('tipo','Ambos Marcam')">Ambas Marcam</button>
-            <button class="secao-btn" id="mkt-tipo-over" onclick="setMktFiltro('tipo','over')">Over/Under</button>
-            <button class="secao-btn" id="mkt-tipo-Total Exato de Gols" onclick="setMktFiltro('tipo','Total Exato de Gols')">Gols Exatos</button>
-            <button class="secao-btn" id="mkt-tipo-Intervalo Resultado" onclick="setMktFiltro('tipo','Intervalo Resultado')">HT Resultado</button>
-            <button class="secao-btn" id="mkt-tipo-Resultado Correto - Intervalo" onclick="setMktFiltro('tipo','Resultado Correto - Intervalo')">HT Placar</button>
-            <button class="secao-btn" id="mkt-tipo-Intervalo/Final do Jogo" onclick="setMktFiltro('tipo','Intervalo/Final do Jogo')">HT/FT</button>
-            <button class="secao-btn" id="mkt-tipo-Resultado Correto" onclick="setMktFiltro('tipo','Resultado Correto')">Placar Correto</button>
-            <button class="secao-btn" id="mkt-tipo-Chance Dupla" onclick="setMktFiltro('tipo','Chance Dupla')">Dupla Chance</button>
-        </div>
-    </div>
+    <!-- Filtros controlados pelo painel 🔧 FILTROS DA ANÁLISE (sidebar) -->
 
     <!-- Resumo geral de mercados -->
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px" id="mkt-resumo-cards">
@@ -1623,6 +1602,20 @@ function faSet(campo, valor) {
     }
 
     _faAtualizarStatus();
+
+    // Sincroniza MKT com o sidebar para que Frequência/Tendências reflitam o mesmo período/tipo
+    if (campo === 'dias') {
+        MKT.dias = (valor === 'tudo') ? 999 : parseInt(valor) || 7;
+        if (S.view === 'analise') carregarMercados();
+    }
+    if (campo === 'tipoMercado') {
+        // Mapeia S.fa.tipoMercado → MKT.tipo
+        const mapa = { 'Todos':'all', 'Gols':'over', 'Resultado':'Resultado Final',
+                       'Ambas':'Ambos Marcam', 'Intervalo':'Intervalo Resultado',
+                       'Correto':'Resultado Correto', 'Chance':'Chance Dupla' };
+        MKT.tipo = mapa[valor] || 'all';
+        if (S.view === 'analise') carregarMercados();
+    }
 }
 
 // ── Mostra resumo dos filtros ativos ─────────────────────────────────────
@@ -3020,28 +3013,37 @@ function abrirModalOdds() {
 }
 
 function renderRankOdds() {
-    // Faixas ajustadas para futebol virtual (odds comprimidas: casa ~1.20–3.50, fora ~1.80–9.00)
+    // Faixas reais do futebol virtual Bet365 (odd mínima ~1.70 para casa)
     const faixasCasa = [
-        {l:'< 1.40',      mn:0,    mx:1.40},
-        {l:'1.40 – 1.69', mn:1.40, mx:1.70},
         {l:'1.70 – 1.99', mn:1.70, mx:2.00},
-        {l:'2.00 – 2.99', mn:2.00, mx:3.00},
-        {l:'≥ 3.00',      mn:3.00, mx:9999},
+        {l:'2.00 – 2.49', mn:2.00, mx:2.50},
+        {l:'2.50 – 2.99', mn:2.50, mx:3.00},
+        {l:'3.00 – 3.99', mn:3.00, mx:4.00},
+        {l:'≥ 4.00',      mn:4.00, mx:9999},
     ];
     const faixasFora = [
-        {l:'< 2.00',      mn:0,    mx:2.00},
-        {l:'2.00 – 2.99', mn:2.00, mx:3.00},
+        {l:'1.70 – 1.99', mn:1.70, mx:2.00},
+        {l:'2.00 – 2.49', mn:2.00, mx:2.50},
+        {l:'2.50 – 2.99', mn:2.50, mx:3.00},
         {l:'3.00 – 3.99', mn:3.00, mx:4.00},
         {l:'4.00 – 5.99', mn:4.00, mx:6.00},
         {l:'≥ 6.00',      mn:6.00, mx:9999},
     ];
     const faixasEmp = [
-        {l:'< 3.50',      mn:0,    mx:3.50},
+        {l:'3.00 – 3.49', mn:3.00, mx:3.50},
         {l:'3.50 – 3.99', mn:3.50, mx:4.00},
         {l:'4.00 – 4.49', mn:4.00, mx:4.50},
         {l:'4.50 – 4.99', mn:4.50, mx:5.00},
         {l:'≥ 5.00',      mn:5.00, mx:9999},
     ];
+
+    // Helpers usando mercados (fonte primária) com fallback em gol_casa/gol_fora
+    const mO15  = j => j.mercados?.some(m => m.mercado.includes('1.5') && m.selecao.startsWith('Mais'))
+                     ?? (((j.gol_casa||0)+(j.gol_fora||0)) >= 2);
+    const mO25  = j => j.mercados?.some(m => m.mercado.includes('2.5') && m.selecao.startsWith('Mais'))
+                     ?? (((j.gol_casa||0)+(j.gol_fora||0)) >= 3);
+    const mBtts = j => j.mercados?.some(m => /ambos marcam/i.test(m.mercado) && m.selecao === 'Sim')
+                     ?? ((j.gol_casa||0)>0 && (j.gol_fora||0)>0);
 
     const calc = (faixas, campo, res) => faixas.map(f => {
         const p = S.partidas.filter(j => {
@@ -3049,16 +3051,14 @@ function renderRankOdds() {
             return o >= f.mn && o < f.mx;
         });
         if (!p.length) return { l: f.l, j: 0 };
-        const total  = p.length;
-        const gols   = j => (j.gol_casa||0) + (j.gol_fora||0);
+        const total = p.length;
         return {
             l:    f.l,
             j:    total,
             pv:   +(p.filter(j => j.resultado === res).length / total * 100).toFixed(1),
-            mg:   +(p.reduce((s,j) => s + gols(j), 0) / total).toFixed(2),
-            po15: +(p.filter(j => gols(j) >= 2).length / total * 100).toFixed(1),
-            po25: +(p.filter(j => gols(j) >= 3).length / total * 100).toFixed(1),
-            btts: +(p.filter(j => (j.gol_casa||0)>0 && (j.gol_fora||0)>0).length / total * 100).toFixed(1),
+            po15: +(p.filter(j => mO15(j)).length  / total * 100).toFixed(1),
+            po25: +(p.filter(j => mO25(j)).length  / total * 100).toFixed(1),
+            btts: +(p.filter(j => mBtts(j)).length / total * 100).toFixed(1),
         };
     });
 
@@ -3072,21 +3072,19 @@ function renderRankOdds() {
         ${!temDados ? `<div style="font-size:10px;color:#334155;padding:8px">Nenhum jogo com odds nessas faixas no período selecionado.</div>` : `
         <table class="modal-table" style="margin-bottom:10px;font-size:10px">
             <thead><tr>
-                <th>Odd</th>
+                <th>Odd Paga</th>
                 <th style="text-align:center">Jogos</th>
-                <th style="text-align:center">%Vence</th>
-                <th style="text-align:center">Méd.Gols</th>
+                <th style="text-align:center">%Venceu</th>
                 <th style="text-align:center">O1.5%</th>
                 <th style="text-align:center">O2.5%</th>
                 <th style="text-align:center">BTTS%</th>
             </tr></thead>
             <tbody>${rows.map(d => d.j === 0
-                ? `<tr><td style="color:#334155">${d.l}</td><td colspan="6" style="text-align:center;color:#1e293b">—</td></tr>`
+                ? `<tr><td style="color:#334155">${d.l}</td><td colspan="5" style="text-align:center;color:#1e293b">—</td></tr>`
                 : `<tr>
                     <td style="color:#94a3b8">${d.l}</td>
                     <td style="text-align:center;color:#64748b">${d.j}</td>
                     <td style="text-align:center;color:${cor(d.pv,55,35)};font-weight:700">${d.pv}%</td>
-                    <td style="text-align:center;color:${cor(d.mg,2.5,1.5)}">${d.mg}</td>
                     <td style="text-align:center;color:${cor(d.po15,65,45)}">${d.po15}%</td>
                     <td style="text-align:center;color:${cor(d.po25,50,30)}">${d.po25}%</td>
                     <td style="text-align:center;color:${cor(d.btts,55,35)}">${d.btts}%</td>
@@ -3927,14 +3925,19 @@ function renderizarEstatisticasAvancadas(data) {
     // ── Card 6: Placares mais frequentes ──
     const totalPl = tp.reduce((s, p) => s + (p.frequencia||0), 0);
     html += `<div class="stat-card">
-        <div class="stat-card-titulo">Placares Frequentes <span style="font-weight:400;color:#334155">(24h)</span></div>
+        <div class="stat-card-titulo">Placares Frequentes</div>
         <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">
             ${tp.slice(0,6).map((p, i) => {
+                // placar = "TeamName N-M" — extrai apenas o score final N-M
+                const m = (p.placar || '').match(/(\d+)\s*[-–]\s*(\d+)\s*$/);
+                const gc = m ? parseInt(m[1]) : 0;
+                const gf = m ? parseInt(m[2]) : 0;
+                const displayPlacar = m ? `${gc}-${gf}` : (p.placar || '?');
                 const pctP = totalPl ? (p.frequencia/totalPl*100) : 0;
-                const resCor = p.gc > p.gf ? '#4ade80' : p.gc < p.gf ? '#f87171' : '#a78bfa';
+                const resCor = gc > gf ? '#4ade80' : gc < gf ? '#f87171' : '#a78bfa';
                 return `<div style="display:flex;align-items:center;gap:6px">
                     <span style="font-size:9px;color:#475569;min-width:14px;text-align:right">${i+1}.</span>
-                    <span style="font-size:11px;font-weight:800;min-width:28px;color:${resCor}">${escHtml(p.placar)}</span>
+                    <span style="font-size:11px;font-weight:800;min-width:28px;color:${resCor}">${escHtml(displayPlacar)}</span>
                     <div style="flex:1;background:#1e293b;border-radius:3px;height:5px;overflow:hidden">
                         <div style="width:${pctP.toFixed(1)}%;height:5px;background:${resCor};border-radius:3px"></div>
                     </div>
@@ -4462,7 +4465,7 @@ async function carregarMercados() {
 
         const ligaQs = ligaAtual ? '?liga=' + encodeURIComponent(ligaAtual) : '';
         // Parâmetros de tendências com threshold baixo para mostrar mais dados
-        const tendParams = new URLSearchParams({ minJogosHist: 3, minJogosRec: 3, minVariacao: 5 });
+        const tendParams = new URLSearchParams({ minJogosHist: 5, minJogosRec: 3, minVariacao: 1 });
         if (ligaAtual) tendParams.set('liga', ligaAtual);
 
         const [resumoRes, mktRes, tendRes, iaRes] = await Promise.all([
@@ -4526,14 +4529,17 @@ function renderMktValueBets(res, prefix = 'mkt') {
 function renderMktTendencias(res, prefix = 'mkt') {
     const el = document.getElementById(`${prefix}-tendencias`);
     if (!el) return;
-    const t = (res.data || []).slice(0, 16);
-    if (!t.length) { el.innerHTML = '<span style="color:#475569">Aguardando dados suficientes para detectar tendências.</span>'; return; }
+    const all = (res.data || []);
+    // Mostra top 16 por variação absoluta, excluindo mercados sempre 100% (ex: Resultado Final)
+    const t = all.filter(r => r.pct_hist < 98).slice(0, 16);
+    if (!t.length) { el.innerHTML = '<span style="color:#475569">Ainda sem dados suficientes para detectar tendências.</span>'; return; }
     el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">` + t.map(r => {
-        const up = r.tendencia === 'subindo';
-        const cor = up ? '#4ade80' : '#f87171';
-        const bg  = up ? '#052e16' : '#3b0a0a';
-        const brd = up ? '#166534' : '#7f1d1d';
-        const ico = up ? '▲' : '▼';
+        const up     = r.tendencia === 'subindo';
+        const neutro = r.tendencia === 'estavel';
+        const cor = neutro ? '#64748b' : up ? '#4ade80' : '#f87171';
+        const bg  = neutro ? '#0f172a' : up ? '#052e16' : '#3b0a0a';
+        const brd = neutro ? '#1e293b' : up ? '#166534' : '#7f1d1d';
+        const ico = neutro ? '•' : up ? '▲' : '▼';
         return `
         <div style="background:${bg};border:1px solid ${brd};border-radius:6px;padding:8px 12px;min-width:190px;flex:1">
             <div style="font-size:9px;color:#475569;margin-bottom:2px">${r.liga}</div>
@@ -4615,7 +4621,7 @@ function renderMktSugestoesIA(res, prefix = 'mkt') {
     if (!jogos.length) { el.innerHTML = '<span style="color:#475569">Nenhum jogo agendado no momento.</span>'; return; }
 
     el.innerHTML = jogos.map(j => {
-        const top3 = (j.sugestoes || []).slice(0, 3);
+        const top3 = (j.sugestoes || []).slice(0, 8);
         const hora = j.horario ? new Date(j.horario) : null;
         const horaStr = hora ? `${String(hora.getUTCHours()).padStart(2,'0')}:${String(hora.getUTCMinutes()).padStart(2,'0')}` : '--:--';
         return `

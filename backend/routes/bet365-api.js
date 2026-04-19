@@ -612,18 +612,20 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                     COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT evento_id),0) AS pct_com_resultado,
                     COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' AND selecao='Sim' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' THEN evento_id END),0) AS pct_btts,
                     COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' THEN evento_id END),0) AS pct_over15,
-                    COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' THEN evento_id END),0) AS pct_over25
+                    COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' THEN evento_id END),0) AS pct_over25,
+                    COUNT(DISTINCT CASE WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%3.5%' THEN evento_id END),0) AS pct_over35,
+                    COUNT(DISTINCT CASE WHEN mercado LIKE '%4.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%4.5%' THEN evento_id END),0) AS pct_over45,
+                    COUNT(DISTINCT CASE WHEN mercado='Resultado Final' AND selecao=time_casa  THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END),0) AS pct_casa,
+                    COUNT(DISTINCT CASE WHEN mercado='Resultado Final' AND selecao='Empate'   THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END),0) AS pct_empate,
+                    COUNT(DISTINCT CASE WHEN mercado='Resultado Final' AND selecao=time_fora  THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END),0) AS pct_fora
                 FROM bet365_resultados_mercados
             `),
             pool.query(`
-                WITH base AS (
-                    SELECT liga, mercado, selecao, COUNT(*) AS vezes,
-                        SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos
-                    FROM bet365_resultados_mercados GROUP BY liga, mercado, selecao
-                )
-                SELECT TOP 8 liga, mercado, selecao, vezes, total_jogos,
-                    CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(5,1)) AS pct
-                FROM base ORDER BY pct DESC
+                SELECT TOP 8 selecao AS placar, COUNT(*) AS frequencia
+                FROM bet365_resultados_mercados
+                WHERE mercado = 'Resultado Correto'
+                GROUP BY selecao
+                ORDER BY COUNT(*) DESC
             `),
             pool.query(`
                 SELECT liga,
@@ -656,14 +658,20 @@ router.get('/estatisticas-avancadas', async (req, res) => {
             `)
         ]);
 
+        // Deriva media_gols a partir da distribuicaoGols (0,1,2,3,4+ gols por jogo)
+        const dgRows   = distribuicaoGols.recordset.filter(r => r.total_gols !== null);
+        const totalJ   = dgRows.reduce((s, r) => s + r.quantidade, 0);
+        const totalG   = dgRows.reduce((s, r) => s + r.total_gols * r.quantidade, 0);
+        const mediaGols = totalJ > 0 ? +(totalG / totalJ).toFixed(2) : 0;
+
         res.json({
             success: true,
             timestamp: new Date().toISOString(),
             data: {
-                gerais: Object.assign({}, statsEventos.recordset[0], statsHistorico.recordset[0]),
-                topPlacares:     topSelecoes.recordset,
-                performanceLiga: performanceLiga.recordset,
-                distribuicaoGols: distribuicaoGols.recordset.filter(r => r.total_gols !== null),
+                gerais: Object.assign({}, statsEventos.recordset[0], statsHistorico.recordset[0], { media_gols: mediaGols }),
+                topPlacares:      topSelecoes.recordset,
+                performanceLiga:  performanceLiga.recordset,
+                distribuicaoGols: dgRows,
             }
         });
 
@@ -1061,8 +1069,7 @@ router.get('/analise/tendencias', async (req, res) => {
             const pct_rec   = r.vezes    / r.jogos    * 100;
             const variacao  = +(pct_rec - pct_hist).toFixed(1);
             const tendencia = variacao >= minVariacaoN ? 'subindo' : variacao <= -minVariacaoN ? 'caindo' : 'estavel';
-            if (tendencia === 'estavel') continue;
-
+            // Inclui sempre — frontend decide o que exibir
             tendencias.push({
                 liga: r.liga, mercado: r.mercado, selecao: r.selecao,
                 pct_hist:   +pct_hist.toFixed(1),
@@ -1138,7 +1145,7 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
         // Monta sugestões por evento
         const sugestoes = eventos.recordset.map(ev => {
             const mercadosLiga = mapLiga[ev.liga] || [];
-            const top = mercadosLiga.slice(0, 8); // top 8 mercados da liga
+            const top = mercadosLiga.slice(0, 12); // top 12 mercados da liga
             return {
                 evento_id:  ev.evento_id,
                 liga:       ev.liga,
