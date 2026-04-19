@@ -4648,7 +4648,7 @@ async function carregarMercados() {
         MKT.dados = { resumo: resumoRes, mercados: mktRes, tendencias: tendRes, ia: iaRes };
         // Popula seções na aba Análise
         renderMktResumo(resumoRes);
-
+        renderMktValueBets(resumoRes, 'analise-mkt');
         renderMktTendencias(tendRes, 'analise-mkt');
         renderMktGrafico(mktRes, 'analise-mkt', 'chart');
         renderMktSugestoesIA(iaRes, 'analise-mkt');
@@ -4675,6 +4675,26 @@ function renderMktResumo(res) {
     `).join('');
 }
 
+
+function renderMktValueBets(res, prefix = 'mkt') {
+    const el = document.getElementById(`${prefix}-value-bets`);
+    if (!el) return;
+    const vb = (res.value_bets || []);
+    if (!vb.length) { el.innerHTML = '<span style="color:#475569">Ainda sem dados suficientes. Continue coletando.</span>'; return; }
+    el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">` + vb.map(v => `
+        <div style="background:#052e16;border:1px solid #166534;border-radius:6px;padding:8px 12px;min-width:200px;flex:1">
+            <div style="font-size:9px;color:#475569;margin-bottom:2px">${v.liga}</div>
+            <div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:2px">${v.mercado}</div>
+            <div style="font-size:12px;color:#4ade80;font-weight:800">→ ${v.selecao}</div>
+            <div style="display:flex;gap:8px;margin-top:6px;font-size:10px">
+                <span style="color:#94a3b8">${v.jogos} jogos</span>
+                <span style="color:#fbbf24;font-weight:700">${v.pct}%</span>
+                <span style="color:#60a5fa">odd ${v.odd_media}</span>
+                <span style="background:#166534;color:#4ade80;padding:1px 5px;border-radius:3px;font-weight:800">VE: ${v.valor_esperado}</span>
+            </div>
+        </div>
+    `).join('') + '</div>';
+}
 
 function renderMktTendencias(res, prefix = 'mkt') {
     const el = document.getElementById(`${prefix}-tendencias`);
