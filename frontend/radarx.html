@@ -492,9 +492,6 @@
     <button class="view-btn" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
-    <div class="master-only" style="width:1px;height:20px;background:#1e293b;margin:0 4px"></div>
-    <button class="view-btn master-only" id="btn-buscar-resultados" onclick="buscarResultados()" title="Forçar busca de resultados finalizados"
-        style="background:#14532d;border-color:#14532d;color:#4ade80">🔍 Buscar Resultados</button>
     <div style="margin-left:auto;font-size:10px;color:#334155" id="ultimo-update"></div>
 </div>
 
@@ -866,22 +863,11 @@
             <div id="diag-contagens" style="font-size:12px;color:#64748b">Carregando...</div>
         </div>
 
-        <!-- Card: resultados estimados -->
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
-            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">RESULTADOS ESTIMADOS</div>
-            <div id="diag-estimados" style="font-size:12px;color:#64748b">Carregando...</div>
-            <div style="font-size:9px;color:#334155;margin-top:4px">Gerados por "Buscar Resultados" quando o coletor falhou. Excluídos das sugestões.</div>
-        </div>
     </div>
 
     <!-- Ações rápidas -->
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <button class="acao-btn" onclick="buscarResultados()" style="background:#14532d;border-color:#14532d;color:#4ade80">
-            🔍 Buscar Resultados Pendentes
-        </button>
         <button class="acao-btn" onclick="carregarDiagnostico()">↻ Atualizar Diagnóstico</button>
-        <button class="acao-btn" onclick="limparEstimados()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171"
-            title="Remove resultados estimados (0-0 gerados automaticamente)">🗑 Limpar Estimados</button>
         <button class="acao-btn" onclick="limparLigasDescartadas()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171"
             title="Remove dados de 'Super League' e 'South American Super League'">🗑 Limpar Ligas Antigas</button>
     </div>
@@ -3689,24 +3675,25 @@ async function _diagCarregarStats() {
         if (elC && diag.success) {
             const d = diag.data;
 
-            // Monta tabela de últimos resultados no banco
-            const ultimosRows = (d.ultimosHistorico || []).map(p => {
+            // Últimos 20 jogos — vem de d.ultimosResultados (campo novo)
+            const ultimosRows = (d.ultimosResultados || []).map(p => {
                 const dt = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
                 const horaStr = dt ? dt.toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-                const placar = (p.gol_casa != null && p.gol_fora != null) ? `${p.gol_casa}-${p.gol_fora}` : '?-?';
-                const est = p.resultado_estimado ? ' ★est' : '';
+                const res = p.resultado_final || '?';
+                const ligaShort = (p.liga||'').replace('Copa do Mundo','CdM').replace('Premier League','PL').replace('Express Cup','EC').replace('Super Liga Sul-Americana','SLSA');
                 return `<tr style="border-bottom:1px solid #1e293b">
                     <td style="padding:3px 8px;font-size:10px;color:#475569;white-space:nowrap">${horaStr}</td>
-                    <td style="padding:3px 8px;font-size:9px;color:#64748b">${p.liga || '—'}</td>
-                    <td style="padding:3px 8px;font-size:10px;color:#e2e8f0">${p.time_casa || '?'} <b>${placar}</b> ${p.time_fora || '?'}${est}</td>
+                    <td style="padding:3px 8px;font-size:9px;color:#64748b">${ligaShort}</td>
+                    <td style="padding:3px 8px;font-size:10px;color:#e2e8f0">${p.time_casa||'?'} <b style="color:#94a3b8">→</b> ${res} · ${p.time_fora||'?'}</td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Nenhum registro no banco</td></tr>';
+            }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Nenhum registro</td></tr>';
 
-            const porLigaRows = (d.historicoPorLiga || []).map(l => {
+            // Por liga — vem de d.porLiga com campo total_jogos
+            const porLigaRows = (d.porLiga || []).map(l => {
                 const ultima = l.ultima_partida ? new Date(l.ultima_partida).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
                 return `<tr style="border-bottom:1px solid #0c1220">
                     <td style="padding:3px 8px;font-size:10px;color:#94a3b8">${l.liga}</td>
-                    <td style="padding:3px 8px;font-size:10px;color:#1fcc59;font-weight:700;text-align:right">${l.total}</td>
+                    <td style="padding:3px 8px;font-size:10px;color:#1fcc59;font-weight:700;text-align:right">${l.total_jogos}</td>
                     <td style="padding:3px 8px;font-size:9px;color:#475569">${ultima}</td>
                 </tr>`;
             }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Vazio</td></tr>';
@@ -3714,33 +3701,29 @@ async function _diagCarregarStats() {
             elC.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
                     <div style="font-size:11px"><span style="color:#475569">Eventos ativos:</span> <b style="color:#60a5fa">${d.eventosAtivos ?? '—'}</b></div>
-                    <div style="font-size:11px"><span style="color:#475569">Histórico total:</span> <b style="color:#1fcc59">${d.historicoPartidas ?? '—'}</b></div>
-                    <div style="font-size:11px"><span style="color:#475569">Histórico últimas 24h:</span> <b style="color:${(d.historicoPartidas24h||0)>0?'#1fcc59':'#f87171'}">${d.historicoPartidas24h ?? '0'}</b></div>
+                    <div style="font-size:11px"><span style="color:#475569">Jogos com mercados:</span> <b style="color:#1fcc59">${d.jogosComMercados ?? '—'}</b></div>
+                    <div style="font-size:11px"><span style="color:#475569">Últimas 24h:</span> <b style="color:${(d.jogosComMercados24h||0)>0?'#1fcc59':'#f87171'}">${d.jogosComMercados24h ?? '0'}</b></div>
                 </div>
-                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">HISTÓRICO POR LIGA</div>
+                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">JOGOS POR LIGA</div>
                 <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
                     <thead><tr style="background:#0c1220">
                         <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Liga</th>
-                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:right">Total</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:right">Jogos</th>
                         <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Última partida</th>
                     </tr></thead>
                     <tbody>${porLigaRows}</tbody>
                 </table>
-                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">ÚLTIMOS 20 REGISTROS NO BANCO</div>
+                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">ÚLTIMOS 20 REGISTROS</div>
                 <table style="width:100%;border-collapse:collapse">
                     <thead><tr style="background:#0c1220">
                         <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Data/Hora</th>
                         <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Liga</th>
-                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Partida</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Partida → Resultado</th>
                     </tr></thead>
                     <tbody>${ultimosRows}</tbody>
                 </table>
             `;
         }
-
-        // Estimados removidos — bet365_historico_partidas descontinuada
-        const elE = document.getElementById('diag-estimados');
-        if (elE) elE.innerHTML = '<div style="font-size:12px;color:#475569">—</div>';
     } catch (e) {
         console.warn('[Diagnóstico] Erro stats:', e.message);
     }
