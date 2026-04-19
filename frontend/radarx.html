@@ -2168,15 +2168,16 @@ function renderFiltros() {
         grupo.ids.forEach(id => {
             const fi = _filtroById(id);
             if (!fi) return;
-            const ativo = S.linhas[id];
+            const ativo    = S.linhas[id];
+            const primario = ativo && S.filtro === id;
 
             const pill = document.createElement('div');
-            pill.title = fi.label;
+            pill.title = primario ? `${fi.label} — filtro do gráfico (clique para desativar)` : ativo ? `${fi.label} — clique para usar no gráfico` : `${fi.label} — clique para ativar`;
             pill.style.cssText = `
                 display:inline-flex;align-items:center;gap:2px;cursor:pointer;
                 padding:2px 5px;border-radius:3px;user-select:none;
-                border:1px solid ${ativo ? fi.cor + '99' : '#1e293b'};
-                background:${ativo ? fi.cor + '28' : 'transparent'};
+                border:${primario ? '2px' : '1px'} solid ${ativo ? fi.cor + (primario ? 'ff' : '99') : '#1e293b'};
+                background:${primario ? fi.cor + '40' : ativo ? fi.cor + '28' : 'transparent'};
                 transition:border-color .1s,background .1s
             `;
             pill.innerHTML = `
@@ -2185,16 +2186,23 @@ function renderFiltros() {
                     background:${ativo ? fi.cor : 'transparent'};
                     ${fi.dashed ? 'border-style:dashed' : ''}"></span>
                 <span style="font-size:9px;font-weight:${ativo ? '700' : '400'};
-                    color:${ativo ? '#cbd5e1' : '#3d5166'};white-space:nowrap">${fi.label}</span>
+                    color:${ativo ? '#cbd5e1' : '#3d5166'};white-space:nowrap">${primario ? '▶ ' : ''}${fi.label}</span>
             `;
             pill.onclick = () => {
-                const ligando = !S.linhas[id];
-                S.linhas[id] = ligando;
-                const ativos = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
-                if (ligando && id !== 'equilibrio') {
-                    S.filtro = id; // ao ativar, o filtro clicado vira o principal
-                } else if (ativos.length > 0) {
-                    S.filtro = ativos[0].id;
+                if (id === 'equilibrio') {
+                    S.linhas[id] = !S.linhas[id];
+                } else if (!S.linhas[id]) {
+                    // Inativo → ativa e vira primário
+                    S.linhas[id] = true;
+                    S.filtro = id;
+                } else if (S.filtro !== id) {
+                    // Ativo mas não-primário → vira primário (sem desativar)
+                    S.filtro = id;
+                } else {
+                    // Ativo e primário → desativa
+                    S.linhas[id] = false;
+                    const resto = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
+                    if (resto.length > 0) S.filtro = resto[0].id;
                 }
                 renderFiltros(); renderTabela(); renderGrafico();
             };
