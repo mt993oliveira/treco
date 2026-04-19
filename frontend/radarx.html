@@ -2532,14 +2532,10 @@ function renderGrafico() {
         }
     };
 
-    if (S.grafico) {
-        S.grafico.data    = cfg.data;
-        S.grafico.options = cfg.options;
-        S.grafico.update('none');
-    } else {
-        S.grafico = new Chart(document.getElementById('grafico').getContext('2d'), cfg);
-    }
+    if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
+    S.grafico = new Chart(document.getElementById('grafico').getContext('2d'), cfg);
     if (fi) document.getElementById('g-titulo').textContent = `${fi.label} — ${serie.length} jogos`;
+    else document.getElementById('g-titulo').textContent = 'Nenhum filtro ativo';
 }
 
 // ============================================================
