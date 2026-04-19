@@ -4528,7 +4528,7 @@ async function carregarMercados() {
         renderMktResumo(resumoRes);
         renderMktValueBets(resumoRes, 'analise-mkt');
         renderMktTendencias(tendRes, 'analise-mkt');
-        renderMktGrafico(mktRes, 'analise-mkt', 'chartAnalise');
+        renderMktGrafico(mktRes, 'analise-mkt', 'chart');
         renderMktSugestoesIA(iaRes, 'analise-mkt');
         renderMktTabela(mktRes, 'analise-mkt');
     } catch(e) {
@@ -4590,7 +4590,7 @@ function renderMktTendencias(res, prefix = 'mkt') {
         const ico = neutro ? '•' : up ? '▲' : '▼';
         return `
         <div style="background:${bg};border:1px solid ${brd};border-radius:6px;padding:8px 12px;min-width:190px;flex:1">
-            <div style="font-size:9px;color:#475569;margin-bottom:2px">${r.liga}</div>
+            <div style="font-size:9px;color:#475569;margin-bottom:2px">${LIGA_ALIASES[(r.liga||'').toLowerCase()] || r.liga}</div>
             <div style="font-size:10px;font-weight:700;color:#94a3b8">${r.mercado}</div>
             <div style="font-size:12px;color:${cor};font-weight:800;margin:3px 0">${ico} ${r.selecao}</div>
             <div style="font-size:10px;display:flex;gap:8px">
@@ -4706,12 +4706,19 @@ function renderMktTabela(res, prefix = 'mkt') {
 
     // Popula select de ligas com as ligas disponíveis
     const ligaSel = document.getElementById('mkt-tab-liga');
-    if (ligaSel && ligaSel.options.length <= 1) {
+    if (ligaSel) {
+        ligaSel.innerHTML = '<option value="">Todas as ligas</option>';
         Object.keys(dados).sort().forEach(l => {
             const opt = document.createElement('option');
-            opt.value = l; opt.textContent = l;
+            opt.value = l;
+            opt.textContent = LIGA_ALIASES[l.toLowerCase()] || l;
             ligaSel.appendChild(opt);
         });
+        // Sincroniza com a liga ativa
+        if (S.ligaAtiva) {
+            const dbName = Object.keys(dados).find(k => (LIGA_ALIASES[k.toLowerCase()] || k) === S.ligaAtiva) || '';
+            if (dbName) ligaSel.value = dbName;
+        }
     }
 
     // Atualiza contador total
