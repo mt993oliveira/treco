@@ -1150,6 +1150,20 @@ const TODOS_FILTROS = [
     { id:'esp-btts-u25', label:'BTTS+U2.5', cor:'#38bdf8' },
     { id:'esp-casa-o15', label:'Casa+O1.5', cor:'#34d399' },
     { id:'esp-fora-o15', label:'Fora+O1.5', cor:'#fb923c' },
+    // Chance Dupla (mercado "Chance Dupla")
+    { id:'cd-1x',  label:'1X',  cor:'#84cc16' },
+    { id:'cd-x2',  label:'X2',  cor:'#f97316' },
+    { id:'cd-12',  label:'12',  cor:'#22d3ee' },
+    // Margem de Vitória (mercado "Margem de Vitória")
+    { id:'mg-0',   label:'0-0',  cor:'#475569' },
+    { id:'mg-eg',  label:'EmpG', cor:'#818cf8' },
+    { id:'mg-1g',  label:'Mg1',  cor:'#fbbf24' },
+    { id:'mg-2g',  label:'Mg2',  cor:'#f59e0b' },
+    { id:'mg-3gp', label:'Mg3+', cor:'#d97706' },
+    // 1º a Marcar (mercado "Primeiro Time a Marcar")
+    { id:'pmr-casa', label:'1ºC',  cor:'#4ade80' },
+    { id:'pmr-fora', label:'1ºV',  cor:'#fb923c' },
+    { id:'pmr-ng',   label:'0-0',  cor:'#94a3b8' },
     // Referência
     { id:'equilibrio',   label:'Equilíbrio', cor:'#64748b', dashed:true },
 ];
@@ -1326,86 +1340,126 @@ S.filtro = 'over1.5';
 function checa(j, fid) {
     const mkts = j.mercados || [];
 
-    // Helpers: verifica presença de mercado/seleção nos resultados pagos
+    // Helpers Over/Under
     const hasMais  = n => mkts.some(m => m.mercado.includes(`${n}.5`) && m.selecao.startsWith('Mais'));
     const hasMenos = n => mkts.some(m => m.mercado.includes(`${n}.5`) && m.selecao.startsWith('Menos'));
 
-    // Mercado "Resultado Final" — selecao = nome do time vencedor ou "Empate"
-    const rfMkt = mkts.find(m => /resultado final/i.test(m.mercado));
-    const rft   = j.resultado; // derivado no backend: 'CASA' | 'FORA' | 'EMPATE'
+    // Resultado FT — derivado no backend
+    const rft = j.resultado; // 'CASA' | 'FORA' | 'EMPATE'
 
     // BTTS
-    const btts    = mkts.some(m => /ambos marcam/i.test(m.mercado) && m.selecao === 'Sim');
-    const noBtts  = mkts.some(m => /ambos marcam/i.test(m.mercado) && (m.selecao === 'Não' || m.selecao === 'Nao'));
+    const btts   = mkts.some(m => /ambos marcam/i.test(m.mercado) && m.selecao === 'Sim');
+    const noBtts = mkts.some(m => /ambos marcam/i.test(m.mercado) && (m.selecao === 'Não' || m.selecao === 'Nao'));
 
-    // HT: gol_casa_ht / gol_fora_ht derivados no backend do "Resultado Correto - Intervalo"
+    // HT: derivado no backend do "Resultado Correto - Intervalo"
     const ch  = j.gol_casa_ht;
     const fh  = j.gol_fora_ht;
-    const htOk = ch !== null && ch !== undefined && fh !== null && fh !== undefined;
-    const rht = htOk ? (ch > fh ? 'CASA' : fh > ch ? 'FORA' : 'EMPATE') : null;
+    const htOk = ch != null && fh != null;
+    const rht  = htOk ? (ch > fh ? 'CASA' : fh > ch ? 'FORA' : 'EMPATE') : null;
+
+    // Gols exatos — usa "Total Exato de Gols" como fonte primária (mais preciso)
+    const texMkt = mkts.find(m => /total exato de gols/i.test(m.mercado));
+    const gExato = (label) => texMkt ? texMkt.selecao === label : null;
+
+    // Marca — usa mercados diretos "Para o Time da Casa/Visitante Marcar"
+    const casaMarca = mkts.some(m => /para o time da casa marcar/i.test(m.mercado) && m.selecao === 'Sim')
+                   || btts || rft === 'CASA';
+    const foraMarca = mkts.some(m => /para o time visitante marcar/i.test(m.mercado) && m.selecao === 'Sim')
+                   || btts || rft === 'FORA';
+
+    // Chance Dupla — selecao: "TeamA ou Empate", "Empate ou TeamB", "TeamA ou TeamB"
+    const cdMkt = mkts.find(m => /chance dupla/i.test(m.mercado));
+    const cdSel = (cdMkt?.selecao || '').toLowerCase();
+    const tc = (j.time_casa || '').toLowerCase();
+    const tf = (j.time_fora || '').toLowerCase();
+
+    // Margem de Vitória — selecao: "Sem Gols", "Empate com Gols", "Team - N Gol(s)"
+    const mgMkt = mkts.find(m => /margem de vitória|margem de vitoria/i.test(m.mercado));
+    const mgSel = mgMkt?.selecao || '';
+
+    // 1º a Marcar — selecao: nome do time ou "Sem Gols"
+    const pmrMkt = mkts.find(m => /primeiro time a marcar/i.test(m.mercado));
+    const pmrSel = pmrMkt?.selecao || '';
 
     switch (fid) {
-        // ── Over / Under FT (baseado nos mercados de gols pagos) ──
-        case 'over0.5':      return hasMais(0);
-        case 'over1.5':      return hasMais(1);
-        case 'over2.5':      return hasMais(2);
-        case 'over3.5':      return hasMais(3);
-        case 'over4.5':      return hasMais(4);
-        case 'under0.5':     return hasMenos(0);
-        case 'under1.5':     return hasMenos(1) || (!hasMais(1));  // U1.5 = 0 ou 1 gol
-        case 'under2.5':     return hasMenos(2) || (!hasMais(2));
-        case 'under3.5':     return hasMenos(3) || (!hasMais(3));
+        // ── Over / Under FT ──
+        case 'over0.5':  return hasMais(0);
+        case 'over1.5':  return hasMais(1);
+        case 'over2.5':  return hasMais(2);
+        case 'over3.5':  return hasMais(3);
+        case 'over4.5':  return hasMais(4);
+        case 'under0.5': return hasMenos(0);
+        case 'under1.5': return hasMenos(1) || !hasMais(1);
+        case 'under2.5': return hasMenos(2) || !hasMais(2);
+        case 'under3.5': return hasMenos(3) || !hasMais(3);
 
         // ── BTTS ──
-        case 'ambas-sim':    return btts;
-        case 'ambas-nao':    return noBtts;
+        case 'ambas-sim': return btts;
+        case 'ambas-nao': return noBtts;
 
-        // ── Marca (time marcou ao menos 1) ──
-        // Derivado: BTTS → ambos marcaram; ou resultado da equipe → ela marcou
-        case 'casa-marca':   return btts || rft === 'CASA';
-        case 'fora-marca':   return btts || rft === 'FORA';
+        // ── Marca ──
+        case 'casa-marca': return casaMarca;
+        case 'fora-marca': return foraMarca;
 
         // ── Resultado FT ──
-        case 'ft-casa':      return rft === 'CASA';
-        case 'ft-empate':    return rft === 'EMPATE';
-        case 'ft-fora':      return rft === 'FORA';
+        case 'ft-casa':   return rft === 'CASA';
+        case 'ft-empate': return rft === 'EMPATE';
+        case 'ft-fora':   return rft === 'FORA';
 
-        // ── Gols exatos FT (deriv. Over/Under) ──
-        case 'gols-0':       return !hasMais(0);
-        case 'gols-1':       return  hasMais(0) && !hasMais(1);
-        case 'gols-2':       return  hasMais(1) && !hasMais(2);
-        case 'gols-3':       return  hasMais(2) && !hasMais(3);
-        case 'gols-4':       return  hasMais(3) && !hasMais(4);
-        case 'gols-5p':      return  hasMais(4);
+        // ── Gols exatos FT (Total Exato de Gols → fallback Over/Under) ──
+        case 'gols-0':  return gExato('0 Gols')  ?? !hasMais(0);
+        case 'gols-1':  return gExato('1 Gol')   ?? (hasMais(0) && !hasMais(1));
+        case 'gols-2':  return gExato('2 Gols')  ?? (hasMais(1) && !hasMais(2));
+        case 'gols-3':  return gExato('3 Gols')  ?? (hasMais(2) && !hasMais(3));
+        case 'gols-4':  return gExato('4 Gols')  ?? (hasMais(3) && !hasMais(4));
+        case 'gols-5p': return gExato('5+ Gols') ?? hasMais(4);
 
-        // ── HT placares exatos (requer "Resultado Correto - Intervalo") ──
-        case 'ht-0-0':       return htOk && ch === 0 && fh === 0;
-        case 'ht-1-0':       return htOk && ch === 1 && fh === 0;
-        case 'ht-0-1':       return htOk && ch === 0 && fh === 1;
-        case 'ht-1-1':       return htOk && ch === 1 && fh === 1;
-        case 'ht-2-0':       return htOk && ch === 2 && fh === 0;
-        case 'ht-0-2':       return htOk && ch === 0 && fh === 2;
+        // ── HT placares exatos ──
+        case 'ht-0-0': return htOk && ch === 0 && fh === 0;
+        case 'ht-1-0': return htOk && ch === 1 && fh === 0;
+        case 'ht-0-1': return htOk && ch === 0 && fh === 1;
+        case 'ht-1-1': return htOk && ch === 1 && fh === 1;
+        case 'ht-2-0': return htOk && ch === 2 && fh === 0;
+        case 'ht-0-2': return htOk && ch === 0 && fh === 2;
 
         // ── HT resultado ──
-        case 'ht-casa':      return rht === 'CASA';
-        case 'ht-empate':    return rht === 'EMPATE';
-        case 'ht-fora':      return rht === 'FORA';
+        case 'ht-casa':   return rht === 'CASA';
+        case 'ht-empate': return rht === 'EMPATE';
+        case 'ht-fora':   return rht === 'FORA';
 
         // ── HT gols ──
-        case 'ht-over':      return htOk && (ch + fh) >= 2;   // Over 1.5 HT
-        case 'ht-under':     return htOk && (ch + fh) <= 1;   // Under 1.5 HT
-        case 'ht-gols':      return htOk && (ch + fh) > 0;    // Qualquer gol no 1T
+        case 'ht-over':  return htOk && (ch + fh) >= 2;
+        case 'ht-under': return htOk && (ch + fh) <= 1;
+        case 'ht-gols':  return htOk && (ch + fh) > 0;
 
         // ── HT/FT duplo resultado ──
-        case 'htft-cc':      return rht === 'CASA'   && rft === 'CASA';
-        case 'htft-ce':      return rht === 'CASA'   && rft === 'EMPATE';
-        case 'htft-cf':      return rht === 'CASA'   && rft === 'FORA';
-        case 'htft-ec':      return rht === 'EMPATE' && rft === 'CASA';
-        case 'htft-ee':      return rht === 'EMPATE' && rft === 'EMPATE';
-        case 'htft-ef':      return rht === 'EMPATE' && rft === 'FORA';
-        case 'htft-fc':      return rht === 'FORA'   && rft === 'CASA';
-        case 'htft-fe':      return rht === 'FORA'   && rft === 'EMPATE';
-        case 'htft-ff':      return rht === 'FORA'   && rft === 'FORA';
+        case 'htft-cc': return rht === 'CASA'   && rft === 'CASA';
+        case 'htft-ce': return rht === 'CASA'   && rft === 'EMPATE';
+        case 'htft-cf': return rht === 'CASA'   && rft === 'FORA';
+        case 'htft-ec': return rht === 'EMPATE' && rft === 'CASA';
+        case 'htft-ee': return rht === 'EMPATE' && rft === 'EMPATE';
+        case 'htft-ef': return rht === 'EMPATE' && rft === 'FORA';
+        case 'htft-fc': return rht === 'FORA'   && rft === 'CASA';
+        case 'htft-fe': return rht === 'FORA'   && rft === 'EMPATE';
+        case 'htft-ff': return rht === 'FORA'   && rft === 'FORA';
+
+        // ── Chance Dupla (1X / X2 / 12) ──
+        // cdSel: "time_casa ou empate" | "empate ou time_fora" | "time_casa ou time_fora"
+        case 'cd-1x': return !!cdMkt && cdSel.includes(tc) && cdSel.includes('empate');
+        case 'cd-x2': return !!cdMkt && cdSel.includes(tf) && cdSel.includes('empate');
+        case 'cd-12': return !!cdMkt && cdSel.includes(tc) && cdSel.includes(tf) && !cdSel.includes('empate');
+
+        // ── Margem de Vitória ──
+        case 'mg-0':   return !!mgMkt && /sem gols/i.test(mgSel);
+        case 'mg-eg':  return !!mgMkt && /empate com gols/i.test(mgSel);
+        case 'mg-1g':  return !!mgMkt && / - 1 gol/i.test(mgSel);
+        case 'mg-2g':  return !!mgMkt && / - 2 gols/i.test(mgSel);
+        case 'mg-3gp': return !!mgMkt && / - [3-9]/.test(mgSel);
+
+        // ── 1º a Marcar ──
+        case 'pmr-casa': return !!pmrMkt && pmrSel === j.time_casa;
+        case 'pmr-fora': return !!pmrMkt && pmrSel === j.time_fora;
+        case 'pmr-ng':   return !!pmrMkt && /sem gols/i.test(pmrSel);
 
         // ── Especial / combo ──
         case 'esp-btts-o25': return btts && hasMais(2);
@@ -2016,6 +2070,9 @@ const GRUPOS_LEGENDA = [
     { label: 'HT Placar', ids: ['ht-0-0','ht-1-0','ht-0-1','ht-1-1','ht-2-0','ht-0-2'] },
     { label: 'HT Result', ids: ['ht-casa','ht-empate','ht-fora','ht-over','ht-under','ht-gols'] },
     { label: 'HT/FT',     ids: ['htft-cc','htft-ce','htft-cf','htft-ec','htft-ee','htft-ef','htft-fc','htft-fe','htft-ff'] },
+    { label: 'Ch. Dupla', ids: ['cd-1x','cd-x2','cd-12'] },
+    { label: 'Margem',    ids: ['mg-0','mg-eg','mg-1g','mg-2g','mg-3gp'] },
+    { label: '1º Marca',  ids: ['pmr-casa','pmr-fora','pmr-ng'] },
     { label: 'Especial',  ids: ['esp-btts-o25','esp-btts-u25','esp-casa-o15','esp-fora-o15','equilibrio'] },
 ];
 const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
