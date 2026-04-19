@@ -783,45 +783,48 @@
 </div>
 
 <!-- ========== VIEW: DIAGNÓSTICO ========== -->
-<div id="view-diagnostico-content" style="display:none;padding:12px 16px">
+<div id="view-diagnostico-content" style="display:none;padding:10px 14px">
 
-    <!-- Status rápido: WS + última coleta -->
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <!-- Topo compacto: tudo numa faixa -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:7px 14px;margin-bottom:10px;font-size:10px">
+        <div style="display:flex;align-items:center;gap:5px;white-space:nowrap">
+            <span class="sdot idle" id="diag-ws-dot"></span>
+            <span id="diag-ws-txt" style="color:#64748b">—</span>
+        </div>
+        <span style="color:#1e293b">·</span>
+        <div id="diag-ultima-coleta" style="color:#64748b;white-space:nowrap">—</div>
+        <span style="color:#1e293b">·</span>
+        <div id="diag-contagens-strip" style="color:#64748b">—</div>
+        <div style="margin-left:auto;display:flex;gap:5px">
+            <button class="acao-btn" onclick="carregarDiagnostico()" style="padding:2px 10px;font-size:10px">↻ Atualizar</button>
+            <button class="acao-btn" onclick="limparLigasDescartadas()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171;padding:2px 10px;font-size:10px" title="Remove 'Super League' e 'South American Super League'">🗑</button>
+        </div>
+    </div>
 
-        <!-- Card: conexão WebSocket -->
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
-            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">STATUS WEBSOCKET</div>
-            <div style="display:flex;align-items:center;gap:8px">
-                <span class="sdot idle" id="diag-ws-dot"></span>
-                <span id="diag-ws-txt" style="font-size:12px;color:#64748b">Verificando...</span>
+    <!-- Corpo: 2 colunas — Jogos por Liga | Últimos Registros -->
+    <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;flex-wrap:wrap">
+
+        <!-- Coluna esquerda: jogos por liga -->
+        <div style="width:230px;flex-shrink:0;background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+            <div style="padding:6px 12px;background:#0c1220;font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">JOGOS POR LIGA</div>
+            <div id="diag-por-liga" style="padding:2px 0">
+                <div style="padding:12px;color:#334155;font-size:10px">Carregando...</div>
             </div>
-            <div id="diag-ws-msg" style="font-size:10px;color:#334155;margin-top:5px">—</div>
         </div>
 
-        <!-- Card: última coleta -->
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
-            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">ÚLTIMA COLETA</div>
-            <div id="diag-ultima-coleta" style="font-size:12px;color:#64748b">Carregando...</div>
-        </div>
-
-        <!-- Card: contagens -->
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;min-width:200px;flex:1">
-            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">BANCO DE DADOS</div>
-            <div id="diag-contagens" style="font-size:12px;color:#64748b">Carregando...</div>
+        <!-- Coluna direita: últimos registros -->
+        <div style="flex:1;min-width:260px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+            <div style="padding:6px 12px;background:#0c1220;font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">ÚLTIMOS REGISTROS</div>
+            <div id="diag-ultimos" style="overflow-x:auto;max-height:260px;overflow-y:auto">
+                <div style="padding:12px;color:#334155;font-size:10px">Carregando...</div>
+            </div>
         </div>
 
     </div>
 
-    <!-- Ações rápidas -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <button class="acao-btn" onclick="carregarDiagnostico()">↻ Atualizar Diagnóstico</button>
-        <button class="acao-btn" onclick="limparLigasDescartadas()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171"
-            title="Remove dados de 'Super League' e 'South American Super League'">🗑 Limpar Ligas Antigas</button>
-    </div>
-
-    <!-- Tabela de logs de coleta -->
-    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
-        <div style="padding:8px 12px;background:#0c1220;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <!-- HISTÓRICO DE COLETAS (recolhível) -->
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:10px">
+        <div style="padding:7px 12px;background:#0c1220;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">HISTÓRICO DE COLETAS</span>
             <input type="date" id="diag-filtro-dia" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:10px;outline:none"
                 oninput="_diagCarregarLogs()">
@@ -830,23 +833,27 @@
             <button class="filtro-btn"       id="diag-lim-50"  onclick="_diagSetLimit(50)"  >50</button>
             <button class="filtro-btn"       id="diag-lim-100" onclick="_diagSetLimit(100)" >100</button>
             <button class="filtro-btn"       id="diag-lim-all" onclick="_diagSetLimit(0)"   >Todos</button>
+            <button id="diag-logs-toggle" onclick="_diagLogsToggle()"
+                style="margin-left:auto;background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;font-size:10px;font-weight:700;padding:2px 10px;cursor:pointer">
+                Mostrar ▼
+            </button>
         </div>
-        <div style="overflow-x:auto">
+        <div id="diag-logs-wrap" style="display:none;overflow-x:auto">
             <table style="width:100%;border-collapse:collapse;font-size:11px" id="diag-logs-table">
                 <thead>
                     <tr style="background:#0c1220">
-                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left">Início</th>
-                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Status</th>
-                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Duração</th>
-                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Eventos</th>
-                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Mercados</th>
-                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Odds</th>
-                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Resultados</th>
-                        <th style="padding:6px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left">Erro</th>
+                        <th style="padding:5px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left">Início</th>
+                        <th style="padding:5px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Status</th>
+                        <th style="padding:5px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Duração</th>
+                        <th style="padding:5px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Eventos</th>
+                        <th style="padding:5px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Mercados</th>
+                        <th style="padding:5px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Odds</th>
+                        <th style="padding:5px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center">Resultados</th>
+                        <th style="padding:5px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left">Erro</th>
                     </tr>
                 </thead>
                 <tbody id="diag-logs-tbody">
-                    <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando logs...</td></tr>
+                    <tr><td colspan="8" style="padding:20px;text-align:center;color:#334155">Clique em "Mostrar" para carregar.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -3693,17 +3700,23 @@ async function carregarDiagnostico() {
 function _diagAtualizarWS() {
     const dot = document.getElementById('diag-ws-dot');
     const txt = document.getElementById('diag-ws-txt');
-    const msg = document.getElementById('diag-ws-msg');
     if (!dot || !txt) return;
     if (_wsConectado) {
         dot.className = 'sdot ok';
         txt.textContent = 'Conectado';
-        msg.textContent = 'Recebendo atualizações em tempo real';
     } else {
         dot.className = 'sdot err';
         txt.textContent = 'Desconectado';
-        msg.textContent = 'Tentando reconectar... (auto a cada 12s)';
     }
+}
+
+function _diagLogsToggle() {
+    const wrap = document.getElementById('diag-logs-wrap');
+    const btn  = document.getElementById('diag-logs-toggle');
+    if (!wrap) return;
+    const visible = wrap.style.display !== 'none';
+    wrap.style.display = visible ? 'none' : 'block';
+    if (btn) btn.textContent = visible ? 'Mostrar ▼' : 'Ocultar ▲';
 }
 
 let _diagLimit = 20;
@@ -3780,58 +3793,60 @@ async function _diagCarregarStats() {
             fetch('/api/bet365/stats').then(r => r.json()),
         ]);
 
-        const elC = document.getElementById('diag-contagens');
-        if (elC && diag.success) {
+        if (diag.success) {
             const d = diag.data;
 
-            // Últimos 20 jogos — vem de d.ultimosResultados (campo novo)
-            const ultimosRows = (d.ultimosResultados || []).map(p => {
-                const dt = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-                const horaStr = dt ? dt.toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-                const res = p.resultado_final || '?';
-                const ligaShort = (p.liga||'').replace('Copa do Mundo','CdM').replace('Premier League','PL').replace('Express Cup','EC').replace('Super Liga Sul-Americana','SLSA');
-                return `<tr style="border-bottom:1px solid #1e293b">
-                    <td style="padding:3px 8px;font-size:10px;color:#475569;white-space:nowrap">${horaStr}</td>
-                    <td style="padding:3px 8px;font-size:9px;color:#64748b">${ligaShort}</td>
-                    <td style="padding:3px 8px;font-size:10px;color:#e2e8f0">${p.time_casa||'?'} <b style="color:#94a3b8">→</b> ${res} · ${p.time_fora||'?'}</td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Nenhum registro</td></tr>';
+            // Strip de contagens
+            const elStrip = document.getElementById('diag-contagens-strip');
+            if (elStrip) {
+                const cor24 = (d.jogosComMercados24h||0) > 0 ? '#1fcc59' : '#f87171';
+                elStrip.innerHTML = `Eventos: <b style="color:#60a5fa">${d.eventosAtivos ?? '—'}</b> · Jogos: <b style="color:#1fcc59">${d.jogosComMercados ?? '—'}</b> · 24h: <b style="color:${cor24}">${d.jogosComMercados24h ?? '0'}</b>`;
+            }
 
-            // Por liga — vem de d.porLiga com campo total_jogos
-            const porLigaRows = (d.porLiga || []).map(l => {
-                const ultima = l.ultima_partida ? new Date(l.ultima_partida).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-                return `<tr style="border-bottom:1px solid #0c1220">
-                    <td style="padding:3px 8px;font-size:10px;color:#94a3b8">${l.liga}</td>
-                    <td style="padding:3px 8px;font-size:10px;color:#1fcc59;font-weight:700;text-align:right">${l.total_jogos}</td>
-                    <td style="padding:3px 8px;font-size:9px;color:#475569">${ultima}</td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="3" style="padding:8px;color:#334155;font-size:10px;text-align:center">Vazio</td></tr>';
-
-            elC.innerHTML = `
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
-                    <div style="font-size:11px"><span style="color:#475569">Eventos ativos:</span> <b style="color:#60a5fa">${d.eventosAtivos ?? '—'}</b></div>
-                    <div style="font-size:11px"><span style="color:#475569">Jogos com mercados:</span> <b style="color:#1fcc59">${d.jogosComMercados ?? '—'}</b></div>
-                    <div style="font-size:11px"><span style="color:#475569">Últimas 24h:</span> <b style="color:${(d.jogosComMercados24h||0)>0?'#1fcc59':'#f87171'}">${d.jogosComMercados24h ?? '0'}</b></div>
-                </div>
-                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">JOGOS POR LIGA</div>
-                <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
+            // Coluna esquerda — por liga
+            const elLiga = document.getElementById('diag-por-liga');
+            if (elLiga) {
+                const porLigaRows = (d.porLiga || []).map(l => {
+                    const ultima = l.ultima_partida ? new Date(l.ultima_partida).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+                    return `<tr style="border-bottom:1px solid #0c1220">
+                        <td style="padding:4px 10px;font-size:10px;color:#94a3b8">${l.liga}</td>
+                        <td style="padding:4px 8px;font-size:10px;color:#1fcc59;font-weight:700;text-align:right">${l.total_jogos}</td>
+                        <td style="padding:4px 8px;font-size:9px;color:#475569;white-space:nowrap">${ultima}</td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="3" style="padding:10px;color:#334155;font-size:10px;text-align:center">Vazio</td></tr>';
+                elLiga.innerHTML = `<table style="width:100%;border-collapse:collapse">
                     <thead><tr style="background:#0c1220">
-                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Liga</th>
+                        <th style="padding:3px 10px;font-size:9px;color:#334155;text-align:left">Liga</th>
                         <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:right">Jogos</th>
-                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Última partida</th>
+                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Última</th>
                     </tr></thead>
                     <tbody>${porLigaRows}</tbody>
-                </table>
-                <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:4px">ÚLTIMOS 20 REGISTROS</div>
-                <table style="width:100%;border-collapse:collapse">
-                    <thead><tr style="background:#0c1220">
+                </table>`;
+            }
+
+            // Coluna direita — últimos registros
+            const elUlt = document.getElementById('diag-ultimos');
+            if (elUlt) {
+                const ultimosRows = (d.ultimosResultados || []).map(p => {
+                    const dt = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
+                    const horaStr = dt ? dt.toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+                    const res = p.resultado_final || '?';
+                    const ligaShort = (p.liga||'').replace('Copa do Mundo','CdM').replace('Premier League','PL').replace('Express Cup','EC').replace('Super Liga Sul-Americana','SLSA');
+                    return `<tr style="border-bottom:1px solid #1e293b">
+                        <td style="padding:3px 8px;font-size:10px;color:#475569;white-space:nowrap">${horaStr}</td>
+                        <td style="padding:3px 6px;font-size:9px;color:#64748b">${ligaShort}</td>
+                        <td style="padding:3px 8px;font-size:10px;color:#e2e8f0">${p.time_casa||'?'} <b style="color:#94a3b8">→</b> ${res} · ${p.time_fora||'?'}</td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="3" style="padding:10px;color:#334155;font-size:10px;text-align:center">Nenhum registro</td></tr>';
+                elUlt.innerHTML = `<table style="width:100%;border-collapse:collapse">
+                    <thead><tr style="background:#0c1220;position:sticky;top:0">
                         <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Data/Hora</th>
-                        <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Liga</th>
+                        <th style="padding:3px 6px;font-size:9px;color:#334155;text-align:left">Liga</th>
                         <th style="padding:3px 8px;font-size:9px;color:#334155;text-align:left">Partida → Resultado</th>
                     </tr></thead>
                     <tbody>${ultimosRows}</tbody>
-                </table>
-            `;
+                </table>`;
+            }
         }
     } catch (e) {
         console.warn('[Diagnóstico] Erro stats:', e.message);
