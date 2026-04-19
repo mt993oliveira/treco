@@ -665,8 +665,10 @@
             <button class="secao-btn" data-h="6"  onclick="setHoras(6)">6H</button>
             <button class="secao-btn" data-h="12" onclick="setHoras(12)">12H</button>
             <button class="secao-btn ativo" data-h="24" onclick="setHoras(24)">24H</button>
-            <button class="secao-btn" data-h="48" onclick="setHoras(48)">48H</button>
-            <button class="secao-btn" data-h="72" onclick="setHoras(72)">72H</button>
+            <button class="secao-btn" data-h="48"  onclick="setHoras(48)">48H</button>
+            <button class="secao-btn" data-h="72"  onclick="setHoras(72)">72H</button>
+            <button class="secao-btn" data-h="96"  onclick="setHoras(96)">96H</button>
+            <button class="secao-btn" data-h="120" onclick="setHoras(120)">120H</button>
             <div style="display:flex;align-items:center;gap:3px">
                 <input type="number" id="horas-custom" min="1" max="720" placeholder="Nº"
                     style="width:40px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:11px;font-weight:700;text-align:center;outline:none"
@@ -2457,32 +2459,50 @@ function renderGrafico() {
     const ativos = opcoes.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
     const fi = opcoes.find(f => f.id === S.filtro && S.linhas[f.id]) || ativos[0];
 
-    // Scatter do filtro primário
+    // Só o filtro primário — scatter de acertos/erros + média móvel + MACD
     if (fi) {
         const pts = serie.map(j => checa(j, fi.id) ? 100 : 0);
+        const pct = pts.filter(v => v).length;
+        const pctStr = serie.length ? ` (${Math.round(pct/serie.length*100)}%)` : '';
+
         datasets.push({
             type: 'scatter',
-            label: fi.label,
+            label: fi.label + pctStr,
             data: pts.map((v, i) => ({ x: i, y: v })),
             backgroundColor: pts.map(v => v ? '#1fcc5960' : '#dc262640'),
             pointRadius: 3,
             pointHoverRadius: 5,
         });
 
-        // Média móvel de 10 jogos (primário)
+        // Média móvel de 10 jogos
         const mm10 = pts.map((_, i) => {
             const w = pts.slice(Math.max(0, i-9), i+1);
             return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);
         });
         datasets.push({
             type: 'line',
-            label: `Média 10`,
+            label: `MM10`,
             data: mm10,
             borderColor: fi.cor,
-            backgroundColor: 'transparent',
+            backgroundColor: fi.cor + '18',
+            fill: true,
             borderWidth: 2,
             pointRadius: 0,
             tension: 0.4,
+        });
+
+        // Linha de média geral (referência horizontal)
+        const mediaGeral = serie.length ? +(pct / serie.length * 100).toFixed(1) : 0;
+        datasets.push({
+            type: 'line',
+            label: `Média ${mediaGeral}%`,
+            data: serie.map(() => mediaGeral),
+            borderColor: '#64748b',
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            borderDash: [6, 3],
+            pointRadius: 0,
+            tension: 0,
         });
 
         // MACD se tiver dados suficientes
@@ -2495,32 +2515,16 @@ function renderGrafico() {
         }
     }
 
-    // Linhas MA para TODOS os outros filtros ativos (multi-seleção)
-    opcoes.forEach(f => {
-        if (!S.linhas[f.id] || f.id === fi?.id) return;
-        // Equilíbrio = linha plana constante em 50%
-        if (f.id === 'equilibrio') {
-            datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => 50),
-                borderColor: '#64748b', backgroundColor:'transparent',
-                borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0 });
-            return;
-        }
-        const pts2 = serie.map(j => checa(j, f.id) ? 100 : 0);
-        const mm = pts2.map((_, i) => {
-            const w = pts2.slice(Math.max(0,i-9), i+1);
-            return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);
-        });
-        datasets.push({ type:'line', label: f.label, data: mm, borderColor: f.cor,
-            backgroundColor:'transparent', borderWidth:1.5, pointRadius:0, tension:0.4,
-            ...(f.dashed ? { borderDash:[6,4] } : {}) });
-    });
-
-    // Intervalo adaptativo: ~12 labels independente do tamanho da série
-    const labelStep = Math.max(1, Math.ceil(serie.length / 12));
+    // Labels: mostra horário de cada jogo que seja o primeiro da sua hora UTC
     const labels = serie.map((p, i) => {
-        if (i % labelStep !== 0) return '';
-        const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-        return d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : `#${i+1}`;
+        if (!p.data_partida) return '';
+        const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
+        // Mostra label no primeiro jogo de cada hora
+        if (i === 0) return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+        const prev = serie[i-1];
+        if (!prev.data_partida) return '';
+        const dp = new Date((prev.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
+        return d.getUTCHours() !== dp.getUTCHours() ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
     });
 
     const cfg = {
