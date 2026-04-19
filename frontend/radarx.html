@@ -589,10 +589,10 @@
         <div id="fa-status" style="margin-top:7px;font-size:9px;color:#334155"></div>
     </div>
 
-    <!-- Value Bets — mercados pagos reais com retorno esperado positivo -->
-    <div id="analise-value-bets" style="display:none;margin-bottom:14px;background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px">
-        <div id="analise-vb-titulo" style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO</div>
-        <div id="analise-vb-lista"></div>
+    <!-- IA SUGESTÕES PRÓXIMOS JOGOS — aparece antes do Desempenho por Liga -->
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em;margin-bottom:8px">🤖 IA — SUGESTÕES PARA PRÓXIMOS JOGOS (BASE: MERCADOS PAGOS)</div>
+        <div id="analise-mkt-sugestoes-ia" style="color:#334155;font-size:12px">Carregando...</div>
     </div>
 
     <!-- Cards de ligas -->
@@ -634,8 +634,14 @@
         <div style="color:#334155;font-size:12px;padding:24px">Carregando...</div>
     </div>
 
-    <!-- VALUE BETS -->
-    <div style="background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px;margin-bottom:12px;margin-top:14px">
+    <!-- VALUE BETS — MAIOR RETORNO (7 DIAS — baseado em /analise/resumo) -->
+    <div id="analise-value-bets" style="display:none;margin-bottom:12px;background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px">
+        <div id="analise-vb-titulo" style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO</div>
+        <div id="analise-vb-lista"></div>
+    </div>
+
+    <!-- VALUE BETS — RETORNO ESPERADO POSITIVO (tabela detalhada) -->
+    <div style="background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px;margin-bottom:12px">
         <div style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM RETORNO ESPERADO POSITIVO</div>
         <div id="analise-mkt-value-bets" style="color:#334155;font-size:12px">Carregando...</div>
     </div>
@@ -654,33 +660,61 @@
         </div>
     </div>
 
-    <!-- IA SUGESTÕES PRÓXIMOS JOGOS -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em;margin-bottom:8px">🤖 IA — SUGESTÕES PARA PRÓXIMOS JOGOS (BASE: MERCADOS PAGOS)</div>
-        <div id="analise-mkt-sugestoes-ia" style="color:#334155;font-size:12px">Carregando...</div>
-    </div>
-
     <!-- TABELA COMPLETA DE MERCADOS -->
     <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📋 TABELA COMPLETA DE MERCADOS</div>
-        <div style="overflow-x:auto">
-            <table class="tabela-hist" style="font-size:11px">
-                <thead>
-                    <tr>
-                        <th class="th-l" style="min-width:120px">Liga</th>
-                        <th class="th-l" style="min-width:200px">Mercado</th>
-                        <th class="th-l" style="min-width:160px">Seleção</th>
-                        <th>Vezes</th>
-                        <th>% Jogos</th>
-                        <th>Odd Média</th>
-                        <th>V.Esperado</th>
-                        <th>Value?</th>
-                    </tr>
-                </thead>
-                <tbody id="analise-mkt-tabela-body">
-                    <tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Carregando...</td></tr>
-                </tbody>
-            </table>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em">📋 TABELA COMPLETA DE MERCADOS</div>
+            <div style="display:flex;align-items:center;gap:6px">
+                <span id="mkt-tabela-count" style="font-size:9px;color:#334155"></span>
+                <button id="mkt-tabela-toggle" onclick="_tabelaMktToggle()"
+                    style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;font-size:10px;font-weight:700;padding:3px 10px;cursor:pointer">
+                    Mostrar ▼
+                </button>
+            </div>
+        </div>
+        <div id="mkt-tabela-wrap" style="display:none">
+            <!-- Filtros rápidos da tabela -->
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+                <span style="font-size:9px;color:#475569;font-weight:700">FILTRAR:</span>
+                <select id="mkt-tab-liga" onchange="_filtrarTabelaMkt()"
+                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
+                    <option value="">Todas as ligas</option>
+                </select>
+                <select id="mkt-tab-mercado" onchange="_filtrarTabelaMkt()"
+                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
+                    <option value="">Todos os mercados</option>
+                    <option value="Total de Gols">Total de Gols</option>
+                    <option value="Resultado Final">Resultado Final</option>
+                    <option value="Ambos Marcam">Ambos Marcam</option>
+                    <option value="Resultado Correto">Resultado Correto</option>
+                    <option value="Intervalo">Intervalo</option>
+                    <option value="Chance Dupla">Chance Dupla</option>
+                </select>
+                <label style="display:flex;align-items:center;gap:4px;font-size:9px;color:#94a3b8;cursor:pointer">
+                    <input type="checkbox" id="mkt-tab-sovalue" onchange="_filtrarTabelaMkt()" style="accent-color:#4ade80">
+                    Só Value Bets
+                </label>
+                <button onclick="_filtrarTabelaMkt()" style="background:#1e3a5f;border:1px solid #3b82f6;color:#60a5fa;border-radius:4px;font-size:9px;font-weight:700;padding:3px 8px;cursor:pointer">Aplicar</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="tabela-hist" style="font-size:11px">
+                    <thead>
+                        <tr>
+                            <th class="th-l" style="min-width:120px">Liga</th>
+                            <th class="th-l" style="min-width:200px">Mercado</th>
+                            <th class="th-l" style="min-width:160px">Seleção</th>
+                            <th>Vezes</th>
+                            <th>% Jogos</th>
+                            <th>Odd Média</th>
+                            <th>V.Esperado</th>
+                            <th>Value?</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analise-mkt-tabela-body">
+                        <tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Clique em "Mostrar" para carregar a tabela.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -4669,22 +4703,55 @@ function renderMktTabela(res, prefix = 'mkt') {
     const tbody = document.getElementById(`${prefix}-tabela-body`);
     if (!tbody) return;
     const dados = res.data || {};
+
+    // Popula select de ligas com as ligas disponíveis
+    const ligaSel = document.getElementById('mkt-tab-liga');
+    if (ligaSel && ligaSel.options.length <= 1) {
+        Object.keys(dados).sort().forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l; opt.textContent = l;
+            ligaSel.appendChild(opt);
+        });
+    }
+
+    // Atualiza contador total
+    let totalRows = 0;
+    for (const l of Object.keys(dados))
+        for (const m of Object.keys(dados[l]))
+            totalRows += dados[l][m].length;
+    const cnt = document.getElementById('mkt-tabela-count');
+    if (cnt) cnt.textContent = `${totalRows} entradas`;
+
+    _renderTabelaRows(dados);
+}
+
+function _renderTabelaRows(dados) {
+    const tbody = document.getElementById('analise-mkt-tabela-body');
+    if (!tbody) return;
+    const filtLiga    = (document.getElementById('mkt-tab-liga')?.value    || '');
+    const filtMercado = (document.getElementById('mkt-tab-mercado')?.value || '');
+    const filtVB      = document.getElementById('mkt-tab-sovalue')?.checked || false;
+
     const rows = [];
     for (const liga of Object.keys(dados)) {
-        if (MKT.liga !== 'all' && liga !== MKT.liga) continue;
+        if (filtLiga && liga !== filtLiga) continue;
         for (const mercado of Object.keys(dados[liga])) {
-            if (MKT.tipo !== 'all' && !mercado.includes(MKT.tipo)) continue;
+            if (filtMercado && !mercado.includes(filtMercado)) continue;
             for (const sel of dados[liga][mercado]) {
+                if (filtVB && (sel.valor_esperado || 0) < 0.95) continue;
                 rows.push({ liga, mercado, ...sel });
             }
         }
     }
-    rows.sort((a,b) => b.pct_jogos - a.pct_jogos);
-    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Sem dados</td></tr>'; return; }
+    rows.sort((a, b) => b.pct_jogos - a.pct_jogos);
 
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#334155;padding:20px">Nenhum resultado para os filtros selecionados.</td></tr>';
+        return;
+    }
     tbody.innerHTML = rows.map(r => {
         const ve = r.valor_esperado || 0;
-        const veCor = ve >= 0.95 ? '#4ade80' : ve >= 0.80 ? '#fbbf24' : '#475569';
+        const veCor  = ve >= 0.95 ? '#4ade80' : ve >= 0.80 ? '#fbbf24' : '#475569';
         const pctCor = r.pct_jogos >= 70 ? '#4ade80' : r.pct_jogos >= 50 ? '#fbbf24' : '#f87171';
         return `<tr>
             <td class="td-l">${r.liga}</td>
@@ -4697,6 +4764,22 @@ function renderMktTabela(res, prefix = 'mkt') {
             <td>${ve >= 0.95 ? '<span style="color:#4ade80;font-weight:800">✓ VALUE</span>' : ''}</td>
         </tr>`;
     }).join('');
+}
+
+function _tabelaMktToggle() {
+    const wrap = document.getElementById('mkt-tabela-wrap');
+    const btn  = document.getElementById('mkt-tabela-toggle');
+    if (!wrap) return;
+    const aberto = wrap.style.display !== 'none';
+    wrap.style.display = aberto ? 'none' : 'block';
+    if (btn) btn.textContent = aberto ? 'Mostrar ▼' : 'Ocultar ▲';
+    // Renderiza ao abrir pela primeira vez
+    if (!aberto && MKT.dados?.mercados) _renderTabelaRows(MKT.dados.mercados.data || {});
+}
+
+function _filtrarTabelaMkt() {
+    if (!MKT.dados?.mercados) return;
+    _renderTabelaRows(MKT.dados.mercados.data || {});
 }
 
 // ============================================================
