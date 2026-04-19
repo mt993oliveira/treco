@@ -837,6 +837,13 @@
     <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-top:12px">
         <div style="padding:8px 12px;background:#0c1220;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">📋 TABELA COMPLETA DE MERCADOS</span>
+            <button id="diag-mkt-toggle" onclick="_diagMktToggle()"
+                style="margin-left:auto;background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;font-size:10px;font-weight:700;padding:2px 10px;cursor:pointer">
+                Mostrar ▼
+            </button>
+        </div>
+        <div id="diag-mkt-wrap" style="display:none">
+        <div style="padding:8px 12px;background:#0c1220;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #1e293b">
             <span style="font-size:9px;color:#475569">Dias:</span>
             <select id="diag-mkt-dias" onchange="_diagCarregarMkt()"
                 style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:10px;outline:none">
@@ -894,6 +901,7 @@
                 </tbody>
             </table>
         </div>
+        </div><!-- /diag-mkt-wrap -->
     </div>
 </div>
 
@@ -3684,6 +3692,15 @@ function _diagAtualizarWS() {
 function _diagLogsToggle() {
     const wrap = document.getElementById('diag-logs-wrap');
     const btn  = document.getElementById('diag-logs-toggle');
+    if (!wrap) return;
+    const visible = wrap.style.display !== 'none';
+    wrap.style.display = visible ? 'none' : 'block';
+    if (btn) btn.textContent = visible ? 'Mostrar ▼' : 'Ocultar ▲';
+}
+
+function _diagMktToggle() {
+    const wrap = document.getElementById('diag-mkt-wrap');
+    const btn  = document.getElementById('diag-mkt-toggle');
     if (!wrap) return;
     const visible = wrap.style.display !== 'none';
     wrap.style.display = visible ? 'none' : 'block';
