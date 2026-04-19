@@ -609,7 +609,6 @@ router.get('/estatisticas-avancadas', async (req, res) => {
             pool.query(`
                 SELECT
                     COUNT(DISTINCT evento_id) AS total_partidas,
-                    SUM(CASE WHEN mercado='Resultado Final' AND selecao NOT IN (SELECT DISTINCT time_casa FROM bet365_resultados_mercados) AND selecao NOT IN (SELECT DISTINCT time_fora FROM bet365_resultados_mercados) THEN 0 ELSE 0 END) AS dummy,
                     COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT evento_id),0) AS pct_com_resultado,
                     COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' AND selecao='Sim' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' THEN evento_id END),0) AS pct_btts,
                     COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' THEN evento_id END),0) AS pct_over15,
@@ -638,30 +637,21 @@ router.get('/estatisticas-avancadas', async (req, res) => {
                 GROUP BY liga ORDER BY total_jogos DESC
             `),
             pool.query(`
+                WITH per_game AS (
+                    SELECT evento_id,
+                        MAX(CASE WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS o05,
+                        MAX(CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS o15,
+                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS o25,
+                        MAX(CASE WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS o35
+                    FROM bet365_resultados_mercados
+                    WHERE mercado LIKE '%0.5%' OR mercado LIKE '%1.5%' OR mercado LIKE '%2.5%' OR mercado LIKE '%3.5%'
+                    GROUP BY evento_id
+                )
                 SELECT
-                    CASE
-                        WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Menos%' THEN 0
-                        WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%'
-                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%1.5%' AND r2.selecao LIKE 'Mais%') THEN 1
-                        WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%'
-                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%2.5%' AND r2.selecao LIKE 'Mais%') THEN 2
-                        WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%'
-                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%3.5%' AND r2.selecao LIKE 'Mais%') THEN 3
-                        WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN 4
-                    END AS total_gols,
-                    COUNT(DISTINCT evento_id) AS quantidade
-                FROM bet365_resultados_mercados m
-                WHERE mercado LIKE '%0.5%' OR mercado LIKE '%1.5%' OR mercado LIKE '%2.5%' OR mercado LIKE '%3.5%'
-                GROUP BY CASE
-                        WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Menos%' THEN 0
-                        WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%'
-                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%1.5%' AND r2.selecao LIKE 'Mais%') THEN 1
-                        WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%'
-                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%2.5%' AND r2.selecao LIKE 'Mais%') THEN 2
-                        WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%'
-                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%3.5%' AND r2.selecao LIKE 'Mais%') THEN 3
-                        WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN 4
-                    END
+                    CASE WHEN o05=0 THEN 0 WHEN o15=0 THEN 1 WHEN o25=0 THEN 2 WHEN o35=0 THEN 3 ELSE 4 END AS total_gols,
+                    COUNT(*) AS quantidade
+                FROM per_game
+                GROUP BY CASE WHEN o05=0 THEN 0 WHEN o15=0 THEN 1 WHEN o25=0 THEN 2 WHEN o35=0 THEN 3 ELSE 4 END
                 ORDER BY total_gols
             `)
         ]);
