@@ -2148,7 +2148,13 @@ function renderFiltros() {
             const allOn = grupo.ids.every(id => S.linhas[id]);
             grupo.ids.forEach(id => { S.linhas[id] = !allOn; });
             const ativos = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
-            if (ativos.length > 0) S.filtro = ativos[0].id;
+            if (!allOn) {
+                // ligando o grupo — primeiro id não-equilibrio vira primário
+                const primeiro = grupo.ids.find(id => id !== 'equilibrio' && S.linhas[id]);
+                if (primeiro) S.filtro = primeiro;
+            } else if (ativos.length > 0) {
+                S.filtro = ativos[0].id;
+            }
             renderFiltros(); renderTabela(); renderGrafico();
         };
         bloco.appendChild(lbl);
@@ -2180,9 +2186,14 @@ function renderFiltros() {
                     color:${ativo ? '#cbd5e1' : '#3d5166'};white-space:nowrap">${fi.label}</span>
             `;
             pill.onclick = () => {
-                S.linhas[id] = !S.linhas[id];
+                const ligando = !S.linhas[id];
+                S.linhas[id] = ligando;
                 const ativos = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
-                if (ativos.length > 0) S.filtro = ativos[0].id;
+                if (ligando && id !== 'equilibrio') {
+                    S.filtro = id; // ao ativar, o filtro clicado vira o principal
+                } else if (ativos.length > 0) {
+                    S.filtro = ativos[0].id;
+                }
                 renderFiltros(); renderTabela(); renderGrafico();
             };
             pills.appendChild(pill);
