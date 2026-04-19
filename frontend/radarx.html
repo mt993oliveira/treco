@@ -118,104 +118,6 @@
             background: #1e293b; border: 1px solid #334155; color: #64748b; transition: all .15s; }
         .view-btn.ativo { background: #7c3aed; border-color: #7c3aed; color: #fff; }
 
-        /* HEATMAP */
-        .heatmap-container {
-            background: #0f172a;
-            border: 1px solid #1e293b;
-            border-radius: 8px;
-            padding: 14px;
-            margin-top: 10px;
-            overflow-x: auto;
-        }
-        .heatmap-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(36px, 1fr));
-            gap: 3px;
-            max-width: 600px;
-        }
-        .heatmap-cell {
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.15s;
-            border: 1px solid #1e293b;
-        }
-        .heatmap-cell:hover {
-            transform: scale(1.1);
-            z-index: 10;
-        }
-        .heatmap-cell.casa { background: #14532d; color: #4ade80; }
-        .heatmap-cell.empate { background: #1e1b4b; color: #a5b4fc; }
-        .heatmap-cell.fora { background: #3b0a0a; color: #f87171; }
-        .heatmap-cell.vazio { background: #0c1220; color: #334155; border-style: dashed; }
-        .heatmap-label {
-            font-size: 9px;
-            color: #475569;
-            text-align: center;
-            margin-top: 2px;
-        }
-        .heatmap-legend {
-            display: flex;
-            gap: 12px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 10px;
-            color: #64748b;
-        }
-        .legend-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-        }
-
-        /* HEATMAP V2 + IA CARDS */
-        .heatmap-cell-v2 {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 5px;
-            padding: 4px 2px;
-            cursor: pointer;
-            transition: all 0.15s;
-            border: 1px solid #1e293b;
-            min-width: 44px;
-            min-height: 44px;
-            position: relative;
-        }
-        .heatmap-cell-v2:hover { transform: scale(1.08); z-index: 10; }
-        .ia-card {
-            background: #0a0f1e;
-            border: 1px solid #1e293b;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-        .ia-best-bet {
-            background: #052e16;
-            border: 1px solid #166534;
-            border-radius: 6px;
-            padding: 8px 10px;
-            margin-top: 8px;
-        }
-        .ia-risky-bet {
-            background: #1c1003;
-            border: 1px solid #92400e;
-            border-radius: 6px;
-            padding: 8px 10px;
-            margin-top: 6px;
-        }
 
         /* FILTROS ANÁLISE */
         .fa-btn {
@@ -701,14 +603,6 @@
         <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">DESEMPENHO POR LIGA — SUGESTÕES DE APOSTA</div>
         <div id="analise-cards" style="display:flex;gap:10px;flex-wrap:wrap">
             <div style="color:#334155;font-size:12px;padding:24px">Carregando análise...</div>
-        </div>
-    </div>
-
-    <!-- Heatmap de Resultados V2 + IA -->
-    <div style="margin-bottom:14px" id="heatmap-ia-section">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">🔥 HEATMAP DE RESULTADOS — ANÁLISE IA</div>
-        <div id="heatmap-ia-container">
-            <div id="heatmap-ia-loading" style="color:#334155;font-size:12px;padding:24px;text-align:center">Carregando heatmap...</div>
         </div>
     </div>
 
@@ -1430,58 +1324,79 @@ S.filtro = 'over1.5';
 // LÓGICA DE FILTROS (client-side)
 // ============================================================
 function checa(j, fid) {
-    const t  = (j.gol_casa || 0) + (j.gol_fora || 0);
-    const c  = j.gol_casa  || 0,  f  = j.gol_fora  || 0;
-    const ht = (j.gol_casa_ht || 0) + (j.gol_fora_ht || 0);
-    const ch = j.gol_casa_ht || 0, fh = j.gol_fora_ht || 0;
-    // resultado HT derivado dos gols HT quando não temos campo direto
-    const rht = j.resultado_ht || (ch > fh ? 'CASA' : fh > ch ? 'FORA' : 'EMPATE');
-    const rft = j.resultado    || (c  > f  ? 'CASA' : f  > c  ? 'FORA' : 'EMPATE');
+    const mkts = j.mercados || [];
+
+    // Helpers: verifica presença de mercado/seleção nos resultados pagos
+    const hasMais  = n => mkts.some(m => m.mercado.includes(`${n}.5`) && m.selecao.startsWith('Mais'));
+    const hasMenos = n => mkts.some(m => m.mercado.includes(`${n}.5`) && m.selecao.startsWith('Menos'));
+
+    // Mercado "Resultado Final" — selecao = nome do time vencedor ou "Empate"
+    const rfMkt = mkts.find(m => /resultado final/i.test(m.mercado));
+    const rft   = j.resultado; // derivado no backend: 'CASA' | 'FORA' | 'EMPATE'
+
+    // BTTS
+    const btts    = mkts.some(m => /ambos marcam/i.test(m.mercado) && m.selecao === 'Sim');
+    const noBtts  = mkts.some(m => /ambos marcam/i.test(m.mercado) && (m.selecao === 'Não' || m.selecao === 'Nao'));
+
+    // HT: gol_casa_ht / gol_fora_ht derivados no backend do "Resultado Correto - Intervalo"
+    const ch  = j.gol_casa_ht;
+    const fh  = j.gol_fora_ht;
+    const htOk = ch !== null && ch !== undefined && fh !== null && fh !== undefined;
+    const rht = htOk ? (ch > fh ? 'CASA' : fh > ch ? 'FORA' : 'EMPATE') : null;
+
     switch (fid) {
-        // Over FT
-        case 'over0.5':      return t >= 1;
-        case 'over1.5':      return t >= 2;
-        case 'over2.5':      return t >= 3;
-        case 'over3.5':      return t >= 4;
-        case 'over4.5':      return t >= 5;
-        // Under FT
-        case 'under0.5':     return t === 0;
-        case 'under1.5':     return t <= 1;
-        case 'under2.5':     return t <= 2;
-        case 'under3.5':     return t <= 3;
-        // BTTS
-        case 'ambas-sim':    return c > 0 && f > 0;
-        case 'ambas-nao':    return !(c > 0 && f > 0);
-        // Marca
-        case 'casa-marca':   return c > 0;
-        case 'fora-marca':   return f > 0;
-        // FT resultado
+        // ── Over / Under FT (baseado nos mercados de gols pagos) ──
+        case 'over0.5':      return hasMais(0);
+        case 'over1.5':      return hasMais(1);
+        case 'over2.5':      return hasMais(2);
+        case 'over3.5':      return hasMais(3);
+        case 'over4.5':      return hasMais(4);
+        case 'under0.5':     return hasMenos(0);
+        case 'under1.5':     return hasMenos(1) || (!hasMais(1));  // U1.5 = 0 ou 1 gol
+        case 'under2.5':     return hasMenos(2) || (!hasMais(2));
+        case 'under3.5':     return hasMenos(3) || (!hasMais(3));
+
+        // ── BTTS ──
+        case 'ambas-sim':    return btts;
+        case 'ambas-nao':    return noBtts;
+
+        // ── Marca (time marcou ao menos 1) ──
+        // Derivado: BTTS → ambos marcaram; ou resultado da equipe → ela marcou
+        case 'casa-marca':   return btts || rft === 'CASA';
+        case 'fora-marca':   return btts || rft === 'FORA';
+
+        // ── Resultado FT ──
         case 'ft-casa':      return rft === 'CASA';
         case 'ft-empate':    return rft === 'EMPATE';
         case 'ft-fora':      return rft === 'FORA';
-        // Gols exatos FT
-        case 'gols-0':       return t === 0;
-        case 'gols-1':       return t === 1;
-        case 'gols-2':       return t === 2;
-        case 'gols-3':       return t === 3;
-        case 'gols-4':       return t === 4;
-        case 'gols-5p':      return t >= 5;
-        // HT placares exatos
-        case 'ht-0-0':       return ch === 0 && fh === 0;
-        case 'ht-1-0':       return ch === 1 && fh === 0;
-        case 'ht-0-1':       return ch === 0 && fh === 1;
-        case 'ht-1-1':       return ch === 1 && fh === 1;
-        case 'ht-2-0':       return ch === 2 && fh === 0;
-        case 'ht-0-2':       return ch === 0 && fh === 2;
-        // HT resultado
+
+        // ── Gols exatos FT (deriv. Over/Under) ──
+        case 'gols-0':       return !hasMais(0);
+        case 'gols-1':       return  hasMais(0) && !hasMais(1);
+        case 'gols-2':       return  hasMais(1) && !hasMais(2);
+        case 'gols-3':       return  hasMais(2) && !hasMais(3);
+        case 'gols-4':       return  hasMais(3) && !hasMais(4);
+        case 'gols-5p':      return  hasMais(4);
+
+        // ── HT placares exatos (requer "Resultado Correto - Intervalo") ──
+        case 'ht-0-0':       return htOk && ch === 0 && fh === 0;
+        case 'ht-1-0':       return htOk && ch === 1 && fh === 0;
+        case 'ht-0-1':       return htOk && ch === 0 && fh === 1;
+        case 'ht-1-1':       return htOk && ch === 1 && fh === 1;
+        case 'ht-2-0':       return htOk && ch === 2 && fh === 0;
+        case 'ht-0-2':       return htOk && ch === 0 && fh === 2;
+
+        // ── HT resultado ──
         case 'ht-casa':      return rht === 'CASA';
         case 'ht-empate':    return rht === 'EMPATE';
         case 'ht-fora':      return rht === 'FORA';
-        // HT gols
-        case 'ht-over':      return ht >= 2;   // Over 1.5 HT
-        case 'ht-under':     return ht <= 1;   // Under 1.5 HT
-        case 'ht-gols':      return ht > 0;    // Qualquer gol no 1T
-        // HT/FT duplo resultado
+
+        // ── HT gols ──
+        case 'ht-over':      return htOk && (ch + fh) >= 2;   // Over 1.5 HT
+        case 'ht-under':     return htOk && (ch + fh) <= 1;   // Under 1.5 HT
+        case 'ht-gols':      return htOk && (ch + fh) > 0;    // Qualquer gol no 1T
+
+        // ── HT/FT duplo resultado ──
         case 'htft-cc':      return rht === 'CASA'   && rft === 'CASA';
         case 'htft-ce':      return rht === 'CASA'   && rft === 'EMPATE';
         case 'htft-cf':      return rht === 'CASA'   && rft === 'FORA';
@@ -1491,13 +1406,15 @@ function checa(j, fid) {
         case 'htft-fc':      return rht === 'FORA'   && rft === 'CASA';
         case 'htft-fe':      return rht === 'FORA'   && rft === 'EMPATE';
         case 'htft-ff':      return rht === 'FORA'   && rft === 'FORA';
-        // Especial / combo
-        case 'esp-btts-o25': return c > 0 && f > 0 && t >= 3;
-        case 'esp-btts-u25': return c > 0 && f > 0 && t <= 2;
-        case 'esp-casa-o15': return rft === 'CASA' && t >= 2;
-        case 'esp-fora-o15': return rft === 'FORA' && t >= 2;
-        // Equilíbrio — linha de referência 50%
-        case 'equilibrio':   return Math.random() < 0.5; // sempre 50% — linha plana
+
+        // ── Especial / combo ──
+        case 'esp-btts-o25': return btts && hasMais(2);
+        case 'esp-btts-u25': return btts && !hasMais(2);
+        case 'esp-casa-o15': return rft === 'CASA' && hasMais(1);
+        case 'esp-fora-o15': return rft === 'FORA' && hasMais(1);
+
+        // ── Equilíbrio — linha de referência 50% ──
+        case 'equilibrio':   return Math.random() < 0.5;
         default: return false;
     }
 }
@@ -1533,8 +1450,6 @@ async function carregarTudo() {
         renderProximosJogos(),
         renderUltimosResultados(),
     ]);
-    // Render heatmap IA after historico is loaded (S.todasPartidas populated)
-    renderHeatmapIA();
 }
 
 // ============================================================
@@ -1577,11 +1492,11 @@ async function carregarHistorico() {
     dot.className = 'sdot idle';
 
     try {
-        const r = await fetch(`/api/bet365/historico-tabela?horas=${S.horas}`);
+        const r = await fetch(`/api/bet365/historico-mercados?horas=${S.horas}`);
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Erro');
 
-        // Normaliza nomes de liga e filtra só as 4 ligas canônicas
+        // Normaliza nomes de liga e filtra só as ligas canônicas
         S.todasPartidas = (d.partidas || [])
             .map(p => {
                 const canon = normalizarLiga(p.liga);
@@ -1703,7 +1618,6 @@ async function carregarSugestoes(forceRender = false) {
         _faAtualizarStatus();
         if (S.view === 'analise') {
             renderAnalise();
-            renderHeatmapIA(); // atualiza IA cards com os novos mktDados da liga
         }
     } catch {}
 }
@@ -2077,7 +1991,7 @@ function renderLigas() {
             S.partidas  = filtrarPartidas();
             document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
             b.classList.add('ativo');
-            renderTabela(); renderGrafico(); renderProximosJogos(); renderHeatmapIA(); renderUltimosResultados();
+            renderTabela(); renderGrafico(); renderProximosJogos(); renderUltimosResultados();
             document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
             if (S.view === 'analise') { _faAtualizarStatus(); carregarSugestoes(true); carregarMercados(); }
@@ -2706,6 +2620,9 @@ function renderTabela() {
         // Se o coletor de resultados salva o registro com data_partida = hora atual (:59)
         // em vez da hora de início do jogo (:53), o registro mais recente causa deslocamento
         // de coluna. Usamos o mais antigo para posição correta e herdamos o resultado final.
+        // Deduplicação: para cada par (time_casa × time_fora) manter o mais antigo (hora real do jogo)
+        // Como bet365_resultados_mercados agrupa por evento_id no backend, duplicatas são raras,
+        // mas podem ocorrer se o mesmo jogo foi coletado com timestamps ligeiramente diferentes.
         const dedupMap = new Map();
         grupo.jogos.forEach(j => {
             const key = `${j.time_casa}|${j.time_fora}`;
@@ -2715,30 +2632,26 @@ function renderTabela() {
             } else {
                 const jMs  = new Date(j.data_partida).getTime();
                 const exMs = new Date(ex.data_partida).getTime();
-                if (jMs < exMs) {
-                    // j é mais antigo → usa como base (hora correta), herda resultado do ex
-                    dedupMap.set(key, {
-                        ...j,
-                        gol_casa:  ex.gol_casa  ?? j.gol_casa,
-                        gol_fora:  ex.gol_fora  ?? j.gol_fora,
-                        resultado: ex.resultado || j.resultado,
-                        gol_casa_ht:  ex.gol_casa_ht  ?? j.gol_casa_ht,
-                        gol_fora_ht:  ex.gol_fora_ht  ?? j.gol_fora_ht,
+                const older  = jMs < exMs ? j : ex;
+                const newer  = jMs < exMs ? ex : j;
+                if (jMs !== exMs) {
+                    // Usa registro mais antigo como base (posição correta na grid),
+                    // herda mercados/resultado do mais recente se o antigo não tiver
+                    const mergedMkts = [...(older.mercados || [])];
+                    (newer.mercados || []).forEach(nm => {
+                        if (!mergedMkts.some(om => om.mercado === nm.mercado)) mergedMkts.push(nm);
                     });
-                } else if (exMs < jMs) {
-                    // ex já é mais antigo → só herda resultado de j se ex ainda não tem
-                    if (!ex.resultado && j.resultado) {
-                        dedupMap.set(key, {
-                            ...ex,
-                            gol_casa:  j.gol_casa  ?? ex.gol_casa,
-                            gol_fora:  j.gol_fora  ?? ex.gol_fora,
-                            resultado: j.resultado,
-                            gol_casa_ht:  j.gol_casa_ht  ?? ex.gol_casa_ht,
-                            gol_fora_ht:  j.gol_fora_ht  ?? ex.gol_fora_ht,
-                        });
-                    }
+                    dedupMap.set(key, {
+                        ...older,
+                        mercados:    mergedMkts,
+                        resultado:   older.resultado   || newer.resultado,
+                        gol_casa:    older.gol_casa    ?? newer.gol_casa,
+                        gol_fora:    older.gol_fora    ?? newer.gol_fora,
+                        gol_casa_ht: older.gol_casa_ht ?? newer.gol_casa_ht,
+                        gol_fora_ht: older.gol_fora_ht ?? newer.gol_fora_ht,
+                        total_gols:  older.total_gols  ?? newer.total_gols,
+                    });
                 }
-                // se mesmos ms → mantém ex (sem ação)
             }
         });
 
@@ -2837,8 +2750,13 @@ function renderTabela() {
 
             const hit        = fi ? checa(j, fi.id) : false;
             const isOculto   = j.placar_oculto === 1 || j.placar_oculto === true;
-            const score      = isOculto ? '5+'
-                : (j.gol_casa != null && j.gol_fora != null) ? `${j.gol_casa}-${j.gol_fora}` : '–';
+            // Score: usa placar exato se disponível; fallback: total_gols + resultado abreviado
+            const _scoreRaw = isOculto ? '5+'
+                : (j.gol_casa != null && j.gol_fora != null) ? `${j.gol_casa}-${j.gol_fora}`
+                : j.total_gols != null
+                    ? `${j.total_gols}${j.resultado==='CASA'?'C':j.resultado==='FORA'?'F':j.resultado==='EMPATE'?'E':''}`
+                    : j.resultado ? {CASA:'C',FORA:'F',EMPATE:'E'}[j.resultado]||'–' : '–';
+            const score = _scoreRaw;
             const _d = j.data_partida ? new Date(j.data_partida) : null;
             const minStr = _d ? `${pad2(_d.getUTCHours())}:${pad2(_d.getUTCMinutes())}` : '';
             const isEstimado = j.resultado_estimado === 1 || j.resultado_estimado === true;
@@ -3731,40 +3649,16 @@ async function _diagCarregarStats() {
             `;
         }
 
-        // Estima estimados via diagnostico
+        // Estimados removidos — bet365_historico_partidas descontinuada
         const elE = document.getElementById('diag-estimados');
-        if (elE) {
-            try {
-                const res2 = await fetch('/api/bet365/historico-partidas?limite=5000');
-                const d2 = await res2.json();
-                if (d2.success) {
-                    const total = d2.data?.length ?? 0;
-                    // Conta 0-0 EMPATE como proxy de estimados (coluna pode não existir ainda)
-                    const estimados = (d2.data || []).filter(p =>
-                        p.resultado_estimado === 1 || p.resultado_estimado === true ||
-                        (p.gol_casa === 0 && p.gol_fora === 0 && p.resultado === 'EMPATE')
-                    ).length;
-                    const pct = total > 0 ? (estimados / total * 100).toFixed(1) : 0;
-                    const cor = estimados > 0 ? '#f87171' : '#4ade80';
-                    elE.innerHTML = `
-                        <div style="font-size:18px;font-weight:800;color:${cor}">${estimados}</div>
-                        <div style="font-size:10px;color:#475569">${pct}% do total de ${total} partidas</div>
-                    `;
-                }
-            } catch {}
-        }
+        if (elE) elE.innerHTML = '<div style="font-size:12px;color:#475569">—</div>';
     } catch (e) {
         console.warn('[Diagnóstico] Erro stats:', e.message);
     }
 }
 
-async function limparEstimados() {
-    if (!confirm('Remover todos os resultados estimados (0-0 gerados automaticamente)?\n\nIsso limpará registros falsos que poluem as estatísticas.')) return;
-    try {
-        const pool_r = await fetch('/api/bet365/diagnostico');
-        // Não temos endpoint direto — informa usuário
-        alert('Para limpar estimados, execute no SQL Server:\n\nDELETE FROM bet365_historico_partidas WHERE resultado_estimado = 1\n\nOu: DELETE FROM bet365_historico_partidas WHERE gol_casa=0 AND gol_fora=0 AND resultado=\'EMPATE\'');
-    } catch {}
+function limparEstimados() {
+    alert('Função removida — bet365_historico_partidas foi descontinuada. Os dados são coletados diretamente via bet365_resultados_mercados.');
 }
 
 async function limparLigasDescartadas() {
@@ -3816,515 +3710,6 @@ function conectarWS() {
             setTimeout(conectarWS, 12000);
         };
     } catch {}
-}
-
-// ============================================================
-// HEATMAP V2 + IA — ANÁLISE COM S.todasPartidas
-// ============================================================
-
-function _hmComputeMatriz(partidas) {
-    const maxGols = 5;
-    const matriz = {};
-    let totalGeral = 0;
-    // Também acumula odds para calcular implied probability histórica
-    let somaOddCasa = 0, somaOddEmp = 0, somaOddFora = 0, nOdds = 0;
-
-    for (let c = 0; c <= maxGols; c++) {
-        for (let f = 0; f <= maxGols; f++) {
-            matriz[`${c}-${f}`] = { total: 0, tipo: null };
-        }
-    }
-
-    partidas.forEach(p => {
-        const c = Math.min(parseInt(p.gol_casa) || 0, maxGols);
-        const f = Math.min(parseInt(p.gol_fora) || 0, maxGols);
-        const key = `${c}-${f}`;
-        if (matriz[key] !== undefined) {
-            matriz[key].total++;
-            totalGeral++;
-            if (c > f) matriz[key].tipo = 'casa';
-            else if (c === f) matriz[key].tipo = 'empate';
-            else matriz[key].tipo = 'fora';
-        }
-        if (p.odd_casa && p.odd_empate && p.odd_fora) {
-            somaOddCasa += parseFloat(p.odd_casa);
-            somaOddEmp  += parseFloat(p.odd_empate);
-            somaOddFora += parseFloat(p.odd_fora);
-            nOdds++;
-        }
-    });
-
-    const avgOdds = nOdds > 0
-        ? { casa: somaOddCasa/nOdds, emp: somaOddEmp/nOdds, fora: somaOddFora/nOdds }
-        : { casa: 2, emp: 3.2, fora: 4 };
-
-    return { matriz, totalGeral, avgOdds };
-}
-
-function _hmRenderGrid(partidas) {
-    const { matriz, totalGeral, avgOdds } = _hmComputeMatriz(partidas);
-    const maxGols = 5;
-
-    // Find max cell count for intensity scaling
-    let maxCell = 0;
-    Object.values(matriz).forEach(c => { if (c.total > maxCell) maxCell = c.total; });
-
-    // Compute aggregate frequencies for edge calculation
-    let nCasa = 0, nEmp = 0, nFora = 0;
-    partidas.forEach(p => {
-        const r = p.resultado || (parseInt(p.gol_casa) > parseInt(p.gol_fora) ? 'CASA' :
-                   parseInt(p.gol_casa) === parseInt(p.gol_fora) ? 'EMPATE' : 'FORA');
-        if (r === 'CASA') nCasa++; else if (r === 'EMPATE') nEmp++; else nFora++;
-    });
-
-    // Build header row (gols fora 0-5)
-    let headerCells = '<div style="min-width:44px;min-height:22px"></div>';
-    for (let f = 0; f <= maxGols; f++) {
-        headerCells += `<div style="min-width:44px;text-align:center;font-size:9px;color:#475569;font-weight:700">${f}</div>`;
-    }
-
-    let gridRows = `<div style="display:grid;grid-template-columns:44px repeat(6,44px);gap:3px;margin-bottom:4px">${headerCells}</div>`;
-
-    for (let c = maxGols; c >= 0; c--) {
-        let rowHtml = `<div style="display:flex;align-items:center;justify-content:center;min-width:44px;font-size:9px;color:#475569;font-weight:700">${c}</div>`;
-        for (let f = 0; f <= maxGols; f++) {
-            const key = `${c}-${f}`;
-            const cell = matriz[key];
-            const count = cell.total;
-            const pct = totalGeral > 0 ? (count / totalGeral * 100) : 0;
-
-            // Implied probability from avg historical odds
-            let impliedPct = 0;
-            if (c > f) impliedPct = (1 / avgOdds.casa) * 100 * (pct > 0 ? 1 : 0);
-            else if (c === f) impliedPct = (1 / avgOdds.emp) * 100 * (pct > 0 ? 1 : 0);
-            else impliedPct = (1 / avgOdds.fora) * 100 * (pct > 0 ? 1 : 0);
-
-            // Distribute implied evenly across cells of same result type
-            const nSameType = Object.values(matriz).filter(m => m.tipo === cell.tipo && m.total > 0).length || 1;
-            const cellImplied = impliedPct / nSameType;
-            const edge = count > 0 ? (pct - cellImplied) : 0;
-
-            // Colors
-            let baseColor, textColor;
-            if (count === 0) {
-                baseColor = '#0c1220'; textColor = '#334155';
-            } else if (c > f) {
-                // Casa win — green tones
-                const intensity = maxCell > 0 ? count / maxCell : 0;
-                const g = Math.round(40 + intensity * 80);
-                baseColor = `rgba(20,${g + 43},45,${0.4 + intensity * 0.6})`;
-                textColor = '#4ade80';
-            } else if (c === f) {
-                // Empate — purple/blue tones
-                const intensity = maxCell > 0 ? count / maxCell : 0;
-                baseColor = `rgba(30,27,${Math.round(75 + intensity * 100)},${0.4 + intensity * 0.6})`;
-                textColor = '#a5b4fc';
-            } else {
-                // Fora win — red tones
-                const intensity = maxCell > 0 ? count / maxCell : 0;
-                const r = Math.round(59 + intensity * 80);
-                baseColor = `rgba(${r},10,10,${0.4 + intensity * 0.6})`;
-                textColor = '#f87171';
-            }
-
-            const borderColor = count > 0 ? (edge >= 0 ? '#166534' : '#7f1d1d') : '#1e293b';
-            const edgeBadge = count > 0 ? (edge >= 0 ? '▲' : '▼') : '';
-            const edgeBadgeColor = edge >= 0 ? '#4ade80' : '#f87171';
-
-            rowHtml += `<div class="heatmap-cell-v2" style="background:${baseColor};border-color:${borderColor};color:${textColor}"
-                title="${c}-${f}: ${count}x | ${pct.toFixed(1)}% | Edge: ${edge >= 0 ? '+' : ''}${edge.toFixed(1)}%">
-                <span style="font-size:10px;font-weight:700">${c}-${f}</span>
-                <span style="font-size:8px;opacity:0.85">${count > 0 ? `${count} (${pct.toFixed(0)}%)` : '—'}</span>
-                ${edgeBadge ? `<span style="position:absolute;top:2px;right:3px;font-size:7px;color:${edgeBadgeColor}">${edgeBadge}</span>` : ''}
-            </div>`;
-        }
-        gridRows += `<div style="display:grid;grid-template-columns:44px repeat(6,44px);gap:3px;margin-bottom:3px">${rowHtml}</div>`;
-    }
-
-    // Summary stats
-    const over15 = partidas.filter(p => (parseInt(p.gol_casa)||0) + (parseInt(p.gol_fora)||0) > 1.5).length;
-    const over15Pct = totalGeral > 0 ? (over15/totalGeral*100).toFixed(1) : '—';
-    const totalGols = partidas.reduce((a, p) => a + (parseInt(p.gol_casa)||0) + (parseInt(p.gol_fora)||0), 0);
-    const mediaGols = totalGeral > 0 ? (totalGols/totalGeral).toFixed(2) : '—';
-    const pctCasa = totalGeral > 0 ? (nCasa/totalGeral*100).toFixed(1) : '—';
-    const pctEmp  = totalGeral > 0 ? (nEmp/totalGeral*100).toFixed(1) : '—';
-    const pctFora = totalGeral > 0 ? (nFora/totalGeral*100).toFixed(1) : '—';
-
-    let maisFreqRes = '—';
-    if (nCasa >= nEmp && nCasa >= nFora) maisFreqRes = `CASA (${pctCasa}%)`;
-    else if (nEmp >= nCasa && nEmp >= nFora) maisFreqRes = `EMPATE (${pctEmp}%)`;
-    else maisFreqRes = `FORA (${pctFora}%)`;
-
-    // Most frequent placar
-    let maisFreqPlacar = '—';
-    let mfCount = 0;
-    Object.entries(matriz).forEach(([k, v]) => { if (v.total > mfCount) { mfCount = v.total; maisFreqPlacar = k; } });
-
-    const summaryHtml = `
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding:10px;background:#0f172a;border:1px solid #1e293b;border-radius:7px">
-            <div class="stat-pill"><b>${totalGeral}</b>&nbsp;jogos analisados</div>
-            <div class="stat-pill">Resultado mais freq.: <b style="margin-left:4px">${maisFreqRes}</b></div>
-            <div class="stat-pill">Placar mais freq.: <b style="margin-left:4px">${maisFreqPlacar} (${mfCount}x)</b></div>
-            <div class="stat-pill">Over 1.5: <b style="margin-left:4px;color:#fbbf24">${over15Pct}%</b></div>
-            <div class="stat-pill">Média gols: <b style="margin-left:4px;color:#60a5fa">${mediaGols}</b></div>
-        </div>
-        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
-            <div class="legend-item"><div class="legend-color" style="background:#14532d"></div>Casa vence</div>
-            <div class="legend-item"><div class="legend-color" style="background:#1e1b4b"></div>Empate</div>
-            <div class="legend-item"><div class="legend-color" style="background:#3b0a0a"></div>Fora vence</div>
-            <div class="legend-item"><div style="width:10px;height:10px;border:1px solid #166534;border-radius:2px;margin-right:2px"></div>Edge positivo ▲</div>
-            <div class="legend-item"><div style="width:10px;height:10px;border:1px solid #7f1d1d;border-radius:2px;margin-right:2px"></div>Edge negativo ▼</div>
-        </div>
-    `;
-
-    return `
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;overflow-x:auto">
-            <div style="font-size:10px;color:#475569;margin-bottom:8px">← Gols Fora / Gols Casa ↓</div>
-            ${gridRows}
-            ${summaryHtml}
-        </div>
-    `;
-}
-
-function _hmTopPlacares(partidas, minOcorrencias = 3, top = 5) {
-    const freq = {};
-    partidas.forEach(p => {
-        const c = Math.min(parseInt(p.gol_casa)||0, 5);
-        const f = Math.min(parseInt(p.gol_fora)||0, 5);
-        const k = `${c}-${f}`;
-        freq[k] = (freq[k] || 0) + 1;
-    });
-    return Object.entries(freq)
-        .filter(([, v]) => v >= minOcorrencias)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, top)
-        .map(([placar, count]) => {
-            const [c, f] = placar.split('-').map(Number);
-            const tipo = c > f ? 'CASA' : c === f ? 'EMPATE' : 'FORA';
-            const pct = partidas.length > 0 ? (count/partidas.length*100).toFixed(1) : '0';
-            return { placar, count, pct, tipo };
-        });
-}
-
-function _hmComputeFreqsLiga(partidasLiga) {
-    let nCasa = 0, nEmp = 0, nFora = 0;
-    let somaOddC = 0, somaOddE = 0, somaOddF = 0, nOdds = 0;
-    partidasLiga.forEach(p => {
-        const r = p.resultado || (parseInt(p.gol_casa) > parseInt(p.gol_fora) ? 'CASA' :
-                   parseInt(p.gol_casa) === parseInt(p.gol_fora) ? 'EMPATE' : 'FORA');
-        if (r === 'CASA') nCasa++; else if (r === 'EMPATE') nEmp++; else nFora++;
-        if (p.odd_casa && p.odd_empate && p.odd_fora) {
-            somaOddC += parseFloat(p.odd_casa);
-            somaOddE += parseFloat(p.odd_empate);
-            somaOddF += parseFloat(p.odd_fora);
-            nOdds++;
-        }
-    });
-    const n = partidasLiga.length || 1;
-    return {
-        n,
-        freqCasa: nCasa/n, freqEmp: nEmp/n, freqFora: nFora/n,
-        avgOddCasa: nOdds > 0 ? somaOddC/nOdds : 2,
-        avgOddEmp:  nOdds > 0 ? somaOddE/nOdds : 3.2,
-        avgOddFora: nOdds > 0 ? somaOddF/nOdds : 4,
-    };
-}
-
-function _hmBlendTeamFreqs(ligaFreqs, todasPartidas, timeCasa, timeFora, liga) {
-    // Team-specific stats for casa team
-    const casaGames = todasPartidas.filter(p => p.liga === liga &&
-        (normalizarTime(p.time_casa) === timeCasa || p.time_casa === timeCasa));
-    const foraGames = todasPartidas.filter(p => p.liga === liga &&
-        (normalizarTime(p.time_fora) === timeFora || p.time_fora === timeFora));
-
-    let freqCasa = ligaFreqs.freqCasa;
-    let freqEmp  = ligaFreqs.freqEmp;
-    let freqFora = ligaFreqs.freqFora;
-
-    if (casaGames.length >= 5) {
-        const tf = _hmComputeFreqsLiga(casaGames);
-        freqCasa = 0.5 * ligaFreqs.freqCasa + 0.5 * tf.freqCasa;
-        freqEmp  = 0.5 * ligaFreqs.freqEmp  + 0.5 * tf.freqEmp;
-        freqFora = 0.5 * ligaFreqs.freqFora + 0.5 * tf.freqFora;
-    }
-    if (foraGames.length >= 5) {
-        const tf = _hmComputeFreqsLiga(foraGames);
-        freqCasa = 0.5 * freqCasa + 0.5 * tf.freqCasa;
-        freqEmp  = 0.5 * freqEmp  + 0.5 * tf.freqEmp;
-        freqFora = 0.5 * freqFora + 0.5 * tf.freqFora;
-    }
-
-    // Normalize
-    const soma = freqCasa + freqEmp + freqFora || 1;
-    return { freqCasa: freqCasa/soma, freqEmp: freqEmp/soma, freqFora: freqFora/soma };
-}
-
-function _hmRenderIACards(jogos, todasPartidas) {
-    if (!jogos || jogos.length === 0) return '';
-
-    const ligaLabel = S.ligaAtiva ? ` — ${S.ligaAtiva}` : '';
-    let html = `<div style="margin-top:16px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em">🤖 ANÁLISE IA — PRÓXIMOS JOGOS${ligaLabel}</div>
-            <div style="font-size:9px;color:#475569">${jogos.length} jogo${jogos.length!==1?'s':''} agendado${jogos.length!==1?'s':''}</div>
-        </div>`;
-
-    jogos.forEach(jogo => {
-        const liga = normalizarLiga(jogo.liga) || jogo.liga || '';
-        const partidasLiga = todasPartidas.filter(p => p.liga === liga);
-        const ligaFreqs = _hmComputeFreqsLiga(partidasLiga);
-        const timeCasa = normalizarTime(jogo.time_casa || '');
-        const timeFora = normalizarTime(jogo.time_fora || '');
-        const blended = _hmBlendTeamFreqs(ligaFreqs, todasPartidas, timeCasa, timeFora, liga);
-
-        const oddC = parseFloat(jogo.odd_casa)   || ligaFreqs.avgOddCasa;
-        const oddE = parseFloat(jogo.odd_empate)  || ligaFreqs.avgOddEmp;
-        const oddF = parseFloat(jogo.odd_fora)    || ligaFreqs.avgOddFora;
-
-        const implC = 1/oddC, implE = 1/oddE, implF = 1/oddF;
-        const edgeC = blended.freqCasa - implC;
-        const edgeE = blended.freqEmp  - implE;
-        const edgeF = blended.freqFora - implF;
-        const evC   = blended.freqCasa * oddC;
-        const evE   = blended.freqEmp  * oddE;
-        const evF   = blended.freqFora * oddF;
-
-        // Best bet
-        const evs = [
-            { label: 'Casa',   freq: blended.freqCasa, odd: oddC, impl: implC, edge: edgeC, ev: evC },
-            { label: 'Empate', freq: blended.freqEmp,  odd: oddE, impl: implE, edge: edgeE, ev: evE },
-            { label: 'Fora',   freq: blended.freqFora, odd: oddF, impl: implF, edge: edgeF, ev: evF },
-        ];
-        const bestBet = evs.reduce((a, b) => b.ev > a.ev ? b : a);
-        const riskyBet = evs.find(e => e.edge > 0 && e.odd > 3.0) || null;
-
-        // Top placares
-        const topPlacares = _hmTopPlacares(partidasLiga, 3, 3);
-
-        // Confidence
-        const n = ligaFreqs.n;
-        const confianca = n < 20 ? '⚠️ Baixa'
-                        : n < 50 ? '🔶 Média'
-                        : '✅ Alta';
-
-        // Minutes to start
-        let tempoLabel = '';
-        if (jogo.tempo !== undefined && jogo.tempo !== null) {
-            const mins = parseInt(jogo.tempo);
-            tempoLabel = isNaN(mins) ? '' : ` · ${mins}min para início`;
-        }
-
-        // Result rows (1X2 table)
-        const mkRow = (r) => {
-            const edgeColor = r.edge >= 0 ? '#4ade80' : '#f87171';
-            const isBest = r.label === bestBet.label;
-            return `<tr style="${isBest ? 'background:#052e16;' : ''}">
-                <td style="padding:4px 7px;font-size:11px;font-weight:700;color:#e2e8f0">${isBest ? '★ ' : ''}${r.label}</td>
-                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#94a3b8">${(r.freq*100).toFixed(1)}%</td>
-                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#fbbf24">${r.odd.toFixed(2)}</td>
-                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#64748b">${(r.impl*100).toFixed(1)}%</td>
-                <td style="padding:4px 7px;font-size:11px;text-align:center;font-weight:700;color:${edgeColor}">${r.edge >= 0 ? '+' : ''}${(r.edge*100).toFixed(1)}%</td>
-                <td style="padding:4px 7px;font-size:11px;text-align:center;color:#60a5fa">${r.ev.toFixed(2)}</td>
-            </tr>`;
-        };
-
-        const placaresHtml = topPlacares.length > 0
-            ? topPlacares.map(p => {
-                const cor = p.tipo === 'CASA' ? '#4ade80' : p.tipo === 'EMPATE' ? '#a5b4fc' : '#f87171';
-                return `<span style="background:#1e293b;border-radius:4px;padding:3px 8px;font-size:11px;color:${cor};font-weight:700">${p.placar} <span style="color:#64748b;font-weight:400">${p.pct}%</span></span>`;
-            }).join(' ')
-            : '<span style="color:#475569;font-size:11px">Sem dados suficientes</span>';
-
-        // ── Mercados pagos reais desta liga (PRIMARY — bet365_resultados_mercados) ──
-        const mktLigaIA = S.mktDados?.[liga] || {};
-        const mktFlatIA = [];
-        for (const [mercado, sels] of Object.entries(mktLigaIA)) {
-            for (const s of (sels || [])) mktFlatIA.push({ mercado, ...s });
-        }
-        const mktDiversIA = _mktDiversificado(mktLigaIA, 5);
-        const mktJogosIA = mktFlatIA.length > 0 ? (mktFlatIA[0].total_jogos || 0) : 0;
-        const mktAvisoIA = mktJogosIA < 15 ? ` ⚠️${mktJogosIA}j` : '';
-
-        const mkMktBar = (m) => {
-            const pct = m.pct_jogos;
-            const cor = pct>=70?'#4ade80':pct>=55?'#fbbf24':pct>=40?'#94a3b8':'#f87171';
-            const ve = parseFloat(m.valor_esperado||0);
-            const catBadge = m._cat ? `<span style="background:#1e293b;color:#64748b;padding:0 3px;border-radius:2px;font-size:8px;font-weight:700;margin-right:2px">${m._cat}</span>` : '';
-            return `<div style="margin-bottom:5px">
-                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:1px;gap:4px">
-                    <span style="color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${m.mercado} → ${m.selecao}">${catBadge}${m.mercado} → <b style="color:#e2e8f0">${m.selecao}</b></span>
-                    <div style="display:flex;gap:4px;flex-shrink:0">
-                        <b style="color:${cor}">${pct}%</b>
-                        <span style="color:#64748b">${parseFloat(m.odd_media||0).toFixed(2)}</span>
-                        ${ve>=0.95?'<span style="background:#166534;color:#4ade80;padding:0 3px;border-radius:2px;font-size:8px;font-weight:800">VE</span>':''}
-                    </div>
-                </div>
-                <div style="height:3px;background:#1e293b;border-radius:2px">
-                    <div style="height:3px;width:${Math.min(100,pct)}%;background:${cor};border-radius:2px"></div>
-                </div>
-            </div>`;
-        };
-
-        // ── Top sugestões: mercados pagos como PRIMARY, 1X2 edge como referência ──
-        const mktSugestoes = mktDiversIA.map((m, i) => ({
-            cat: 'Mercado', label: `${m.mercado} → ${m.selecao}`,
-            labelShort: m.selecao,
-            mercado: m.mercado,
-            pct: m.pct_jogos.toFixed ? m.pct_jogos.toFixed(1) : m.pct_jogos,
-            odd: parseFloat(m.odd_media) || null,
-            ve: parseFloat(m.valor_esperado) || 0,
-            score: m.pct_jogos / 100 + (parseFloat(m.valor_esperado)||0) * 0.3
-        }));
-
-        const evsSugestoes = evs.map(r => ({
-            cat: '1X2', label: r.label, labelShort: r.label,
-            pct: (r.freq*100).toFixed(1), odd: r.odd, ve: r.ev || 0,
-            score: r.ev,
-            edge: r.edge
-        }));
-
-        // Combina: mercados primeiro, depois 1X2 com edge positivo
-        const todasSugestoes = [
-            ...mktSugestoes,
-            ...evsSugestoes.filter(r => r.edge > 0),
-        ].sort((a,b) => b.score - a.score);
-
-        // Se sem mercados, fallback para 1X2 + arriscada
-        if (mktSugestoes.length === 0) {
-            if (riskyBet) todasSugestoes.push({
-                cat:'⚡ Risco', label: riskyBet.label, labelShort: riskyBet.label,
-                pct: (riskyBet.freq*100).toFixed(1), odd: riskyBet.odd, ve: riskyBet.ev||0,
-                score: riskyBet.edge * 2 + 0.01, edge: riskyBet.edge
-            });
-        }
-
-        const top3Sug = todasSugestoes.slice(0, 3);
-        const top3Html = top3Sug.map((s, i) => {
-            const icons = ['🥇','🥈','🥉'];
-            const catCor = s.cat === '1X2' ? '#4ade80' : s.cat === 'Mercado' ? '#60a5fa' : '#f59e0b';
-            const oddStr  = s.odd  != null  ? `Odd <b style="color:#fbbf24">${parseFloat(s.odd).toFixed(2)}</b>` : '';
-            const edgeStr = s.edge != null && s.edge > 0 ? ` Edge <b style="color:#4ade80">+${(s.edge*100).toFixed(1)}%</b>` : '';
-            const veStr   = s.ve   > 0 && s.cat !== 'Mercado' ? ` EV <b style="color:#60a5fa">${parseFloat(s.ve).toFixed(2)}</b>` : '';
-            const veBadge = s.ve   >= 0.95 && s.cat === 'Mercado' ? `<span style="background:#166534;color:#4ade80;padding:1px 4px;border-radius:3px;font-size:8px;font-weight:800">VE</span>` : '';
-            return `<div style="display:flex;align-items:center;gap:5px;padding:5px 0;
-                ${i < top3Sug.length-1 ? 'border-bottom:1px solid #0f172a;' : ''}">
-                <span style="font-size:12px">${icons[i]}</span>
-                <span style="font-size:9px;font-weight:700;color:${catCor};min-width:40px">${s.cat}</span>
-                <div style="flex:1;font-size:11px;color:#e2e8f0;overflow:hidden">
-                    <b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${s.cat==='Mercado'?s.mercado+' →':''} ${s.labelShort||s.label}</b>
-                    <span style="color:#94a3b8;font-size:10px"> ${s.pct}%</span>
-                </div>
-                <div style="font-size:10px;text-align:right;flex-shrink:0">${oddStr}${edgeStr}${veStr}${veBadge}</div>
-            </div>`;
-        }).join('');
-
-        // ── Horário do jogo ──
-        const BET365_OFFSET_MS = 1 * 3600 * 1000;
-        let horaLabel = '';
-        if (jogo.horario || jogo.start_time_datetime) {
-            const dt = new Date(jogo.horario || jogo.start_time_datetime);
-            const h = dt.getUTCHours().toString().padStart(2,'0');
-            const m2 = dt.getUTCMinutes().toString().padStart(2,'0');
-            horaLabel = `${h}:${m2}`;
-        }
-
-        // ── minutos para início (segundos_para_inicio do evento) ──
-        const secsLabel = jogo.seconds_to_start != null
-            ? `em ${Math.round(jogo.seconds_to_start / 60)}min`
-            : tempoLabel;
-
-        html += `<div class="ia-card">
-            <!-- Cabeçalho do jogo -->
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-                <div>
-                    <div style="font-size:13px;font-weight:800;color:#e2e8f0">${timeCasa} <span style="color:#475569;font-weight:400">vs</span> ${timeFora}</div>
-                    <div style="font-size:10px;color:#64748b;margin-top:2px">${liga}${horaLabel ? ' · ' + horaLabel : ''}${secsLabel ? ' <span style="color:#f59e0b;font-weight:700">⏱ ' + secsLabel + '</span>' : ''}</div>
-                </div>
-                <div style="font-size:9px;color:#64748b;text-align:right">${confianca}<br><span style="color:#334155">${n} amostras</span></div>
-            </div>
-
-            <!-- 🏆 TOP SUGESTÕES — destaque no topo -->
-            <div style="background:#051c10;border:1px solid #166534;border-radius:6px;padding:8px;margin-bottom:8px">
-                <div style="font-size:9px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:6px">🏆 SUGESTÕES DE APOSTA</div>
-                ${top3Sug.length ? top3Html : '<div style="color:#334155;font-size:10px;text-align:center;padding:4px 0">Calculando...</div>'}
-            </div>
-
-            <!-- Probabilidades 1X2 -->
-            <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:5px;overflow:hidden;margin-bottom:8px">
-                <thead>
-                    <tr style="background:#0c1220">
-                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:left">Resultado</th>
-                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Prob%</th>
-                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Odd</th>
-                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Impl%</th>
-                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">Edge</th>
-                        <th style="padding:4px 7px;font-size:9px;color:#475569;text-align:center">EV</th>
-                    </tr>
-                </thead>
-                <tbody>${evs.map(mkRow).join('')}</tbody>
-            </table>
-
-            <!-- Mercados pagos da liga -->
-            <div style="background:#0f172a;border-radius:5px;padding:8px;margin-bottom:8px">
-                <div style="font-size:9px;color:#60a5fa;font-weight:700;margin-bottom:6px">🎯 MERCADOS PAGOS NA LIGA<span style="color:#f59e0b">${mktAvisoIA}</span> · ${mktJogosIA} jogos</div>
-                ${mktDiversIA.length > 0
-                    ? `<div>${mktDiversIA.map(mkMktBar).join('')}</div>`
-                    : `<div style="color:#334155;font-size:10px;text-align:center;padding:8px 0">⏳ Aguardando dados de mercados...</div>`
-                }
-            </div>
-
-            <!-- Top placares -->
-            <div>
-                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">TOP PLACARES NA LIGA</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">${placaresHtml}</div>
-            </div>
-        </div>`;
-    });
-
-    html += '</div>';
-    return html;
-}
-
-async function renderHeatmapIA() {
-    const container = document.getElementById('heatmap-ia-container');
-    if (!container) return;
-
-    const partidas = S.ligaAtiva
-        ? S.todasPartidas.filter(p => p.liga === S.ligaAtiva)
-        : S.todasPartidas;
-
-    if (!partidas || partidas.length === 0) {
-        container.innerHTML = '<div style="color:#475569;font-size:12px;padding:20px;text-align:center">Sem dados de partidas para heatmap</div>';
-        return;
-    }
-
-    // Render grid synchronously from S.todasPartidas
-    let html = _hmRenderGrid(partidas);
-
-    // Fetch upcoming games for IA suggestions
-    try {
-        const res = await fetch('/api/bet365/eventos-completos');
-        if (res.ok) {
-            const json = await res.json();
-            const eventos = (json.data || json.eventos || json || []);
-            let agendados = Array.isArray(eventos) ? eventos : [];
-            agendados = agendados.filter(j => j.status === 'AGENDADO' || j.status === 'agendado');
-            if (S.ligaAtiva) agendados = agendados.filter(j => normalizarLiga(j.liga) === S.ligaAtiva);
-            // Ordena por horário de início (mais próximo primeiro) e mostra todos
-            agendados.sort((a, b) => {
-                const ta = a.horario || a.start_time_datetime || '';
-                const tb = b.horario || b.start_time_datetime || '';
-                return ta < tb ? -1 : ta > tb ? 1 : 0;
-            });
-            if (agendados.length > 0) {
-                html += _hmRenderIACards(agendados, S.todasPartidas);
-            }
-        }
-    } catch (e) {
-        console.warn('[HeatmapIA] Não foi possível buscar eventos-completos:', e);
-    }
-
-    container.innerHTML = html;
 }
 
 // ============================================================

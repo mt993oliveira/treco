@@ -49,48 +49,7 @@ async function getDbPool() {
     return sqlPool;
 }
 
-// ─── Garante colunas em bet365_historico_partidas ───
-let _schemaOk = false;
-async function garantirSchema(pool) {
-    if (_schemaOk) return;
-    try {
-        await pool.query(`
-            IF NOT EXISTS (
-                SELECT 1 FROM sys.columns
-                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
-                AND name = 'resultado_estimado'
-            )
-            ALTER TABLE bet365_historico_partidas ADD resultado_estimado BIT NOT NULL DEFAULT 0
-        `);
-        await pool.query(`
-            IF NOT EXISTS (
-                SELECT 1 FROM sys.columns
-                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
-                AND name = 'gol_casa_ht'
-            )
-            ALTER TABLE bet365_historico_partidas ADD gol_casa_ht TINYINT NULL
-        `);
-        await pool.query(`
-            IF NOT EXISTS (
-                SELECT 1 FROM sys.columns
-                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
-                AND name = 'gol_fora_ht'
-            )
-            ALTER TABLE bet365_historico_partidas ADD gol_fora_ht TINYINT NULL
-        `);
-        await pool.query(`
-            IF NOT EXISTS (
-                SELECT 1 FROM sys.columns
-                WHERE object_id = OBJECT_ID('bet365_historico_partidas')
-                AND name = 'placar_oculto'
-            )
-            ALTER TABLE bet365_historico_partidas ADD placar_oculto BIT NOT NULL DEFAULT 0
-        `);
-        _schemaOk = true;
-    } catch (e) {
-        console.warn('⚠️ garantirSchema bet365_historico_partidas:', e.message);
-    }
-}
+// bet365_historico_partidas foi removida — toda a lógica usa bet365_resultados_mercados
 
 /**
  * GET /api/bet365/eventos
@@ -205,47 +164,11 @@ router.get('/ao-vivo', async (req, res) => {
 });
 
 /**
- * GET /api/bet365/historico-partidas
- * Retorna histórico de partidas
+ * GET /api/bet365/historico-partidas — REMOVIDO (tabela bet365_historico_partidas descontinuada)
+ * Use /api/bet365/historico-mercados
  */
-router.get('/historico-partidas', async (req, res) => {
-    try {
-        const { limite = 50, liga, time } = req.query;
-        const pool = await getDbPool();
-
-        let query = `
-            SELECT
-                id, evento_id, liga, time_casa, time_fora,
-                gol_casa, gol_fora, resultado,
-                odd_casa, odd_empate, odd_fora, data_partida
-            FROM bet365_historico_partidas
-            WHERE 1=1
-        `;
-
-        const request = pool.request();
-
-        if (liga) {
-            query += ' AND liga LIKE @liga';
-            request.input('liga', sql.NVarChar(200), `%${liga}%`);
-        }
-        if (time) {
-            query += ' AND (time_casa LIKE @time OR time_fora LIKE @time)';
-            request.input('time', sql.NVarChar(100), `%${time}%`);
-        }
-
-        query += ' ORDER BY data_partida DESC';
-
-        const result = await request.query(query);
-
-        res.json({
-            success: true,
-            count: result.recordset.length,
-            data: result.recordset
-        });
-
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Erro ao buscar histórico', error: error.message });
-    }
+router.get('/historico-partidas', (req, res) => {
+    res.status(410).json({ success: false, message: 'Endpoint removido. Use /api/bet365/historico-mercados' });
 });
 
 /**
@@ -410,45 +333,41 @@ router.get('/eventos-completos', async (req, res) => {
 
 /**
  * GET /api/bet365/diagnostico
- * Retorna estado do banco
+ * Retorna estado do banco (usa bet365_resultados_mercados como fonte principal)
  */
 router.get('/diagnostico', async (req, res) => {
     try {
         const pool = await getDbPool();
 
-        const countEventos = await pool.query(`SELECT COUNT(*) AS total FROM bet365_eventos WHERE ativo = 1`);
-        const countHistorico = await pool.query(`SELECT COUNT(*) AS total FROM bet365_historico_partidas`);
-        const countHistorico24h = await pool.query(`SELECT COUNT(*) AS total FROM bet365_historico_partidas WHERE data_partida >= DATEADD(HOUR, -24, GETDATE())`);
-        const ultimosEventos = await pool.query(`
-            SELECT TOP 10 id, time_casa, time_fora, league_name, gol_casa, gol_fora, status
-            FROM bet365_eventos
-            ORDER BY data_atualizacao DESC
-        `);
-        const ultimosHistorico = await pool.query(`
-            SELECT TOP 20
-                liga, time_casa, time_fora, gol_casa, gol_fora, resultado,
-                data_partida,
-                ISNULL(resultado_estimado, 0) AS resultado_estimado
-            FROM bet365_historico_partidas
-            ORDER BY data_partida DESC
-        `);
-        const historicoPorLiga = await pool.query(`
-            SELECT liga, COUNT(*) AS total,
-                   MAX(data_partida) AS ultima_partida
-            FROM bet365_historico_partidas
-            GROUP BY liga
-            ORDER BY total DESC
-        `);
+        const [countEventos, countMercados, countMercados24h, ultimosEventos, ultimosMercados, mercadosPorLiga] = await Promise.all([
+            pool.query(`SELECT COUNT(*) AS total FROM bet365_eventos WHERE ativo = 1`),
+            pool.query(`SELECT COUNT(DISTINCT evento_id) AS total FROM bet365_resultados_mercados`),
+            pool.query(`SELECT COUNT(DISTINCT evento_id) AS total FROM bet365_resultados_mercados WHERE data_partida >= DATEADD(HOUR, -24, GETUTCDATE())`),
+            pool.query(`SELECT TOP 10 id, time_casa, time_fora, league_name, gol_casa, gol_fora, status FROM bet365_eventos ORDER BY data_atualizacao DESC`),
+            pool.query(`
+                SELECT TOP 20 liga, time_casa, time_fora, data_partida,
+                    MAX(CASE WHEN mercado='Resultado Final' THEN selecao END) AS resultado_final,
+                    COUNT(*) AS total_mercados
+                FROM bet365_resultados_mercados
+                GROUP BY liga, time_casa, time_fora, data_partida
+                ORDER BY data_partida DESC
+            `),
+            pool.query(`
+                SELECT liga, COUNT(DISTINCT evento_id) AS total_jogos, MAX(data_partida) AS ultima_partida
+                FROM bet365_resultados_mercados
+                GROUP BY liga ORDER BY total_jogos DESC
+            `)
+        ]);
 
         res.json({
             success: true,
             data: {
-                eventosAtivos: countEventos.recordset[0]?.total || 0,
-                historicoPartidas: countHistorico.recordset[0]?.total || 0,
-                historicoPartidas24h: countHistorico24h.recordset[0]?.total || 0,
-                amostraEventos: ultimosEventos.recordset,
-                ultimosHistorico: ultimosHistorico.recordset,
-                historicoPorLiga: historicoPorLiga.recordset
+                eventosAtivos:       countEventos.recordset[0]?.total || 0,
+                jogosComMercados:    countMercados.recordset[0]?.total || 0,
+                jogosComMercados24h: countMercados24h.recordset[0]?.total || 0,
+                amostraEventos:      ultimosEventos.recordset,
+                ultimosResultados:   ultimosMercados.recordset,
+                porLiga:             mercadosPorLiga.recordset
             }
         });
 
@@ -459,25 +378,25 @@ router.get('/diagnostico', async (req, res) => {
 
 /**
  * GET /api/bet365/ultimos-resultados
- * Retorna os últimos N resultados coletados (lista simples)
+ * Retorna os últimos N jogos com resultado (usa bet365_resultados_mercados)
  */
 router.get('/ultimos-resultados', async (req, res) => {
     try {
         const n = Math.min(parseInt(req.query.n) || 30, 100);
         const pool = await getDbPool();
-        await garantirSchema(pool);
         const result = await pool.request()
             .input('n', sql.Int, n)
             .query(`
                 SELECT TOP (@n)
-                    liga, time_casa, time_fora,
-                    gol_casa, gol_fora, resultado,
-                    data_partida,
-                    ISNULL(resultado_estimado, 0) AS resultado_estimado,
-                    ISNULL(placar_oculto, 0) AS placar_oculto
-                FROM bet365_historico_partidas
-                WHERE resultado_estimado = 0
-                ORDER BY data_partida DESC
+                    m.liga, m.time_casa, m.time_fora, m.data_partida,
+                    MAX(CASE WHEN m.mercado = 'Resultado Final' THEN m.selecao END) AS resultado_final,
+                    MAX(CASE WHEN m.mercado LIKE '%0.5%' AND m.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over05,
+                    MAX(CASE WHEN m.mercado LIKE '%1.5%' AND m.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over15,
+                    MAX(CASE WHEN m.mercado LIKE '%2.5%' AND m.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over25,
+                    MAX(CASE WHEN m.mercado = 'Ambos Marcam' AND m.selecao = 'Sim' THEN 1 ELSE 0 END) AS btts
+                FROM bet365_resultados_mercados m
+                GROUP BY m.evento_id, m.liga, m.time_casa, m.time_fora, m.data_partida
+                ORDER BY m.data_partida DESC
             `);
         res.json({ success: true, total: result.recordset.length, data: result.recordset });
     } catch (error) {
@@ -486,189 +405,128 @@ router.get('/ultimos-resultados', async (req, res) => {
 });
 
 /**
- * GET /api/bet365/historico-tabela
- * Retorna partidas históricas para tabela estilo Caramelo
+ * GET /api/bet365/historico-tabela — alias para historico-mercados (retrocompatibilidade)
  */
-router.get('/historico-tabela', async (req, res) => {
-    try {
-        const { liga, horas = 24 } = req.query;
-        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 168);
-        const pool = await getDbPool();
-
-        const request = pool.request();
-        request.input('horas', sql.Int, horasNum);
-
-        await garantirSchema(pool);
-
-        let query = `
-            SELECT
-                id, evento_id, liga, time_casa, time_fora,
-                gol_casa, gol_fora, resultado,
-                gol_casa_ht, gol_fora_ht,
-                odd_casa, odd_empate, odd_fora,
-                data_partida,
-                ISNULL(resultado_estimado, 0) AS resultado_estimado,
-                ISNULL(placar_oculto, 0) AS placar_oculto
-            FROM bet365_historico_partidas
-            WHERE data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
-              AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
-        `;
-
-        if (liga && liga !== 'all') {
-            query += ' AND liga LIKE @liga';
-            request.input('liga', sql.NVarChar(200), `%${liga}%`);
-        }
-
-        query += ' ORDER BY data_partida ASC';
-
-        const result = await request.query(query);
-
-        const ligasResult = await pool.request()
-            .input('horas2', sql.Int, horasNum)
-            .query(`
-                SELECT DISTINCT liga, COUNT(*) AS total
-                FROM bet365_historico_partidas
-                WHERE liga IS NOT NULL AND liga <> ''
-                  AND data_partida >= DATEADD(HOUR, -@horas2, GETUTCDATE())
-                  AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
-                GROUP BY liga
-                ORDER BY total DESC
-            `);
-
-        res.json({
-            success: true,
-            total: result.recordset.length,
-            horas: horasNum,
-            ligas: ligasResult.recordset,
-            partidas: result.recordset
-        });
-
-    } catch (error) {
-        console.error('❌ ERRO API bet365/historico-tabela:', error.message);
-        res.status(500).json({ success: false, error: error.message });
-    }
+router.get('/historico-tabela', (req, res) => {
+    res.redirect(307, `/api/bet365/historico-mercados?${new URLSearchParams(req.query).toString()}`);
 });
 
 /**
  * GET /api/bet365/sugestoes
- * Análise estatística por liga baseada no histórico
+ * Análise estatística por liga baseada em bet365_resultados_mercados
  */
 router.get('/sugestoes', async (req, res) => {
     try {
-        // n = quantidade de jogos recentes para calcular a taxa principal do ranking
         const nParam = Math.min(100, Math.max(3, parseInt(req.query.n) || 10));
         const pool = await getDbPool();
 
-        await garantirSchema(pool);
-
+        // Ligas com ao menos 5 jogos distintos
         const ligasResult = await pool.query(`
-            SELECT liga, COUNT(*) AS total
-            FROM bet365_historico_partidas
+            SELECT liga, COUNT(DISTINCT evento_id) AS total
+            FROM bet365_resultados_mercados
             WHERE liga IS NOT NULL AND liga <> ''
-              AND ISNULL(resultado_estimado, 0) = 0
             GROUP BY liga
-            HAVING COUNT(*) >= 5
+            HAVING COUNT(DISTINCT evento_id) >= 5
             ORDER BY total DESC
         `);
-
-        const FILTROS = [
-            { id: 'over0.5',   label: 'Over 0.5',     check: j => (j.gol_casa + j.gol_fora) >= 1 },
-            { id: 'over1.5',   label: 'Over 1.5',     check: j => (j.gol_casa + j.gol_fora) >= 2 },
-            { id: 'over2.5',   label: 'Over 2.5',     check: j => (j.gol_casa + j.gol_fora) >= 3 },
-            { id: 'over3.5',   label: 'Over 3.5',     check: j => (j.gol_casa + j.gol_fora) >= 4 },
-            { id: 'under1.5',  label: 'Under 1.5',    check: j => (j.gol_casa + j.gol_fora) <= 1 },
-            { id: 'under2.5',  label: 'Under 2.5',    check: j => (j.gol_casa + j.gol_fora) <= 2 },
-            { id: 'ambas',     label: 'Ambas Marcam', check: j => j.gol_casa > 0 && j.gol_fora > 0 },
-            { id: 'ft_casa',   label: 'Casa Vence',   check: j => j.resultado === 'CASA' },
-            { id: 'ft_empate', label: 'Empate',       check: j => j.resultado === 'EMPATE' },
-            { id: 'ft_fora',   label: 'Fora Vence',   check: j => j.resultado === 'FORA' },
-            { id: 'btts_o25',  label: 'BTTS + O2.5',  check: j => j.gol_casa > 0 && j.gol_fora > 0 && (j.gol_casa + j.gol_fora) >= 3 },
-        ];
 
         const resultado = [];
 
         for (const l of ligasResult.recordset) {
+            // Busca todos os eventos da liga com seus mercados-chave (até 200 eventos)
             const pResult = await pool.request()
                 .input('liga', sql.NVarChar(200), l.liga)
                 .query(`
-                    SELECT TOP 100
-                        gol_casa, gol_fora, resultado,
-                        odd_casa, odd_empate, odd_fora, data_partida
-                    FROM bet365_historico_partidas
+                    SELECT TOP 200
+                        evento_id, data_partida,
+                        MAX(CASE WHEN mercado = 'Resultado Final' THEN selecao END) AS resultado_final,
+                        MAX(CASE WHEN time_casa IS NOT NULL THEN time_casa END) AS time_casa,
+                        MAX(CASE WHEN time_fora IS NOT NULL THEN time_fora END) AS time_fora,
+                        MAX(CASE WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over05,
+                        MAX(CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over15,
+                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over25,
+                        MAX(CASE WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over35,
+                        MAX(CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under15,
+                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under25,
+                        MAX(CASE WHEN mercado = 'Ambos Marcam' AND selecao = 'Sim' THEN 1 ELSE 0 END) AS btts
+                    FROM bet365_resultados_mercados
                     WHERE liga = @liga
-                      AND ISNULL(resultado_estimado, 0) = 0
+                    GROUP BY evento_id, data_partida
                     ORDER BY data_partida DESC
                 `);
 
             const partidas = pResult.recordset.map(p => ({
-                gol_casa:   p.gol_casa  || 0,
-                gol_fora:   p.gol_fora  || 0,
-                resultado:  p.resultado || '',
-                odd_casa:   parseFloat(p.odd_casa)   || 0,
-                odd_empate: parseFloat(p.odd_empate) || 0,
-                odd_fora:   parseFloat(p.odd_fora)   || 0,
+                over05:  p.over05  === 1,
+                over15:  p.over15  === 1,
+                over25:  p.over25  === 1,
+                over35:  p.over35  === 1,
+                under15: p.under15 === 1,
+                under25: p.under25 === 1,
+                btts:    p.btts    === 1,
+                resultado: p.resultado_final === p.time_casa ? 'CASA'
+                         : p.resultado_final === p.time_fora ? 'FORA' : 'EMPATE',
             }));
 
             if (partidas.length < 5) continue;
 
+            const FILTROS = [
+                { id: 'over0.5',   label: 'Over 0.5',    check: j => j.over05 },
+                { id: 'over1.5',   label: 'Over 1.5',    check: j => j.over15 },
+                { id: 'over2.5',   label: 'Over 2.5',    check: j => j.over25 },
+                { id: 'over3.5',   label: 'Over 3.5',    check: j => j.over35 },
+                { id: 'under1.5',  label: 'Under 1.5',   check: j => j.under15 },
+                { id: 'under2.5',  label: 'Under 2.5',   check: j => j.under25 },
+                { id: 'ambas',     label: 'Ambas Marcam', check: j => j.btts },
+                { id: 'ft_casa',   label: 'Casa Vence',  check: j => j.resultado === 'CASA' },
+                { id: 'ft_empate', label: 'Empate',      check: j => j.resultado === 'EMPATE' },
+                { id: 'ft_fora',   label: 'Fora Vence',  check: j => j.resultado === 'FORA' },
+                { id: 'btts_o25',  label: 'BTTS + O2.5', check: j => j.btts && j.over25 },
+            ];
+
+            const n = partidas.length;
             const filtroStats = FILTROS.map(f => {
-                const n   = partidas.length;
-                const nN  = Math.min(nParam, n);
-                const n5  = Math.min(5,  n);
-                const n10 = Math.min(10, n);
-                const n20 = Math.min(20, n);
-
+                const nN = Math.min(nParam, n), n5 = Math.min(5,n), n10 = Math.min(10,n), n20 = Math.min(20,n);
                 const hGeral = partidas.filter(f.check).length;
-                const hN     = partidas.slice(0, nN).filter(f.check).length;
-                const h5     = partidas.slice(0, n5).filter(f.check).length;
-                const h10    = partidas.slice(0, n10).filter(f.check).length;
-                const h20    = partidas.slice(0, n20).filter(f.check).length;
-
-                const txGeral = +(hGeral / n    * 100).toFixed(1);
-                const txN     = +(hN    / nN   * 100).toFixed(1);
-                const tx5     = +(h5    / n5   * 100).toFixed(1);
-                const tx10    = +(h10   / n10  * 100).toFixed(1);
-                const tx20    = +(h20   / n20  * 100).toFixed(1);
-
+                const hN  = partidas.slice(0, nN).filter(f.check).length;
+                const h5  = partidas.slice(0, n5).filter(f.check).length;
+                const h10 = partidas.slice(0, n10).filter(f.check).length;
+                const h20 = partidas.slice(0, n20).filter(f.check).length;
+                const txGeral = +(hGeral/n*100).toFixed(1);
+                const txN = +(hN/nN*100).toFixed(1), tx5 = +(h5/n5*100).toFixed(1);
+                const tx10 = +(h10/n10*100).toFixed(1), tx20 = +(h20/n20*100).toFixed(1);
                 let streak = 0;
                 const streakTipo = f.check(partidas[0]) ? 'verde' : 'vermelho';
                 for (let i = 0; i < Math.min(30, n); i++) {
-                    if (f.check(partidas[i]) === (streakTipo === 'verde')) streak++;
-                    else break;
+                    if (f.check(partidas[i]) === (streakTipo === 'verde')) streak++; else break;
                 }
-
                 const diff = txN - txGeral;
-                const tendencia = diff > 8 ? 'subindo' : diff < -8 ? 'caindo' : 'estavel';
-                const confianca = (txN >= 65 && nN >= 10) ? 'alta'
-                                : (txN >= 55 && nN >=  5) ? 'media' : 'baixa';
-
                 return {
                     id: f.id, label: f.label,
                     tx_geral: txGeral, tx_ultn: txN, tx_ult5: tx5, tx_ult10: tx10, tx_ult20: tx20,
-                    n_custom: nN,
-                    streak, streak_tipo: streakTipo, tendencia, confianca,
+                    n_custom: nN, streak, streak_tipo: streakTipo,
+                    tendencia: diff > 8 ? 'subindo' : diff < -8 ? 'caindo' : 'estavel',
+                    confianca: (txN >= 65 && nN >= 10) ? 'alta' : (txN >= 55 && nN >= 5) ? 'media' : 'baixa',
                     amostras: n
                 };
             });
 
             filtroStats.sort((a, b) => b.tx_ultn - a.tx_ultn);
 
-            const totalGols = partidas.reduce((s, p) => s + p.gol_casa + p.gol_fora, 0);
-            const mediaGols = +(totalGols / partidas.length).toFixed(2);
-            const pctCasa   = +(partidas.filter(p => p.resultado === 'CASA').length   / partidas.length * 100).toFixed(1);
-            const pctEmpate = +(partidas.filter(p => p.resultado === 'EMPATE').length / partidas.length * 100).toFixed(1);
-            const pctFora   = +(partidas.filter(p => p.resultado === 'FORA').length   / partidas.length * 100).toFixed(1);
-            const pctAmbas  = +(partidas.filter(p => p.gol_casa > 0 && p.gol_fora > 0).length / partidas.length * 100).toFixed(1);
-            const pctO15    = +(partidas.filter(p => (p.gol_casa + p.gol_fora) >= 2).length / partidas.length * 100).toFixed(1);
-            const pctO25    = +(partidas.filter(p => (p.gol_casa + p.gol_fora) >= 3).length / partidas.length * 100).toFixed(1);
+            // Stats derivadas de mercados
+            const pctCasa   = +(partidas.filter(p => p.resultado === 'CASA').length   / n * 100).toFixed(1);
+            const pctEmpate = +(partidas.filter(p => p.resultado === 'EMPATE').length / n * 100).toFixed(1);
+            const pctFora   = +(partidas.filter(p => p.resultado === 'FORA').length   / n * 100).toFixed(1);
+            const pctAmbas  = +(partidas.filter(p => p.btts).length  / n * 100).toFixed(1);
+            const pctO15    = +(partidas.filter(p => p.over15).length / n * 100).toFixed(1);
+            const pctO25    = +(partidas.filter(p => p.over25).length / n * 100).toFixed(1);
+            const mediaGols = +(
+                partidas.reduce((s, p) => s + (!p.over05 ? 0 : !p.over15 ? 1 : !p.over25 ? 2 : !p.over35 ? 3 : 4), 0) / n
+            ).toFixed(2);
 
             resultado.push({
-                liga: l.liga,
-                total: l.total,
-                amostras: partidas.length,
+                liga: l.liga, total: l.total, amostras: n,
                 stats: { mediaGols, pctCasa, pctEmpate, pctFora, pctAmbas, pctO15, pctO25 },
-                filtros: filtroStats,
-                melhor: filtroStats[0] || null,
+                filtros: filtroStats, melhor: filtroStats[0] || null,
             });
         }
 
@@ -682,83 +540,42 @@ router.get('/sugestoes', async (req, res) => {
 
 /**
  * POST /api/bet365/buscar-resultados
- * Salva resultados de eventos que já deveriam ter terminado e não foram salvos pelo coletor
+ * Verifica eventos passados sem mercados na bet365_resultados_mercados.
+ * O coletor é responsável por salvar os mercados — este endpoint apenas diagnostica pendências.
  */
 router.post('/buscar-resultados', async (req, res) => {
     try {
         const pool = await getDbPool();
-        await garantirSchema(pool);
 
-        const candidatos = await pool.query(`
+        // Eventos que deveriam ter terminado mas não têm nenhum mercado salvo
+        const pendentes = await pool.query(`
             SELECT TOP 30
                 e.id, e.time_casa, e.time_fora, e.league_name,
                 e.start_time_datetime,
-                e.odd_casa, e.odd_empate, e.odd_fora,
                 DATEDIFF(MINUTE, e.start_time_datetime, GETDATE()) AS minutos_atras
             FROM bet365_eventos e
-            WHERE e.start_time_datetime < DATEADD(MINUTE, -5, GETDATE())
+            WHERE e.start_time_datetime < DATEADD(MINUTE, -10, GETDATE())
               AND e.time_casa <> '' AND e.time_fora <> ''
               AND NOT EXISTS (
-                  SELECT 1 FROM bet365_historico_partidas h
-                  WHERE h.evento_id = e.id
+                  SELECT 1 FROM bet365_resultados_mercados m
+                  WHERE m.evento_id = e.id
               )
             ORDER BY e.start_time_datetime ASC
         `);
 
-        if (candidatos.recordset.length === 0) {
-            return res.json({ success: true, encontrados: 0, salvos: 0, msg: 'Nenhum evento pendente' });
-        }
-
-        let salvos = 0;
-        const resultados = [];
-
-        for (const ev of candidatos.recordset) {
-            const minutosAtras = ev.minutos_atras || 0;
-            if (minutosAtras < 10) {
-                resultados.push({ id: ev.id, status: 'aguardando', minutos_atras: minutosAtras });
-                continue;
-            }
-
-            // Sem placar disponível na tabela de eventos (bet365 não trackeia ao vivo)
-            // Registra como 0-0 EMPATE após 10 min — será corrigido pelo próximo ciclo do coletor
-            const golCasa = 0, golFora = 0;
-            const resultado = 'EMPATE';
-
-            try {
-                await pool.request()
-                    .input('eventoId',   sql.BigInt,       ev.id)
-                    .input('liga',       sql.NVarChar(200), ev.league_name)
-                    .input('timeCasa',   sql.NVarChar(100), ev.time_casa)
-                    .input('timeFora',   sql.NVarChar(100), ev.time_fora)
-                    .input('golCasa',    sql.Int,           golCasa)
-                    .input('golFora',    sql.Int,           golFora)
-                    .input('resultado',  sql.NVarChar(10),  resultado)
-                    .input('oddCasa',    sql.Decimal(10,2), ev.odd_casa    || 0)
-                    .input('oddEmpate',  sql.Decimal(10,2), ev.odd_empate  || 0)
-                    .input('oddFora',    sql.Decimal(10,2), ev.odd_fora    || 0)
-                    .input('dataPartida',sql.DateTime2,     ev.start_time_datetime)
-                    .query(`
-                        IF NOT EXISTS (SELECT 1 FROM bet365_historico_partidas WHERE evento_id = @eventoId)
-                        INSERT INTO bet365_historico_partidas
-                            (evento_id, liga, time_casa, time_fora, gol_casa, gol_fora,
-                             resultado, odd_casa, odd_empate, odd_fora, data_partida, resultado_estimado)
-                        VALUES
-                            (@eventoId, @liga, @timeCasa, @timeFora, @golCasa, @golFora,
-                             @resultado, @oddCasa, @oddEmpate, @oddFora, @dataPartida, 1)
-                    `);
-                salvos++;
-                resultados.push({ id: ev.id, time_casa: ev.time_casa, time_fora: ev.time_fora, status: 'salvo' });
-            } catch (err) {
-                resultados.push({ id: ev.id, erro: err.message });
-            }
-        }
-
-        // Notifica clientes WebSocket se novos resultados foram salvos
-        if (salvos > 0 && typeof global.wsBroadcast === 'function') {
-            global.wsBroadcast({ tipo: 'coleta', fonte: 'bet365', novos: 0, resultadosSalvos: salvos });
-        }
-
-        res.json({ success: true, candidatos: candidatos.recordset.length, salvos, resultados });
+        const salvos = 0; // não salva mais — aguarda próxima coleta pelo coletor
+        res.json({
+            success: true,
+            encontrados: pendentes.recordset.length,
+            salvos,
+            msg: pendentes.recordset.length === 0
+                ? 'Nenhum evento pendente — todos com mercados coletados'
+                : `${pendentes.recordset.length} evento(s) aguardando próxima coleta do coletor`,
+            pendentes: pendentes.recordset.map(e => ({
+                id: e.id, time_casa: e.time_casa, time_fora: e.time_fora,
+                liga: e.league_name, minutos_atras: e.minutos_atras
+            }))
+        });
 
     } catch (err) {
         console.error('❌ ERRO API bet365/buscar-resultados:', err.message);
@@ -787,83 +604,76 @@ router.get('/estatisticas-avancadas', async (req, res) => {
         `);
 
         // 2. Estatísticas gerais do histórico — usa TODOS os registros com resultado real
-        // Não filtra por data pois muitos registros têm data_partida NULL (bug legado do coletor).
-        // Filtra apenas por resultado válido e flags de qualidade.
-        const statsHistorico = await pool.query(`
-            SELECT
-                COUNT(*) AS total_partidas,
-                AVG(CAST(gol_casa + gol_fora AS FLOAT)) AS media_gols,
-                SUM(CASE WHEN resultado='CASA'   THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_casa,
-                SUM(CASE WHEN resultado='EMPATE' THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_empate,
-                SUM(CASE WHEN resultado='FORA'   THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_fora,
-                SUM(CASE WHEN gol_casa>0 AND gol_fora>0 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_btts,
-                SUM(CASE WHEN gol_casa+gol_fora>=2 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over15,
-                SUM(CASE WHEN gol_casa+gol_fora>=3 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over25,
-                SUM(CASE WHEN gol_casa+gol_fora>=4 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over35,
-                SUM(CASE WHEN gol_casa+gol_fora>=5 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over45
-            FROM bet365_historico_partidas
-            WHERE ISNULL(placar_oculto, 0) = 0
-              AND ISNULL(resultado_estimado, 0) = 0
-              AND resultado IN ('CASA','EMPATE','FORA')
-        `);
-
-        // 3. Top 8 placares exatos — todos os registros reais
-        const topPlacares = await pool.query(`
-            SELECT TOP 8
-                CAST(gol_casa AS VARCHAR) + '-' + CAST(gol_fora AS VARCHAR) AS placar,
-                COUNT(*) AS frequencia,
-                CAST(gol_casa AS INT) AS gc,
-                CAST(gol_fora AS INT) AS gf
-            FROM bet365_historico_partidas
-            WHERE ISNULL(placar_oculto, 0) = 0
-              AND ISNULL(resultado_estimado, 0) = 0
-              AND resultado IN ('CASA','EMPATE','FORA')
-            GROUP BY gol_casa, gol_fora
-            ORDER BY frequencia DESC
-        `);
-
-        // 4. Performance por liga — todos os registros reais
-        const performanceLiga = await pool.query(`
-            SELECT
-                liga,
-                COUNT(*) AS total_jogos,
-                AVG(CAST(gol_casa+gol_fora AS FLOAT)) AS media_gols,
-                SUM(CASE WHEN resultado='CASA'   THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_casa,
-                SUM(CASE WHEN resultado='EMPATE' THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_empate,
-                SUM(CASE WHEN resultado='FORA'   THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_fora,
-                SUM(CASE WHEN gol_casa>0 AND gol_fora>0 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_btts,
-                SUM(CASE WHEN gol_casa+gol_fora>=2 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over15,
-                SUM(CASE WHEN gol_casa+gol_fora>=3 THEN 1 ELSE 0 END)*100.0/NULLIF(COUNT(*),0) AS pct_over25
-            FROM bet365_historico_partidas
-            WHERE ISNULL(placar_oculto, 0) = 0
-              AND ISNULL(resultado_estimado, 0) = 0
-              AND resultado IN ('CASA','EMPATE','FORA')
-              AND liga IS NOT NULL AND liga <> ''
-            GROUP BY liga
-            ORDER BY total_jogos DESC
-        `);
-
-        // 5. Distribuição de gols agrupada (0–5+) — todos os registros reais
-        const distribuicaoGols = await pool.query(`
-            SELECT
-                CASE WHEN gol_casa+gol_fora >= 5 THEN 5 ELSE gol_casa+gol_fora END AS total_gols,
-                COUNT(*) AS quantidade
-            FROM bet365_historico_partidas
-            WHERE ISNULL(placar_oculto, 0) = 0
-              AND ISNULL(resultado_estimado, 0) = 0
-              AND resultado IN ('CASA','EMPATE','FORA')
-            GROUP BY CASE WHEN gol_casa+gol_fora >= 5 THEN 5 ELSE gol_casa+gol_fora END
-            ORDER BY total_gols
-        `);
+        // Estatísticas gerais de bet365_resultados_mercados
+        const [statsHistorico, topSelecoes, performanceLiga, distribuicaoGols] = await Promise.all([
+            pool.query(`
+                SELECT
+                    COUNT(DISTINCT evento_id) AS total_partidas,
+                    SUM(CASE WHEN mercado='Resultado Final' AND selecao NOT IN (SELECT DISTINCT time_casa FROM bet365_resultados_mercados) AND selecao NOT IN (SELECT DISTINCT time_fora FROM bet365_resultados_mercados) THEN 0 ELSE 0 END) AS dummy,
+                    COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT evento_id),0) AS pct_com_resultado,
+                    COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' AND selecao='Sim' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' THEN evento_id END),0) AS pct_btts,
+                    COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' THEN evento_id END),0) AS pct_over15,
+                    COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' THEN evento_id END),0) AS pct_over25
+                FROM bet365_resultados_mercados
+            `),
+            pool.query(`
+                WITH base AS (
+                    SELECT liga, mercado, selecao, COUNT(*) AS vezes,
+                        SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos
+                    FROM bet365_resultados_mercados GROUP BY liga, mercado, selecao
+                )
+                SELECT TOP 8 liga, mercado, selecao, vezes, total_jogos,
+                    CAST(vezes*100.0/NULLIF(total_jogos,0) AS DECIMAL(5,1)) AS pct
+                FROM base ORDER BY pct DESC
+            `),
+            pool.query(`
+                SELECT liga,
+                    COUNT(DISTINCT evento_id) AS total_jogos,
+                    COUNT(DISTINCT CASE WHEN mercado='Resultado Final' THEN evento_id END) AS com_resultado,
+                    COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%1.5%' THEN evento_id END),0) AS pct_over15,
+                    COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado LIKE '%2.5%' THEN evento_id END),0) AS pct_over25,
+                    COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' AND selecao='Sim' THEN evento_id END)*100.0/NULLIF(COUNT(DISTINCT CASE WHEN mercado='Ambos Marcam' THEN evento_id END),0) AS pct_btts
+                FROM bet365_resultados_mercados
+                WHERE liga IS NOT NULL AND liga <> ''
+                GROUP BY liga ORDER BY total_jogos DESC
+            `),
+            pool.query(`
+                SELECT
+                    CASE
+                        WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Menos%' THEN 0
+                        WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%'
+                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%1.5%' AND r2.selecao LIKE 'Mais%') THEN 1
+                        WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%'
+                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%2.5%' AND r2.selecao LIKE 'Mais%') THEN 2
+                        WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%'
+                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%3.5%' AND r2.selecao LIKE 'Mais%') THEN 3
+                        WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN 4
+                    END AS total_gols,
+                    COUNT(DISTINCT evento_id) AS quantidade
+                FROM bet365_resultados_mercados m
+                WHERE mercado LIKE '%0.5%' OR mercado LIKE '%1.5%' OR mercado LIKE '%2.5%' OR mercado LIKE '%3.5%'
+                GROUP BY CASE
+                        WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Menos%' THEN 0
+                        WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%'
+                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%1.5%' AND r2.selecao LIKE 'Mais%') THEN 1
+                        WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%'
+                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%2.5%' AND r2.selecao LIKE 'Mais%') THEN 2
+                        WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%'
+                         AND NOT EXISTS (SELECT 1 FROM bet365_resultados_mercados r2 WHERE r2.evento_id=m.evento_id AND r2.mercado LIKE '%3.5%' AND r2.selecao LIKE 'Mais%') THEN 3
+                        WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN 4
+                    END
+                ORDER BY total_gols
+            `)
+        ]);
 
         res.json({
             success: true,
             timestamp: new Date().toISOString(),
             data: {
                 gerais: Object.assign({}, statsEventos.recordset[0], statsHistorico.recordset[0]),
-                topPlacares:    topPlacares.recordset,
+                topPlacares:     topSelecoes.recordset,
                 performanceLiga: performanceLiga.recordset,
-                distribuicaoGols: distribuicaoGols.recordset,
+                distribuicaoGols: distribuicaoGols.recordset.filter(r => r.total_gols !== null),
             }
         });
 
@@ -911,176 +721,149 @@ router.get('/log-coleta', async (req, res) => {
 
 /**
  * POST /api/bet365/limpar-ligas-descartadas
- * Remove registros de ligas descartadas: 'Super League' e 'South American Super League'
+ * Remove eventos e mercados de ligas descartadas ('Super League', 'South American Super League')
  */
 router.post('/limpar-ligas-descartadas', async (req, res) => {
     try {
         const pool = await getDbPool();
 
-        // bet365_historico_partidas usa coluna "liga"
-        const resultHist = await pool.request().query(`
-            DELETE FROM bet365_historico_partidas
+        const resultMkt = await pool.request().query(`
+            DELETE FROM bet365_resultados_mercados
             WHERE liga IN ('Super League', 'South American Super League')
         `);
-        const removidos = resultHist.rowsAffected?.[0] ?? 0;
+        const removidosMkt = resultMkt.rowsAffected?.[0] ?? 0;
 
-        // bet365_eventos usa coluna "league_name"
         const resultEvt = await pool.request().query(`
             DELETE FROM bet365_eventos
             WHERE league_name IN ('Super League', 'South American Super League')
         `);
         const removidosEvt = resultEvt.rowsAffected?.[0] ?? 0;
 
-        if (removidos === 0 && removidosEvt === 0) {
-            return res.json({ success: true, partidas_removidas: 0, eventos_removidos: 0,
-                message: 'Nenhum registro encontrado para essas ligas. Banco já está limpo.' });
-        }
-
-        res.json({ success: true, partidas_removidas: removidos, eventos_removidos: removidosEvt });
+        res.json({ success: true, mercados_removidos: removidosMkt, eventos_removidos: removidosEvt,
+            message: (removidosMkt + removidosEvt) === 0 ? 'Banco já está limpo.' : 'Limpeza concluída.' });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
 });
 
+// reparar-datas e limpar-ligas-erradas foram removidos — operavam sobre bet365_historico_partidas (descontinuada)
+
 /**
- * POST /api/bet365/reparar-datas
- * Corrige registros históricos com data_partida errada (minuto 00:xx UTC)
- * cruzando com start_time_datetime de bet365_eventos pelo nome dos times.
+ * GET /api/bet365/historico-mercados
+ * Retorna partidas históricas agrupadas por evento_id a partir de bet365_resultados_mercados
+ * (fonte única de verdade — substitui historico-tabela que usava bet365_historico_partidas)
  */
-router.post('/reparar-datas', async (req, res) => {
+router.get('/historico-mercados', async (req, res) => {
     try {
+        const { liga, horas = 24 } = req.query;
+        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 720);
         const pool = await getDbPool();
 
-        // Busca registros históricos cujo minuto UTC não bate com os slots canônicos
-        // da liga — ou cujo MINUTE(data_partida) = 55,52,48... (odds capturadas erroneamente)
-        // Estratégia: cruza historico × eventos pelo nome dos times dentro de janela de 4h
-        const corrigidos = [];
-        const erros = [];
+        const request = pool.request();
+        request.input('horas', sql.Int, horasNum);
 
-        const candidatos = await pool.query(`
-            SELECT h.id, h.evento_id, h.liga, h.time_casa, h.time_fora, h.data_partida
-            FROM bet365_historico_partidas h
-            WHERE h.resultado_estimado = 0
-              AND h.data_partida >= DATEADD(DAY, -3, GETUTCDATE())
-        `);
+        let query = `
+            SELECT evento_id, liga, time_casa, time_fora, data_partida,
+                   mercado, selecao, CAST(odd_paga AS FLOAT) AS odd_paga
+            FROM bet365_resultados_mercados
+            WHERE data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
+              AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
+        `;
 
-        for (const h of candidatos.recordset) {
-            try {
-                const ev = await pool.request()
-                    .input('liga',     sql.NVarChar(200), h.liga)
-                    .input('timeCasa', sql.NVarChar(100), h.time_casa)
-                    .input('timeFora', sql.NVarChar(100), h.time_fora)
-                    .input('dataRef',  sql.DateTime2,     h.data_partida)
-                    .query(`
-                        SELECT TOP 1 start_time_datetime
-                        FROM bet365_eventos
-                        WHERE league_name = @liga
-                          AND time_casa   = @timeCasa
-                          AND time_fora   = @timeFora
-                          AND ABS(DATEDIFF(HOUR, start_time_datetime, @dataRef)) <= 6
-                        ORDER BY ABS(DATEDIFF(MINUTE, start_time_datetime, @dataRef))
-                    `);
+        if (liga && liga !== 'all') {
+            query += ' AND liga LIKE @liga';
+            request.input('liga', sql.NVarChar(200), `%${ligaParaBanco(liga)}%`);
+        }
 
-                if (ev.recordset.length > 0) {
-                    const novaData = ev.recordset[0].start_time_datetime;
-                    const diffMin  = Math.abs(
-                        (new Date(novaData) - new Date(h.data_partida)) / 60000
-                    );
-                    // Só atualiza se a diferença for significativa (> 5 min)
-                    if (diffMin > 5) {
-                        await pool.request()
-                            .input('id',       sql.Int,       h.id)
-                            .input('novaData', sql.DateTime2, novaData)
-                            .query(`UPDATE bet365_historico_partidas SET data_partida=@novaData WHERE id=@id`);
-                        corrigidos.push({
-                            id: h.id,
-                            time_casa: h.time_casa,
-                            time_fora: h.time_fora,
-                            data_antiga: h.data_partida,
-                            data_nova: novaData,
-                            diff_min: Math.round(diffMin)
-                        });
-                    }
-                }
-            } catch (e) {
-                erros.push({ id: h.id, erro: e.message });
+        query += ' ORDER BY data_partida ASC, evento_id';
+
+        const result = await request.query(query);
+
+        // Agrupa por evento_id
+        const gamesMap = new Map();
+        for (const r of result.recordset) {
+            const key = String(r.evento_id);
+            if (!gamesMap.has(key)) {
+                gamesMap.set(key, {
+                    evento_id:    r.evento_id,
+                    liga:         r.liga,
+                    time_casa:    r.time_casa,
+                    time_fora:    r.time_fora,
+                    data_partida: r.data_partida,
+                    mercados:     [],
+                    gol_casa:     null,
+                    gol_fora:     null,
+                    gol_casa_ht:  null,
+                    gol_fora_ht:  null,
+                    resultado:    null,
+                    odd_casa:     0,
+                    odd_fora:     0,
+                    odd_empate:   0,
+                });
+            }
+            gamesMap.get(key).mercados.push({
+                mercado:  r.mercado,
+                selecao:  r.selecao,
+                odd_paga: r.odd_paga || 0
+            });
+        }
+
+        // Deriva campos adicionais de cada partida a partir dos mercados
+        for (const j of gamesMap.values()) {
+            const mkts = j.mercados;
+
+            // Resultado FT — "Resultado Final": selecao = nome do time ou "Empate"
+            const rfMkt = mkts.find(m => /resultado final/i.test(m.mercado));
+            if (rfMkt) {
+                j.resultado = rfMkt.selecao === j.time_casa ? 'CASA'
+                            : rfMkt.selecao === j.time_fora ? 'FORA' : 'EMPATE';
+                // Odd paga do resultado final como odd do vencedor
+                if (j.resultado === 'CASA')   j.odd_casa   = rfMkt.odd_paga;
+                else if (j.resultado === 'FORA')   j.odd_fora   = rfMkt.odd_paga;
+                else                               j.odd_empate = rfMkt.odd_paga;
+            }
+
+            // Placar HT de "Resultado Correto - Intervalo"
+            const htMkt = mkts.find(m => /correto.*intervalo|intervalo.*correto/i.test(m.mercado));
+            if (htMkt) {
+                const hm = htMkt.selecao.match(/^(\d+)\s*[-:–]\s*(\d+)$/);
+                if (hm) { j.gol_casa_ht = parseInt(hm[1]); j.gol_fora_ht = parseInt(hm[2]); }
+            }
+
+            // Placar FT de "Resultado Correto" (sem "Intervalo")
+            const ftCorMkt = mkts.find(m => /resultado correto/i.test(m.mercado) && !/intervalo/i.test(m.mercado));
+            if (ftCorMkt) {
+                const fm = ftCorMkt.selecao.match(/^(\d+)\s*[-:–]\s*(\d+)$/);
+                if (fm) { j.gol_casa = parseInt(fm[1]); j.gol_fora = parseInt(fm[2]); }
+            }
+
+            // Fallback: deriva gols totais dos mercados Over/Under para exibição
+            if (j.gol_casa === null) {
+                const o05 = mkts.some(m => m.mercado.includes('0.5') && m.selecao.startsWith('Mais'));
+                const o15 = mkts.some(m => m.mercado.includes('1.5') && m.selecao.startsWith('Mais'));
+                const o25 = mkts.some(m => m.mercado.includes('2.5') && m.selecao.startsWith('Mais'));
+                const o35 = mkts.some(m => m.mercado.includes('3.5') && m.selecao.startsWith('Mais'));
+                const o45 = mkts.some(m => m.mercado.includes('4.5') && m.selecao.startsWith('Mais'));
+                // Armazena total_gols derivado (exibição apenas — scores individuais desconhecidos)
+                j.total_gols = !o05 ? 0 : !o15 ? 1 : !o25 ? 2 : !o35 ? 3 : !o45 ? 4 : 5;
             }
         }
 
-        res.json({
-            success: true,
-            candidatos: candidatos.recordset.length,
-            corrigidos: corrigidos.length,
-            erros: erros.length,
-            detalhes: corrigidos
-        });
+        const partidas = [...gamesMap.values()];
 
-    } catch (err) {
-        console.error('❌ ERRO API bet365/reparar-datas:', err.message);
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
+        // Ligas distintas com contagem
+        const ligasMap = {};
+        for (const j of partidas) {
+            ligasMap[j.liga] = (ligasMap[j.liga] || 0) + 1;
+        }
+        const ligas = Object.entries(ligasMap)
+            .map(([l, total]) => ({ liga: l, total }))
+            .sort((a, b) => b.total - a.total);
 
-/**
- * POST /api/bet365/limpar-ligas-erradas
- * Remove registros históricos onde o time pertence a uma liga diferente da registrada.
- * Times de clube (Chelsea, Leeds, etc.) não devem estar na World Cup.
- * Times nacionais (Brasil, França, etc.) não devem estar no Premier League.
- */
-router.post('/limpar-ligas-erradas', async (req, res) => {
-    try {
-        const pool = await getDbPool();
-
-        // Times exclusivos do Premier League (clubes ingleses)
-        const timesPremier = [
-            'Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Burnley',
-            'Chelsea','Crystal Palace','Everton','Fulham','Leeds','Leicester',
-            'Liverpool','Luton','Manchester City','Manchester United','Newcastle',
-            'Nottingham Forest','Sheffield United','Tottenham','West Ham','Wolves',
-            'Wolverhampton'
-        ];
-
-        // Times exclusivos do Super League (clubes europeus)
-        const timesSuper = [
-            'Ajax','Atletico Madrid','Barcelona','Benfica','Celtic','Dortmund',
-            'Inter Milan','Juventus','Lyon','Marseille','Milan','Monaco','Napoli',
-            'Paris','Porto','Real Madrid','Roma','Schalke','Valencia','Villarreal',
-            'Galatasaray','Fenerbahce','Anderlecht','Salzburg','Bruges'
-        ];
-
-        // Deleta registros Premier League em liga errada
-        const delPremierErrado = await pool.request()
-            .input('times', sql.NVarChar(sql.MAX), timesPremier.join(','))
-            .query(`
-                DELETE FROM bet365_historico_partidas
-                WHERE liga NOT IN ('Premiership','Premier League')
-                  AND (
-                    time_casa IN (${timesPremier.map(t => `'${t}'`).join(',')})
-                    OR time_fora IN (${timesPremier.map(t => `'${t}'`).join(',')})
-                  )
-            `);
-
-        // Deleta registros Super League em liga errada
-        const delSuperErrado = await pool.request()
-            .query(`
-                DELETE FROM bet365_historico_partidas
-                WHERE liga NOT IN ('Super League')
-                  AND (
-                    time_casa IN (${timesSuper.map(t => `'${t}'`).join(',')})
-                    OR time_fora IN (${timesSuper.map(t => `'${t}'`).join(',')})
-                  )
-            `);
-
-        res.json({
-            success: true,
-            removidos_premier_errado: delPremierErrado.rowsAffected[0],
-            removidos_super_errado:   delSuperErrado.rowsAffected[0],
-            total_removidos: delPremierErrado.rowsAffected[0] + delSuperErrado.rowsAffected[0]
-        });
-
-    } catch (err) {
-        console.error('❌ ERRO API bet365/limpar-ligas-erradas:', err.message);
-        res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true, total: partidas.length, horas: horasNum, ligas, partidas });
+    } catch (error) {
+        console.error('❌ ERRO API bet365/historico-mercados:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

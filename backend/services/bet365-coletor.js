@@ -143,14 +143,6 @@ class Bet365Coletor {
 
     async _rodarMigracoes() {
         const migracoes = [
-            `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='resultado_estimado')
-             ALTER TABLE bet365_historico_partidas ADD resultado_estimado BIT NOT NULL DEFAULT 0`,
-            `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='gol_casa_ht')
-             ALTER TABLE bet365_historico_partidas ADD gol_casa_ht TINYINT NULL`,
-            `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='gol_fora_ht')
-             ALTER TABLE bet365_historico_partidas ADD gol_fora_ht TINYINT NULL`,
-            `IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_historico_partidas') AND name='placar_oculto')
-             ALTER TABLE bet365_historico_partidas ADD placar_oculto BIT NOT NULL DEFAULT 0`,
             `IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID('bet365_resultados_mercados') AND type='U')
              CREATE TABLE bet365_resultados_mercados (
                  id            BIGINT        NOT NULL PRIMARY KEY,
@@ -623,7 +615,7 @@ class Bet365Coletor {
     async salvarNoBanco(dados) {
         const pool = await this.conectarBanco();
         const { eventos, resultados } = dados;
-        let eventosOk = 0, mercadosOk = 0, oddsOk = 0, histOk = 0;
+        let eventosOk = 0, mercadosOk = 0, oddsOk = 0;
 
         const ligasPresentes = [...new Set(eventos.map(e => e.liga))];
         for (const ligaNome of ligasPresentes) {
@@ -771,30 +763,11 @@ class Bet365Coletor {
                     if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
                 }
 
-                // Fallback 2: sem start_time do evento → busca registro recente no histórico
-                // para reutilizar o mesmo data_partida (= mesmo eventoId) e evitar duplicatas.
-                // Se não encontrar, usa BRT "agora" (real UTC - 3h) como timestamp.
+                // Fallback: sem start_time do evento → usa "Bet365 agora" (UTC+1) snapado ao slot da liga
                 if (!dataPart) {
-                    const recente = await pool.request()
-                        .input('liga3',     sql.NVarChar(200), res.liga)
-                        .input('timeCasa3', sql.NVarChar(100), res.timeCasa)
-                        .input('timeFora3', sql.NVarChar(100), res.timeFora)
-                        .query(`
-                            SELECT TOP 1 data_partida FROM bet365_historico_partidas
-                            WHERE liga = @liga3 AND time_casa = @timeCasa3 AND time_fora = @timeFora3
-                              AND data_partida >= DATEADD(MINUTE, -30, GETUTCDATE())
-                            ORDER BY data_partida DESC
-                        `);
-                    if (recente.recordset.length > 0) {
-                        // Reutiliza timestamp existente → mesmo eventoId → MERGE atualiza (sem duplicata)
-                        dataPart = new Date(recente.recordset[0].data_partida);
-                    } else {
-                        // Primeiro registro: usa "Bet365 agora" (= real UTC + 1h) para manter convenção
-                        // e snapa ao slot mais próximo da liga para evitar minuto errado
-                        dataPart = new Date(Date.now() + 1 * 3600000);
-                        dataPart.setUTCSeconds(0, 0);
-                        dataPart = snapMinutoSlot(dataPart, res.liga);
-                    }
+                    dataPart = new Date(Date.now() + 1 * 3600000);
+                    dataPart.setUTCSeconds(0, 0);
+                    dataPart = snapMinutoSlot(dataPart, res.liga);
                 }
 
                 // Usa o ID do evento encontrado (garante JOIN com bet365_eventos).
@@ -831,67 +804,15 @@ class Bet365Coletor {
                         `);
                 }
 
-                // ── 3. Verifica se já existe com placar real ──
-                const existe = await pool.request().input('evId', sql.BigInt, eventoId)
-                    .query(`SELECT id, gol_casa, gol_fora, ISNULL(placar_oculto,0) AS placar_oculto FROM bet365_historico_partidas WHERE evento_id=@evId`);
-
-                const jaExiste     = existe.recordset.length > 0;
-                const rec          = existe.recordset[0];
-                const scoreZero    = jaExiste && rec.gol_casa === 0 && rec.gol_fora === 0;
-                const eraOculto    = jaExiste && rec.placar_oculto === 1;
-                const temScore     = (res.golCasa || 0) + (res.golFora || 0) > 0;
-                const temScoreReal = temScore && !res.placarOculto;
-
-                if (jaExiste && !scoreZero && !eraOculto) continue; // já tem placar real, pula
-                if (jaExiste && scoreZero  && !temScore)  continue; // 0-0 real, pula
-                if (jaExiste && eraOculto  && !temScoreReal) continue; // ainda oculto, pula
-
-                // ── 4. Salva resultado ──
-                await pool.request()
-                    .input('evId',        sql.BigInt,       eventoId)
-                    .input('liga',        sql.NVarChar(200), res.liga)
-                    .input('timeCasa',    sql.NVarChar(100), res.timeCasa)
-                    .input('timeFora',    sql.NVarChar(100), res.timeFora)
-                    .input('golCasa',     sql.Int,           res.golCasa)
-                    .input('golFora',     sql.Int,           res.golFora)
-                    .input('golCHT',      sql.TinyInt,       res.golCasaHT ?? null)
-                    .input('golFHT',      sql.TinyInt,       res.golForaHT ?? null)
-                    .input('resultado',   sql.NVarChar(10),  res.resultado)
-                    .input('oddCasa',     sql.Decimal(10,2), oddCasa)
-                    .input('oddEmp',      sql.Decimal(10,2), oddEmpate)
-                    .input('oddFora',     sql.Decimal(10,2), oddFora)
-                    .input('dataPart',    sql.DateTime2,     dataPart)
-                    .input('placarOcult', sql.Bit,           res.placarOculto ? 1 : 0)
-                    .query(`
-                        MERGE bet365_historico_partidas AS t
-                        USING (SELECT @evId AS evento_id) AS s ON t.evento_id=s.evento_id
-                        WHEN MATCHED AND (t.gol_casa=0 AND t.gol_fora=0 OR t.placar_oculto=1) THEN UPDATE SET
-                            t.gol_casa=@golCasa, t.gol_fora=@golFora,
-                            t.gol_casa_ht=ISNULL(@golCHT,t.gol_casa_ht),
-                            t.gol_fora_ht=ISNULL(@golFHT,t.gol_fora_ht),
-                            t.resultado=@resultado, t.resultado_estimado=0,
-                            t.placar_oculto=@placarOcult,
-                            t.data_partida=@dataPart,
-                            t.odd_casa=CASE WHEN t.odd_casa=0 THEN @oddCasa ELSE t.odd_casa END,
-                            t.odd_empate=CASE WHEN t.odd_empate=0 THEN @oddEmp ELSE t.odd_empate END,
-                            t.odd_fora=CASE WHEN t.odd_fora=0 THEN @oddFora ELSE t.odd_fora END
-                        WHEN NOT MATCHED THEN INSERT
-                            (evento_id,liga,time_casa,time_fora,gol_casa,gol_fora,gol_casa_ht,gol_fora_ht,
-                             resultado,odd_casa,odd_empate,odd_fora,data_partida,resultado_estimado,placar_oculto)
-                        VALUES (@evId,@liga,@timeCasa,@timeFora,@golCasa,@golFora,@golCHT,@golFHT,
-                                @resultado,@oddCasa,@oddEmp,@oddFora,@dataPart,0,@placarOcult);
-                    `);
-
-                const acao = jaExiste ? '🔄 Atualizado' : '✅ Salvo';
-                console.log(`   ${acao}: [${res.liga}] ${res.timeCasa} ${res.golCasa}-${res.golFora} ${res.timeFora} (UTC ${timeKey})`);
-                histOk++;
+                // ── 3. Log do resultado salvo via mercados ──
+                console.log(`   ✅ Mercados: [${res.liga}] ${res.timeCasa} × ${res.timeFora} (UTC ${timeKey}) — ${(res.mercados||[]).length} mercado(s)`);
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
             }
         }
 
-        console.log(`   💾 Eventos:${eventosOk} | Mercados:${mercadosOk} | Odds:${oddsOk} | Histórico:${histOk}`);
-        return { eventosOk, mercadosOk, oddsOk, histOk };
+        console.log(`   💾 Eventos:${eventosOk} | Mercados:${mercadosOk} | Odds:${oddsOk}`);
+        return { eventosOk, mercadosOk, oddsOk };
     }
 
     // ─────────────────────────────────────────────────────────────
