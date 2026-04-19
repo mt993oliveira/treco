@@ -863,7 +863,7 @@ router.get('/historico-mercados', async (req, res) => {
             if (j.gol_casa === null) {
                 const tgMkts = mkts.filter(m => /time\s*-\s*gols/i.test(m.mercado));
                 for (const tg of tgMkts) {
-                    const numMatch = (tg.selecao || '').match(/(\d+)\s+gol/i);
+                    const numMatch = (tg.selecao || '').match(/(\d+)\+?\s*gol/i);
                     if (!numMatch) continue;
                     const gols = parseInt(numMatch[1]);
                     const selLow  = (tg.selecao || '').toLowerCase().trim();
