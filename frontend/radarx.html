@@ -730,26 +730,6 @@
         </div>
     </div>
 
-    <!-- Últimos Resultados coletados -->
-    <div style="margin-top:14px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em">ÚLTIMOS RESULTADOS COLETADOS</div>
-            <span id="ultimos-res-count" style="font-size:10px;color:#334155"></span>
-        </div>
-        <div id="ultimos-resultados-lista" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
-            <div style="color:#334155;font-size:11px;padding:16px;text-align:center">Carregando...</div>
-        </div>
-    </div>
-
-    <!-- Próximos jogos -->
-    <div style="margin-top:14px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">
-            PRÓXIMOS JOGOS — ODDS + HISTÓRICO
-        </div>
-        <div id="proximos-jogos" style="display:flex;gap:8px;flex-wrap:wrap">
-            <div style="color:#334155;font-size:11px;padding:8px">Carregando jogos...</div>
-        </div>
-    </div>
 </div>
 
 <!-- ========== VIEW: CLUBES ========== -->
@@ -1510,7 +1490,7 @@ function setView(v) {
         const el = document.getElementById('view-' + id);
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
-    if (v === 'historico')   { carregarHistorico(); renderProximosJogos(); renderUltimosResultados(); }
+    if (v === 'historico')   { carregarHistorico(); }
     if (v === 'analise')     { renderAnalise(); carregarMercados(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); }
@@ -1526,8 +1506,6 @@ async function carregarTudo() {
         carregarHistorico(),
         carregarSugestoes(),
         carregarEstatisticasAvancadas(),
-        renderProximosJogos(),
-        renderUltimosResultados(),
     ]);
     await carregarMercados();
 }
@@ -2085,7 +2063,7 @@ function renderLigas() {
             S.partidas  = filtrarPartidas();
             document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
             b.classList.add('ativo');
-            renderTabela(); renderGrafico(); renderProximosJogos(); renderUltimosResultados();
+            renderTabela(); renderGrafico();
             document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
             if (S.view === 'analise') { _faAtualizarStatus(); carregarSugestoes(true); carregarMercados(); }
