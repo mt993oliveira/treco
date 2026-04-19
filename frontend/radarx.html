@@ -1013,6 +1013,17 @@
                     </div>
                 </div>
             </div>
+            <!-- Placar HT -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
+                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Placar HT (intervalo)</div>
+                <div style="display:flex;gap:12px;align-items:center">
+                    <div style="display:flex;align-items:center;gap:5px;flex:1">
+                        <span style="font-size:9px;color:#475569">Texto</span>
+                        <input id="gc-htTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div id="prev-ht-txt" style="font-size:10px;font-weight:700;min-width:36px;text-align:center">(0-0)</div>
+                </div>
+            </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
             <button onclick="restaurarCoresGrid()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:11px;cursor:pointer" title="Restaurar cores originais">↺ Padrão</button>
@@ -1264,6 +1275,7 @@ const GRID_CORES_PADRAO = {
     oddFav:     '#4ade80',   // odd < 2.00 — favorito
     oddMed:     '#fbbf24',   // odd 2.00–3.00 — médio
     oddAzarao:  '#f87171',   // odd > 3.00 — azarão
+    htTxt:      '#64748b',   // placar HT (cinza por padrão)
 };
 function carregarCoresGrid() {
     try { return Object.assign({}, GRID_CORES_PADRAO, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
@@ -1273,6 +1285,7 @@ function aplicarCoresGrid(c) {
     let s = document.getElementById('grid-cores-style');
     if (!s) { s = document.createElement('style'); s.id = 'grid-cores-style'; document.head.appendChild(s); }
     s.textContent =
+        `:root { --ht-txt: ${c.htTxt}; }\n` +
         `.c-verde  { background: ${c.verdeBg}  !important; color: ${c.verdeTxt}  !important; }\n` +
         `.c-verm   { background: ${c.vermBg}   !important; color: ${c.vermTxt}   !important; }\n` +
         `.c-futuro { background: ${c.futuroBg} !important; color: ${c.futuroTxt} !important; border: 1px dashed ${c.futuroBrd} !important; }`;
@@ -2879,11 +2892,11 @@ function renderTabela() {
                 ? (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
                   `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
                   `<span data-action="liga" style="display:block;font-size:10px;font-weight:800;cursor:pointer;line-height:1.3">${score}</span>`+
-                  (scoreHT ? `<span style="display:block;font-size:7px;font-weight:600;color:#64748b;line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
+                  (scoreHT ? `<span style="display:block;font-size:7px;font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
                   `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
                   (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
                 : `<span data-action="liga" style="cursor:pointer;display:block;line-height:1.25">${score}</span>`+
-                  (scoreHT ? `<span style="display:block;font-size:7px;color:#475569;line-height:1;text-align:center">${scoreHT}</span>` : '')+
+                  (scoreHT ? `<span style="display:block;font-size:7px;color:var(--ht-txt);line-height:1;text-align:center">${scoreHT}</span>` : '')+
                   (temOdds ? `<span style="display:flex;gap:2px;margin-top:1px">`+
                     `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddC}">${fmtOdd(oddC)}</span>`+
                     `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddF}">${fmtOdd(oddF)}</span>`+
@@ -3127,6 +3140,9 @@ function _atualizarPreviewCores(c) {
     if (pom) pom.style.color = c.oddMed;
     const poa = document.getElementById('prev-odd-azarao');
     if (poa) poa.style.color = c.oddAzarao;
+    const pht = document.getElementById('prev-ht-txt');
+    if (pht) pht.style.color = c.htTxt;
+    document.documentElement.style.setProperty('--ht-txt', c.htTxt);
 }
 
 function previewCoresGrid() {
