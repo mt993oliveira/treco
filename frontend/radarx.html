@@ -1361,7 +1361,15 @@ function checa(j, fid) {
         case 'over1.5':  return hasMais(1);
         case 'over2.5':  return hasMais(2);
         case 'over3.5':  return hasMais(3);
-        case 'over4.5':  return hasMais(4);
+        case 'over4.5': {
+            if (hasMais(4)) return true;
+            // Mercado 4.5 não é exibido pela Bet365 para a maioria dos jogos (baixo score).
+            // Fallback: usa placar exato ou total_gols derivado quando disponível.
+            if (j.gol_casa != null && j.gol_fora != null) return (j.gol_casa + j.gol_fora) > 4;
+            if (j.total_gols != null) return j.total_gols > 4;
+            if (gExato('5+ Gols') === true) return true;
+            return false;
+        }
         case 'under0.5': return hasMenos(0);
         case 'under1.5': return hasMenos(1) || !hasMais(1);
         case 'under2.5': return hasMenos(2) || !hasMais(2);
