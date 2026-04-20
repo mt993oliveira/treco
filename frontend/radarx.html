@@ -1241,8 +1241,44 @@ const DEFAULTS = {
     ht: 'ht-casa', htft: 'htft-cc',
 };
 
-// Ligas canônicas — as ligas coletadas do site
+// Ligas canônicas — todas as ligas possíveis
 const LIGAS_CANONICAS = ['Copa do Mundo', 'Euro Cup', 'Premier League', 'Express Cup', 'Super Liga Sul-Americana'];
+
+// Mapeamento chave de config → nome canônico
+const LIGA_CONFIG_CHAVE = {
+    liga_world_cup:   'Copa do Mundo',
+    liga_euro_cup:    'Euro Cup',
+    liga_premiership: 'Premier League',
+    liga_express_cup: 'Express Cup',
+    liga_super_liga:  'Super Liga Sul-Americana',
+};
+
+// Carrega quais ligas estão habilitadas na config do sistema
+async function carregarConfigLigas() {
+    try {
+        const r    = await fetch('/api/bet365/admin/config');
+        const data = await r.json();
+        if (!data.success) return;
+        const habilitadas = new Set();
+        data.data.filter(d => d.grupo === 'ligas').forEach(d => {
+            const nome = LIGA_CONFIG_CHAVE[d.chave];
+            if (nome && d.valor === 'true') habilitadas.add(nome);
+        });
+        S.ligasHabilitadas = habilitadas;
+        _atualizarSelectLigas();
+    } catch(e) {
+        // falha silenciosa — mantém todas habilitadas
+    }
+}
+
+// Atualiza o <select> do diagnóstico com as ligas habilitadas
+function _atualizarSelectLigas() {
+    const sel = document.getElementById('diag-mkt-liga');
+    if (!sel) return;
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Todas as ligas</option>' +
+        [...S.ligasHabilitadas].map(l => `<option value="${l}"${l === atual ? ' selected' : ''}>${l}</option>`).join('');
+}
 
 // Mapeamento de nomes do banco → nome exibido na grid
 const LIGA_ALIASES = {
@@ -1360,6 +1396,7 @@ const S = {
     proximosJogos:    [],
     eventosAgendados: [],
     ligaAtiva:        null,
+    ligasHabilitadas: new Set(LIGAS_CANONICAS), // todas habilitadas por padrão até config carregar
     ligaCardSel:   null,
     rankingN:      10,
     secao:         'over',
@@ -1625,8 +1662,9 @@ async function carregarHistorico() {
             })
             .filter(Boolean);
 
-        // Monta lista de ligas com total real
+        // Monta lista de ligas: apenas habilitadas na config E com dados
         S.ligas = LIGAS_CANONICAS
+            .filter(nome => S.ligasHabilitadas.has(nome))
             .map(nome => ({ liga: nome, total: S.todasPartidas.filter(p => p.liga === nome).length }))
             .filter(l => l.total > 0);
 
@@ -4540,6 +4578,9 @@ async function salvarConfigSistema() {
             msg.style.background = '#0f4c20';
             msg.style.color = '#4ade80';
             msg.textContent = '✅ Configurações salvas! Aplicadas no próximo ciclo de coleta.';
+            // Atualiza menu de ligas imediatamente
+            await carregarConfigLigas();
+            renderLigas();
         } else {
             msg.style.background = '#4c0f0f';
             msg.style.color = '#f87171';
@@ -4795,7 +4836,7 @@ function _usrMsg(txt, ok) {
 document.addEventListener('DOMContentLoaded', () => {
     _initUserMenu();
     _faInit();
-    carregarTudo();
+    carregarConfigLigas().then(() => carregarTudo());
     conectarWS();
     setInterval(carregarTudo, 120000);
 
