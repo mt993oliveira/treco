@@ -502,12 +502,14 @@ class Bet365Coletor {
             return { countdown, mercados };
         });
         // Normaliza nomes de mercado e seleção (inglês → português)
-        raw.mercados = raw.mercados.map(m => ({
-            ...m,
-            nome: normalizarNomeMercado(m.nome),
-            selecoes: m.selecoes.map(s => ({ ...s, nome: normalizarNomeSelecao(s.nome) })),
-        }));
-        return raw;
+        if (raw?.mercados) {
+            raw.mercados = raw.mercados.map(m => ({
+                ...m,
+                nome: normalizarNomeMercado(m.nome),
+                selecoes: (m.selecoes || []).map(s => ({ ...s, nome: normalizarNomeSelecao(s.nome) })),
+            }));
+        }
+        return raw || { countdown: null, mercados: [] };
     }
 
     async _extrairInfoJogo(liga, pg) {
@@ -580,9 +582,10 @@ class Bet365Coletor {
             return resultados;
         }, liga);
         // Normaliza nomes de mercado e seleção (inglês → português)
+        if (!Array.isArray(resultados)) return [];
         return resultados.map(r => ({
             ...r,
-            mercados: r.mercados.map(m => ({
+            mercados: (r.mercados || []).map(m => ({
                 ...m,
                 mercado: normalizarNomeMercado(m.mercado),
                 selecao: normalizarNomeSelecao(m.selecao),
@@ -640,12 +643,13 @@ class Bet365Coletor {
             await this._delay(this._cfgNum('delay_volta_proximos_ms', 2000));
         }
 
-        // Próximos jogos — aguarda botões de horário aparecerem (até 8s)
+        // Próximos jogos — aguarda botões de horário aparecerem (até ~10s)
+        // Usa delay próprio (1000ms) para não depender do delay_aguarda_mercado_ms (500ms)
         let numHorarios = 0;
-        for (let t = 0; t < 8; t++) {
+        for (let t = 0; t < 10; t++) {
             numHorarios = await pg.evaluate(() => document.querySelectorAll('.vr-EventTimesNavBarButton').length);
             if (numHorarios > 0) break;
-            await this._delay(this._cfgNum('delay_aguarda_mercado_ms', 500));
+            await this._delay(1000);
         }
         console.log(`   ⏰ [${liga.nome}] ${numHorarios} horário(s)`);
 
