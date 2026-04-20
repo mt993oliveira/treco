@@ -4496,15 +4496,14 @@ async function _loadConfigSistema() {
                 <div style="display:flex;justify-content:space-between;align-items:center;
                             padding:11px 0;border-bottom:1px solid #1e293b">
                     <span style="font-size:12px;color:#e2e8f0">${label}</span>
-                    <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0">
+                    <div style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;cursor:pointer"
+                         onclick="var cb=document.getElementById('cfg-${d.chave}');cb.checked=!cb.checked;document.getElementById('cfg-toggle-${d.chave}').style.background=cb.checked?'#1fcc59':'#334155'">
                         <input type="checkbox" id="cfg-${d.chave}" ${ativo ? 'checked' : ''}
-                            onchange="this.nextElementSibling.style.background=this.checked?'#1fcc59':'#334155'"
-                            style="opacity:0;width:0;height:0">
+                            style="opacity:0;width:0;height:0;position:absolute">
                         <span id="cfg-toggle-${d.chave}"
-                            onclick="var cb=document.getElementById('cfg-${d.chave}');cb.checked=!cb.checked;this.style.background=cb.checked?'#1fcc59':'#334155'"
                             style="position:absolute;top:0;left:0;right:0;bottom:0;border-radius:22px;
-                                   transition:background .2s;background:${corBg};cursor:pointer"></span>
-                    </label>
+                                   transition:background .2s;background:${corBg};pointer-events:none"></span>
+                    </div>
                 </div>`;
             }).join('');
 
