@@ -1350,4 +1350,105 @@ router.get('/analise/resumo', async (req, res) => {
     }
 });
 
+// ============================================================
+// CONFIGURAÇÕES DO SISTEMA (master only)
+// ============================================================
+
+const CONFIG_DEFAULTS = [
+    // ── Ciclo de coleta ──
+    { chave:'intervalo_coleta_seg',         valor:'30',    tipo:'number',  grupo:'coleta', descricao:'Intervalo entre ciclos de coleta (segundos)' },
+    // ── Delays de navegação ──
+    { chave:'delay_apos_clicar_liga_ms',    valor:'3000',  tipo:'number',  grupo:'coleta', descricao:'Delay após clicar na aba da liga (ms)' },
+    { chave:'delay_pos_reload_ms',          valor:'4000',  tipo:'number',  grupo:'coleta', descricao:'Delay após reload da página (ms)' },
+    { chave:'delay_apos_resultados_ms',     valor:'2000',  tipo:'number',  grupo:'coleta', descricao:'Delay após abrir aba de Resultados (ms)' },
+    { chave:'delay_show_more_ms',           valor:'800',   tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques em "Mostrar Mais" (ms)' },
+    { chave:'delay_expandir_mercados_ms',   valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay após expandir mercados internos (ms)' },
+    { chave:'delay_volta_proximos_ms',      valor:'2000',  tipo:'number',  grupo:'coleta', descricao:'Delay ao voltar para Próximos Jogos (ms)' },
+    { chave:'delay_entre_horarios_ms',      valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques de horário (ms)' },
+    { chave:'delay_aguarda_mercado_ms',     valor:'500',   tipo:'number',  grupo:'coleta', descricao:'Delay de polling ao aguardar mercados (ms)' },
+    // ── Timeouts ──
+    { chave:'timeout_goto_ms',              valor:'60000', tipo:'number',  grupo:'coleta', descricao:'Timeout ao navegar para a página inicial (ms)' },
+    { chave:'delay_initial_load_ms',        valor:'6000',  tipo:'number',  grupo:'coleta', descricao:'Delay após carregar a página inicial (ms)' },
+    { chave:'timeout_ligas_ms',             valor:'20000', tipo:'number',  grupo:'coleta', descricao:'Timeout aguardando botões de liga (ms)' },
+    { chave:'timeout_navegacao_ms',         valor:'30000', tipo:'number',  grupo:'coleta', descricao:'Timeout de navegação/reload (ms)' },
+    // ── Ligas ──
+    { chave:'liga_world_cup',               valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Copa do Mundo' },
+    { chave:'liga_euro_cup',                valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Euro Cup' },
+    { chave:'liga_premiership',             valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Premier League' },
+    { chave:'liga_express_cup',             valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Express Cup' },
+    { chave:'liga_super_liga',              valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Super Liga Sul-Americana' },
+];
+
+async function _ensureConfigTable(pool) {
+    await pool.request().query(`
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='bet365_config' AND xtype='U')
+        CREATE TABLE bet365_config (
+            chave      VARCHAR(100) PRIMARY KEY,
+            valor      VARCHAR(500) NOT NULL,
+            tipo       VARCHAR(20)  NOT NULL DEFAULT 'text',
+            grupo      VARCHAR(50)  NOT NULL DEFAULT 'geral',
+            descricao  VARCHAR(500) DEFAULT '',
+            atualizado DATETIME     DEFAULT GETUTCDATE()
+        )
+    `);
+    for (const d of CONFIG_DEFAULTS) {
+        await pool.request()
+            .input('chave',    sql.VarChar, d.chave)
+            .input('valor',    sql.VarChar, d.valor)
+            .input('tipo',     sql.VarChar, d.tipo)
+            .input('grupo',    sql.VarChar, d.grupo)
+            .input('descricao',sql.VarChar, d.descricao)
+            .query(`
+                IF NOT EXISTS (SELECT 1 FROM bet365_config WHERE chave = @chave)
+                INSERT INTO bet365_config (chave,valor,tipo,grupo,descricao)
+                VALUES (@chave,@valor,@tipo,@grupo,@descricao)
+            `);
+    }
+}
+
+// Exporta para uso no coletor
+async function getSystemConfig() {
+    try {
+        const pool = await getDbPool();
+        await _ensureConfigTable(pool);
+        const r = await pool.request().query(`SELECT chave, valor FROM bet365_config`);
+        const cfg = {};
+        r.recordset.forEach(row => { cfg[row.chave] = row.valor; });
+        return cfg;
+    } catch(e) {
+        console.warn('[Config] Erro ao ler config, usando defaults:', e.message);
+        const cfg = {};
+        CONFIG_DEFAULTS.forEach(d => { cfg[d.chave] = d.valor; });
+        return cfg;
+    }
+}
+
+router.get('/admin/config', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        await _ensureConfigTable(pool);
+        const r = await pool.request().query(`SELECT * FROM bet365_config ORDER BY grupo, chave`);
+        res.json({ success: true, data: r.recordset });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+router.post('/admin/config', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        await _ensureConfigTable(pool);
+        for (const [chave, valor] of Object.entries(req.body || {})) {
+            await pool.request()
+                .input('chave', sql.VarChar, chave)
+                .input('valor', sql.VarChar, String(valor))
+                .query(`UPDATE bet365_config SET valor=@valor, atualizado=GETUTCDATE() WHERE chave=@chave`);
+        }
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 module.exports = router;
+module.exports.getSystemConfig = getSystemConfig;

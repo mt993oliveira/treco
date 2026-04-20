@@ -1080,23 +1080,28 @@ server.listen(PORT, () => {
 
     // ── Inicia o agendador Bet365 junto com o servidor ──
     if (process.env.BET365_AGENDADOR_ATIVADO !== 'false') {
-        const cron = require('node-cron');
-        const Bet365Coletor = require('./services/bet365-coletor');
+        const Bet365Coletor   = require('./services/bet365-coletor');
+        const { getSystemConfig } = require('./routes/bet365-api');
         const coletor365 = new Bet365Coletor();
-        const intervaloSeg = parseInt(process.env.BET365_INTERVALO_SEG) || 0;
-        const intervalo    = parseInt(process.env.BET365_INTERVALO) || 1;
-        // BET365_INTERVALO_SEG=30 → a cada 30s  |  BET365_INTERVALO=1 → a cada 1min
-        const expressao = intervaloSeg > 0
-            ? `*/${intervaloSeg} * * * * *`
-            : intervalo === 1 ? '* * * * *' : `*/${intervalo} * * * *`;
-        const descIntervalo = intervaloSeg > 0 ? `${intervaloSeg}s` : `${intervalo}min`;
 
-        console.log(`\n📡 Bet365 - Agendador iniciado (a cada ${descIntervalo})\n`);
+        // Loop dinâmico: após cada coleta lê o intervalo atualizado do banco
+        // (sem restart) e agenda a próxima com setTimeout.
+        let _coletorTimer = null;
+        async function _cicloColeta() {
+            const inicio = Date.now();
+            await coletor365.coletar().catch(e => console.error('Bet365 coletar:', e.message));
+            const cfg  = await getSystemConfig().catch(() => ({}));
+            const seg  = Math.max(10, parseInt(cfg.intervalo_coleta_seg) || 30);
+            const gasto = Math.round((Date.now() - inicio) / 1000);
+            const espera = Math.max(5, seg - gasto);
+            console.log(`⏱️  Bet365 - próxima coleta em ${espera}s (ciclo configurado: ${seg}s, coleta levou: ${gasto}s)`);
+            _coletorTimer = setTimeout(_cicloColeta, espera * 1000);
+        }
 
-        coletor365.coletar().catch(e => console.error('Bet365 coleta inicial:', e.message));
-        cron.schedule(expressao, () => coletor365.coletar().catch(e => console.error('Bet365 cron:', e.message)));
+        console.log(`\n📡 Bet365 - Agendador iniciado (intervalo dinâmico via config DB)\n`);
+        _cicloColeta();
 
-        process.on('SIGINT', async () => { await coletor365.encerrar(); process.exit(0); });
-        process.on('SIGTERM', async () => { await coletor365.encerrar(); process.exit(0); });
+        process.on('SIGINT',  async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
+        process.on('SIGTERM', async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
     }
 });

@@ -283,6 +283,12 @@
                     onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
                     👥 Gerenciar Usuários
                 </button>
+                <button id="dd-btn-config" onclick="abrirConfigSistema()"
+                    style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    ⚙️ Configurações do Sistema
+                </button>
                 <button onclick="fazerLogout()"
                     style="width:100%;background:none;border:none;color:#f87171;font-size:12px;
                            padding:9px 14px;text-align:left;cursor:pointer;display:flex;gap:8px;align-items:center;
@@ -398,6 +404,59 @@
                            padding:3px 10px;font-size:9px;cursor:pointer">↺ Atualizar</button>
             </div>
             <div id="online-lista" style="font-size:10px;color:#475569">Carregando...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL: CONFIGURAÇÕES DO SISTEMA (master only) ========== -->
+<div class="modal-overlay" id="modal-config-sistema">
+    <div class="modal-box" style="max-width:600px;width:96%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+            <h2 style="font-size:14px;font-weight:700">⚙️ Configurações do Sistema</h2>
+            <button onclick="fecharModal('modal-config-sistema')"
+                style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+
+        <!-- Abas -->
+        <div style="display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid #1e293b;padding-bottom:0">
+            <button id="cfg-tab-coleta" onclick="_cfgSetTab('coleta')"
+                style="background:none;border:none;border-bottom:2px solid #1fcc59;color:#e2e8f0;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                ⏱️ Coleta
+            </button>
+            <button id="cfg-tab-ligas" onclick="_cfgSetTab('ligas')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🏆 Ligas
+            </button>
+        </div>
+
+        <!-- Seção Coleta -->
+        <div id="cfg-section-coleta" style="max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-coleta-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Ligas -->
+        <div id="cfg-section-ligas" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div style="font-size:10px;color:#475569;margin-bottom:12px">
+                Ligas desabilitadas não serão coletadas no próximo ciclo, sem necessidade de reiniciar o servidor.
+            </div>
+            <div id="cfg-ligas-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <div id="cfg-msg" style="display:none;padding:8px 12px;border-radius:5px;font-size:11px;margin-top:14px"></div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;border-top:1px solid #1e293b;padding-top:14px">
+            <button onclick="fecharModal('modal-config-sistema')"
+                style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                       padding:7px 16px;font-size:12px;cursor:pointer">Fechar</button>
+            <button id="cfg-salvar-btn" onclick="salvarConfigSistema()"
+                style="background:#1fcc59;border:none;color:#000;border-radius:5px;
+                       padding:7px 18px;font-size:12px;font-weight:700;cursor:pointer">Salvar Configurações</button>
         </div>
     </div>
 </div>
@@ -4259,10 +4318,12 @@ function _initUserMenu() {
     document.getElementById('dd-nome').textContent     = u.NomeCompleto || '—';
     document.getElementById('dd-usuario').textContent  = '@' + (u.Usuario || '—');
     document.getElementById('dd-tipo').textContent     = u.TipoUsuario === 'master' ? '⭐ Master' : 'Usuário';
-    // Exibe opção de gerenciar usuários apenas para master
+    // Exibe opções master-only
     if (u.TipoUsuario === 'master') {
-        const btn = document.getElementById('dd-btn-usuarios');
-        if (btn) btn.style.display = 'flex';
+        const btnUsr = document.getElementById('dd-btn-usuarios');
+        if (btnUsr) btnUsr.style.display = 'flex';
+        const btnCfg = document.getElementById('dd-btn-config');
+        if (btnCfg) btnCfg.style.display = 'flex';
     }
 }
 
@@ -4345,6 +4406,157 @@ async function salvarPerfil(e) {
 }
 
 // ============================================================
+// ============================================================
+// CONFIGURAÇÕES DO SISTEMA (master only)
+// ============================================================
+
+let _cfgTabAtiva = 'coleta';
+
+function _cfgSetTab(tab) {
+    _cfgTabAtiva = tab;
+    ['coleta', 'ligas'].forEach(t => {
+        const btn = document.getElementById(`cfg-tab-${t}`);
+        const sec = document.getElementById(`cfg-section-${t}`);
+        const ativo = t === tab;
+        if (btn) {
+            btn.style.borderBottomColor = ativo ? '#1fcc59' : 'transparent';
+            btn.style.color = ativo ? '#e2e8f0' : '#64748b';
+        }
+        if (sec) sec.style.display = ativo ? 'block' : 'none';
+    });
+}
+
+const _CFG_LABELS = {
+    intervalo_coleta_seg:       'Intervalo entre ciclos de coleta (segundos)',
+    delay_apos_clicar_liga_ms:  'Delay após clicar na aba da liga (ms)',
+    delay_pos_reload_ms:        'Delay após reload da página (ms)',
+    delay_apos_resultados_ms:   'Delay após abrir aba de Resultados (ms)',
+    delay_show_more_ms:         'Delay entre cliques em "Mostrar Mais" (ms)',
+    delay_expandir_mercados_ms: 'Delay após expandir mercados internos (ms)',
+    delay_volta_proximos_ms:    'Delay ao voltar para Próximos Jogos (ms)',
+    delay_entre_horarios_ms:    'Delay entre cliques de horário (ms)',
+    delay_aguarda_mercado_ms:   'Delay de polling ao aguardar mercados (ms)',
+    timeout_goto_ms:            'Timeout ao navegar para a página inicial (ms)',
+    delay_initial_load_ms:      'Delay após carregar a página inicial (ms)',
+    timeout_ligas_ms:           'Timeout aguardando botões de liga (ms)',
+    timeout_navegacao_ms:       'Timeout de navegação/reload (ms)',
+    liga_world_cup:             'Copa do Mundo',
+    liga_euro_cup:              'Euro Cup',
+    liga_premiership:           'Premier League (Premiership)',
+    liga_express_cup:           'Express Cup',
+    liga_super_liga:            'Super Liga Sul-Americana',
+};
+
+async function abrirConfigSistema() {
+    document.getElementById('user-dropdown').style.display = 'none';
+    const msg = document.getElementById('cfg-msg');
+    if (msg) msg.style.display = 'none';
+    _cfgSetTab('coleta');
+    document.getElementById('modal-config-sistema').classList.add('aberto');
+    await _loadConfigSistema();
+}
+
+async function _loadConfigSistema() {
+    const fColeta = document.getElementById('cfg-coleta-fields');
+    const fLigas  = document.getElementById('cfg-ligas-fields');
+    fColeta.innerHTML = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
+    fLigas.innerHTML  = fColeta.innerHTML;
+
+    try {
+        const r = await fetch('/api/bet365/admin/config');
+        const data = await r.json();
+        if (!data.success) throw new Error(data.error || 'Erro desconhecido');
+
+        const coletaItems = data.data.filter(d => d.grupo === 'coleta');
+        const ligasItems  = data.data.filter(d => d.grupo === 'ligas');
+
+        fColeta.innerHTML = coletaItems.map(d => {
+            const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+            const min   = d.chave === 'intervalo_coleta_seg' ? 10 : 100;
+            return `
+            <div style="margin-bottom:14px">
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;
+                              letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="${min}"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;
+                           border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            </div>`;
+        }).join('');
+
+        fLigas.innerHTML = `
+            <div style="font-size:10px;color:#475569;margin-bottom:14px">
+                Alterações aplicadas no próximo ciclo de coleta (sem restart).
+            </div>` +
+            ligasItems.map(d => {
+                const label  = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+                const ativo  = d.valor === 'true';
+                const corBg  = ativo ? '#1fcc59' : '#334155';
+                return `
+                <div style="display:flex;justify-content:space-between;align-items:center;
+                            padding:11px 0;border-bottom:1px solid #1e293b">
+                    <span style="font-size:12px;color:#e2e8f0">${label}</span>
+                    <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0">
+                        <input type="checkbox" id="cfg-${d.chave}" ${ativo ? 'checked' : ''}
+                            onchange="this.nextElementSibling.style.background=this.checked?'#1fcc59':'#334155'"
+                            style="opacity:0;width:0;height:0">
+                        <span id="cfg-toggle-${d.chave}"
+                            onclick="var cb=document.getElementById('cfg-${d.chave}');cb.checked=!cb.checked;this.style.background=cb.checked?'#1fcc59':'#334155'"
+                            style="position:absolute;top:0;left:0;right:0;bottom:0;border-radius:22px;
+                                   transition:background .2s;background:${corBg};cursor:pointer"></span>
+                    </label>
+                </div>`;
+            }).join('');
+
+    } catch(e) {
+        fColeta.innerHTML = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
+        fLigas.innerHTML  = fColeta.innerHTML;
+    }
+}
+
+async function salvarConfigSistema() {
+    const btn = document.getElementById('cfg-salvar-btn');
+    const msg = document.getElementById('cfg-msg');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+    msg.style.display = 'none';
+
+    const payload = {};
+    document.querySelectorAll('#modal-config-sistema [id^="cfg-"]').forEach(el => {
+        if (el.tagName !== 'INPUT') return;
+        const chave = el.id.replace('cfg-', '');
+        if (el.type === 'checkbox') payload[chave] = String(el.checked);
+        else if (el.type === 'number' && el.value !== '') payload[chave] = el.value;
+    });
+
+    try {
+        const r = await fetch('/api/bet365/admin/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        msg.style.display = 'block';
+        if (data.success) {
+            msg.style.background = '#0f4c20';
+            msg.style.color = '#4ade80';
+            msg.textContent = '✅ Configurações salvas! Aplicadas no próximo ciclo de coleta.';
+        } else {
+            msg.style.background = '#4c0f0f';
+            msg.style.color = '#f87171';
+            msg.textContent = '❌ Erro ao salvar: ' + (data.error || 'desconhecido');
+        }
+    } catch(e) {
+        msg.style.display = 'block';
+        msg.style.background = '#4c0f0f';
+        msg.style.color = '#f87171';
+        msg.textContent = '❌ Erro de rede: ' + e.message;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Salvar Configurações';
+}
+
 // GERENCIAR USUÁRIOS (master only)
 // ============================================================
 let _todosUsuarios = [];

@@ -78,6 +78,15 @@ function snapMinutoSlot(dt, liga) {
     return snapped;
 }
 
+// Mapeamento: nome normalizado da liga → chave de config
+const LIGA_CONFIG_KEY = {
+    'World Cup':                'liga_world_cup',
+    'Euro Cup':                 'liga_euro_cup',
+    'Premiership':              'liga_premiership',
+    'Express Cup':              'liga_express_cup',
+    'Super Liga Sul-Americana': 'liga_super_liga',
+};
+
 class Bet365Coletor {
     constructor() {
         this.url       = URL_SOCCER;
@@ -86,9 +95,55 @@ class Bet365Coletor {
         this.pool      = null;
         this.coletando = false;
         this._coletas  = 0;
+        this.cfg       = null;
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    _cfgNum(chave, def) { return parseInt(this.cfg?.[chave]) || def; }
+    _cfgBool(chave, def = true) {
+        const v = this.cfg?.[chave];
+        return v === undefined ? def : v === 'true';
+    }
+
+    async _loadConfig() {
+        try {
+            const pool = await this.conectarBanco();
+            const r = await pool.request().query(`
+                IF OBJECT_ID('bet365_config') IS NOT NULL
+                    SELECT chave, valor FROM bet365_config
+                ELSE
+                    SELECT NULL AS chave, NULL AS valor WHERE 1=0
+            `);
+            const cfg = {};
+            r.recordset.forEach(row => { if (row.chave) cfg[row.chave] = row.valor; });
+            if (Object.keys(cfg).length === 0) throw new Error('tabela vazia ou inexistente');
+            this.cfg = cfg;
+            console.log(`   ⚙️  Config carregada do banco (${Object.keys(cfg).length} chaves)`);
+        } catch(e) {
+            console.warn(`   ⚠️  [Config] Usando defaults hardcoded (${e.message})`);
+            this.cfg = {
+                intervalo_coleta_seg:       '30',
+                delay_apos_clicar_liga_ms:  '3000',
+                delay_pos_reload_ms:        '4000',
+                delay_apos_resultados_ms:   '2000',
+                delay_show_more_ms:         '800',
+                delay_expandir_mercados_ms: '1500',
+                delay_volta_proximos_ms:    '2000',
+                delay_entre_horarios_ms:    '1500',
+                delay_aguarda_mercado_ms:   '500',
+                timeout_goto_ms:            '60000',
+                delay_initial_load_ms:      '6000',
+                timeout_ligas_ms:           '20000',
+                timeout_navegacao_ms:       '30000',
+                liga_world_cup:             'true',
+                liga_euro_cup:              'true',
+                liga_premiership:           'true',
+                liga_express_cup:           'true',
+                liga_super_liga:            'true',
+            };
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────
     // IDs determinísticos (FNV-1a 32-bit)
@@ -285,8 +340,8 @@ class Bet365Coletor {
         }
 
         console.log('   📡 Navegando para Futebol Virtual...');
-        await pg.goto(this.url, { waitUntil: 'load', timeout: 60000 });
-        await this._delay(6000);
+        await pg.goto(this.url, { waitUntil: 'load', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+        await this._delay(this._cfgNum('delay_initial_load_ms', 6000));
         return { page: pg, _criada: true };
     }
 
@@ -443,13 +498,13 @@ class Bet365Coletor {
         const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
         if (temBtnRes) {
             await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
-            await this._delay(2000);
+            await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
             // Clica Show More até 10 vezes para garantir cobertura ampla de resultados
             for (let sm = 0; sm < 10; sm++) {
                 const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
                 if (!temMore) break;
                 await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
-                await this._delay(800);
+                await this._delay(this._cfgNum('delay_show_more_ms', 800));
             }
             // Expande mercados ocultos em cada card de resultado (clica "Mostrar Mais" interno)
             const totalMaisInternos = await pg.evaluate(() => {
@@ -459,7 +514,7 @@ class Bet365Coletor {
             });
             if (totalMaisInternos > 0) {
                 console.log(`   🔽 [${normalizarNomeLiga(liga.nome)}] Expandindo ${totalMaisInternos} card(s) de resultado...`);
-                await this._delay(1500);
+                await this._delay(this._cfgNum('delay_expandir_mercados_ms', 1500));
             }
 
             const res = await this._extrairResultados(normalizarNomeLiga(liga.nome), pg);
@@ -478,7 +533,7 @@ class Bet365Coletor {
                     if (txt === nomeLiga) { tab.click(); return; }
                 }
             }, liga.nome);
-            await this._delay(2000);
+            await this._delay(this._cfgNum('delay_volta_proximos_ms', 2000));
         }
 
         // Próximos jogos — aguarda botões de horário aparecerem (até 8s)
@@ -486,7 +541,7 @@ class Bet365Coletor {
         for (let t = 0; t < 8; t++) {
             numHorarios = await pg.evaluate(() => document.querySelectorAll('.vr-EventTimesNavBarButton').length);
             if (numHorarios > 0) break;
-            await this._delay(1000);
+            await this._delay(this._cfgNum('delay_aguarda_mercado_ms', 500));
         }
         console.log(`   ⏰ [${liga.nome}] ${numHorarios} horário(s)`);
 
@@ -497,14 +552,14 @@ class Bet365Coletor {
                 return false;
             }, i);
             if (!ok) continue;
-            await this._delay(1500);
+            await this._delay(this._cfgNum('delay_entre_horarios_ms', 1500));
 
             // Aguarda mercados
             let temMkt = false;
             for (let t = 0; t < 16; t++) {
                 temMkt = await pg.evaluate(() => document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length > 0).catch(() => false);
                 if (temMkt) break;
-                await this._delay(500);
+                await this._delay(this._cfgNum('delay_aguarda_mercado_ms', 500));
             }
             if (!temMkt) continue;
 
@@ -541,10 +596,13 @@ class Bet365Coletor {
             })
         );
 
-        // Filtra apenas as ignoradas (percorre todas, inclusive duplicatas)
-        const ligasFiltradas = ligas.filter(l =>
-            !LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))
-        );
+        // Filtra ligas: ignora por nome E respeita config do banco
+        const ligasFiltradas = ligas.filter(l => {
+            if (LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))) return false;
+            const norm = normalizarNomeLiga(l.nome);
+            const key  = LIGA_CONFIG_KEY[norm];
+            return key ? this._cfgBool(key, true) : true;
+        });
 
         console.log(`   ✅ ${ligasFiltradas.length} liga(s): ${ligasFiltradas.map(l => l.nome).join(' | ')}`);
 
@@ -568,7 +626,7 @@ class Bet365Coletor {
                 return false;
             }, liga.nome);
             if (!clicou) { console.log(`   ⚠️  [${liga.nome}] Tab não encontrada pelo nome`); continue; }
-            await this._delay(3000); // aguarda conteúdo da aba carregar
+            await this._delay(this._cfgNum('delay_apos_clicar_liga_ms', 3000));
 
             try {
                 const { eventos, resultados } = await this._coletarLiga(pg, liga);
@@ -591,10 +649,10 @@ class Bet365Coletor {
             for (let r = 1; r <= 3; r++) {
                 try {
                     await pg.setCacheEnabled(false);                          // desativa cache (= Ctrl+F5)
-                    await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
-                    await pg.setCacheEnabled(true);                           // reativa cache
-                    await this._delay(4000);                                  // aguarda JS da Bet365 inicializar
-                    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
+                    await pg.reload({ waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_navegacao_ms', 30000) });
+                    await pg.setCacheEnabled(true);
+                    await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
+                    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
                     break; // ligas apareceram, continua para próxima liga
                 } catch(e) {
                     await pg.setCacheEnabled(true).catch(() => {});           // garante que cache não fica desativado
@@ -852,6 +910,7 @@ class Bet365Coletor {
         }
         this.coletando = true;
         this._coletas++;
+        await this._loadConfig();
 
         const inicio = new Date();
         console.log(`\n============================================`);
@@ -872,16 +931,16 @@ class Bet365Coletor {
             let ligasOk = false;
             for (let tentativa = 1; tentativa <= 3; tentativa++) {
                 try {
-                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
+                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
                     ligasOk = true;
                     break;
                 } catch(e) {
                     console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — Ctrl+F5...`);
                     try {
                         await this.page.setCacheEnabled(false);
-                        await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+                        await this.page.reload({ waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_navegacao_ms', 30000) });
                         await this.page.setCacheEnabled(true);
-                        await this._delay(4000);
+                        await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
                     } catch(reloadErr) {
                         await this.page.setCacheEnabled(true).catch(() => {});
                         console.log(`   ⚠️  Reload falhou: ${reloadErr.message}`);
