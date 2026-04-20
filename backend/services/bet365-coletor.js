@@ -35,6 +35,59 @@ const SCREENSHOT_DIR    = path.join(__dirname, '..', '..', 'img', 'screenshots')
 const URL_SOCCER = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR = ['super league'];
 
+// Normaliza nomes de mercado (inglês → português)
+const MERCADO_NORMALIZAR = {
+    'fulltime result':                    'Resultado Final',
+    'full time result':                   'Resultado Final',
+    '1x2':                                'Resultado Final',
+    'correct score':                      'Resultado Correto',
+    'half time correct score':            'Resultado Correto - Intervalo',
+    'half-time correct score':            'Resultado Correto - Intervalo',
+    'halftime correct score':             'Resultado Correto - Intervalo',
+    'half time/full time':                'Intervalo/Final do Jogo',
+    'half time result':                   'Resultado Intervalo',
+    'halftime result':                    'Resultado Intervalo',
+    'both teams to score':                'Ambos Marcam',
+    'both teams to score (ht)':           'Ambos Marcam - Intervalo',
+    'first goalscorer':                   'Primeiro Marcador de Gol',
+    'first team to score':                'Primeira Equipe a Marcar',
+    'home team to score':                 'Para o Time da Casa Marcar',
+    'away team to score':                 'Para o Time Visitante Marcar',
+    'winning margin':                     'Margem de Vitória',
+    'result / both teams to score':       'Resultado/Ambos Marcam',
+    'result/both teams to score':         'Resultado/Ambos Marcam',
+    'exact total goals':                  'Total Exato de Gols',
+    'double chance':                      'Chance Dupla',
+    'asian handicap':                     'Handicap Asiático',
+    'scorecast':                          'Scorecast',
+};
+
+function normalizarNomeMercado(nome) {
+    const low = (nome || '').toLowerCase().trim();
+    if (MERCADO_NORMALIZAR[low]) return MERCADO_NORMALIZAR[low];
+    // "Total Goals Over/Under X.5" → "Total de Gols - Mais de/Menos de X.5"
+    const m = low.match(/^total goals over\/under (\d+\.\d)$/);
+    if (m) return `Total de Gols - Mais de/Menos de ${m[1]}`;
+    return nome;
+}
+
+// Normaliza nomes de seleção (inglês → português)
+const SELECAO_NORMALIZAR = {
+    'yes': 'Sim', 'no': 'Não',
+    'any other score': 'Qualquer Outro Resultado',
+    'no goals (0-0)': 'Sem Gols (0-0)',
+    'draw 0-0': 'Empate 0-0',
+};
+
+function normalizarNomeSelecao(sel) {
+    const low = (sel || '').toLowerCase().trim();
+    if (SELECAO_NORMALIZAR[low]) return SELECAO_NORMALIZAR[low];
+    // "Over X.5" → "Mais de X.5" / "Under X.5" → "Menos de X.5"
+    const m1 = low.match(/^over (\d+\.\d)$/);  if (m1) return `Mais de ${m1[1]}`;
+    const m2 = low.match(/^under (\d+\.\d)$/); if (m2) return `Menos de ${m2[1]}`;
+    return sel;
+}
+
 // Normaliza nomes de liga antes de gerar IDs e salvar no banco.
 // Garante que a mesma liga não seja gravada com nomes diferentes.
 const LIGA_NORMALIZAR = {
@@ -215,6 +268,41 @@ class Bet365Coletor {
              CREATE INDEX IX_b365_resmkt_evento ON bet365_resultados_mercados (evento_id)`,
             `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('bet365_resultados_mercados') AND name='IX_b365_resmkt_liga_data')
              CREATE INDEX IX_b365_resmkt_liga_data ON bet365_resultados_mercados (liga, data_partida)`,
+            // ── Normalizar nomes de mercado em inglês → português (dados históricos) ──
+            `UPDATE bet365_resultados_mercados SET mercado='Resultado Final'               WHERE mercado IN ('Fulltime Result','Full Time Result','1X2')`,
+            `UPDATE bet365_resultados_mercados SET mercado='Resultado Correto'             WHERE mercado='Correct Score'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Resultado Correto - Intervalo' WHERE mercado IN ('Half Time Correct Score','Half-Time Correct Score','Halftime Correct Score')`,
+            `UPDATE bet365_resultados_mercados SET mercado='Intervalo/Final do Jogo'       WHERE mercado='Half Time/Full Time'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Resultado Intervalo'           WHERE mercado IN ('Half Time Result','Halftime Result')`,
+            `UPDATE bet365_resultados_mercados SET mercado='Ambos Marcam'                  WHERE mercado='Both Teams to Score'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Primeiro Marcador de Gol'      WHERE mercado='First Goalscorer'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Primeira Equipe a Marcar'      WHERE mercado='First Team to Score'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Para o Time da Casa Marcar'    WHERE mercado='Home Team To Score'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Para o Time Visitante Marcar'  WHERE mercado='Away Team To Score'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Margem de Vitória'             WHERE mercado='Winning Margin'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Resultado/Ambos Marcam'        WHERE mercado IN ('Result / Both Teams To Score','Result/Both Teams To Score')`,
+            `UPDATE bet365_resultados_mercados SET mercado='Total Exato de Gols'           WHERE mercado='Exact Total Goals'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Chance Dupla'                  WHERE mercado='Double Chance'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Total de Gols - Mais de/Menos de 0.5' WHERE mercado='Total Goals Over/Under 0.5'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Total de Gols - Mais de/Menos de 1.5' WHERE mercado='Total Goals Over/Under 1.5'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Total de Gols - Mais de/Menos de 2.5' WHERE mercado='Total Goals Over/Under 2.5'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Total de Gols - Mais de/Menos de 3.5' WHERE mercado='Total Goals Over/Under 3.5'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Total de Gols - Mais de/Menos de 4.5' WHERE mercado='Total Goals Over/Under 4.5'`,
+            `UPDATE bet365_resultados_mercados SET mercado='Total de Gols - Mais de/Menos de 5.5' WHERE mercado='Total Goals Over/Under 5.5'`,
+            // ── Normalizar seleções em inglês ──
+            `UPDATE bet365_resultados_mercados SET selecao='Mais de 0.5' WHERE selecao='Over 0.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Mais de 1.5' WHERE selecao='Over 1.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Mais de 2.5' WHERE selecao='Over 2.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Mais de 3.5' WHERE selecao='Over 3.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Mais de 4.5' WHERE selecao='Over 4.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Menos de 0.5' WHERE selecao='Under 0.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Menos de 1.5' WHERE selecao='Under 1.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Menos de 2.5' WHERE selecao='Under 2.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Menos de 3.5' WHERE selecao='Under 3.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Menos de 4.5' WHERE selecao='Under 4.5'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Sim'  WHERE selecao='Yes'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Não'  WHERE selecao='No'`,
+            `UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE selecao='Any Other Score'`,
         ];
         for (const mig of migracoes) {
             await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));
@@ -351,7 +439,7 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _extrairMercadosDoPagina(pg) {
-        return await pg.evaluate(() => {
+        const raw = await pg.evaluate(() => {
             const mercados = [];
             const bcText   = document.querySelector('.svc-MarketGroup_BookCloses span:last-child');
             const raceOff  = document.querySelector('.svc-MarketGroup_RaceOff');
@@ -413,6 +501,13 @@ class Bet365Coletor {
             }
             return { countdown, mercados };
         });
+        // Normaliza nomes de mercado e seleção (inglês → português)
+        raw.mercados = raw.mercados.map(m => ({
+            ...m,
+            nome: normalizarNomeMercado(m.nome),
+            selecoes: m.selecoes.map(s => ({ ...s, nome: normalizarNomeSelecao(s.nome) })),
+        }));
+        return raw;
     }
 
     async _extrairInfoJogo(liga, pg) {
@@ -484,6 +579,15 @@ class Bet365Coletor {
             }
             return resultados;
         }, liga);
+        // Normaliza nomes de mercado e seleção (inglês → português)
+        return resultados.map(r => ({
+            ...r,
+            mercados: r.mercados.map(m => ({
+                ...m,
+                mercado: normalizarNomeMercado(m.mercado),
+                selecao: normalizarNomeSelecao(m.selecao),
+            })),
+        }));
     }
 
     // ─────────────────────────────────────────────────────────────

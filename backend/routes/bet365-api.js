@@ -417,14 +417,16 @@ router.get('/historico-tabela', (req, res) => {
  */
 router.get('/sugestoes', async (req, res) => {
     try {
-        const nParam = Math.min(100, Math.max(3, parseInt(req.query.n) || 10));
-        const pool = await getDbPool();
+        const nParam  = Math.min(100, Math.max(3, parseInt(req.query.n) || 10));
+        const diasN   = req.query.dias === 'tudo' ? null : (parseInt(req.query.dias) || null);
+        const pool    = await getDbPool();
+        const diasWhere = diasN ? `AND data_partida >= DATEADD(DAY, -${diasN}, GETUTCDATE())` : '';
 
-        // Ligas com ao menos 5 jogos distintos
+        // Ligas com ao menos 5 jogos distintos (respeitando o período)
         const ligasResult = await pool.query(`
             SELECT liga, COUNT(DISTINCT evento_id) AS total
             FROM bet365_resultados_mercados
-            WHERE liga IS NOT NULL AND liga <> ''
+            WHERE liga IS NOT NULL AND liga <> '' ${diasWhere}
             GROUP BY liga
             HAVING COUNT(DISTINCT evento_id) >= 5
             ORDER BY total DESC
@@ -437,7 +439,7 @@ router.get('/sugestoes', async (req, res) => {
             const pResult = await pool.request()
                 .input('liga', sql.NVarChar(200), l.liga)
                 .query(`
-                    SELECT TOP 200
+                    SELECT TOP 500
                         evento_id, data_partida,
                         MAX(CASE WHEN mercado = 'Resultado Final' THEN selecao END) AS resultado_final,
                         MAX(CASE WHEN time_casa IS NOT NULL THEN time_casa END) AS time_casa,
@@ -450,7 +452,7 @@ router.get('/sugestoes', async (req, res) => {
                         MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under25,
                         MAX(CASE WHEN mercado = 'Ambos Marcam' AND selecao = 'Sim' THEN 1 ELSE 0 END) AS btts
                     FROM bet365_resultados_mercados
-                    WHERE liga = @liga
+                    WHERE liga = @liga ${diasWhere}
                     GROUP BY evento_id, data_partida
                     ORDER BY data_partida DESC
                 `);

@@ -1767,8 +1767,9 @@ async function carregarSugestoes(forceRender = false) {
         const mktUrl = `/api/bet365/analise/mercados${_faParams()}`;
         const resUrl = `/api/bet365/analise/resumo${_faParams({ minVE: S.fa.soValueBets ? 0.95 : 0 })}`;
 
+        const diasParam = S.fa?.dias ? `&dias=${S.fa.dias}` : '';
         const [rSug, rMkt, rRes] = await Promise.all([
-            fetch(`/api/bet365/sugestoes?n=${S.rankingN}`).then(r => r.json()),
+            fetch(`/api/bet365/sugestoes?n=${S.rankingN}${diasParam}`).then(r => r.json()),
             fetch(mktUrl).then(r => r.json()).catch(() => ({ data: {} })),
             fetch(resUrl).then(r => r.json()).catch(() => ({}))
         ]);
@@ -1977,7 +1978,7 @@ function renderAnalise() {
 
         const mktPrimaryHtml = top5Mkt.length ? `
             <div style="background:#060810;border-radius:6px;padding:8px;margin-bottom:8px;border:1px solid #0d1f3a">
-                <div style="font-size:9px;color:#60a5fa;font-weight:700;margin-bottom:5px">🎯 MERCADOS PAGOS${mktAviso} <span style="color:#334155">(7D)</span></div>
+                <div style="font-size:9px;color:#60a5fa;font-weight:700;margin-bottom:5px">🎯 MERCADOS PAGOS${mktAviso} <span style="color:#334155">(${S.fa?.dias === 'tudo' ? 'Tudo' : (S.fa?.dias || 7) + 'D'})</span></div>
                 ${top5Mkt.map((m, i) => {
                     const cor = m.pct_jogos>=65?'#4ade80':m.pct_jogos>=50?'#fbbf24':'#94a3b8';
                     const ve = parseFloat(m.valor_esperado)||0;
@@ -4241,7 +4242,7 @@ function renderizarEstatisticasAvancadas(data) {
 
     if (topMktGlobal.length || vbGlobal.length) {
         html += `<div class="stat-card stat-card-wide">
-            <div class="stat-card-titulo">🎯 Top Mercados Pagos <span style="font-weight:400;color:#334155">(7D — todas as ligas)</span></div>
+            <div class="stat-card-titulo">🎯 Top Mercados Pagos <span style="font-weight:400;color:#334155">(${S.fa?.dias === 'tudo' ? 'Tudo' : (S.fa?.dias || 7) + 'D'} — todas as ligas)</span></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-top:8px">
                 ${topMktGlobal.map(m => {
                     const mCor = m.pct_jogos>=65?'#4ade80':m.pct_jogos>=50?'#fbbf24':'#94a3b8';
@@ -4957,7 +4958,7 @@ function renderMktValueBets(res, prefix = 'mkt') {
             <div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:2px">${v.mercado}</div>
             <div style="font-size:12px;color:#4ade80;font-weight:800">→ ${v.selecao}</div>
             <div style="display:flex;gap:8px;margin-top:6px;font-size:10px">
-                <span style="color:#94a3b8">${v.jogos} jogos</span>
+                <span style="color:#94a3b8">${v.total_jogos ?? v.jogos ?? '?'} jogos</span>
                 <span style="color:#fbbf24;font-weight:700">${v.pct}%</span>
                 <span style="color:#60a5fa">odd ${v.odd_media}</span>
                 <span style="background:#166534;color:#4ade80;padding:1px 5px;border-radius:3px;font-weight:800">VE: ${v.valor_esperado}</span>
