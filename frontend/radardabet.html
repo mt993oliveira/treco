@@ -932,6 +932,21 @@
             <button class="acao-btn" onclick="normalizarDadosPT()" style="background:#0d2d4a;border-color:#1e4d7a;color:#60a5fa;padding:2px 10px;font-size:10px" title="Corrigir mercados e clubes em inglês para português no banco de dados">🔤 Normalizar PT</button>
             <button class="acao-btn" onclick="confirmarExcluirLiga('Express Cup')" style="background:#451a03;border-color:#7c2d12;color:#fb923c;padding:2px 10px;font-size:10px" title="Excluir todos os dados da Express Cup do banco">🗑 Express Cup</button>
             <button class="acao-btn" onclick="limparLigasDescartadas()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171;padding:2px 10px;font-size:10px" title="Remove 'Super League' e 'South American Super League'">🗑 Ligas inválidas</button>
+            <div style="display:flex;align-items:center;gap:4px;background:#1a0d0d;border:1px solid #3b1a1a;border-radius:5px;padding:2px 8px">
+                <span style="font-size:9px;color:#f87171;font-weight:700;white-space:nowrap">🗑 Período:</span>
+                <select id="diag-del-liga" style="background:#0f172a;border:1px solid #3b1a1a;color:#e2e8f0;font-size:9px;border-radius:3px;padding:1px 4px;height:20px">
+                    <option value="Todas">Todas as ligas</option>
+                    <option value="Copa do Mundo">Copa do Mundo</option>
+                    <option value="Euro Cup">Euro Cup</option>
+                    <option value="Premier League">Premier League</option>
+                    <option value="Express Cup">Express Cup</option>
+                    <option value="Super Liga Sul-Americana">Super Liga Sul</option>
+                </select>
+                <span style="font-size:9px;color:#94a3b8;white-space:nowrap">manter</span>
+                <input id="diag-del-dias" type="number" min="30" max="9999" value="30" style="width:46px;background:#0f172a;border:1px solid #3b1a1a;color:#e2e8f0;font-size:9px;border-radius:3px;padding:1px 4px;height:20px;text-align:center">
+                <span style="font-size:9px;color:#94a3b8">dias</span>
+                <button class="acao-btn" onclick="confirmarExcluirPorPeriodo()" style="background:#4a1a1a;border-color:#7f1d1d;color:#f87171;padding:1px 8px;font-size:9px;height:20px;line-height:1">Excluir</button>
+            </div>
         </div>
     </div>
 
@@ -4305,6 +4320,31 @@ async function confirmarExcluirLiga(liga) {
         if (d.success) {
             alert(`✅ Dados de "${liga}" removidos!\n${d.total} linha(s) excluída(s).`);
             await carregarTudo();
+        } else {
+            alert('❌ Erro: ' + (d.error || 'desconhecido'));
+        }
+    } catch(e) {
+        alert('❌ Erro: ' + e.message);
+    }
+}
+
+async function confirmarExcluirPorPeriodo() {
+    const liga = document.getElementById('diag-del-liga').value;
+    const dias  = parseInt(document.getElementById('diag-del-dias').value, 10);
+    if (!dias || dias < 30) { alert('⚠️ O mínimo permitido é manter os últimos 30 dias.'); return; }
+    const ligaLabel = liga === 'Todas' ? 'todas as ligas' : `"${liga}"`;
+    if (!confirm(`⚠️ Isto irá APAGAR registros com mais de ${dias} dias de ${ligaLabel}.\n\nDados dos últimos ${dias} dias serão mantidos.\n\nEsta ação NÃO PODE ser desfeita. Deseja continuar?`)) return;
+    if (!confirm(`Confirme: excluir dados com mais de ${dias} dias de ${ligaLabel}?`)) return;
+    try {
+        const r = await fetch('/api/bet365/admin/excluir-por-periodo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ liga, dias })
+        });
+        const d = await r.json();
+        if (d.success) {
+            alert(`✅ Concluído!\n${d.total} linha(s) excluída(s) de ${ligaLabel} (dados com mais de ${dias} dias).`);
+            carregarDiagnostico();
         } else {
             alert('❌ Erro: ' + (d.error || 'desconhecido'));
         }

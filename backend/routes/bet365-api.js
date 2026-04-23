@@ -1526,5 +1526,29 @@ router.post('/admin/excluir-liga', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/bet365/admin/excluir-por-periodo
+ * Remove registros mais antigos que N dias de uma liga (mínimo 30 dias)
+ */
+router.post('/admin/excluir-por-periodo', async (req, res) => {
+    try {
+        const { liga, dias } = req.body || {};
+        const diasNum = parseInt(dias, 10);
+        if (!diasNum || diasNum < 30) return res.status(400).json({ success: false, error: 'Mínimo de 30 dias para manter' });
+        const pool = await getDbPool();
+        const req2 = pool.request().input('dias', sql.Int, diasNum);
+        let query = `DELETE FROM bet365_resultados_mercados WHERE data_registro < DATEADD(day, -@dias, GETUTCDATE())`;
+        if (liga && liga !== 'Todas') {
+            req2.input('liga', sql.NVarChar(200), ligaParaBanco(liga));
+            query += ` AND liga = @liga`;
+        }
+        const r = await req2.query(query);
+        const total = r.rowsAffected?.[0] || 0;
+        res.json({ success: true, total, liga: liga || 'Todas', dias: diasNum });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 module.exports = router;
 module.exports.getSystemConfig = getSystemConfig;
