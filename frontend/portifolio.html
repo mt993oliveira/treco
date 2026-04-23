@@ -969,7 +969,7 @@
                     TipoUsuario: data.user.TipoUsuario || 'user',
                 }));
                 localStorage.setItem('loginTime', String(Date.now()));
-                window.location.href = '/radarx.html';
+                window.location.href = '/radardabet.html';
             } else {
                 msgEl.textContent    = data.message || 'Credenciais inválidas';
                 msgEl.style.display  = 'block';
@@ -988,7 +988,7 @@
     if (storedUser) {
         try {
             const u = JSON.parse(storedUser);
-            if (u && u.Id) window.location.href = '/radarx.html';
+            if (u && u.Id) window.location.href = '/radardabet.html';
         } catch(e) { localStorage.removeItem('currentUser'); }
     }
 </script>

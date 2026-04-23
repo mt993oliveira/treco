@@ -947,9 +947,9 @@ app.get('/', (req, res) => {
 });
 
 // Rota para servir o RadarX (painel de futebol virtual)
-app.get('/radarx.html', (req, res) => {
+app.get('/radardabet.html', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(__dirname, '../frontend/radarx.html'));
+    res.sendFile(path.join(__dirname, '../frontend/radardabet.html'));
 });
 
 // Rota para servir o index.html (painel de controle) após o login
