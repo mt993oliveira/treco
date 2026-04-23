@@ -812,9 +812,9 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 const fResp = await axios.post('https://formspree.io/f/xaqawaep', {
                     name: nomeCompleto || usuario,
                     email: email || 'sem-email@radarx.com.br',
-                    _subject: `[RadarX] Novo acesso criado: ${usuario}`,
+                    _subject: `[Radardabet] Novo acesso criado: ${usuario}`,
                     message:
-                        `✅ Novo acesso criado na plataforma RadarX\n\n` +
+                        `✅ Novo acesso criado na plataforma Radardabet\n\n` +
                         `Nome: ${nomeCompleto}\n` +
                         `Usuário (login): ${usuario}\n` +
                         `E-mail: ${email || '—'}\n` +
