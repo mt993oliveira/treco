@@ -1374,11 +1374,27 @@ const CONFIG_DEFAULTS = [
     { chave:'timeout_ligas_ms',             valor:'20000', tipo:'number',  grupo:'coleta', descricao:'Timeout aguardando botões de liga (ms)' },
     { chave:'timeout_navegacao_ms',         valor:'30000', tipo:'number',  grupo:'coleta', descricao:'Timeout de navegação/reload (ms)' },
     // ── Ligas ──
-    { chave:'liga_world_cup',               valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Copa do Mundo' },
-    { chave:'liga_euro_cup',                valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Euro Cup' },
-    { chave:'liga_premiership',             valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Premier League' },
-    { chave:'liga_express_cup',             valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Express Cup' },
-    { chave:'liga_super_liga',              valor:'true',  tipo:'boolean', grupo:'ligas',  descricao:'Coletar Super Liga Sul-Americana' },
+    { chave:'liga_world_cup',               valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Copa do Mundo' },
+    { chave:'liga_euro_cup',                valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Euro Cup' },
+    { chave:'liga_premiership',             valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Premier League' },
+    { chave:'liga_express_cup',             valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Express Cup' },
+    { chave:'liga_super_liga',              valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Super Liga Sul-Americana' },
+    // ── Padrões do frontend ──
+    { chave:'default_horas_historico',      valor:'6',     tipo:'number',  grupo:'frontend', descricao:'Período padrão da Tabela Histórica (horas)' },
+    { chave:'default_dias_analise',         valor:'3',     tipo:'number',  grupo:'frontend', descricao:'Período padrão dos filtros de Análise (dias)' },
+    { chave:'default_min_amostras',         valor:'5',     tipo:'number',  grupo:'frontend', descricao:'Mínimo de amostras padrão (Análise)' },
+    { chave:'default_freq_min',             valor:'0',     tipo:'number',  grupo:'frontend', descricao:'Frequência mínima % padrão (Análise)' },
+    { chave:'default_tipo_mercado',         valor:'Todos', tipo:'text',    grupo:'frontend', descricao:'Tipo de mercado padrão (Análise)' },
+    { chave:'default_janela_recente',       valor:'20',    tipo:'number',  grupo:'frontend', descricao:'Janela recente padrão (Análise)' },
+    { chave:'default_so_value_bets',        valor:'false', tipo:'boolean', grupo:'frontend', descricao:'Apenas value bets por padrão (Análise)' },
+    // ── Sistema ──
+    { chave:'sessao_timeout_minutos',       valor:'180',   tipo:'number',  grupo:'sistema',  descricao:'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)' },
+    // ── Seções da Análise ──
+    { chave:'show_secao_ia',                valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: IA — Sugestões para Próximos Jogos' },
+    { chave:'show_secao_value_bets',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Value Bets' },
+    { chave:'show_secao_tendencias',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Tendências' },
+    { chave:'show_secao_frequencia',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Frequência dos Mercados' },
+    { chave:'show_secao_desempenho',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Desempenho por Liga' },
 ];
 
 async function _ensureConfigTable(pool) {
@@ -1447,6 +1463,64 @@ router.post('/admin/config', async (req, res) => {
                 .query(`UPDATE bet365_config SET valor=@valor, atualizado=GETUTCDATE() WHERE chave=@chave`);
         }
         res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * POST /api/bet365/admin/normalizar-dados
+ * Normaliza mercados/times em inglês → português no banco
+ */
+router.post('/admin/normalizar-dados', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const updates = [
+            // Ligas
+            [`UPDATE bet365_resultados_mercados SET liga='World Cup' WHERE liga IN ('Copa do Mundo','World Cup Virtual')`, 'liga World Cup'],
+            [`UPDATE bet365_resultados_mercados SET liga='Premiership' WHERE liga IN ('Premier League','English Premier League')`, 'liga Premiership'],
+            // Mercados inglês → português
+            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Final' WHERE mercado IN ('Full Time Result','Match Result','1X2')`, 'mercado Resultado Final'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Ambos Marcam' WHERE mercado IN ('Both Teams to Score','BTTS')`, 'mercado Ambos Marcam'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Correto' WHERE mercado IN ('Correct Score','Correct Score FT')`, 'mercado Resultado Correto'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Correto - Intervalo' WHERE mercado IN ('Correct Score HT','Half-Time Correct Score','Correct Score - Half Time')`, 'mercado Correto Intervalo'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo Resultado' WHERE mercado IN ('Half Time Result','HT Result','1X2 HT')`, 'mercado Intervalo Resultado'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo/Final' WHERE mercado IN ('Half-Time/Full-Time','HT/FT')`, 'mercado HT/FT'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Chance Dupla' WHERE mercado IN ('Double Chance')`, 'mercado Chance Dupla'],
+            // Seleções comuns em inglês → português
+            [`UPDATE bet365_resultados_mercados SET selecao='Empate' WHERE mercado='Resultado Final' AND selecao IN ('Draw','The Draw')`, 'selecao Empate'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Sim' WHERE mercado='Ambos Marcam' AND selecao IN ('Yes')`, 'selecao Sim'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Não' WHERE mercado='Ambos Marcam' AND selecao IN ('No')`, 'selecao Não'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE mercado='Resultado Correto - Intervalo' AND selecao IN ('Any Other Score','Any Unquoted')`, 'selecao Qualquer Outro'],
+        ];
+        let totalAffected = 0;
+        const detalhes = [];
+        for (const [sql_str, label] of updates) {
+            const r = await pool.request().query(sql_str);
+            const n = r.rowsAffected?.[0] || 0;
+            totalAffected += n;
+            if (n > 0) detalhes.push(`${label}: ${n} linhas`);
+        }
+        res.json({ success: true, total: totalAffected, detalhes });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * POST /api/bet365/admin/excluir-liga
+ * Remove todos os dados de uma liga do banco
+ */
+router.post('/admin/excluir-liga', async (req, res) => {
+    try {
+        const { liga } = req.body || {};
+        if (!liga) return res.status(400).json({ success: false, error: 'Liga não informada' });
+        const pool = await getDbPool();
+        const r = await pool.request()
+            .input('liga', sql.NVarChar(200), liga)
+            .query(`DELETE FROM bet365_resultados_mercados WHERE liga = @liga`);
+        const total = r.rowsAffected?.[0] || 0;
+        res.json({ success: true, total, liga });
     } catch(e) {
         res.status(500).json({ success: false, error: e.message });
     }

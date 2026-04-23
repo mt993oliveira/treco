@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RadarX — Futebol Virtual</title>
+    <title>Radardabet — Futebol Virtual</title>
     <link rel="icon" type="image/jpeg" href="/img/RadarX.jpeg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -61,8 +61,8 @@
         .tabela-hist.compact td { padding: 2px 1px; font-size: 9px; min-width: 20px; max-width: 28px; height: 24px; }
         .tabela-hist td.td-l { background: #0f172a; color: #334155; font-size: 10px; font-weight: 600;
             text-align: left; padding: 3px 6px; white-space: nowrap; }
-        .tabela-hist td.td-pct { background: #0f172a; min-width: 42px; font-weight: 800; font-size: 12px; }
-        .tabela-hist td.td-g   { background: #0f172a; color: #334155; font-size: 10px; min-width: 24px; }
+        .tabela-hist td.td-pct { background: #0f172a; min-width: 28px; font-weight: 800; font-size: 11px; }
+        .tabela-hist td.td-g   { background: #0f172a; color: #334155; font-size: 9px; min-width: 18px; }
         .tabela-hist tfoot td  { background: #0c1220; color: #60a5fa; font-weight: 700; }
         .c-verde  { background: #14532d; color: #4ade80; }
         .c-verm   { background: #3b0a0a; color: #f87171; }
@@ -73,6 +73,17 @@
         .pct-baixa { color: #f87171 !important; }
         .tabela-hist td.c-verde:hover,
         .tabela-hist td.c-verm:hover { outline: 1px solid rgba(255,255,255,.25); cursor: default; }
+
+        /* Seleção de linha/coluna */
+        .tabela-hist th.col-sel { background: #1e3a5f !important; color: #60a5fa !important; cursor: pointer; }
+        .tabela-hist td.col-sel { outline: 2px solid #3b82f680 !important; }
+        .tabela-hist tr.row-sel td { outline: 2px solid #a78bfa80 !important; }
+        .tabela-hist td.td-l.row-sel-head { background: #1e1b4b !important; color: #a78bfa !important; cursor: pointer; }
+        /* Seleção de resultado / clube */
+        .tabela-hist td.cell-match-score { outline: 2px solid #fbbf24 !important; background: #422006 !important; }
+        .tabela-hist td.cell-match-club  { outline: 2px solid #1fcc59 !important; background: #052e16 !important; }
+        .tabela-hist th.th-col-num { cursor: pointer; user-select: none; }
+        .tabela-hist th.th-col-num:hover { background: #1e293b !important; color: #94a3b8 !important; }
 
         /* Legend */
         .legenda-item { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 2px 5px;
@@ -235,8 +246,8 @@
 <header style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:9px 16px;position:sticky;top:0;z-index:50">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <img src="/img/RadarX.jpeg" alt="RadarX" style="height:28px;border-radius:4px;object-fit:contain">
-            <span style="color:#1fcc59;font-weight:900;font-size:14px;letter-spacing:-.3px">RadarX</span>
+            <img src="/img/RadarX.jpeg" alt="Radardabet" style="height:28px;border-radius:4px;object-fit:contain">
+            <span style="color:#1fcc59;font-weight:900;font-size:14px;letter-spacing:-.3px">Radardabet</span>
             <span id="header-separator" style="color:#1e293b">|</span>
             <span id="header-subtitle" style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
         </div>
@@ -418,7 +429,7 @@
         </div>
 
         <!-- Abas -->
-        <div style="display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid #1e293b;padding-bottom:0">
+        <div style="display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid #1e293b;padding-bottom:0;flex-wrap:wrap">
             <button id="cfg-tab-coleta" onclick="_cfgSetTab('coleta')"
                 style="background:none;border:none;border-bottom:2px solid #1fcc59;color:#e2e8f0;
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
@@ -428,6 +439,21 @@
                 style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 🏆 Ligas
+            </button>
+            <button id="cfg-tab-frontend" onclick="_cfgSetTab('frontend')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🖥️ Padrões
+            </button>
+            <button id="cfg-tab-secoes" onclick="_cfgSetTab('secoes')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                📊 Seções
+            </button>
+            <button id="cfg-tab-sistema" onclick="_cfgSetTab('sistema')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🔒 Sistema
             </button>
         </div>
 
@@ -444,6 +470,30 @@
                 Ligas desabilitadas não serão coletadas no próximo ciclo, sem necessidade de reiniciar o servidor.
             </div>
             <div id="cfg-ligas-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Padrões do Frontend -->
+        <div id="cfg-section-frontend" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-frontend-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Seções da Análise -->
+        <div id="cfg-section-secoes" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div style="font-size:10px;color:#475569;margin-bottom:12px">
+                Seções desabilitadas não são exibidas na aba Análise & Sugestões (para todos os usuários).
+            </div>
+            <div id="cfg-secoes-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Sistema -->
+        <div id="cfg-section-sistema" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-sistema-fields">
                 <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
@@ -545,10 +595,56 @@
     </div>
 </div>
 
+<!-- ========== MODAL: AJUDA FILTROS DA ANÁLISE ========== -->
+<div class="modal-overlay" id="modal-ajuda-filtros">
+    <div class="modal-box" style="max-width:560px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="font-size:13px;font-weight:700;color:#60a5fa">❓ O que significam os Filtros da Análise?</h2>
+            <button onclick="document.getElementById('modal-ajuda-filtros').classList.remove('aberto')"
+                style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;line-height:1.7;display:flex;flex-direction:column;gap:12px">
+            <div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">📅 PERÍODO (1D · 3D · 7D · 14D · 30D)</div>
+                <div>Define quantos dias de histórico são usados para calcular as estatísticas. <b style="color:#fbbf24">3D</b> = últimos 3 dias de jogos. Períodos menores refletem padrões mais recentes; períodos maiores dão mais confiança estatística.</div>
+            </div>
+            <div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🔢 MÍN. AMOSTRAS (3 · 5 · 10 · 20 · 50)</div>
+                <div>Número mínimo de jogos que um mercado precisa ter ocorrido para aparecer nos resultados. <b style="color:#fbbf24">5</b> = só mostra mercados com ao menos 5 ocorrências. Valores maiores = resultados mais confiáveis mas mais escassos.</div>
+            </div>
+            <div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">📊 FREQ. MÍN. (— · ≥50% · ≥60% · ≥70% · ≥80%)</div>
+                <div>Frequência mínima (%) com que um resultado precisa ter ocorrido para aparecer. <b style="color:#fbbf24">≥60%</b> = só mostra mercados que aconteceram em pelo menos 60% dos jogos. <b style="color:#64748b">—</b> = sem filtro.</div>
+            </div>
+            <div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">⚽ TIPO DE MERCADO</div>
+                <div>Filtra por categoria de aposta: <b>Total de Gols</b> (Over/Under), <b>Resultado Final</b> (1X2), <b>Ambos Marcam</b> (BTTS), <b>Intervalo</b> (placar no HT), <b>Handicap</b>, <b>Resultado Correto</b>, <b>Chance Dupla</b>. <b style="color:#64748b">Todos</b> = exibe tudo.</div>
+            </div>
+            <div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🔁 JANELA RECENTE (10J · 20J · 30J · 50J)</div>
+                <div>Define quantos jogos recentes são usados para calcular tendências (seção TENDÊNCIAS). <b style="color:#fbbf24">20J</b> = compara os últimos 20 jogos com o histórico completo para detectar se um mercado está "subindo" ou "caindo".</div>
+            </div>
+            <div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">💎 SÓ VALUE BETS</div>
+                <div>Quando marcado, exibe apenas apostas com <b style="color:#4ade80">Valor Esperado (VE) ≥ 0.95</b> — ou seja, mercados onde a odd paga é maior do que a probabilidade estatística sugere. São as apostas com maior vantagem matemática.</div>
+            </div>
+            <div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🔄 APLICAR</div>
+                <div>Clique para recarregar todas as seções com os filtros selecionados acima. Os filtros são aplicados automaticamente ao trocar de liga ou mudar qualquer opção.</div>
+            </div>
+            <div style="background:#0a0f1e;border:1px solid #1e3a5f;border-radius:6px;padding:10px;margin-top:4px">
+                <div style="font-size:9px;font-weight:700;color:#60a5fa;margin-bottom:4px">💡 EXEMPLO DE CONFIGURAÇÃO AGRESSIVA</div>
+                <div style="color:#64748b;font-size:10px">📅 3D · ⚽ Todos os mercados · 🔢 mín. 5 jogos · 📊 freq ≥60% · 🔁 janela 20J · 💎 só VALUE BETS</div>
+                <div style="color:#94a3b8;font-size:10px;margin-top:3px">→ Mostra apenas oportunidades frequentes e recentes com vantagem matemática.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ========== VIEW SELECTOR ========== -->
 <div style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:8px 16px;display:flex;gap:8px;align-items:center">
-    <button class="view-btn ativo" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
-    <button class="view-btn" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
+    <button class="view-btn ativo" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
+    <button class="view-btn" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
     <div style="margin-left:auto;font-size:10px;color:#334155" id="ultimo-update"></div>
@@ -558,11 +654,16 @@
 <div id="main-wrap">
 
 <!-- ========== VIEW: ANÁLISE ========== -->
-<div id="view-analise-content" style="padding:14px 16px">
+<div id="view-analise-content" style="display:none;padding:14px 16px">
 
     <!-- ── BARRA DE FILTROS DINÂMICOS ── -->
     <div id="analise-filtros-bar" style="background:#0a0f1e;border:1px solid #1e3a5f;border-radius:8px;padding:10px 14px;margin-bottom:14px">
-        <div style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.08em;margin-bottom:8px">🔧 FILTROS DA ANÁLISE</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.08em">🔧 FILTROS DA ANÁLISE</span>
+            <button onclick="document.getElementById('modal-ajuda-filtros').classList.add('aberto')"
+                style="background:#1e3a5f;border:1px solid #3b82f6;color:#60a5fa;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:900;cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center"
+                title="O que significam estes filtros?">?</button>
+        </div>
         <div style="display:flex;flex-wrap:wrap;gap:10px 20px;align-items:flex-end">
 
             <!-- Período -->
@@ -570,11 +671,10 @@
                 <div style="font-size:8px;color:#475569;margin-bottom:4px">PERÍODO</div>
                 <div style="display:flex;gap:3px">
                     <button onclick="faSet('dias',1)"      id="fa-dias-1"    class="fa-btn">1D</button>
-                    <button onclick="faSet('dias',3)"      id="fa-dias-3"    class="fa-btn">3D</button>
-                    <button onclick="faSet('dias',7)"      id="fa-dias-7"    class="fa-btn fa-btn-ativo">7D</button>
+                    <button onclick="faSet('dias',3)"      id="fa-dias-3"    class="fa-btn fa-btn-ativo">3D</button>
+                    <button onclick="faSet('dias',7)"      id="fa-dias-7"    class="fa-btn">7D</button>
                     <button onclick="faSet('dias',14)"     id="fa-dias-14"   class="fa-btn">14D</button>
                     <button onclick="faSet('dias',30)"     id="fa-dias-30"   class="fa-btn">30D</button>
-                    <button onclick="faSet('dias','tudo')" id="fa-dias-tudo" class="fa-btn">Tudo</button>
                 </div>
             </div>
 
@@ -649,14 +749,17 @@
     </div>
 
     <!-- IA SUGESTÕES PRÓXIMOS JOGOS — aparece antes do Desempenho por Liga -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:14px">
+    <div id="analise-secao-ia" style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:14px">
         <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em;margin-bottom:8px">🤖 IA — SUGESTÕES PARA PRÓXIMOS JOGOS (BASE: MERCADOS PAGOS)</div>
         <div id="analise-mkt-sugestoes-ia" style="color:#334155;font-size:12px">Carregando...</div>
     </div>
 
     <!-- Cards de ligas -->
-    <div style="margin-bottom:14px">
-        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">DESEMPENHO POR LIGA — SUGESTÕES DE APOSTA</div>
+    <div id="analise-secao-desempenho" style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">
+            DESEMPENHO POR LIGA — SUGESTÕES DE APOSTA
+            <span style="font-size:9px;color:#334155;font-weight:400;margin-left:8px" title="Bet365 virtual football: ~20 jogos/hora por liga = ~480 jogos/dia. O número de 'partidas' é alto porque jogos virtuais acontecem a cada 3 minutos.">ℹ️ partidas = jogos virtuais coletados no período</span>
+        </div>
         <div id="analise-cards" style="display:flex;gap:10px;flex-wrap:wrap">
             <div style="color:#334155;font-size:12px;padding:24px">Carregando análise...</div>
         </div>
@@ -687,21 +790,21 @@
 
 
     <!-- VALUE BETS — RETORNO ESPERADO POSITIVO (tabela detalhada) -->
-    <div style="background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px;margin-bottom:12px">
+    <div id="analise-secao-value-bets" style="background:#0a0f1e;border:1px solid #166534;border-radius:8px;padding:12px;margin-bottom:12px">
         <div style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:.08em;margin-bottom:8px">💰 VALUE BETS — MERCADOS COM RETORNO ESPERADO POSITIVO</div>
         <div id="analise-mkt-value-bets" style="color:#334155;font-size:12px">Carregando...</div>
     </div>
 
     <!-- TENDÊNCIAS -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+    <div id="analise-secao-tendencias" style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
         <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📈 TENDÊNCIAS — MERCADOS EM MOVIMENTO (RECENTE VS HISTÓRICO)</div>
         <div id="analise-mkt-tendencias" style="color:#334155;font-size:12px">Carregando...</div>
     </div>
 
     <!-- FREQUÊNCIA DOS MERCADOS -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
+    <div id="analise-secao-frequencia" style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:12px">
         <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">📊 FREQUÊNCIA DOS MERCADOS</div>
-        <div style="max-height:380px;overflow-y:auto" id="analise-mkt-grafico-wrap">
+        <div style="overflow-y:auto" id="analise-mkt-grafico-wrap">
             <canvas id="analise-mkt-chart" height="300"></canvas>
         </div>
     </div>
@@ -709,7 +812,7 @@
 </div>
 
 <!-- ========== VIEW: HISTÓRICO ========== -->
-<div id="view-historico-content" style="display:none;padding:12px 16px">
+<div id="view-historico-content" style="padding:12px 16px">
 
     <!-- Controls bar — linha 1: período + filtro de condição -->
     <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:10px">
@@ -721,13 +824,9 @@
             <button class="secao-btn" data-h="1"  onclick="setHoras(1)">1H</button>
             <button class="secao-btn" data-h="2"  onclick="setHoras(2)">2H</button>
             <button class="secao-btn" data-h="3"  onclick="setHoras(3)">3H</button>
-            <button class="secao-btn" data-h="6"  onclick="setHoras(6)">6H</button>
+            <button class="secao-btn ativo" data-h="6"  onclick="setHoras(6)">6H</button>
             <button class="secao-btn" data-h="12" onclick="setHoras(12)">12H</button>
-            <button class="secao-btn ativo" data-h="24" onclick="setHoras(24)">24H</button>
-            <button class="secao-btn" data-h="48"  onclick="setHoras(48)">48H</button>
-            <button class="secao-btn" data-h="72"  onclick="setHoras(72)">72H</button>
-            <button class="secao-btn" data-h="96"  onclick="setHoras(96)">96H</button>
-            <button class="secao-btn" data-h="120" onclick="setHoras(120)">120H</button>
+            <button class="secao-btn" data-h="24" onclick="setHoras(24)">24H</button>
             <div style="display:flex;align-items:center;gap:3px">
                 <input type="number" id="horas-custom" min="1" max="720" placeholder="Nº"
                     style="width:40px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:11px;font-weight:700;text-align:center;outline:none"
@@ -830,7 +929,9 @@
         <div id="diag-contagens-strip" style="color:#64748b">—</div>
         <div style="margin-left:auto;display:flex;gap:5px">
             <button class="acao-btn" onclick="carregarDiagnostico()" style="padding:2px 10px;font-size:10px">↻ Atualizar</button>
-            <button class="acao-btn" onclick="limparLigasDescartadas()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171;padding:2px 10px;font-size:10px" title="Remove 'Super League' e 'South American Super League'">🗑</button>
+            <button class="acao-btn" onclick="normalizarDadosPT()" style="background:#0d2d4a;border-color:#1e4d7a;color:#60a5fa;padding:2px 10px;font-size:10px" title="Corrigir mercados e clubes em inglês para português no banco de dados">🔤 Normalizar PT</button>
+            <button class="acao-btn" onclick="confirmarExcluirLiga('Express Cup')" style="background:#451a03;border-color:#7c2d12;color:#fb923c;padding:2px 10px;font-size:10px" title="Excluir todos os dados da Express Cup do banco">🗑 Express Cup</button>
+            <button class="acao-btn" onclick="limparLigasDescartadas()" style="background:#3b0a0a;border-color:#7f1d1d;color:#f87171;padding:2px 10px;font-size:10px" title="Remove 'Super League' e 'South American Super League'">🗑 Ligas inválidas</button>
         </div>
     </div>
 
@@ -1259,6 +1360,11 @@ async function carregarConfigLigas() {
         const r    = await fetch('/api/bet365/admin/config');
         const data = await r.json();
         if (!data.success) return;
+
+        const cfg = {};
+        data.data.forEach(d => { cfg[d.chave] = d.valor; });
+
+        // Ligas habilitadas
         const habilitadas = new Set();
         data.data.filter(d => d.grupo === 'ligas').forEach(d => {
             const nome = LIGA_CONFIG_CHAVE[d.chave];
@@ -1266,9 +1372,50 @@ async function carregarConfigLigas() {
         });
         S.ligasHabilitadas = habilitadas;
         _atualizarSelectLigas();
+
+        // Padrões do frontend
+        if (cfg.default_horas_historico) S.horas = parseInt(cfg.default_horas_historico) || 6;
+        if (cfg.default_dias_analise)    S.fa.dias = parseInt(cfg.default_dias_analise) || 3;
+        if (cfg.default_min_amostras)    S.fa.minJogos = parseInt(cfg.default_min_amostras) || 5;
+        if (cfg.default_freq_min)        S.fa.minPct = parseInt(cfg.default_freq_min) || 0;
+        if (cfg.default_tipo_mercado)    S.fa.tipoMercado = cfg.default_tipo_mercado;
+        if (cfg.default_janela_recente)  S.fa.nRecente = parseInt(cfg.default_janela_recente) || 20;
+        if (cfg.default_so_value_bets)   S.fa.soValueBets = cfg.default_so_value_bets === 'true';
+
+        // Timeout de sessão (salva para verificação periódica)
+        S._sessionTimeoutMin = parseInt(cfg.sessao_timeout_minutos) || 180;
+
+        // Aplica visibilidade das seções
+        S._cfgSecoes = cfg;
+        _aplicarConfigFrontend();
+
     } catch(e) {
-        // falha silenciosa — mantém todas habilitadas
+        // falha silenciosa — mantém defaults
     }
+}
+
+async function _aplicarConfigFrontend() {
+    try {
+        // Se não temos config carregada, busca
+        if (!S._cfgSecoes) {
+            const r = await fetch('/api/bet365/admin/config');
+            const data = await r.json();
+            if (!data.success) return;
+            S._cfgSecoes = {};
+            data.data.forEach(d => { S._cfgSecoes[d.chave] = d.valor; });
+        }
+        const c = S._cfgSecoes;
+        const _vis = (id, key) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.display = (c[key] !== 'false') ? '' : 'none';
+        };
+        _vis('analise-secao-ia',          'show_secao_ia');
+        _vis('analise-secao-value-bets',  'show_secao_value_bets');
+        _vis('analise-secao-tendencias',  'show_secao_tendencias');
+        _vis('analise-secao-frequencia',  'show_secao_frequencia');
+        _vis('analise-secao-desempenho',  'show_secao_desempenho');
+    } catch(e) {}
 }
 
 // Atualiza o <select> do diagnóstico com as ligas habilitadas
@@ -1401,17 +1548,21 @@ const S = {
     rankingN:      10,
     secao:         'over',
     filtro:        'over1.5',
-    horas:         24,      // período do grid: 6/12/24/48/72
+    horas:         6,       // período do grid: padrão 6H (sobrescrito pela config)
     linhas:        {},
     grafico:       null,
     grafTopo:      null,
-    view:          'analise',
+    view:          'historico',
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
+    selCols:       new Set(),  // colunas selecionadas (índices)
+    selRows:       new Set(),  // linhas selecionadas (índices de hora)
+    selScore:      null,       // score selecionado para destaque
+    selClub:       null,       // clube selecionado para destaque
 
     // ── Filtros dinâmicos da aba Análise ──
     fa: {
-        dias:        7,       // período: 1,3,7,14,30,'tudo'
+        dias:        3,       // período: 1,3,7,14,30 (padrão 3D, sobrescrito pela config)
         // liga vem de S.ligaAtiva (tabs principais) — não definida aqui
         minJogos:    5,       // mínimo de jogos/amostras
         minPct:      0,       // frequência mínima %
@@ -2339,6 +2490,39 @@ function trocarSecao(s) {
     renderFiltros(); renderLegenda(); renderTabela(); renderGrafico();
 }
 
+// ============================================================
+// SELEÇÃO DE LINHA / COLUNA / RESULTADO / CLUBE NA GRID
+// ============================================================
+function _tblToggleCol(ci) {
+    if (S.selCols.has(ci)) S.selCols.delete(ci); else S.selCols.add(ci);
+    renderTabela();
+}
+function _tblToggleRow(ri) {
+    if (S.selRows.has(ri)) S.selRows.delete(ri); else S.selRows.add(ri);
+    renderTabela();
+}
+function _tblSelectScore(score) {
+    S.selScore = S.selScore === score ? null : score;
+    S.selClub  = null;
+    _aplicarHighlightGrid();
+}
+function _tblSelectClub(club) {
+    S.selClub  = S.selClub === club ? null : club;
+    S.selScore = null;
+    _aplicarHighlightGrid();
+}
+function _aplicarHighlightGrid() {
+    const tbody = document.getElementById('tbl-body');
+    if (!tbody) return;
+    tbody.querySelectorAll('td[data-tt]').forEach(td => {
+        td.classList.remove('cell-match-score', 'cell-match-club');
+        if (!S.selScore && !S.selClub) return;
+        const tt = td.dataset.tt || '';
+        if (S.selScore && tt.includes(S.selScore)) td.classList.add('cell-match-score');
+        if (S.selClub  && tt.toLowerCase().includes(S.selClub.toLowerCase())) td.classList.add('cell-match-club');
+    });
+}
+
 function setHoras(n) {
     S.horas = n;
     document.querySelectorAll('.secao-btn[data-h]').forEach(b =>
@@ -2809,9 +2993,12 @@ function renderTabela() {
         <th class="th-l" style="min-width:74px;position:sticky;left:0;z-index:11;background:#0c1220">
             ${fi ? `<span style="color:${fi.cor};font-size:9px">${fi.label}</span>` : 'HORA'}
         </th>
-        <th style="min-width:36px;background:#0c1220">%</th>
-        <th style="min-width:28px;background:#0c1220;color:#fbbf24;font-size:9px" title="Média de gols nessa hora">⚽</th>
-        ${minuteSlots.map(m => `<th title="Minuto ${m}">:${pad2(m)}</th>`).join('')}
+        <th style="min-width:24px;background:#0c1220">%</th>
+        <th style="min-width:18px;background:#0c1220;color:#fbbf24;font-size:9px" title="Média de gols nessa hora">⚽</th>
+        ${minuteSlots.map((m, ci) => {
+            const selCls = S.selCols.has(ci) ? ' col-sel' : '';
+            return `<th class="th-col-num${selCls}" data-col-idx="${ci}" onclick="_tblToggleCol(${ci})" title="Clique para destacar coluna (:${pad2(m)})">:${pad2(m)}</th>`;
+        }).join('')}
     `;
 
     tbody.innerHTML = '';
@@ -3020,10 +3207,10 @@ function renderTabela() {
             const nmSlot  = `data-action="slot" data-min="${minuteSlots[ci]}"`;
             const cellContent = S.showNomes
                 ? (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
-                  `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
+                  `<span data-action="clube" data-clube="${abbrev(j.time_casa)}" ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
                   `<span data-action="liga" style="display:block;font-size:10px;font-weight:800;cursor:pointer;line-height:1.3">${score}</span>`+
                   (scoreHT ? `<span style="display:block;font-size:7px;font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
-                  `<span ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
+                  `<span data-action="clube" data-clube="${abbrev(j.time_fora)}" ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
                   (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
                 : `<span data-action="liga" style="cursor:pointer;display:block;line-height:1.25">${score}</span>`+
                   (scoreHT ? `<span style="display:block;font-size:7px;color:var(--ht-txt);line-height:1;text-align:center">${scoreHT}</span>` : '')+
@@ -3049,15 +3236,30 @@ function renderTabela() {
                        : parseFloat(avgLinha) >= 3.5 ? '#4ade80'
                        : parseFloat(avgLinha) >= 2.5 ? '#fbbf24' : '#94a3b8';
 
+        const rowIdx = gsDesc.indexOf(grupo);
+        const rowSelCls = S.selRows.has(rowIdx) ? ' row-sel' : '';
+        const tdLSelCls = S.selRows.has(rowIdx) ? ' row-sel-head' : '';
+        tr.setAttribute('data-row-idx', rowIdx);
+        tr.className = rowSelCls;
         tr.innerHTML = `
-            <td class="td-l" style="position:sticky;left:0;background:#0f172a;z-index:5;
-                font-size:10px;font-weight:700;color:#60a5fa;white-space:nowrap;min-width:74px">
+            <td class="td-l${tdLSelCls}" onclick="_tblToggleRow(${rowIdx})" style="position:sticky;left:0;background:#0f172a;z-index:5;
+                font-size:10px;font-weight:700;color:#60a5fa;white-space:nowrap;min-width:74px;cursor:pointer"
+                title="Clique para destacar linha">
                 ${horaStr}${temJogo ? `<span style="color:#334155;font-weight:400;margin-left:4px">(${jogosComDados.length})</span>` : ''}
             </td>
             <td class="td-pct ${pctC}">${pct !== null ? pct+'%' : '—'}</td>
             <td style="font-size:9px;font-weight:800;color:${golCor};text-align:center;min-width:28px">${avgLinha}</td>
             ${cells}
         `;
+
+        // Aplica highlight de coluna após inserir células
+        if (S.selCols.size > 0) {
+            const tds = tr.querySelectorAll('td');
+            S.selCols.forEach(ci => {
+                const td = tds[ci + 3]; // +3 para pular td-l, td-pct, td-g
+                if (td) td.classList.add('col-sel');
+            });
+        }
 
         tr.querySelectorAll('td[data-tt]').forEach(td => {
             td.addEventListener('mouseenter', showTT);
@@ -3070,6 +3272,9 @@ function renderTabela() {
 
     // Delegação de clique na grid — nomes de clube e placar
     tbody.onclick = handleGridClick;
+
+    // Aplicar highlights de score/clube
+    _aplicarHighlightGrid();
 
     // Footer — % de acerto por posição
     const footPct = Array.from({length: N}, (_, ci) => {
@@ -3087,7 +3292,13 @@ function renderTabela() {
         return `<td style="color:${c};font-weight:700;font-size:9px">${avg}</td>`;
     }).join('');
 
-    // tfoot é o <tr> interno — reescreve o <tfoot> pai para suportar 2 linhas
+    // Footer com hora:minuto de cada slot
+    const footSlotTimes = Array.from({length: N}, (_, ci) => {
+        const selCls = S.selCols.has(ci) ? ' col-sel' : '';
+        return `<td class="${selCls}" style="font-size:8px;color:#334155;text-align:center;padding:2px 0">:${pad2(minuteSlots[ci])}</td>`;
+    }).join('');
+
+    // tfoot é o <tr> interno — reescreve o <tfoot> pai para suportar 3 linhas
     if (!tfoot?.parentElement) return;
     tfoot.parentElement.innerHTML = `
         <tr>
@@ -3101,6 +3312,11 @@ function renderTabela() {
             <td class="td-pct"></td>
             <td></td>
             ${footGols}
+        </tr>
+        <tr>
+            <td class="td-l" style="position:sticky;left:0;background:#060810;font-size:8px;color:#1e293b;font-weight:600">MINUTO</td>
+            <td></td><td></td>
+            ${footSlotTimes}
         </tr>
     `;
 
@@ -3350,7 +3566,20 @@ function handleGridClick(e) {
     if (action === 'slot') {
         abrirModalSlot(parseInt(el.dataset.min));
     } else if (action === 'liga') {
+        // Clique no placar → destaca todas as células com mesmo placar
+        const tdCell = el.closest('td[data-tt]');
+        if (tdCell) {
+            const tt = tdCell.dataset.tt || '';
+            // Extrai score "X-Y" do tooltip (ex: "21:04 TeamA 2-1 TeamB [...]")
+            const scoreMatch = tt.match(/\b(\d+)-(\d+)\b/);
+            if (scoreMatch) {
+                _tblSelectScore(scoreMatch[0]);
+                return;
+            }
+        }
         abrirModalLigaResultados();
+    } else if (action === 'clube') {
+        _tblSelectClub(el.dataset.clube || el.textContent.trim());
     }
 }
 
@@ -4042,6 +4271,48 @@ async function limparLigasDescartadas() {
     }
 }
 
+async function normalizarDadosPT() {
+    if (!confirm('Normalizar mercados e clubes em inglês para português no banco de dados?\n\nEsta ação atualizará os registros existentes. Não pode ser desfeita.')) return;
+    try {
+        const r = await fetch('/api/bet365/admin/normalizar-dados', { method: 'POST' });
+        const d = await r.json();
+        if (d.success) {
+            const det = d.detalhes.length ? '\n\n' + d.detalhes.join('\n') : '';
+            if (d.total === 0) {
+                alert('ℹ️ Nenhum registro em inglês encontrado. O banco já está normalizado.');
+            } else {
+                alert(`✅ Normalização concluída!\n${d.total} registro(s) atualizado(s).${det}`);
+                await carregarTudo();
+            }
+        } else {
+            alert('❌ Erro: ' + (d.error || 'desconhecido'));
+        }
+    } catch(e) {
+        alert('❌ Erro: ' + e.message);
+    }
+}
+
+async function confirmarExcluirLiga(liga) {
+    if (!confirm(`⚠️ ATENÇÃO: Isto irá APAGAR PERMANENTEMENTE todos os registros de "${liga}" do banco de dados.\n\nEsta ação NÃO PODE ser desfeita.\n\nDeseja continuar?`)) return;
+    if (!confirm(`Confirme novamente: Excluir TODOS OS DADOS de "${liga}"?`)) return;
+    try {
+        const r = await fetch('/api/bet365/admin/excluir-liga', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ liga })
+        });
+        const d = await r.json();
+        if (d.success) {
+            alert(`✅ Dados de "${liga}" removidos!\n${d.total} linha(s) excluída(s).`);
+            await carregarTudo();
+        } else {
+            alert('❌ Erro: ' + (d.error || 'desconhecido'));
+        }
+    } catch(e) {
+        alert('❌ Erro: ' + e.message);
+    }
+}
+
 // ============================================================
 // WEBSOCKET
 // ============================================================
@@ -4095,10 +4366,30 @@ async function carregarEstatisticasAvancadas() {
 
 // ── Inicializa status da barra de filtros ────────────────────────────────
 function _faInit() {
+    // Sincroniza botões dias
+    document.querySelectorAll('[id^="fa-dias-"]').forEach(b => {
+        const v = b.id === 'fa-dias-tudo' ? 'tudo' : parseInt(b.id.replace('fa-dias-',''));
+        b.classList.toggle('fa-btn-ativo', S.fa.dias == v);
+    });
+    // Sincroniza botões minJogos
+    document.querySelectorAll('[id^="fa-minj-"]').forEach(b => {
+        b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-minj-','')) === S.fa.minJogos);
+    });
+    // Sincroniza botões minPct
+    document.querySelectorAll('[id^="fa-pct-"]').forEach(b => {
+        b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-pct-','')) === S.fa.minPct);
+    });
+    // Sincroniza botões nRecente
+    document.querySelectorAll('[id^="fa-nrec-"]').forEach(b => {
+        b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-nrec-','')) === S.fa.nRecente);
+    });
     const tipoSel = document.getElementById('fa-tipo-sel');
     if (tipoSel) tipoSel.value = S.fa.tipoMercado || 'Todos';
     const vbChk = document.getElementById('fa-vb-chk');
     if (vbChk) vbChk.checked = !!S.fa.soValueBets;
+    // Sincroniza botão 6H no histórico
+    document.querySelectorAll('.secao-btn[data-h]').forEach(b =>
+        b.classList.toggle('ativo', parseInt(b.dataset.h) === S.horas));
     _faAtualizarStatus();
 }
 
@@ -4380,9 +4671,10 @@ document.addEventListener('click', e => {
     }
 });
 
-function fazerLogout() {
-    if (!confirm('Deseja sair da plataforma?')) return;
+function fazerLogout(silencioso = false) {
+    if (!silencioso && !confirm('Deseja sair da plataforma?')) return;
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('loginTime');
     window.location.replace('/');
 }
 
@@ -4453,7 +4745,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -4484,6 +4776,22 @@ const _CFG_LABELS = {
     liga_premiership:           'Premier League (Premiership)',
     liga_express_cup:           'Express Cup',
     liga_super_liga:            'Super Liga Sul-Americana',
+    // Padrões do frontend
+    default_horas_historico:    'Período padrão da Tabela Histórica (horas)',
+    default_dias_analise:       'Período padrão dos filtros de Análise (dias)',
+    default_min_amostras:       'Mínimo de amostras padrão (Análise)',
+    default_freq_min:           'Frequência mínima % padrão (Análise)',
+    default_tipo_mercado:       'Tipo de mercado padrão (Análise)',
+    default_janela_recente:     'Janela recente padrão em jogos (Análise)',
+    default_so_value_bets:      'Apenas value bets por padrão (Análise)',
+    // Sistema
+    sessao_timeout_minutos:     'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)',
+    // Seções
+    show_secao_ia:              'Exibir: 🤖 IA — Sugestões para Próximos Jogos',
+    show_secao_value_bets:      'Exibir: 💰 Value Bets',
+    show_secao_tendencias:      'Exibir: 📈 Tendências',
+    show_secao_frequencia:      'Exibir: 📊 Frequência dos Mercados',
+    show_secao_desempenho:      'Exibir: 🏆 Desempenho por Liga',
 };
 
 async function abrirConfigSistema() {
@@ -4497,19 +4805,44 @@ async function abrirConfigSistema() {
 
 async function _loadConfigSistema() {
     const fColeta = document.getElementById('cfg-coleta-fields');
-    const fLigas  = document.getElementById('cfg-ligas-fields');
-    fColeta.innerHTML = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fLigas.innerHTML  = fColeta.innerHTML;
+    const fLigas     = document.getElementById('cfg-ligas-fields');
+    const fFrontend  = document.getElementById('cfg-frontend-fields');
+    const fSecoes    = document.getElementById('cfg-secoes-fields');
+    const fSistema   = document.getElementById('cfg-sistema-fields');
+    const loadHtml   = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = loadHtml;
+
+    // Opções para selects de tipo_mercado
+    const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
+
+    const _toggleHtml = (d) => {
+        const label  = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+        const ativo  = d.valor === 'true';
+        const corBg  = ativo ? '#1fcc59' : '#334155';
+        return `
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:11px 0;border-bottom:1px solid #1e293b">
+            <span style="font-size:12px;color:#e2e8f0">${label}</span>
+            <div style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;cursor:pointer"
+                 onclick="var cb=document.getElementById('cfg-${d.chave}');cb.checked=!cb.checked;document.getElementById('cfg-toggle-${d.chave}').style.background=cb.checked?'#1fcc59':'#334155'">
+                <input type="checkbox" id="cfg-${d.chave}" ${ativo ? 'checked' : ''}
+                    style="opacity:0;width:0;height:0;position:absolute">
+                <span id="cfg-toggle-${d.chave}"
+                    style="position:absolute;top:0;left:0;right:0;bottom:0;border-radius:22px;
+                           transition:background .2s;background:${corBg};pointer-events:none"></span>
+            </div>
+        </div>`;
+    };
 
     try {
         const r = await fetch('/api/bet365/admin/config');
         const data = await r.json();
         if (!data.success) throw new Error(data.error || 'Erro desconhecido');
 
-        const coletaItems = data.data.filter(d => d.grupo === 'coleta');
-        const ligasItems  = data.data.filter(d => d.grupo === 'ligas');
+        const byGroup = {};
+        data.data.forEach(d => { (byGroup[d.grupo] = byGroup[d.grupo] || []).push(d); });
 
-        fColeta.innerHTML = coletaItems.map(d => {
+        fColeta.innerHTML = (byGroup.coleta || []).map(d => {
             const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
             const min   = d.chave === 'intervalo_coleta_seg' ? 10 : 100;
             return `
@@ -4523,32 +4856,62 @@ async function _loadConfigSistema() {
             </div>`;
         }).join('');
 
-        fLigas.innerHTML = `
-            <div style="font-size:10px;color:#475569;margin-bottom:14px">
-                Alterações aplicadas no próximo ciclo de coleta (sem restart).
-            </div>` +
-            ligasItems.map(d => {
-                const label  = _CFG_LABELS[d.chave] || d.descricao || d.chave;
-                const ativo  = d.valor === 'true';
-                const corBg  = ativo ? '#1fcc59' : '#334155';
-                return `
-                <div style="display:flex;justify-content:space-between;align-items:center;
-                            padding:11px 0;border-bottom:1px solid #1e293b">
-                    <span style="font-size:12px;color:#e2e8f0">${label}</span>
-                    <div style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;cursor:pointer"
-                         onclick="var cb=document.getElementById('cfg-${d.chave}');cb.checked=!cb.checked;document.getElementById('cfg-toggle-${d.chave}').style.background=cb.checked?'#1fcc59':'#334155'">
-                        <input type="checkbox" id="cfg-${d.chave}" ${ativo ? 'checked' : ''}
-                            style="opacity:0;width:0;height:0;position:absolute">
-                        <span id="cfg-toggle-${d.chave}"
-                            style="position:absolute;top:0;left:0;right:0;bottom:0;border-radius:22px;
-                                   transition:background .2s;background:${corBg};pointer-events:none"></span>
-                    </div>
+        fLigas.innerHTML = `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+            Alterações aplicadas no próximo ciclo de coleta (sem restart).</div>` +
+            (byGroup.ligas || []).map(d => _toggleHtml(d)).join('');
+
+        fFrontend.innerHTML = `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+            Define os valores padrão que são carregados quando o usuário abre a aplicação.</div>` +
+            (byGroup.frontend || []).map(d => {
+                const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+                if (d.tipo === 'boolean') return _toggleHtml(d);
+                if (d.chave === 'default_tipo_mercado') {
+                    const opts = TIPO_OPTS.map(o => `<option value="${o}"${d.valor===o?' selected':''}>${o}</option>`).join('');
+                    return `<div style="margin-bottom:12px">
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                        <select id="cfg-${d.chave}" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none">${opts}</select>
+                    </div>`;
+                }
+                const optsMap = {
+                    default_horas_historico:  [1,2,3,6,12,24],
+                    default_dias_analise:     [1,3,7,14,30],
+                    default_min_amostras:     [3,5,10,20,50],
+                    default_freq_min:         [0,50,60,70,80],
+                    default_janela_recente:   [10,20,30,50],
+                };
+                if (optsMap[d.chave]) {
+                    const opts = optsMap[d.chave].map(o => `<option value="${o}"${parseInt(d.valor)===o?' selected':''}>${o}${d.chave==='default_horas_historico'?'H':d.chave==='default_dias_analise'?'D':d.chave==='default_freq_min'&&o>0?'%':d.chave==='default_janela_recente'?'J':''}</option>`).join('');
+                    return `<div style="margin-bottom:12px">
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                        <select id="cfg-${d.chave}" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none">${opts}</select>
+                    </div>`;
+                }
+                return `<div style="margin-bottom:12px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                    <input type="number" id="cfg-${d.chave}" value="${d.valor}"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                 </div>`;
             }).join('');
 
+        fSecoes.innerHTML = `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+            Seções desabilitadas não aparecem na aba Análise & Sugestões para nenhum usuário.</div>` +
+            (byGroup.secoes || []).map(d => _toggleHtml(d)).join('');
+
+        fSistema.innerHTML = (byGroup.sistema || []).map(d => {
+            const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+            return `<div style="margin-bottom:14px">
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="0"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                <div style="font-size:10px;color:#334155;margin-top:4px">0 = nunca expirar · MASTER nunca expira</div>
+            </div>`;
+        }).join('');
+
     } catch(e) {
-        fColeta.innerHTML = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fLigas.innerHTML  = fColeta.innerHTML;
+        const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = err;
     }
 }
 
@@ -4561,10 +4924,12 @@ async function salvarConfigSistema() {
 
     const payload = {};
     document.querySelectorAll('#modal-config-sistema [id^="cfg-"]').forEach(el => {
+        if (el.id.startsWith('cfg-tab') || el.id.startsWith('cfg-toggle') || el.id.startsWith('cfg-msg') || el.id.startsWith('cfg-salvar')) return;
+        const chave = el.id.replace(/^cfg-/, '');
+        if (el.tagName === 'SELECT' && el.value) { payload[chave] = el.value; return; }
         if (el.tagName !== 'INPUT') return;
-        const chave = el.id.replace('cfg-', '');
         if (el.type === 'checkbox') payload[chave] = String(el.checked);
-        else if (el.type === 'number' && el.value !== '') payload[chave] = el.value;
+        else if ((el.type === 'number' || el.type === 'text') && el.value !== '') payload[chave] = el.value;
     });
 
     try {
@@ -4578,10 +4943,12 @@ async function salvarConfigSistema() {
         if (data.success) {
             msg.style.background = '#0f4c20';
             msg.style.color = '#4ade80';
-            msg.textContent = '✅ Configurações salvas! Aplicadas no próximo ciclo de coleta.';
+            msg.textContent = '✅ Configurações salvas! Coleta aplicada imediatamente; padrões de tela e sessão aplicados no próximo acesso.';
             // Atualiza menu de ligas imediatamente
             await carregarConfigLigas();
             renderLigas();
+            // Aplica visibilidade de seções imediatamente
+            await _aplicarConfigFrontend();
         } else {
             msg.style.background = '#4c0f0f';
             msg.style.color = '#f87171';
@@ -4659,6 +5026,20 @@ async function _carregarAtivos() {
 function _pingSession() {
     const u = _getUser();
     if (!u) return;
+
+    // Verifica timeout de sessão (MASTER nunca expira)
+    if (u.TipoUsuario !== 'master') {
+        const timeoutMin = S._sessionTimeoutMin ?? 180;
+        if (timeoutMin > 0) {
+            const loginTime = parseInt(localStorage.getItem('loginTime') || '0');
+            if (loginTime && Date.now() - loginTime > timeoutMin * 60 * 1000) {
+                alert(`⏱️ Sua sessão expirou após ${timeoutMin} minuto(s). Faça login novamente.`);
+                fazerLogout(true);
+                return;
+            }
+        }
+    }
+
     fetch('/api/usuarios/ping', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4837,7 +5218,7 @@ function _usrMsg(txt, ok) {
 document.addEventListener('DOMContentLoaded', () => {
     _initUserMenu();
     _faInit();
-    carregarConfigLigas().then(() => carregarTudo());
+    carregarConfigLigas().then(() => { _faInit(); carregarTudo(); });
     conectarWS();
     setInterval(carregarTudo, 120000);
 
@@ -5017,14 +5398,24 @@ function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
     if (MKT[chartKey]) { MKT[chartKey].destroy(); MKT[chartKey] = null; }
     if (!top.length) { canvas.parentElement.innerHTML = '<div style="color:#334155;padding:24px;text-align:center">Sem dados para os filtros selecionados</div>'; return; }
 
-    // Recria canvas
-    canvas.parentElement.innerHTML = `<canvas id="${prefix}-${chartKey}"></canvas>`;
+    // Recria canvas com altura dinâmica para não truncar labels
+    const canvasHeight = Math.max(300, top.length * 28);
+    canvas.parentElement.innerHTML = `<canvas id="${prefix}-${chartKey}" height="${canvasHeight}"></canvas>`;
     const ctx = document.getElementById(`${prefix}-${chartKey}`).getContext('2d');
+
+    // Quebra labels longos em duas linhas para o Chart.js não truncar
+    const wrapLabel = (str, maxLen = 34) => {
+        if (str.length <= maxLen) return str;
+        const mid = str.indexOf(' → ');
+        if (mid > 0) return [str.slice(0, mid), '→ ' + str.slice(mid + 3)];
+        const cut = str.lastIndexOf(' ', maxLen);
+        return [str.slice(0, cut > 0 ? cut : maxLen), str.slice(cut > 0 ? cut + 1 : maxLen)];
+    };
 
     MKT[chartKey] = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: top.map(r => r.label.length > 40 ? r.label.slice(0,40)+'…' : r.label),
+            labels: top.map(r => wrapLabel(r.label)),
             datasets: [{
                 label: '% de Jogos',
                 data: top.map(r => r.pct),
@@ -5036,10 +5427,12 @@ function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
         options: {
             indexAxis: 'y',
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
+                        title: ctxArr => top[ctxArr[0].dataIndex].label,
                         label: ctx => {
                             const r = top[ctx.dataIndex];
                             return ` ${r.pct}% | odd ${r.odd} | VE: ${r.ve}`;
@@ -5049,7 +5442,7 @@ function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
             },
             scales: {
                 x: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e293b' }, max: 100 },
-                y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#0f172a' } }
+                y: { ticks: { color: '#94a3b8', font: { size: 9 }, autoSkip: false }, grid: { color: '#0f172a' } }
             }
         }
     });

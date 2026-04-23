@@ -968,6 +968,7 @@
                     ...data.user,
                     TipoUsuario: data.user.TipoUsuario || 'user',
                 }));
+                localStorage.setItem('loginTime', String(Date.now()));
                 window.location.href = '/radarx.html';
             } else {
                 msgEl.textContent    = data.message || 'Credenciais inválidas';
