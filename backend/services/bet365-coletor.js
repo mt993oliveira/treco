@@ -696,6 +696,10 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _extrairDados(pg) {
+        // Recarrega config do banco para garantir que mudanças feitas durante o ciclo
+        // (ex: desativar uma liga pelo painel) sejam respeitadas imediatamente
+        await this._loadConfig();
+
         // Lê as ligas disponíveis na aba atual
         const ligas = await pg.evaluate(() =>
             [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].map((el, idx) => {
