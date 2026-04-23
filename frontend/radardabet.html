@@ -75,10 +75,7 @@
         .tabela-hist td.c-verm:hover { outline: 1px solid rgba(255,255,255,.25); cursor: default; }
 
         /* Seleção de linha/coluna */
-        .tabela-hist th.col-sel { background: #1e3a5f !important; color: #60a5fa !important; cursor: pointer; }
-        .tabela-hist td.col-sel { outline: 2px solid #3b82f680 !important; }
-        .tabela-hist tr.row-sel td { outline: 2px solid #a78bfa80 !important; }
-        .tabela-hist td.td-l.row-sel-head { background: #1e1b4b !important; color: #a78bfa !important; cursor: pointer; }
+        /* Cores col-sel/row-sel definidas dinamicamente por aplicarCoresGrid() */
         /* Seleção de resultado / clube */
         .tabela-hist td.cell-match-score { outline: 2px solid #fbbf24 !important; background: #422006 !important; }
         .tabela-hist td.cell-match-club  { outline: 2px solid #1fcc59 !important; background: #052e16 !important; }
@@ -1186,6 +1183,44 @@
                     </div>
                 </div>
             </div>
+            <!-- Destaque Coluna -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
+                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Destaque de Coluna (clique no :MM)</div>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Fundo</span>
+                        <input id="gc-selColBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Texto</span>
+                        <input id="gc-selColTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Borda</span>
+                        <input id="gc-selColBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div id="prev-sel-col" style="border-radius:4px;padding:4px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">:05</div>
+                </div>
+            </div>
+            <!-- Destaque Linha -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
+                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Destaque de Linha (clique no horário)</div>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Fundo</span>
+                        <input id="gc-selRowBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Texto</span>
+                        <input id="gc-selRowTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span style="font-size:9px;color:#475569">Borda</span>
+                        <input id="gc-selRowBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                    </div>
+                    <div id="prev-sel-row" style="border-radius:4px;padding:4px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">14h</div>
+                </div>
+            </div>
             <!-- Placar HT -->
             <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
                 <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Placar HT (intervalo)</div>
@@ -1531,6 +1566,8 @@ const GRID_CORES_PADRAO = {
     oddMed:     '#fbbf24',   // odd 2.00–3.00 — médio
     oddAzarao:  '#f87171',   // odd > 3.00 — azarão
     htTxt:      '#64748b',   // placar HT (cinza por padrão)
+    selColBg:   '#1e3a5f', selColTxt: '#60a5fa', selColBrd: '#3b82f6', // destaque coluna
+    selRowBg:   '#1e1b4b', selRowTxt: '#a78bfa', selRowBrd: '#a78bfa', // destaque linha
 };
 function carregarCoresGrid() {
     try { return Object.assign({}, GRID_CORES_PADRAO, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
@@ -1543,7 +1580,11 @@ function aplicarCoresGrid(c) {
         `:root { --ht-txt: ${c.htTxt}; }\n` +
         `.c-verde  { background: ${c.verdeBg}  !important; color: ${c.verdeTxt}  !important; }\n` +
         `.c-verm   { background: ${c.vermBg}   !important; color: ${c.vermTxt}   !important; }\n` +
-        `.c-futuro { background: ${c.futuroBg} !important; color: ${c.futuroTxt} !important; border: 1px dashed ${c.futuroBrd} !important; }`;
+        `.c-futuro { background: ${c.futuroBg} !important; color: ${c.futuroTxt} !important; border: 1px dashed ${c.futuroBrd} !important; }\n` +
+        `.tabela-hist th.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; cursor: pointer; }\n` +
+        `.tabela-hist td.col-sel { outline: 2px solid ${c.selColBrd}80 !important; }\n` +
+        `.tabela-hist tr.row-sel td { outline: 2px solid ${c.selRowBrd}80 !important; }\n` +
+        `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; cursor: pointer; }`;
 }
 // Aplica cores salvas imediatamente (antes de qualquer render)
 aplicarCoresGrid(carregarCoresGrid());
@@ -3538,6 +3579,10 @@ function _atualizarPreviewCores(c) {
     if (poa) poa.style.color = c.oddAzarao;
     const pht = document.getElementById('prev-ht-txt');
     if (pht) pht.style.color = c.htTxt;
+    const psc = document.getElementById('prev-sel-col');
+    if (psc) { psc.style.background = c.selColBg; psc.style.color = c.selColTxt; psc.style.outline = `2px solid ${c.selColBrd}80`; }
+    const psr = document.getElementById('prev-sel-row');
+    if (psr) { psr.style.background = c.selRowBg; psr.style.color = c.selRowTxt; psr.style.outline = `2px solid ${c.selRowBrd}80`; }
     document.documentElement.style.setProperty('--ht-txt', c.htTxt);
 }
 
