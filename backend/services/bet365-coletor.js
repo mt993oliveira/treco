@@ -971,6 +971,33 @@ class Bet365Coletor {
                         oddsOk++;
                     }
                 }
+                // ── Salva mercados futuros em bet365_resultados_mercados (para 🕐 Próximos Jogos) ──
+                if (startDt && startDt > new Date()) {
+                    for (const mkt of ev.mercados) {
+                        for (const sel of (mkt.selecoes || [])) {
+                            if (!mkt.nome || !sel.nome || !sel.odd || sel.odd <= 0) continue;
+                            const rmId = this._gerarMercadoId(ev.eventoId, `resultado|${mkt.nome}|${sel.nome}`);
+                            await pool.request()
+                                .input('id',       sql.BigInt,        rmId)
+                                .input('eventoId', sql.BigInt,        ev.eventoId)
+                                .input('liga',     sql.NVarChar(200), ev.liga)
+                                .input('timeCasa', sql.NVarChar(100), ev.timeCasa)
+                                .input('timeFora', sql.NVarChar(100), ev.timeFora)
+                                .input('dataPart', sql.DateTime2,     startDt)
+                                .input('mercado',  sql.NVarChar(200), mkt.nome)
+                                .input('selecao',  sql.NVarChar(200), sel.nome)
+                                .input('oddPaga',  sql.Decimal(10,2), sel.odd)
+                                .query(`
+                                    MERGE bet365_resultados_mercados AS t
+                                    USING (SELECT @id AS id) AS s ON t.id = s.id
+                                    WHEN MATCHED THEN UPDATE SET t.odd_paga=@oddPaga, t.data_partida=@dataPart
+                                    WHEN NOT MATCHED THEN INSERT
+                                        (id, evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga)
+                                    VALUES (@id, @eventoId, @liga, @timeCasa, @timeFora, @dataPart, @mercado, @selecao, @oddPaga);
+                                `);
+                        }
+                    }
+                }
             } catch(e) {
                 console.error(`   ❌ Erro salvando ${ev.timeCasa} x ${ev.timeFora}: ${e.message}`);
             }
@@ -1057,6 +1084,7 @@ class Bet365Coletor {
                         .query(`
                             MERGE bet365_resultados_mercados AS t
                             USING (SELECT @id AS id) AS s ON t.id = s.id
+                            WHEN MATCHED THEN UPDATE SET t.odd_paga=@oddPaga, t.data_partida=@dataPart
                             WHEN NOT MATCHED THEN INSERT
                                 (id, evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga)
                             VALUES (@id, @eventoId, @liga, @timeCasa, @timeFora, @dataPart, @mercado, @selecao, @oddPaga);
