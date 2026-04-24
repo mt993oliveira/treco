@@ -1358,6 +1358,9 @@ router.get('/analise/resumo', async (req, res) => {
 // ============================================================
 
 const CONFIG_DEFAULTS = [
+    // ── Próximos jogos ──
+    { chave:'coletar_proximos_jogos',       valor:'true',  tipo:'boolean', grupo:'coleta', descricao:'Habilitar coleta de próximos jogos agendados' },
+    { chave:'max_horarios_proximos',        valor:'4',     tipo:'number',  grupo:'coleta', descricao:'Máximo de horários futuros a coletar por liga (0 = desativar)' },
     // ── Ciclo de coleta ──
     { chave:'intervalo_coleta_seg',         valor:'30',    tipo:'number',  grupo:'coleta', descricao:'Intervalo entre ciclos de coleta (segundos)' },
     // ── Delays de navegação ──
@@ -1368,8 +1371,6 @@ const CONFIG_DEFAULTS = [
     { chave:'delay_expandir_mercados_ms',   valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay após expandir mercados internos (ms)' },
     { chave:'delay_volta_proximos_ms',      valor:'2000',  tipo:'number',  grupo:'coleta', descricao:'Delay ao voltar para Próximos Jogos (ms)' },
     { chave:'delay_entre_horarios_ms',      valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques de horário (ms)' },
-    { chave:'max_horarios_proximos',        valor:'4',     tipo:'number',  grupo:'coleta', descricao:'Máximo de horários futuros a coletar por liga (0 = desativar)' },
-    { chave:'coletar_proximos_jogos',       valor:'true',  tipo:'boolean', grupo:'coleta', descricao:'Habilitar coleta de próximos jogos agendados' },
     { chave:'delay_aguarda_mercado_ms',     valor:'500',   tipo:'number',  grupo:'coleta', descricao:'Delay de polling ao aguardar mercados (ms)' },
     // ── Timeouts ──
     { chave:'timeout_goto_ms',              valor:'60000', tipo:'number',  grupo:'coleta', descricao:'Timeout ao navegar para a página inicial (ms)' },
