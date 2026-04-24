@@ -89,9 +89,8 @@ function normalizarNomeSelecao(sel) {
     // "Over X.5" → "Mais de X.5" / "Under X.5" → "Menos de X.5"
     const m1 = low.match(/^over (\d+\.\d)$/);  if (m1) return `Mais de ${m1[1]}`;
     const m2 = low.match(/^under (\d+\.\d)$/); if (m2) return `Menos de ${m2[1]}`;
-    // "Team - N Goal(s)" → "Team - N Gol(s)"
-    const m3 = sel.match(/^(.+) - (\d+) Goals?$/i);
-    if (m3) return `${m3[1]} - ${m3[2]} ${parseInt(m3[2])===1?'Gol':'Gols'}`;
+    // "Team - N Goal(s)" / "Team - 3+ Goals" → substituir Goals→Gols no final
+    if (/\bGoals?\s*$/i.test(sel)) return sel.replace(/\bGoals\b/gi, 'Gols').replace(/\bGoal\b/gi, 'Gol');
     return sel;
 }
 
@@ -312,8 +311,7 @@ class Bet365Coletor {
             `UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE selecao='Any Other Score'`,
             // ── Team Goals ──
             `UPDATE bet365_resultados_mercados SET mercado='Gols por Time' WHERE mercado='Team Goals'`,
-            `UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,' Goals',' Gols') WHERE mercado='Gols por Time' AND selecao LIKE '% Goals'`,
-            `UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,' Goal',' Gol') WHERE mercado='Gols por Time' AND selecao LIKE '% Goal'`,
+            `UPDATE bet365_resultados_mercados SET selecao=REPLACE(REPLACE(selecao,' Goals',' Gols'),' Goal',' Gol') WHERE mercado='Gols por Time' AND (selecao LIKE '% Goals' OR selecao LIKE '% Goal' OR selecao LIKE '%+ Goals' OR selecao LIKE '%+ Goal')`,
         ];
         for (const mig of migracoes) {
             await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));

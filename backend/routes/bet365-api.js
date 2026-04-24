@@ -1498,8 +1498,7 @@ router.post('/admin/normalizar-dados', async (req, res) => {
             [`UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE mercado='Resultado Correto - Intervalo' AND selecao IN ('Any Other Score','Any Unquoted')`, 'selecao Qualquer Outro'],
             // Team Goals
             [`UPDATE bet365_resultados_mercados SET mercado='Gols por Time' WHERE mercado='Team Goals'`, 'mercado Gols por Time'],
-            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,' Goals',' Gols') WHERE mercado='Gols por Time' AND selecao LIKE '% Goals'`, 'selecao Goals→Gols'],
-            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,' Goal',' Gol') WHERE mercado='Gols por Time' AND selecao LIKE '% Goal'`, 'selecao Goal→Gol'],
+            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(REPLACE(selecao,' Goals',' Gols'),' Goal',' Gol') WHERE mercado='Gols por Time' AND (selecao LIKE '% Goals' OR selecao LIKE '% Goal' OR selecao LIKE '%+ Goals' OR selecao LIKE '%+ Goal')`, 'selecao Goals/Goal→Gols/Gol'],
             // Over/Under como nomes de seleção
             [`UPDATE bet365_resultados_mercados SET selecao='Mais de 0.5' WHERE selecao='Over 0.5'`, 'selecao Over 0.5'],
             [`UPDATE bet365_resultados_mercados SET selecao='Mais de 1.5' WHERE selecao='Over 1.5'`, 'selecao Over 1.5'],
