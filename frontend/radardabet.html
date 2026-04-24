@@ -865,6 +865,8 @@
             <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
             <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
             <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
+            <button class="acao-btn" id="btn-exibir-clubes" onclick="S.showNomes=!S.showNomes;document.getElementById('btn-exibir-clubes').classList.toggle('ativo',S.showNomes);renderTabela()" title="Mostrar nomes dos clubes na grade">🏷️ Exibir Clubes</button>
+            <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds</button>
         </div>
         <div style="font-size:10px;color:#475569" id="tabela-info">—</div>
     </div>
@@ -2404,6 +2406,11 @@ const GRUPOS_LEGENDA = [
 const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
 
 function renderFiltros() {
+    // Sincroniza estado ativo dos botões do header
+    const _b = id => document.getElementById(id);
+    if (_b('btn-exibir-clubes')) _b('btn-exibir-clubes').classList.toggle('ativo', !!S.showNomes);
+    if (_b('btn-exibir-odds'))   _b('btn-exibir-odds').classList.toggle('ativo',   !!S.showOdds);
+
     const c = document.getElementById('filtros-row');
 
     // Remove apenas o conteúdo dinâmico anterior (preserva o período estático)
@@ -2423,12 +2430,6 @@ function renderFiltros() {
         <button class="acao-btn" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
         <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking</button>
         <button class="acao-btn" onclick="abrirModalOdds()">📊 Odds</button>
-        <button class="acao-btn${S.showNomes ? ' ativo' : ''}"
-            onclick="S.showNomes=!S.showNomes;renderFiltros();renderTabela()"
-            title="Mostrar nomes dos clubes">🏷️ Clubes</button>
-        <button class="acao-btn${S.showOdds ? ' ativo' : ''}"
-            onclick="S.showOdds=!S.showOdds;renderFiltros();renderTabela()"
-            title="Mostrar odds">💹 Odds</button>
     `;
     c.appendChild(ctrl);
 
