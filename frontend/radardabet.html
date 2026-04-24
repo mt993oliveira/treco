@@ -4943,8 +4943,9 @@ async function _loadConfigSistema() {
         data.data.forEach(d => { (byGroup[d.grupo] = byGroup[d.grupo] || []).push(d); });
 
         fColeta.innerHTML = (byGroup.coleta || []).map(d => {
+            if (d.tipo === 'boolean') return _toggleHtml(d);
             const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
-            const min   = d.chave === 'intervalo_coleta_seg' ? 10 : 100;
+            const min   = d.chave === 'intervalo_coleta_seg' ? 10 : 0;
             return `
             <div style="margin-bottom:14px">
                 <label style="display:block;font-size:10px;font-weight:700;color:#475569;
