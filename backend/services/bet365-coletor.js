@@ -1012,7 +1012,8 @@ class Bet365Coletor {
                 let dataPart = null;
                 let oddCasa = 0, oddEmpate = 0, oddFora = 0;
 
-                const evDb = await pool.request()
+                // Busca 1: janela recente (jogo coletado próximo do horário real)
+                let evDb = await pool.request()
                     .input('liga2',     sql.NVarChar(200), res.liga)
                     .input('timeCasa2', sql.NVarChar(100), res.timeCasa)
                     .input('timeFora2', sql.NVarChar(100), res.timeFora)
@@ -1022,10 +1023,26 @@ class Bet365Coletor {
                         WHERE league_name = @liga2
                           AND time_casa   = @timeCasa2
                           AND time_fora   = @timeFora2
-                          -- Bet365 armazena UTC+1: janela de -3h a +65min em relação ao UTC real
-                          AND start_time_datetime BETWEEN DATEADD(HOUR,-3,GETUTCDATE()) AND DATEADD(MINUTE,65,GETUTCDATE())
+                          -- janela ampliada de -6h a +65min (cobre atrasos maiores na coleta)
+                          AND start_time_datetime BETWEEN DATEADD(HOUR,-6,GETUTCDATE()) AND DATEADD(MINUTE,65,GETUTCDATE())
                         ORDER BY start_time_datetime DESC
                     `);
+                // Busca 2 (fallback): sem filtro de horário — pega o evento mais recente do dia
+                if (evDb.recordset.length === 0) {
+                    evDb = await pool.request()
+                        .input('liga2b',     sql.NVarChar(200), res.liga)
+                        .input('timeCasa2b', sql.NVarChar(100), res.timeCasa)
+                        .input('timeFora2b', sql.NVarChar(100), res.timeFora)
+                        .query(`
+                            SELECT TOP 1 id, start_time_datetime, odd_casa, odd_empate, odd_fora
+                            FROM bet365_eventos
+                            WHERE league_name = @liga2b
+                              AND time_casa   = @timeCasa2b
+                              AND time_fora   = @timeFora2b
+                              AND start_time_datetime >= DATEADD(HOUR,-12,GETUTCDATE())
+                            ORDER BY start_time_datetime DESC
+                        `);
+                }
 
                 // eventoIdFixo: quando encontramos o evento, usamos o ID dele diretamente.
                 // Isso garante que bet365_historico.evento_id = bet365_eventos.id,
