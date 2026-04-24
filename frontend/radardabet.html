@@ -864,6 +864,7 @@
         <div style="display:flex;gap:7px">
             <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
             <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
+            <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
         </div>
         <div style="font-size:10px;color:#475569" id="tabela-info">—</div>
     </div>
@@ -1611,6 +1612,7 @@ const S = {
     view:          'historico',
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
+    showProximos:  false,   // exibe próximos jogos agendados na grade
     selCols:       new Set(),  // colunas selecionadas (índices)
     selRows:       new Set(),  // linhas selecionadas (índices de hora)
     selScore:      null,       // score selecionado para destaque
@@ -1854,7 +1856,7 @@ async function carregarHistorico() {
     dot.className = 'sdot idle';
 
     try {
-        const r = await fetch(`/api/bet365/historico-mercados?horas=${S.horas}`);
+        const r = await fetch(`/api/bet365/historico-mercados?horas=${S.horas}${S.showProximos ? '&incluirFuturos=true' : ''}`);
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Erro');
 
@@ -2427,6 +2429,9 @@ function renderFiltros() {
         <button class="acao-btn${S.showOdds ? ' ativo' : ''}"
             onclick="S.showOdds=!S.showOdds;renderFiltros();renderTabela()"
             title="Mostrar odds">💹 Odds</button>
+        <button class="acao-btn${S.showProximos ? ' ativo' : ''}"
+            onclick="toggleProximosJogos()"
+            title="Mostrar próximos jogos agendados na grade">🕐 Próximos</button>
     `;
     c.appendChild(ctrl);
 
@@ -3393,6 +3398,14 @@ function hideTT()  { ttEl.style.display = 'none'; }
 // ============================================================
 // RANKING TIMES
 // ============================================================
+function toggleProximosJogos() {
+    S.showProximos = !S.showProximos;
+    const btn = document.getElementById('btn-proximos-jogos');
+    if (btn) btn.classList.toggle('ativo', S.showProximos);
+    carregarHistorico();
+    renderFiltros();
+}
+
 function abrirModalTimes() {
     document.getElementById('modal-times').classList.add('aberto');
     renderRankTimes('casa');
@@ -4852,6 +4865,7 @@ const _CFG_LABELS = {
     delay_volta_proximos_ms:    'Delay ao voltar para Próximos Jogos (ms)',
     delay_entre_horarios_ms:    'Delay entre cliques de horário (ms)',
     max_horarios_proximos:      'Máx. horários futuros por liga (0 = desativar)',
+    coletar_proximos_jogos:     'Coletar próximos jogos agendados',
     delay_aguarda_mercado_ms:   'Delay de polling ao aguardar mercados (ms)',
     timeout_goto_ms:            'Timeout ao navegar para a página inicial (ms)',
     delay_initial_load_ms:      'Delay após carregar a página inicial (ms)',

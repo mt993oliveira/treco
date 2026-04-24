@@ -764,8 +764,9 @@ router.post('/limpar-ligas-descartadas', async (req, res) => {
  */
 router.get('/historico-mercados', async (req, res) => {
     try {
-        const { liga, horas = 24 } = req.query;
+        const { liga, horas = 24, incluirFuturos = 'false' } = req.query;
         const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 720);
+        const comFuturos = incluirFuturos === 'true';
         const pool = await getDbPool();
 
         const request = pool.request();
@@ -776,7 +777,7 @@ router.get('/historico-mercados', async (req, res) => {
                    mercado, selecao, CAST(odd_paga AS FLOAT) AS odd_paga
             FROM bet365_resultados_mercados
             WHERE data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
-              AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
+              AND data_partida <= DATEADD(HOUR, ${comFuturos ? 24 : 2}, GETUTCDATE())
         `;
 
         if (liga && liga !== 'all') {
@@ -1368,6 +1369,7 @@ const CONFIG_DEFAULTS = [
     { chave:'delay_volta_proximos_ms',      valor:'2000',  tipo:'number',  grupo:'coleta', descricao:'Delay ao voltar para Próximos Jogos (ms)' },
     { chave:'delay_entre_horarios_ms',      valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques de horário (ms)' },
     { chave:'max_horarios_proximos',        valor:'4',     tipo:'number',  grupo:'coleta', descricao:'Máximo de horários futuros a coletar por liga (0 = desativar)' },
+    { chave:'coletar_proximos_jogos',       valor:'true',  tipo:'boolean', grupo:'coleta', descricao:'Habilitar coleta de próximos jogos agendados' },
     { chave:'delay_aguarda_mercado_ms',     valor:'500',   tipo:'number',  grupo:'coleta', descricao:'Delay de polling ao aguardar mercados (ms)' },
     // ── Timeouts ──
     { chave:'timeout_goto_ms',              valor:'60000', tipo:'number',  grupo:'coleta', descricao:'Timeout ao navegar para a página inicial (ms)' },
