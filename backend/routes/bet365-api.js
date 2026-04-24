@@ -1455,8 +1455,13 @@ router.get('/admin/config', async (req, res) => {
     try {
         const pool = await getDbPool();
         await _ensureConfigTable(pool);
-        const r = await pool.request().query(`SELECT * FROM bet365_config ORDER BY grupo, chave`);
-        res.json({ success: true, data: r.recordset });
+        const r = await pool.request().query(`SELECT * FROM bet365_config`);
+        // Ordena conforme a sequência definida em CONFIG_DEFAULTS
+        const ordemMap = new Map(CONFIG_DEFAULTS.map((d, i) => [d.chave, i]));
+        const sorted = r.recordset.slice().sort((a, b) =>
+            (ordemMap.get(a.chave) ?? 9999) - (ordemMap.get(b.chave) ?? 9999)
+        );
+        res.json({ success: true, data: sorted });
     } catch(e) {
         res.status(500).json({ success: false, error: e.message });
     }
