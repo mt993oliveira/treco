@@ -1450,6 +1450,16 @@ async function carregarConfigLigas() {
         if (cfg.default_janela_recente)  S.fa.nRecente = parseInt(cfg.default_janela_recente) || 20;
         if (cfg.default_so_value_bets)   S.fa.soValueBets = cfg.default_so_value_bets === 'true';
 
+        // Botões padrão da grade
+        if (cfg.default_proximos_jogos !== undefined) S.showProximos = cfg.default_proximos_jogos === 'true';
+        if (cfg.default_exibir_clubes  !== undefined) S.showNomes    = cfg.default_exibir_clubes  === 'true';
+        if (cfg.default_exibir_odds    !== undefined) S.showOdds     = cfg.default_exibir_odds     === 'true';
+        // Sincroniza visual dos botões do header
+        const _sb = id => document.getElementById(id);
+        if (_sb('btn-proximos-jogos'))  _sb('btn-proximos-jogos').classList.toggle('ativo',  S.showProximos);
+        if (_sb('btn-exibir-clubes'))   _sb('btn-exibir-clubes').classList.toggle('ativo',   S.showNomes);
+        if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
+
         // Timeout de sessão (salva para verificação periódica)
         S._sessionTimeoutMin = parseInt(cfg.sessao_timeout_minutos) || 180;
 
@@ -4884,6 +4894,9 @@ const _CFG_LABELS = {
     delay_initial_load_ms:      'Delay após carregar a página inicial (ms)',
     timeout_ligas_ms:           'Timeout aguardando botões de liga (ms)',
     timeout_navegacao_ms:       'Timeout de navegação/reload (ms)',
+    default_proximos_jogos:     '🕐 Próximos Jogos ativado por padrão',
+    default_exibir_clubes:      '🏷️ Exibir Clubes ativado por padrão',
+    default_exibir_odds:        '💹 Exibir Odds ativado por padrão',
     proximos_antes_resultados:  'Coletar próximos jogos ANTES dos resultados',
     liga_world_cup:             'Copa do Mundo',
     liga_euro_cup:              'Euro Cup',

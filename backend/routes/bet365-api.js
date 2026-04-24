@@ -1393,6 +1393,10 @@ const CONFIG_DEFAULTS = [
     { chave:'default_tipo_mercado',         valor:'Todos', tipo:'text',    grupo:'frontend', descricao:'Tipo de mercado padrão (Análise)' },
     { chave:'default_janela_recente',       valor:'20',    tipo:'number',  grupo:'frontend', descricao:'Janela recente padrão (Análise)' },
     { chave:'default_so_value_bets',        valor:'false', tipo:'boolean', grupo:'frontend', descricao:'Apenas value bets por padrão (Análise)' },
+    // ── Botões padrão da grade ──
+    { chave:'default_proximos_jogos',       valor:'false', tipo:'boolean', grupo:'frontend', descricao:'🕐 Próximos Jogos ativado por padrão na grade' },
+    { chave:'default_exibir_clubes',        valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'🏷️ Exibir Clubes ativado por padrão na grade' },
+    { chave:'default_exibir_odds',          valor:'false', tipo:'boolean', grupo:'frontend', descricao:'💹 Exibir Odds ativado por padrão na grade' },
     // ── Sistema ──
     { chave:'sessao_timeout_minutos',       valor:'180',   tipo:'number',  grupo:'sistema',  descricao:'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)' },
     // ── Seções da Análise ──
