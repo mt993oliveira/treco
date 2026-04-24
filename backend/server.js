@@ -140,10 +140,10 @@ function requireAuth(req, res, next) {
 }
 
 // =============================================
-// API BETANO - Dados em tempo real (tabelas betano_*)
+// API BETANO - desativada (projeto atual é somente Bet365)
 // =============================================
-const betanoRoutes = require('./routes/betano-api');
-app.use('/api/betano', betanoRoutes);
+// const betanoRoutes = require('./routes/betano-api');
+// app.use('/api/betano', betanoRoutes);
 
 // =============================================
 // API BET365 - Dados em tempo real (tabelas bet365_*)
@@ -1025,8 +1025,8 @@ global.wsBroadcast = (dados) => {
     });
 };
 
-// Garante colunas extras em betano_eventos ao iniciar o servidor
-async function garantirSchemaEventos() {
+// Garante colunas extras em betano_eventos ao iniciar o servidor (desativado — projeto somente Bet365)
+async function garantirSchemaEventos() { return; // desativado
     try {
         const cfg = getDatabaseConfigFromEnv();
         const pool = await sql.connect({
