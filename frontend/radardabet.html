@@ -447,6 +447,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 📊 Seções
             </button>
+            <button id="cfg-tab-ordem" onclick="_cfgSetTab('ordem')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🔀 Ordem
+            </button>
             <button id="cfg-tab-sistema" onclick="_cfgSetTab('sistema')"
                 style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
@@ -484,6 +489,16 @@
                 Seções desabilitadas não são exibidas na aba Análise & Sugestões (para todos os usuários).
             </div>
             <div id="cfg-secoes-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Ordem de Coleta -->
+        <div id="cfg-section-ordem" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div style="font-size:10px;color:#475569;margin-bottom:12px">
+                Define a sequência em que o coletor processa cada liga a cada ciclo.
+            </div>
+            <div id="cfg-ordem-fields">
                 <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
@@ -4841,7 +4856,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'ordem', 'sistema'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -4869,6 +4884,7 @@ const _CFG_LABELS = {
     delay_initial_load_ms:      'Delay após carregar a página inicial (ms)',
     timeout_ligas_ms:           'Timeout aguardando botões de liga (ms)',
     timeout_navegacao_ms:       'Timeout de navegação/reload (ms)',
+    proximos_antes_resultados:  'Coletar próximos jogos ANTES dos resultados',
     liga_world_cup:             'Copa do Mundo',
     liga_euro_cup:              'Euro Cup',
     liga_premiership:           'Premier League (Premiership)',
@@ -4902,13 +4918,14 @@ async function abrirConfigSistema() {
 }
 
 async function _loadConfigSistema() {
-    const fColeta = document.getElementById('cfg-coleta-fields');
-    const fLigas     = document.getElementById('cfg-ligas-fields');
-    const fFrontend  = document.getElementById('cfg-frontend-fields');
-    const fSecoes    = document.getElementById('cfg-secoes-fields');
-    const fSistema   = document.getElementById('cfg-sistema-fields');
-    const loadHtml   = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = loadHtml;
+    const fColeta  = document.getElementById('cfg-coleta-fields');
+    const fLigas   = document.getElementById('cfg-ligas-fields');
+    const fFrontend= document.getElementById('cfg-frontend-fields');
+    const fSecoes  = document.getElementById('cfg-secoes-fields');
+    const fOrdem   = document.getElementById('cfg-ordem-fields');
+    const fSistema = document.getElementById('cfg-sistema-fields');
+    const loadHtml = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = loadHtml;
 
     // Opções para selects de tipo_mercado
     const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
@@ -4997,6 +5014,10 @@ async function _loadConfigSistema() {
             Seções desabilitadas não aparecem na aba Análise & Sugestões para nenhum usuário.</div>` +
             (byGroup.secoes || []).map(d => _toggleHtml(d)).join('');
 
+        fOrdem.innerHTML = `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+            Controla a sequência de coleta dentro de cada liga a cada ciclo.</div>` +
+            (byGroup.ordem || []).map(d => _toggleHtml(d)).join('');
+
         fSistema.innerHTML = (byGroup.sistema || []).map(d => {
             const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
             return `<div style="margin-bottom:14px">
@@ -5010,7 +5031,7 @@ async function _loadConfigSistema() {
 
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = err;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = err;
     }
 }
 

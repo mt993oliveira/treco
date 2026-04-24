@@ -676,54 +676,17 @@ class Bet365Coletor {
     // COLETA DE UMA LIGA (F5 + extração)
     // ─────────────────────────────────────────────────────────────
 
-    async _coletarLiga(pg, liga) {
-        const eventos    = [];
-        const resultados = [];
-
-        // Resultados — clica "Show More" várias vezes para pegar todos da sessão
-        const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
-        if (temBtnRes) {
-            await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
-            await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
-            // Clica Show More até 10 vezes para garantir cobertura ampla de resultados
-            for (let sm = 0; sm < 10; sm++) {
-                const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
-                if (!temMore) break;
-                await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
-                await this._delay(this._cfgNum('delay_show_more_ms', 800));
+    async _coletarProximos(pg, liga, eventos) {
+        // Garante que estamos na aba da liga (próximos)
+        await pg.evaluate((nomeLiga) => {
+            const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+            for (const tab of tabs) {
+                const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
+                if (txt === nomeLiga) { tab.click(); return; }
             }
-            // Expande mercados ocultos em cada card de resultado (clica "Mostrar Mais" interno)
-            const totalMaisInternos = await pg.evaluate(() => {
-                const btns = [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup .vrr-ShowMoreButton_Link')];
-                btns.forEach(b => b.click());
-                return btns.length;
-            });
-            if (totalMaisInternos > 0) {
-                console.log(`   🔽 [${normalizarNomeLiga(liga.nome)}] Expandindo ${totalMaisInternos} card(s) de resultado...`);
-                await this._delay(this._cfgNum('delay_expandir_mercados_ms', 1500));
-            }
+        }, liga.nome);
+        await this._delay(this._cfgNum('delay_volta_proximos_ms', 2000));
 
-            const res = await this._extrairResultados(normalizarNomeLiga(liga.nome), pg);
-            resultados.push(...res);
-            console.log(`   📋 [${normalizarNomeLiga(liga.nome)}] ${res.length} resultado(s)`);
-
-
-            // Screenshot para validação dos resultados
-            await this._tirarScreenshot(pg, normalizarNomeLiga(liga.nome));
-
-            // Volta para próximos — clica pelo nome para garantir a aba certa
-            await pg.evaluate((nomeLiga) => {
-                const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-                for (const tab of tabs) {
-                    const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
-                    if (txt === nomeLiga) { tab.click(); return; }
-                }
-            }, liga.nome);
-            await this._delay(this._cfgNum('delay_volta_proximos_ms', 2000));
-        }
-
-        // Próximos jogos — aguarda botões de horário aparecerem (até ~10s)
-        // Usa delay próprio (1000ms) para não depender do delay_aguarda_mercado_ms (500ms)
         let numHorarios = 0;
         for (let t = 0; t < 10; t++) {
             numHorarios = await pg.evaluate(() => document.querySelectorAll('.vr-EventTimesNavBarButton').length);
@@ -744,7 +707,6 @@ class Bet365Coletor {
             if (!ok) continue;
             await this._delay(this._cfgNum('delay_entre_horarios_ms', 1500));
 
-            // Aguarda mercados
             let temMkt = false;
             for (let t = 0; t < 16; t++) {
                 temMkt = await pg.evaluate(() => document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length > 0).catch(() => false);
@@ -757,7 +719,7 @@ class Bet365Coletor {
             if (!infoJogo.timeCasa || !infoJogo.timeFora) continue;
 
             const { mercados, countdown } = await this._extrairMercadosDoPagina(pg);
-            const ftMkt    = mercados.find(m => /Fulltime Result|Resultado Final/i.test(m.nome));
+            const ftMkt     = mercados.find(m => /Fulltime Result|Resultado Final/i.test(m.nome));
             const oddCasa   = ftMkt?.selecoes[0]?.odd || 0;
             const oddEmpate = ftMkt?.selecoes[1]?.odd || 0;
             const oddFora   = ftMkt?.selecoes[2]?.odd || 0;
@@ -768,6 +730,51 @@ class Bet365Coletor {
 
             eventos.push({ eventoId, liga: ligaNormal, timeCasa: normalizarNomeTime(infoJogo.timeCasa), timeFora: normalizarNomeTime(infoJogo.timeFora), horario, countdown, oddCasa, oddEmpate, oddFora, mercados });
             console.log(`      ✅ [${ligaNormal}] ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
+        }
+    }
+
+    async _coletarResultados(pg, liga, resultados) {
+        const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
+        if (!temBtnRes) return;
+
+        await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
+        await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
+
+        for (let sm = 0; sm < 10; sm++) {
+            const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
+            if (!temMore) break;
+            await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
+            await this._delay(this._cfgNum('delay_show_more_ms', 800));
+        }
+
+        const totalMaisInternos = await pg.evaluate(() => {
+            const btns = [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup .vrr-ShowMoreButton_Link')];
+            btns.forEach(b => b.click());
+            return btns.length;
+        });
+        if (totalMaisInternos > 0) {
+            console.log(`   🔽 [${normalizarNomeLiga(liga.nome)}] Expandindo ${totalMaisInternos} card(s) de resultado...`);
+            await this._delay(this._cfgNum('delay_expandir_mercados_ms', 1500));
+        }
+
+        const res = await this._extrairResultados(normalizarNomeLiga(liga.nome), pg);
+        resultados.push(...res);
+        console.log(`   📋 [${normalizarNomeLiga(liga.nome)}] ${res.length} resultado(s)`);
+        await this._tirarScreenshot(pg, normalizarNomeLiga(liga.nome));
+    }
+
+    async _coletarLiga(pg, liga) {
+        const eventos    = [];
+        const resultados = [];
+        const proxAntesRes = this._cfgBool('proximos_antes_resultados', false);
+
+        if (proxAntesRes) {
+            console.log(`   🔀 [${liga.nome}] Ordem: próximos → resultados`);
+            await this._coletarProximos(pg, liga, eventos);
+            await this._coletarResultados(pg, liga, resultados);
+        } else {
+            await this._coletarResultados(pg, liga, resultados);
+            await this._coletarProximos(pg, liga, eventos);
         }
 
         return { eventos, resultados };
