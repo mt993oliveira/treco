@@ -89,9 +89,63 @@ function normalizarNomeSelecao(sel) {
     // "Over X.5" → "Mais de X.5" / "Under X.5" → "Menos de X.5"
     const m1 = low.match(/^over (\d+\.\d)$/);  if (m1) return `Mais de ${m1[1]}`;
     const m2 = low.match(/^under (\d+\.\d)$/); if (m2) return `Menos de ${m2[1]}`;
-    // "Team - N Goal(s)" / "Team - 3+ Goals" → substituir Goals→Gols no final
-    if (/\bGoals?\s*$/i.test(sel)) return sel.replace(/\bGoals\b/gi, 'Gols').replace(/\bGoal\b/gi, 'Gol');
+    // "Team - N Goal(s)" / "Team - 3+ Goals" → normalizar time + Goals→Gols
+    if (/\bGoals?\s*$/i.test(sel)) {
+        const norm = sel.replace(/\bGoals\b/gi, 'Gols').replace(/\bGoal\b/gi, 'Gol');
+        const dash = norm.indexOf(' - ');
+        if (dash > 0) return normalizarNomeTime(norm.substring(0, dash)) + norm.substring(dash);
+        return norm;
+    }
     return sel;
+}
+
+// Normaliza nomes de times (inglês → português) — igual ao TEAM_ALIASES do frontend
+const TIME_NORMALIZAR = {
+    'albania':        'Albânia',
+    'australia':      'Austrália',
+    'austria':        'Áustria',
+    'belgium':        'Bélgica',
+    'brazil':         'Brasil',
+    'cameroon':       'Camarões',
+    'canada':         'Canadá',
+    'croatia':        'Croácia',
+    'czechia':        'República Tcheca',
+    'czech republic': 'República Tcheca',
+    'denmark':        'Dinamarca',
+    'ecuador':        'Equador',
+    'england':        'Inglaterra',
+    'france':         'França',
+    'georgia':        'Geórgia',
+    'germany':        'Alemanha',
+    'ghana':          'Gana',
+    'hungary':        'Hungria',
+    'iran':           'Irã',
+    'italy':          'Itália',
+    'japan':          'Japão',
+    'mexico':         'México',
+    'morocco':        'Marrocos',
+    'netherlands':    'Países Baixos',
+    'poland':         'Polônia',
+    'romania':        'Romênia',
+    'scotland':       'Escócia',
+    'senegal':        'Senegal',
+    'serbia':         'Sérvia',
+    'slovakia':       'Eslováquia',
+    'slovenia':       'Eslovênia',
+    'south korea':    'Coreia do Sul',
+    'spain':          'Espanha',
+    'switzerland':    'Suíça',
+    'tunisia':        'Tunísia',
+    'turkey':         'Turquia',
+    'ukraine':        'Ucrânia',
+    'uruguay':        'Uruguai',
+    'usa':            'EUA',
+    'wales':          'País de Gales',
+};
+
+function normalizarNomeTime(nome) {
+    if (!nome) return nome;
+    return TIME_NORMALIZAR[nome.toLowerCase().trim()] || nome;
 }
 
 // Normaliza nomes de liga antes de gerar IDs e salvar no banco.
@@ -312,6 +366,20 @@ class Bet365Coletor {
             // ── Team Goals ──
             `UPDATE bet365_resultados_mercados SET mercado='Gols por Time' WHERE mercado='Team Goals'`,
             `UPDATE bet365_resultados_mercados SET selecao=REPLACE(REPLACE(selecao,' Goals',' Gols'),' Goal',' Gol') WHERE mercado='Gols por Time' AND (selecao LIKE '% Goals' OR selecao LIKE '% Goal' OR selecao LIKE '%+ Goals' OR selecao LIKE '%+ Goal')`,
+            // ── Nomes de times EN→PT (time_casa / time_fora) ──
+            ...Object.entries(TIME_NORMALIZAR).map(([en,pt]) => {
+                const cap = en.charAt(0).toUpperCase()+en.slice(1);
+                return `UPDATE bet365_resultados_mercados SET time_casa='${pt}' WHERE time_casa IN ('${cap}','${en}')`;
+            }),
+            ...Object.entries(TIME_NORMALIZAR).map(([en,pt]) => {
+                const cap = en.charAt(0).toUpperCase()+en.slice(1);
+                return `UPDATE bet365_resultados_mercados SET time_fora='${pt}' WHERE time_fora IN ('${cap}','${en}')`;
+            }),
+            // ── Nomes de times na seleção do mercado Gols por Time ──
+            ...Object.entries(TIME_NORMALIZAR).map(([en,pt]) => {
+                const cap = en.charAt(0).toUpperCase()+en.slice(1);
+                return `UPDATE bet365_resultados_mercados SET selecao=STUFF(selecao,1,${cap.length},'${pt}') WHERE mercado='Gols por Time' AND (selecao LIKE '${cap} - %' OR selecao LIKE '${en} - %')`;
+            }),
         ];
         for (const mig of migracoes) {
             await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));
@@ -594,6 +662,8 @@ class Bet365Coletor {
         if (!Array.isArray(resultados)) return [];
         return resultados.map(r => ({
             ...r,
+            timeCasa: normalizarNomeTime(r.timeCasa),
+            timeFora: normalizarNomeTime(r.timeFora),
             mercados: (r.mercados || []).map(m => ({
                 ...m,
                 mercado: normalizarNomeMercado(m.mercado),
@@ -696,7 +766,7 @@ class Bet365Coletor {
             const ligaNormal = normalizarNomeLiga(liga.nome);
             const eventoId   = this._gerarId(ligaNormal, infoJogo.timeCasa, infoJogo.timeFora, horario);
 
-            eventos.push({ eventoId, liga: ligaNormal, timeCasa: infoJogo.timeCasa, timeFora: infoJogo.timeFora, horario, countdown, oddCasa, oddEmpate, oddFora, mercados });
+            eventos.push({ eventoId, liga: ligaNormal, timeCasa: normalizarNomeTime(infoJogo.timeCasa), timeFora: normalizarNomeTime(infoJogo.timeFora), horario, countdown, oddCasa, oddEmpate, oddFora, mercados });
             console.log(`      ✅ [${ligaNormal}] ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
         }
 

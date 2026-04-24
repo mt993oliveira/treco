@@ -1472,6 +1472,19 @@ router.post('/admin/config', async (req, res) => {
     }
 });
 
+const TIMES_EN_PT = {
+    'Albania':'Albânia','Australia':'Austrália','Austria':'Áustria','Belgium':'Bélgica',
+    'Brazil':'Brasil','Cameroon':'Camarões','Canada':'Canadá','Croatia':'Croácia',
+    'Czechia':'República Tcheca','Czech Republic':'República Tcheca','Denmark':'Dinamarca',
+    'Ecuador':'Equador','England':'Inglaterra','France':'França','Georgia':'Geórgia',
+    'Germany':'Alemanha','Ghana':'Gana','Hungary':'Hungria','Iran':'Irã','Italy':'Itália',
+    'Japan':'Japão','Mexico':'México','Morocco':'Marrocos','Netherlands':'Países Baixos',
+    'Poland':'Polônia','Romania':'Romênia','Scotland':'Escócia','Senegal':'Senegal',
+    'Serbia':'Sérvia','Slovakia':'Eslováquia','Slovenia':'Eslovênia','South Korea':'Coreia do Sul',
+    'Spain':'Espanha','Switzerland':'Suíça','Tunisia':'Tunísia','Turkey':'Turquia',
+    'Ukraine':'Ucrânia','Uruguay':'Uruguai','USA':'EUA','Wales':'País de Gales',
+};
+
 /**
  * POST /api/bet365/admin/normalizar-dados
  * Normaliza mercados/times em inglês → português no banco
@@ -1479,6 +1492,11 @@ router.post('/admin/config', async (req, res) => {
 router.post('/admin/normalizar-dados', async (req, res) => {
     try {
         const pool = await getDbPool();
+        const timesUpdates = Object.entries(TIMES_EN_PT).flatMap(([en, pt]) => [
+            [`UPDATE bet365_resultados_mercados SET time_casa='${pt}' WHERE time_casa='${en}'`, `time_casa ${pt}`],
+            [`UPDATE bet365_resultados_mercados SET time_fora='${pt}' WHERE time_fora='${en}'`, `time_fora ${pt}`],
+            [`UPDATE bet365_resultados_mercados SET selecao=STUFF(selecao,1,${en.length},'${pt}') WHERE mercado='Gols por Time' AND selecao LIKE '${en} - %'`, `selecao Gols por Time ${pt}`],
+        ]);
         const updates = [
             // Ligas
             [`UPDATE bet365_resultados_mercados SET liga='World Cup' WHERE liga IN ('Copa do Mundo','World Cup Virtual')`, 'liga World Cup'],
@@ -1511,7 +1529,7 @@ router.post('/admin/normalizar-dados', async (req, res) => {
         ];
         let totalAffected = 0;
         const detalhes = [];
-        for (const [sql_str, label] of updates) {
+        for (const [sql_str, label] of [...updates, ...timesUpdates]) {
             const r = await pool.request().query(sql_str);
             const n = r.rowsAffected?.[0] || 0;
             totalAffected += n;
