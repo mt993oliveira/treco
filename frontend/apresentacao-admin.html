@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#060810">
+<title>Radardabet — Para Administradores</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#060810;color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-text-size-adjust:100%}
+
+.slide{display:none;padding:20px 16px 40px}
+.slide:target{display:block}
+html:not(:has(.slide:target)) #s0{display:block}
+
+.hdr{background:#060810;border-bottom:1px solid #1e293b;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:16px;font-weight:800;color:#1fcc59}
+.ctr{font-size:12px;color:#64748b;font-weight:600}
+.tag{font-size:10px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.22);border-radius:20px;padding:3px 10px}
+.prog-bg{height:4px;background:#1e293b}
+#prog{height:4px;background:#7c3aed;transition:width .3s}
+
+.nav-slide{display:flex;gap:12px;padding:24px 0 20px}
+.btn-v{flex:1;height:54px;border-radius:10px;font-size:17px;font-weight:800;background:#1e293b;color:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.btn-p{flex:1;height:54px;border-radius:10px;font-size:17px;font-weight:800;background:#7c3aed;color:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.btn-ghost{flex:1;height:54px;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:center}
+
+.bloco{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:16px;margin-bottom:10px}
+.emoji{font-size:24px;display:block;margin-bottom:8px}
+.t1{font-size:13px;font-weight:700;margin-bottom:4px}
+.t2{font-size:11px;color:#64748b;line-height:1.55}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lbl{font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.titulo{font-size:26px;font-weight:800;letter-spacing:-.4px;line-height:1.15;margin-bottom:8px}
+.desc{font-size:13px;color:#64748b;line-height:1.65;margin-bottom:16px}
+.pilulas{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.pilula{background:#0f172a;border:1px solid #1e293b;border-radius:7px;padding:7px 11px;font-size:11px;font-weight:600}
+.passo{display:flex;gap:12px;align-items:flex-start;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;margin-bottom:10px}
+.pnum{width:30px;height:30px;min-width:30px;border-radius:50%;background:#7c3aed;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+.pttl{font-size:13px;font-weight:700;margin-bottom:3px}
+.pds{font-size:11px;color:#64748b;line-height:1.55}
+.destaque2{color:#7c3aed}
+.capa-titulo{font-size:36px;font-weight:900;letter-spacing:-1px;line-height:1.05;margin-bottom:10px}
+.badge{display:inline-block;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.25);border-radius:20px;padding:5px 14px;font-size:10px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.cta-grande{font-size:48px;font-weight:900;color:#1fcc59;margin-bottom:8px;animation:flutu 3s ease-in-out infinite}
+@keyframes flutu{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.lista-item{display:flex;align-items:center;gap:9px;padding:9px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:7px;font-size:12px;margin-bottom:7px}
+.aviso{background:#2e1065;border:1px solid #5b21b6;border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px;color:#c4b5fd;line-height:1.6}
+.campo{background:#060810;border:1px solid #1e293b;border-radius:7px;padding:9px 12px;margin-bottom:8px}
+.campo-lbl{font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.campo-val{font-size:12px;color:#94a3b8}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.ok{background:#1fcc59}.warn{background:#fbbf24}
+.log-linha{font-size:10px;color:#64748b;font-family:monospace;padding:4px 0;border-bottom:1px solid #0d1421;line-height:1.4}
+.log-linha:last-child{border-bottom:none}
+.tipo-badge{display:inline-block;border-radius:5px;padding:2px 7px;font-size:9px;font-weight:700;margin-bottom:4px}
+.tipo-free{background:rgba(14,165,233,.15);color:#7dd3fc;border:1px solid rgba(14,165,233,.2)}
+.tipo-pro{background:rgba(31,204,89,.15);color:#4ade80;border:1px solid rgba(31,204,89,.2)}
+.tipo-master{background:rgba(124,58,237,.15);color:#c4b5fd;border:1px solid rgba(124,58,237,.2)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="logo">● Radardabet</div>
+  <span id="ctr">Admin · 7 slides</span>
+  <span class="tag">🛡️ Admin</span>
+</div>
+<div class="prog-bg"><div id="prog" style="width:14.28%"></div></div>
+
+<!-- SLIDE 1 -->
+<div class="slide" id="s0">
+  <div style="text-align:center;padding:24px 0 10px">
+    <div class="badge">🛡️ Painel Administrativo</div>
+    <div class="capa-titulo">Guia do<br><span class="destaque2">Administrador</span></div>
+    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:18px">Tudo que você precisa saber para gerenciar o <b style="color:#1fcc59">Radardabet</b>: usuários, licenças, coletores e diagnóstico.</p>
+    <div class="pilulas" style="justify-content:center">
+      <span class="pilula">👥 Usuários</span><span class="pilula">🔑 Licenças</span><span class="pilula">📡 Coletores</span><span class="pilula">🔍 Diagnóstico</span>
+    </div>
+  </div>
+  <div class="nav-slide">
+    <div class="btn-ghost"></div>
+    <a href="#s1" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 2 -->
+<div class="slide" id="s1">
+  <div class="lbl">Visão Geral</div>
+  <div class="titulo">Gestão Centralizada</div>
+  <div class="desc">Como administrador, você controla todos os aspectos da plataforma a partir de um único painel.</div>
+  <div class="grade">
+    <div class="bloco"><span class="emoji">👥</span><div class="t1">Usuários</div><div class="t2">Crie, edite, ative ou desative contas de clientes.</div></div>
+    <div class="bloco"><span class="emoji">🔑</span><div class="t1">Licenças</div><div class="t2">Defina tipo (Free/Pro/Master) e data de expiração.</div></div>
+    <div class="bloco"><span class="emoji">📡</span><div class="t1">Coletores</div><div class="t2">Monitore o status dos robôs de coleta de dados.</div></div>
+    <div class="bloco"><span class="emoji">🔍</span><div class="t1">Logs</div><div class="t2">Acompanhe eventos do sistema em tempo real.</div></div>
+  </div>
+  <div class="aviso">⚡ O painel Admin fica acessível pelo menu do seu perfil no canto superior direito.</div>
+  <div class="nav-slide">
+    <a href="#s0" class="btn-v">← Voltar</a>
+    <a href="#s2" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 3 -->
+<div class="slide" id="s2">
+  <div class="lbl">Módulo Usuários</div>
+  <div class="titulo">Gerenciar Usuários</div>
+  <div class="desc">Lista completa de todos os usuários com ações rápidas.</div>
+  <div class="lista-item">🔎 <span><b>Busca</b> por nome ou e-mail em tempo real</span></div>
+  <div class="lista-item">✏️ <span><b>Editar</b> dados, senha e tipo de licença</span></div>
+  <div class="lista-item">🚫 <span><b>Desativar</b> conta sem excluir histórico</span></div>
+  <div class="lista-item">🗑️ <span><b>Excluir</b> usuário definitivamente</span></div>
+  <div class="lista-item">📋 <span>Ver data de <b>criação</b> e <b>expiração</b></span></div>
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">EXEMPLO — LISTA DE USUÁRIOS</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b"><div><div style="font-size:12px;font-weight:700">João Silva</div><div style="font-size:10px;color:#64748b">joao@email.com</div></div><span class="tipo-badge tipo-pro">PRO</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b"><div><div style="font-size:12px;font-weight:700">Maria Santos</div><div style="font-size:10px;color:#64748b">maria@email.com</div></div><span class="tipo-badge tipo-free">FREE</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0"><div><div style="font-size:12px;font-weight:700">Carlos Adm</div><div style="font-size:10px;color:#64748b">carlos@email.com</div></div><span class="tipo-badge tipo-master">MASTER</span></div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s1" class="btn-v">← Voltar</a>
+    <a href="#s3" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 4 -->
+<div class="slide" id="s3">
+  <div class="lbl">Criar Conta</div>
+  <div class="titulo">Criar Novo Usuário</div>
+  <div class="desc">Cadastre novos clientes preenchendo os campos abaixo.</div>
+  <div class="campo"><div class="campo-lbl">Nome Completo</div><div class="campo-val">ex: João Pedro Silva</div></div>
+  <div class="campo"><div class="campo-lbl">Nome de Usuário (login)</div><div class="campo-val">ex: joaopedro</div></div>
+  <div class="campo"><div class="campo-lbl">Senha</div><div class="campo-val">Mínimo 6 caracteres</div></div>
+  <div class="campo"><div class="campo-lbl">Tipo de Licença</div><div style="display:flex;gap:8px;margin-top:4px"><span class="tipo-badge tipo-free">FREE</span><span class="tipo-badge tipo-pro">PRO</span><span class="tipo-badge tipo-master">MASTER</span></div></div>
+  <div class="campo"><div class="campo-lbl">Data de Expiração</div><div class="campo-val">ex: 30/06/2025 (opcional)</div></div>
+  <div class="aviso">💡 Após criar, envie o usuário e senha ao cliente. A senha pode ser alterada depois do primeiro acesso.</div>
+  <div class="nav-slide">
+    <a href="#s2" class="btn-v">← Voltar</a>
+    <a href="#s4" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 5 -->
+<div class="slide" id="s4">
+  <div class="lbl">Controle de Acesso</div>
+  <div class="titulo">Licenças &amp; Expiração</div>
+  <div class="desc">Três tipos de acesso com permissões distintas.</div>
+  <div class="bloco"><span class="tipo-badge tipo-free" style="margin-bottom:8px">FREE</span><div class="t1">Acesso Básico</div><div class="t2">Visualiza dados, heatmap e histórico. Sem acesso ao painel admin nem ao diagnóstico.</div></div>
+  <div class="bloco"><span class="tipo-badge tipo-pro" style="margin-bottom:8px">PRO</span><div class="t1">Acesso Completo</div><div class="t2">Todas as features do Free + sugestões IA avançadas, filtros estendidos e exportação.</div></div>
+  <div class="bloco"><span class="tipo-badge tipo-master" style="margin-bottom:8px">MASTER</span><div class="t1">Administrador Total</div><div class="t2">Acesso completo ao painel admin, diagnóstico do sistema, gerenciamento de usuários e coletores.</div></div>
+  <div class="aviso">⏰ Quando a <b>data de expiração</b> é atingida, o acesso é bloqueado automaticamente até renovação.</div>
+  <div class="nav-slide">
+    <a href="#s3" class="btn-v">← Voltar</a>
+    <a href="#s5" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 6 -->
+<div class="slide" id="s5">
+  <div class="lbl">Monitor Master</div>
+  <div class="titulo">Diagnóstico do Sistema</div>
+  <div class="desc">Monitore os coletores de dados e force atualizações manualmente.</div>
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">STATUS DOS COLETORES</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0d1421"><div style="font-size:12px"><span class="status-dot ok"></span>Copa do Mundo</div><div style="font-size:10px;color:#4ade80">Ativo · 2min atrás</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0d1421"><div style="font-size:12px"><span class="status-dot ok"></span>Premier League</div><div style="font-size:10px;color:#4ade80">Ativo · 1min atrás</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0d1421"><div style="font-size:12px"><span class="status-dot warn"></span>Euro Cup</div><div style="font-size:10px;color:#fbbf24">Atrasado · 6min atrás</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0"><div style="font-size:12px"><span class="status-dot ok"></span>Express Cup</div><div style="font-size:10px;color:#4ade80">Ativo · 43s atrás</div></div>
+  </div>
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">LOG RECENTE</div>
+    <div class="log-linha">[10:32:01] Copa do Mundo — 12 jogos coletados</div>
+    <div class="log-linha">[10:33:58] Premier League — 8 jogos coletados</div>
+    <div class="log-linha">[10:34:12] Euro Cup — timeout na requisicao</div>
+    <div class="log-linha">[10:34:13] Euro Cup — tentativa de reconexao...</div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s4" class="btn-v">← Voltar</a>
+    <a href="#s6" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 7 -->
+<div class="slide" id="s6">
+  <div style="text-align:center;padding:16px 0 14px">
+    <div class="cta-grande">🛡️</div>
+    <div class="titulo">Boas Práticas</div>
+    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:20px">Siga estas recomendações para manter o Radardabet funcionando sem problemas.</p>
+  </div>
+  <div class="passo"><div class="pnum">1</div><div><div class="pttl">Renove licenças com antecedência</div><div class="pds">Evite que clientes percam acesso inesperadamente.</div></div></div>
+  <div class="passo"><div class="pnum">2</div><div><div class="pttl">Monitore o Diagnóstico diariamente</div><div class="pds">Verifique se todos os coletores estão ativos.</div></div></div>
+  <div class="passo"><div class="pnum">3</div><div><div class="pttl">Senhas seguras para Master</div><div class="pds">Use senhas longas e únicas para contas administradoras.</div></div></div>
+  <div class="passo"><div class="pnum">4</div><div><div class="pttl">Não compartilhe credenciais Master</div><div class="pds">Cada administrador deve ter sua própria conta.</div></div></div>
+  <div class="nav-slide">
+    <a href="#s5" class="btn-v">← Voltar</a>
+    <a href="#s0" class="btn-v" style="background:#0f172a;border:1px solid #334155">↺ Reiniciar</a>
+  </div>
+</div>
+
+<script>
+var N = 7;
+var mapa = {s0:1,s1:2,s2:3,s3:4,s4:5,s5:6,s6:7};
+
+function atualizar() {
+  var hash = location.hash.replace('#','');
+  var num = mapa[hash] || 1;
+  document.getElementById('ctr').textContent = num + ' / ' + N;
+  document.getElementById('prog').style.width = (num / N * 100) + '%';
+  window.scrollTo(0,0);
+}
+
+window.addEventListener('hashchange', atualizar);
+window.addEventListener('load', function(){
+  if (!location.hash) location.hash = 's0';
+  atualizar();
+});
+
+var ordem = ['s0','s1','s2','s3','s4','s5','s6'];
+var txs = 0;
+document.addEventListener('touchstart', function(e){ txs = e.touches[0].clientX; }, {passive:true});
+document.addEventListener('touchend', function(e){
+  var dx = e.changedTouches[0].clientX - txs;
+  var hash = location.hash.replace('#','');
+  var idx = ordem.indexOf(hash);
+  if (dx < -50 && idx < ordem.length-1) location.hash = ordem[idx+1];
+  else if (dx > 50 && idx > 0) location.hash = ordem[idx-1];
+}, {passive:true});
+</script>
+</body>
+</html>

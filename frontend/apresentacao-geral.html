@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#060810">
+<title>Radardabet — Apresentação Geral</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#060810;color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-text-size-adjust:100%}
+
+.slide{display:none;padding:20px 16px 40px}
+.slide:target{display:block}
+html:not(:has(.slide:target)) #s0{display:block}
+
+.hdr{background:#060810;border-bottom:1px solid #1e293b;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:16px;font-weight:800;color:#1fcc59}
+.ctr{font-size:12px;color:#64748b;font-weight:600}
+.tag{font-size:10px;font-weight:700;color:#0ea5e9;background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.22);border-radius:20px;padding:3px 10px}
+.prog-bg{height:4px;background:#1e293b}
+#prog{height:4px;background:linear-gradient(90deg,#1fcc59,#0ea5e9);transition:width .3s}
+
+.nav-slide{display:flex;gap:12px;padding:24px 0 20px}
+.btn-v{flex:1;height:54px;border-radius:10px;font-size:17px;font-weight:800;background:#1e293b;color:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.btn-p{flex:1;height:54px;border-radius:10px;font-size:17px;font-weight:800;background:#1fcc59;color:#000;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.btn-ghost{flex:1;height:54px;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:center}
+
+.bloco{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:16px;margin-bottom:10px}
+.emoji{font-size:24px;display:block;margin-bottom:8px}
+.t1{font-size:13px;font-weight:700;margin-bottom:4px}
+.t2{font-size:11px;color:#64748b;line-height:1.55}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lbl-v{font-size:10px;font-weight:700;color:#1fcc59;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.lbl-a{font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.titulo{font-size:26px;font-weight:800;letter-spacing:-.4px;line-height:1.15;margin-bottom:8px}
+.desc{font-size:13px;color:#64748b;line-height:1.65;margin-bottom:16px}
+.pilulas{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.pilula{background:#0f172a;border:1px solid #1e293b;border-radius:7px;padding:7px 11px;font-size:11px;font-weight:600}
+.passo{display:flex;gap:12px;align-items:flex-start;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;margin-bottom:10px}
+.pnum{width:30px;height:30px;min-width:30px;border-radius:50%;background:#1fcc59;color:#000;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+.pnum-a{background:#7c3aed;color:#fff}
+.pttl{font-size:13px;font-weight:700;margin-bottom:3px}
+.pds{font-size:11px;color:#64748b;line-height:1.55}
+.destaque{color:#1fcc59}.destaque2{color:#7c3aed}
+.capa-titulo{font-size:36px;font-weight:900;letter-spacing:-1px;line-height:1.05;margin-bottom:10px}
+.badge{display:inline-block;border-radius:20px;padding:5px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.badge-v{background:rgba(31,204,89,.12);border:1px solid rgba(31,204,89,.25);color:#1fcc59}
+.badge-a{background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.25);color:#a78bfa}
+.barra-stat{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.stat{background:#0f172a;border:1px solid #1e293b;border-radius:7px;padding:8px 12px;min-width:70px}
+.stat-v{font-size:20px;font-weight:800;display:block}
+.stat-l{font-size:9px;color:#64748b}
+.ia-box{background:#052e16;border:1px solid #166534;border-radius:8px;padding:12px;margin-top:8px}
+.ia-label{font-size:9px;font-weight:700;color:#4ade80;text-transform:uppercase;margin-bottom:5px}
+.cta-grande{font-size:48px;font-weight:900;color:#1fcc59;margin-bottom:8px;animation:flutu 3s ease-in-out infinite}
+@keyframes flutu{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.btn-wpp{display:inline-flex;align-items:center;gap:8px;background:#1fcc59;color:#000;font-size:14px;font-weight:700;padding:12px 22px;border-radius:9px;text-decoration:none;margin:6px;min-height:44px}
+.btn-site{display:inline-flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #1e293b;color:#f1f5f9;font-size:14px;font-weight:700;padding:12px 22px;border-radius:9px;text-decoration:none;margin:6px;min-height:44px}
+.hm{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;margin-top:8px}
+.hc{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700}
+.hv{background:#14532d;color:#4ade80}.hd{background:#3b0a0a;color:#f87171}.he{background:#1e1b4b;color:#a5b4fc}
+.lista-item{display:flex;align-items:center;gap:9px;padding:9px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:7px;font-size:12px;margin-bottom:7px}
+.tipo-badge{display:inline-block;border-radius:5px;padding:2px 7px;font-size:9px;font-weight:700;margin-bottom:4px}
+.tipo-free{background:rgba(14,165,233,.15);color:#7dd3fc;border:1px solid rgba(14,165,233,.2)}
+.tipo-pro{background:rgba(31,204,89,.15);color:#4ade80;border:1px solid rgba(31,204,89,.2)}
+.tipo-master{background:rgba(124,58,237,.15);color:#c4b5fd;border:1px solid rgba(124,58,237,.2)}
+.aviso{background:#0c2233;border:1px solid #164e63;border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px;color:#7dd3fc;line-height:1.6}
+.divisor{display:flex;align-items:center;gap:10px;margin:14px 0}
+.divisor-line{flex:1;height:1px;background:#1e293b}
+.divisor-txt{font-size:10px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.ok{background:#1fcc59}.warn{background:#fbbf24}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="logo">● Radardabet</div>
+  <span id="ctr">Geral · 10 slides</span>
+  <span class="tag">🌐 Geral</span>
+</div>
+<div class="prog-bg"><div id="prog" style="width:10%"></div></div>
+
+<!-- SLIDE 1 -->
+<div class="slide" id="s0">
+  <div style="text-align:center;padding:24px 0 10px">
+    <div class="badge badge-v">📈 Apresentação Completa</div>
+    <div class="capa-titulo"><span class="destaque">Radardabet</span></div>
+    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:18px">A plataforma inteligente de análise de futebol virtual — para clientes e administradores.</p>
+    <div class="pilulas" style="justify-content:center">
+      <span class="pilula">⚡ Tempo Real</span><span class="pilula">🧠 IA</span><span class="pilula">🏆 5 Ligas</span><span class="pilula">🛡️ Admin</span>
+    </div>
+  </div>
+  <div class="grade" style="margin-top:10px">
+    <div class="bloco" style="text-align:center;border-color:rgba(31,204,89,.2)"><div style="font-size:20px;margin-bottom:6px">👤</div><div style="font-size:12px;font-weight:700;color:#1fcc59">Para Clientes</div><div style="font-size:10px;color:#64748b;margin-top:3px">Análise, histórico e sugestões IA</div></div>
+    <div class="bloco" style="text-align:center;border-color:rgba(124,58,237,.2)"><div style="font-size:20px;margin-bottom:6px">🛡️</div><div style="font-size:12px;font-weight:700;color:#a78bfa">Para Admins</div><div style="font-size:10px;color:#64748b;margin-top:3px">Usuários, licenças e diagnóstico</div></div>
+  </div>
+  <div class="nav-slide">
+    <div class="btn-ghost"></div>
+    <a href="#s1" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 2 -->
+<div class="slide" id="s1">
+  <div class="lbl-v">Visão Geral</div>
+  <div class="titulo">O que é o Radardabet?</div>
+  <div class="desc">Uma plataforma completa para analisar padrões em futebol virtual com dados em tempo real.</div>
+  <div class="grade">
+    <div class="bloco"><span class="emoji">💾</span><div class="t1">Dados ao Vivo</div><div class="t2">Resultados coletados automaticamente a cada 2 minutos.</div></div>
+    <div class="bloco"><span class="emoji">🔥</span><div class="t1">Heatmap</div><div class="t2">Visualize padrões de vitória, derrota e empate.</div></div>
+    <div class="bloco"><span class="emoji">🤖</span><div class="t1">Sugestões IA</div><div class="t2">Algoritmo aponta as melhores oportunidades.</div></div>
+    <div class="bloco"><span class="emoji">📋</span><div class="t1">Histórico</div><div class="t2">60+ jogos por time com filtros avançados.</div></div>
+  </div>
+  <div class="barra-stat">
+    <div class="stat"><span class="stat-v" style="color:#1fcc59">5</span><span class="stat-l">Ligas</span></div>
+    <div class="stat"><span class="stat-v" style="color:#0ea5e9">2min</span><span class="stat-l">Atualiz.</span></div>
+    <div class="stat"><span class="stat-v" style="color:#fbbf24">60+</span><span class="stat-l">Jogos/time</span></div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s0" class="btn-v">← Voltar</a>
+    <a href="#s2" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 3 -->
+<div class="slide" id="s2">
+  <div class="lbl-v">Cobertura</div>
+  <div class="titulo">5 Ligas Disponíveis</div>
+  <div class="desc">Das seleções nacionais à liga mais rápida do futebol virtual.</div>
+  <div class="bloco" style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:24px">🌍</span><div><div style="font-size:13px;font-weight:700">Copa do Mundo</div><div style="font-size:10px;color:#64748b">Seleções nacionais</div></div></div><span style="background:#14532d;color:#4ade80;border-radius:10px;padding:2px 8px;font-size:9px;font-weight:700">Alta liquidez</span></div>
+  <div class="bloco" style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:24px">⭐</span><div><div style="font-size:13px;font-weight:700">Euro Cup</div><div style="font-size:10px;color:#64748b">Clubes europeus</div></div></div><span style="background:#0c2a47;color:#7dd3fc;border-radius:10px;padding:2px 8px;font-size:9px;font-weight:700">Popular</span></div>
+  <div class="bloco" style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:24px">🏴</span><div><div style="font-size:13px;font-weight:700">Premier League</div><div style="font-size:10px;color:#64748b">Liga inglesa</div></div></div><span style="background:#2e1065;color:#c4b5fd;border-radius:10px;padding:2px 8px;font-size:9px;font-weight:700">Top pick</span></div>
+  <div class="bloco" style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:24px">⚡</span><div><div style="font-size:13px;font-weight:700">Express Cup</div><div style="font-size:10px;color:#64748b">1 jogo por minuto</div></div></div><span style="background:#422006;color:#fde68a;border-radius:10px;padding:2px 8px;font-size:9px;font-weight:700">Ultra rápida</span></div>
+  <div class="bloco" style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:24px">🌎</span><div><div style="font-size:13px;font-weight:700">Super Liga Sul-Am.</div><div style="font-size:10px;color:#64748b">América do Sul</div></div></div><span style="background:#450a0a;color:#fca5a5;border-radius:10px;padding:2px 8px;font-size:9px;font-weight:700">Regional</span></div>
+  <div class="nav-slide">
+    <a href="#s1" class="btn-v">← Voltar</a>
+    <a href="#s3" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 4 -->
+<div class="slide" id="s3">
+  <div class="lbl-v">Para Clientes</div>
+  <div class="titulo">Análise &amp; Sugestões</div>
+  <div class="desc">Cards por liga com % de Over, heatmap e recomendações de IA.</div>
+  <div class="barra-stat">
+    <div class="stat"><span class="stat-v" style="color:#4ade80">73%</span><span class="stat-l">Over 0.5</span></div>
+    <div class="stat"><span class="stat-v" style="color:#fbbf24">61%</span><span class="stat-l">Over 1.5</span></div>
+    <div class="stat"><span class="stat-v" style="color:#60a5fa">48%</span><span class="stat-l">Over 2.5</span></div>
+    <div class="stat"><span class="stat-v" style="color:#c4b5fd">32%</span><span class="stat-l">Over 3.5</span></div>
+  </div>
+  <div class="ia-box">
+    <div class="ia-label">🤖 Sugestão IA — Premier League</div>
+    <div style="font-size:13px;color:#e2e8f0;margin-bottom:4px">Manchester City × Arsenal</div>
+    <div style="font-size:11px;color:#64748b">Over 2.5 gols · Confiança: <b style="color:#4ade80">87%</b></div>
+  </div>
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:6px">HEATMAP — Últimos 20 resultados</div>
+    <div class="hm">
+      <div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div><div class="hc hv">V</div><div class="hc he">E</div>
+      <div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div>
+      <div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc he">E</div>
+      <div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px;font-size:10px">
+      <span><span style="color:#4ade80">■</span> Vitória</span>
+      <span><span style="color:#f87171">■</span> Derrota</span>
+      <span><span style="color:#a5b4fc">■</span> Empate</span>
+    </div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s2" class="btn-v">← Voltar</a>
+    <a href="#s4" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 5 -->
+<div class="slide" id="s4">
+  <div class="lbl-v">Para Clientes</div>
+  <div class="titulo">Histórico &amp; Clubes</div>
+  <div class="desc">Dados individuais de cada time com filtros avançados.</div>
+  <div class="lista-item">🔍 <span>Filtros Over 0.5 até 4.5</span></div>
+  <div class="lista-item">📅 <span>Período de 7 a 180 dias</span></div>
+  <div class="lista-item">🏠 <span>Casa / Fora / Todos</span></div>
+  <div class="divisor"><div class="divisor-line"></div><div class="divisor-txt">Estatísticas por Clube</div><div class="divisor-line"></div></div>
+  <div class="grade">
+    <div class="bloco"><span class="emoji">📊</span><div class="t1">Aproveitamento</div><div class="t2">% vitórias, empates e derrotas por período.</div></div>
+    <div class="bloco"><span class="emoji">⚽</span><div class="t1">Média de Gols</div><div class="t2">Gols marcados e sofridos por partida.</div></div>
+    <div class="bloco"><span class="emoji">📈</span><div class="t1">Tendência</div><div class="t2">Forma atual: subindo, estável ou caindo.</div></div>
+    <div class="bloco"><span class="emoji">🔁</span><div class="t1">Sequências</div><div class="t2">Séries de vitórias ou derrotas consecutivas.</div></div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s3" class="btn-v">← Voltar</a>
+    <a href="#s5" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 6 -->
+<div class="slide" id="s5">
+  <div class="lbl-v">Como Começar</div>
+  <div class="titulo">Acesso em 3 Passos</div>
+  <div class="desc">Simples, rápido e seguro — funciona em qualquer celular.</div>
+  <div class="passo"><div class="pnum">1</div><div><div class="pttl">Abra o Radardabet</div><div class="pds">Acesse <b>radardabet.com.br</b> no navegador do celular ou computador.</div></div></div>
+  <div class="passo"><div class="pnum">2</div><div><div class="pttl">Faça o Login</div><div class="pds">Use o usuário e senha enviados pelo administrador.</div></div></div>
+  <div class="passo"><div class="pnum">3</div><div><div class="pttl">Explore o Painel</div><div class="pds">Selecione a liga e navegue entre <b>Análise</b>, <b>Histórico</b> e <b>Clubes</b>.</div></div></div>
+  <div class="aviso">📱 O Radardabet é totalmente responsivo. Funciona no celular, tablet e computador sem instalar nada.</div>
+  <div class="nav-slide">
+    <a href="#s4" class="btn-v">← Voltar</a>
+    <a href="#s6" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 7 -->
+<div class="slide" id="s6">
+  <div style="text-align:center;padding:16px 0 14px">
+    <div class="badge badge-a">🛡️ Administradores</div>
+    <div class="titulo">Painel Admin</div>
+    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:16px">Administradores têm acesso a um painel exclusivo para gerenciar toda a plataforma.</p>
+  </div>
+  <div class="grade">
+    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">👥</span><div class="t1">Usuários</div><div class="t2">Criar, editar e desativar contas de clientes.</div></div>
+    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">🔑</span><div class="t1">Licenças</div><div class="t2">Definir tipo (Free/Pro/Master) e expiração.</div></div>
+    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">📡</span><div class="t1">Coletores</div><div class="t2">Monitorar status dos robôs de coleta.</div></div>
+    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">📋</span><div class="t1">Logs</div><div class="t2">Eventos do sistema em tempo real.</div></div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s5" class="btn-v">← Voltar</a>
+    <a href="#s7" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 8 -->
+<div class="slide" id="s7">
+  <div class="lbl-a">Módulo Admin</div>
+  <div class="titulo">Usuários &amp; Licenças</div>
+  <div class="desc">Controle total sobre quem acessa o sistema e com quais permissões.</div>
+  <div class="bloco"><span class="tipo-badge tipo-free" style="margin-bottom:8px">FREE</span><div class="t2">Visualiza dados, heatmap e histórico básico.</div></div>
+  <div class="bloco"><span class="tipo-badge tipo-pro" style="margin-bottom:8px">PRO</span><div class="t2">Todas as features do Free + sugestões IA avançadas e filtros estendidos.</div></div>
+  <div class="bloco"><span class="tipo-badge tipo-master" style="margin-bottom:8px">MASTER</span><div class="t2">Acesso completo ao painel admin, diagnóstico e gerenciamento de usuários.</div></div>
+  <div class="passo"><div class="pnum pnum-a">!</div><div><div class="pttl">Expiração automática</div><div class="pds">Quando a data de expiração é atingida, o acesso é bloqueado até renovação.</div></div></div>
+  <div class="nav-slide">
+    <a href="#s6" class="btn-v">← Voltar</a>
+    <a href="#s8" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 9 -->
+<div class="slide" id="s8">
+  <div class="lbl-a">Monitor Master</div>
+  <div class="titulo">Diagnóstico do Sistema</div>
+  <div class="desc">Monitore os coletores de dados e acompanhe logs em tempo real.</div>
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">STATUS DOS COLETORES</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0d1421"><div style="font-size:12px"><span class="status-dot ok"></span>Copa do Mundo</div><div style="font-size:10px;color:#4ade80">Ativo · 2min atrás</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0d1421"><div style="font-size:12px"><span class="status-dot ok"></span>Premier League</div><div style="font-size:10px;color:#4ade80">Ativo · 1min atrás</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0d1421"><div style="font-size:12px"><span class="status-dot warn"></span>Euro Cup</div><div style="font-size:10px;color:#fbbf24">Atrasado · 6min atrás</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0"><div style="font-size:12px"><span class="status-dot ok"></span>Express Cup</div><div style="font-size:10px;color:#4ade80">Ativo · 43s atrás</div></div>
+  </div>
+  <div class="aviso">🔄 O diagnóstico permite forçar atualização manual de qualquer liga com um clique.</div>
+  <div class="nav-slide">
+    <a href="#s7" class="btn-v">← Voltar</a>
+    <a href="#s9" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 10 -->
+<div class="slide" id="s9">
+  <div style="text-align:center;padding:20px 0">
+    <div class="cta-grande">Radardabet</div>
+    <div class="titulo">Comece agora!</div>
+    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:20px">Dados em tempo real, análise com IA e gestão completa na palma da mão.</p>
+    <a href="https://api.whatsapp.com/send/?phone=5548999359690&text=Ol%C3%A1%21+Quero+acessar+o+Radardabet." class="btn-wpp">💬 Falar no WhatsApp</a>
+    <a href="/" class="btn-site">→ Acessar Radardabet</a>
+    <div style="margin-top:20px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <span style="font-size:12px;color:#64748b">🔒 Seguro</span>
+      <span style="font-size:12px;color:#64748b">🔄 2min update</span>
+      <span style="font-size:12px;color:#64748b">📱 Mobile OK</span>
+      <span style="font-size:12px;color:#64748b">🎧 Suporte</span>
+    </div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s8" class="btn-v">← Voltar</a>
+    <a href="#s0" class="btn-v" style="background:#0f172a;border:1px solid #334155">↺ Reiniciar</a>
+  </div>
+</div>
+
+<script>
+var N = 10;
+var mapa = {s0:1,s1:2,s2:3,s3:4,s4:5,s5:6,s6:7,s7:8,s8:9,s9:10};
+
+function atualizar() {
+  var hash = location.hash.replace('#','');
+  var num = mapa[hash] || 1;
+  document.getElementById('ctr').textContent = num + ' / ' + N;
+  document.getElementById('prog').style.width = (num / N * 100) + '%';
+  window.scrollTo(0,0);
+}
+
+window.addEventListener('hashchange', atualizar);
+window.addEventListener('load', function(){
+  if (!location.hash) location.hash = 's0';
+  atualizar();
+});
+
+var ordem = ['s0','s1','s2','s3','s4','s5','s6','s7','s8','s9'];
+var txs = 0;
+document.addEventListener('touchstart', function(e){ txs = e.touches[0].clientX; }, {passive:true});
+document.addEventListener('touchend', function(e){
+  var dx = e.changedTouches[0].clientX - txs;
+  var hash = location.hash.replace('#','');
+  var idx = ordem.indexOf(hash);
+  if (dx < -50 && idx < ordem.length-1) location.hash = ordem[idx+1];
+  else if (dx > 50 && idx > 0) location.hash = ordem[idx-1];
+}, {passive:true});
+</script>
+</body>
+</html>
