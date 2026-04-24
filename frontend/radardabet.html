@@ -1460,8 +1460,9 @@ async function carregarConfigLigas() {
         if (_sb('btn-exibir-clubes'))   _sb('btn-exibir-clubes').classList.toggle('ativo',   S.showNomes);
         if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
 
-        // Timeout de sessão (salva para verificação periódica)
-        S._sessionTimeoutMin = parseInt(cfg.sessao_timeout_minutos) || 180;
+        // Timeout de sessão e auto-refresh
+        S._sessionTimeoutMin  = parseInt(cfg.sessao_timeout_minutos) || 180;
+        if (cfg.auto_refresh_segundos !== undefined) S._autoRefreshSeg = parseInt(cfg.auto_refresh_segundos) ?? 120;
 
         // Aplica visibilidade das seções
         S._cfgSecoes = cfg;
@@ -4897,6 +4898,7 @@ const _CFG_LABELS = {
     default_proximos_jogos:     '🕐 Próximos Jogos ativado por padrão',
     default_exibir_clubes:      '🏷️ Exibir Clubes ativado por padrão',
     default_exibir_odds:        '💹 Exibir Odds ativado por padrão',
+    auto_refresh_segundos:      'Atualização automática da grade (segundos; 0 = desativar)',
     proximos_antes_resultados:  'Coletar próximos jogos ANTES dos resultados',
     liga_world_cup:             'Copa do Mundo',
     liga_euro_cup:              'Euro Cup',
@@ -5351,9 +5353,13 @@ function _usrMsg(txt, ok) {
 document.addEventListener('DOMContentLoaded', () => {
     _initUserMenu();
     _faInit();
-    carregarConfigLigas().then(() => { _faInit(); carregarTudo(); });
+    carregarConfigLigas().then(() => {
+        _faInit();
+        carregarTudo();
+        const seg = S._autoRefreshSeg ?? 120;
+        if (seg > 0) setInterval(carregarTudo, seg * 1000);
+    });
     conectarWS();
-    setInterval(carregarTudo, 120000);
 
     // Ping de sessão: imediato + a cada 2 minutos
     _pingSession();
