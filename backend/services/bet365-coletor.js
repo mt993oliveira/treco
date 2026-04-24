@@ -651,6 +651,8 @@ class Bet365Coletor {
             if (numHorarios > 0) break;
             await this._delay(1000);
         }
+        const maxHorarios = this._cfgNum('max_horarios_proximos', 4);
+        numHorarios = Math.min(numHorarios, maxHorarios);
         console.log(`   ⏰ [${liga.nome}] ${numHorarios} horário(s)`);
 
         for (let i = 0; i < numHorarios; i++) {
