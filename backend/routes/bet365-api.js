@@ -762,7 +762,7 @@ router.get('/historico-mercados', async (req, res) => {
 
         let query = `
             SELECT evento_id, liga, time_casa, time_fora, data_partida,
-                   mercado, selecao, CAST(odd_paga AS FLOAT) AS odd_paga
+                   mercado, selecao, CAST(odd_paga AS FLOAT) AS odd_paga, data_registro
             FROM bet365_resultados_mercados
             WHERE data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
               AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
@@ -773,7 +773,9 @@ router.get('/historico-mercados', async (req, res) => {
             request.input('liga', sql.NVarChar(200), `%${ligaParaBanco(liga)}%`);
         }
 
-        query += ' ORDER BY data_partida ASC, evento_id';
+        // data_registro DESC garante que linhas mais recentes (resultado final real) venham
+        // primeiro ao iterar mkts — evita retornar placar intermediário de jogo em andamento
+        query += ' ORDER BY data_partida ASC, evento_id, data_registro DESC';
 
         const result = await request.query(query);
 

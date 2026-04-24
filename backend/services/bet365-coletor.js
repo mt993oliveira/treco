@@ -638,7 +638,11 @@ class Bet365Coletor {
             const resultados = [];
             for (const grupo of document.querySelectorAll('.vrr-HeadToHeadMarketGroup')) {
                 const eventLabel   = grupo.querySelector('.vrr-FixtureDetails_Event');
-                const horarioMatch = (eventLabel?.textContent.trim() || '').match(/(\d{1,2}[.:]\d{2})$/);
+                const textoLabel   = eventLabel?.textContent.trim() || '';
+                // Pula jogos em andamento: o label termina com minuto de jogo (ex: "65'")
+                // Jogos finalizados mostram data no formato "DD.MM" (ex: "15.03")
+                if (/\d{1,3}['´]\s*$/.test(textoLabel)) continue;
+                const horarioMatch = textoLabel.match(/(\d{1,2}[.:]\d{2})$/);
                 const horario      = horarioMatch ? horarioMatch[1] : null;
                 const t1El         = grupo.querySelector('.vrr-HTHTeamDetails_TeamOne');
                 const t2El         = grupo.querySelector('.vrr-HTHTeamDetails_TeamTwo');
