@@ -380,6 +380,30 @@ class Bet365Coletor {
                 const cap = en.charAt(0).toUpperCase()+en.slice(1);
                 return `UPDATE bet365_resultados_mercados SET selecao=STUFF(selecao,1,${cap.length},'${pt}') WHERE mercado='Gols por Time' AND (selecao LIKE '${cap} - %' OR selecao LIKE '${en} - %')`;
             }),
+            // ── Remover linhas futuras (pré-odds) incorretamente salvas ──
+            `DELETE FROM bet365_resultados_mercados WHERE data_partida > GETUTCDATE()`,
+            // ── Remover duplicatas de Resultado Final por evento (bug pré-odds) ──
+            // Para cada evento com >1 linha de Resultado Final, apaga as extras
+            `DELETE brm FROM bet365_resultados_mercados brm
+             WHERE brm.mercado = 'Resultado Final'
+             AND EXISTS (
+                 SELECT 1 FROM bet365_resultados_mercados brm2
+                 WHERE brm2.evento_id = brm.evento_id
+                 AND brm2.mercado = 'Resultado Final'
+                 AND brm2.id <> brm.id
+             )
+             AND brm.id NOT IN (
+                 SELECT TOP 1 b.id FROM bet365_resultados_mercados b
+                 INNER JOIN bet365_eventos ev ON ev.id = b.evento_id
+                 WHERE b.evento_id = brm.evento_id AND b.mercado = 'Resultado Final'
+                 AND (b.selecao = ev.time_casa OR b.selecao = ev.time_fora OR b.selecao = 'Empate')
+                 ORDER BY CASE WHEN b.selecao = ev.time_casa OR b.selecao = ev.time_fora THEN 0 ELSE 1 END
+             )`,
+            // ── Remover colunas desnecessárias de bet365_eventos ──
+            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='gol_casa') ALTER TABLE bet365_eventos DROP COLUMN gol_casa`,
+            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='gol_fora') ALTER TABLE bet365_eventos DROP COLUMN gol_fora`,
+            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='minuto_jogo') ALTER TABLE bet365_eventos DROP COLUMN minuto_jogo`,
+            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='seconds_to_start') ALTER TABLE bet365_eventos DROP COLUMN seconds_to_start`,
         ];
         for (const mig of migracoes) {
             await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));
@@ -971,34 +995,7 @@ class Bet365Coletor {
                         oddsOk++;
                     }
                 }
-                // ── Salva mercados futuros em bet365_resultados_mercados (para 🕐 Próximos Jogos) ──
-                if (startDt && startDt > new Date()) {
-                    for (const mkt of ev.mercados) {
-                        for (const sel of (mkt.selecoes || [])) {
-                            if (!mkt.nome || !sel.nome || !sel.odd || sel.odd <= 0) continue;
-                            const rmId = this._gerarMercadoId(ev.eventoId, `resultado|${mkt.nome}|${sel.nome}`);
-                            await pool.request()
-                                .input('id',       sql.BigInt,        rmId)
-                                .input('eventoId', sql.BigInt,        ev.eventoId)
-                                .input('liga',     sql.NVarChar(200), ev.liga)
-                                .input('timeCasa', sql.NVarChar(100), ev.timeCasa)
-                                .input('timeFora', sql.NVarChar(100), ev.timeFora)
-                                .input('dataPart', sql.DateTime2,     startDt)
-                                .input('mercado',  sql.NVarChar(200), mkt.nome)
-                                .input('selecao',  sql.NVarChar(200), sel.nome)
-                                .input('oddPaga',  sql.Decimal(10,2), sel.odd)
-                                .query(`
-                                    MERGE bet365_resultados_mercados AS t
-                                    USING (SELECT @id AS id) AS s ON t.id = s.id
-                                    WHEN MATCHED THEN UPDATE SET t.odd_paga=@oddPaga, t.data_partida=@dataPart
-                                    WHEN NOT MATCHED THEN INSERT
-                                        (id, evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga)
-                                    VALUES (@id, @eventoId, @liga, @timeCasa, @timeFora, @dataPart, @mercado, @selecao, @oddPaga);
-                                `);
-                        }
-                    }
-                }
-            } catch(e) {
+                } catch(e) {
                 console.error(`   ❌ Erro salvando ${ev.timeCasa} x ${ev.timeFora}: ${e.message}`);
             }
         }

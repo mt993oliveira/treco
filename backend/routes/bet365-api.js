@@ -67,11 +67,7 @@ router.get('/eventos', async (req, res) => {
                 e.time_fora,
                 e.league_name AS liga,
                 e.start_time_datetime AS horario,
-                e.seconds_to_start,
                 e.status,
-                e.gol_casa,
-                e.gol_fora,
-                e.minuto_jogo,
                 e.odd_casa,
                 e.odd_empate,
                 e.odd_fora,
@@ -89,7 +85,7 @@ router.get('/eventos', async (req, res) => {
             query += ' AND e.status = @status';
         }
 
-        query += ' GROUP BY e.id, e.time_casa, e.time_fora, e.league_name, e.start_time_datetime, e.seconds_to_start, e.status, e.gol_casa, e.gol_fora, e.minuto_jogo, e.odd_casa, e.odd_empate, e.odd_fora ORDER BY e.start_time_datetime ASC';
+        query += ' GROUP BY e.id, e.time_casa, e.time_fora, e.league_name, e.start_time_datetime, e.status, e.odd_casa, e.odd_empate, e.odd_fora ORDER BY e.start_time_datetime ASC';
 
         const request = pool.request();
 
@@ -134,9 +130,6 @@ router.get('/ao-vivo', async (req, res) => {
                 e.time_casa,
                 e.time_fora,
                 e.league_name AS liga,
-                e.gol_casa,
-                e.gol_fora,
-                e.minuto_jogo,
                 e.status,
                 e.odd_casa,
                 e.odd_empate,
@@ -217,8 +210,7 @@ router.get('/stats', async (req, res) => {
             SELECT
                 COUNT(*) AS total,
                 SUM(CASE WHEN status = 'EM_ANDAMENTO' THEN 1 ELSE 0 END) AS ao_vivo,
-                SUM(CASE WHEN status = 'AGENDADO' THEN 1 ELSE 0 END) AS agendados,
-                AVG(gol_casa + gol_fora) AS media_gols
+                SUM(CASE WHEN status = 'AGENDADO' THEN 1 ELSE 0 END) AS agendados
             FROM bet365_eventos WHERE ativo = 1
         `);
 
@@ -267,11 +259,7 @@ router.get('/eventos-completos', async (req, res) => {
                     e.time_fora,
                     e.league_name AS liga,
                     e.start_time_datetime AS horario,
-                    e.seconds_to_start,
                     e.status,
-                    e.gol_casa,
-                    e.gol_fora,
-                    e.minuto_jogo,
                     e.odd_casa,
                     e.odd_empate,
                     e.odd_fora
@@ -343,7 +331,7 @@ router.get('/diagnostico', async (req, res) => {
             pool.query(`SELECT COUNT(*) AS total FROM bet365_eventos WHERE ativo = 1`),
             pool.query(`SELECT COUNT(DISTINCT evento_id) AS total FROM bet365_resultados_mercados`),
             pool.query(`SELECT COUNT(DISTINCT evento_id) AS total FROM bet365_resultados_mercados WHERE data_partida >= DATEADD(HOUR, -24, GETUTCDATE())`),
-            pool.query(`SELECT TOP 10 id, time_casa, time_fora, league_name, gol_casa, gol_fora, status FROM bet365_eventos ORDER BY data_atualizacao DESC`),
+            pool.query(`SELECT TOP 10 id, time_casa, time_fora, league_name, status FROM bet365_eventos ORDER BY data_atualizacao DESC`),
             pool.query(`
                 SELECT TOP 20 liga, time_casa, time_fora, data_partida,
                     MAX(CASE WHEN mercado='Resultado Final' THEN selecao END) AS resultado_final,
@@ -777,7 +765,7 @@ router.get('/historico-mercados', async (req, res) => {
                    mercado, selecao, CAST(odd_paga AS FLOAT) AS odd_paga
             FROM bet365_resultados_mercados
             WHERE data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
-              AND data_partida <= DATEADD(HOUR, ${comFuturos ? 24 : 2}, GETUTCDATE())
+              AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
         `;
 
         if (liga && liga !== 'all') {
@@ -822,13 +810,39 @@ router.get('/historico-mercados', async (req, res) => {
         for (const j of gamesMap.values()) {
             const mkts = j.mercados;
 
-            // Resultado FT — "Resultado Final": selecao = nome do time ou "Empate"
-            const rfMkt = mkts.find(m => /resultado final/i.test(m.mercado));
+            // Resultado FT — "Resultado Final": selecao = nome do time vencedor ou "Empate"
+            // Pode haver múltiplas linhas de "Resultado Final" por evento (bug corrigido de pré-odds);
+            // prioriza a linha cujo selecao coincide com time_casa ou time_fora (resultado real).
+            const rfMkts = mkts.filter(m => /resultado final/i.test(m.mercado));
+            let rfMkt = rfMkts[0] || null;
+            if (rfMkts.length > 1) {
+                // Tenta confirmar pelo Resultado Correto FT (mais confiável)
+                const ftCorMkt = mkts.find(m => /resultado correto/i.test(m.mercado) && !/intervalo/i.test(m.mercado));
+                if (ftCorMkt) {
+                    const sc = (() => {
+                        const m2 = (ftCorMkt.selecao||'').match(/(\d+)\s*[-–]\s*(\d+)\s*$/);
+                        if (!m2) return null;
+                        const n = parseInt(m2[1]), k = parseInt(m2[2]);
+                        const sf = (j.time_fora||'').toLowerCase().trim();
+                        if (sf && (ftCorMkt.selecao||'').toLowerCase().startsWith(sf)) return { casa: k, fora: n };
+                        return { casa: n, fora: k };
+                    })();
+                    if (sc) {
+                        const winner = sc.casa > sc.fora ? j.time_casa : sc.fora > sc.casa ? j.time_fora : 'Empate';
+                        const confirmed = rfMkts.find(r => r.selecao === winner);
+                        if (confirmed) rfMkt = confirmed;
+                    }
+                } else {
+                    // Sem Resultado Correto: pega o único RF que bate com um dos times
+                    const single = rfMkts.find(r => r.selecao === j.time_casa || r.selecao === j.time_fora || r.selecao === 'Empate');
+                    // Se só houver 1 que bate com time, usa ele; caso ambos batam escolhe o primeiro
+                    if (single) rfMkt = single;
+                }
+            }
             if (rfMkt) {
                 j.resultado = rfMkt.selecao === j.time_casa ? 'CASA'
                             : rfMkt.selecao === j.time_fora ? 'FORA' : 'EMPATE';
-                // Odd paga do resultado final como odd do vencedor
-                if (j.resultado === 'CASA')   j.odd_casa   = rfMkt.odd_paga;
+                if (j.resultado === 'CASA')        j.odd_casa   = rfMkt.odd_paga;
                 else if (j.resultado === 'FORA')   j.odd_fora   = rfMkt.odd_paga;
                 else                               j.odd_empate = rfMkt.odd_paga;
             }
@@ -1396,6 +1410,7 @@ const CONFIG_DEFAULTS = [
     { chave:'default_exibir_clubes',        valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'🏷️ Exibir Clubes ativado por padrão na grade' },
     { chave:'default_exibir_odds',          valor:'false', tipo:'boolean', grupo:'frontend', descricao:'💹 Exibir Odds ativado por padrão na grade' },
     { chave:'default_proximos_jogos',       valor:'false', tipo:'boolean', grupo:'frontend', descricao:'🕐 Próximos Jogos ativado por padrão na grade' },
+    { chave:'default_exibir_ht',            valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'🔍 Exibir HT ativado por padrão na grade' },
     { chave:'default_so_value_bets',        valor:'false', tipo:'boolean', grupo:'frontend', descricao:'Apenas value bets por padrão (Análise)' },
     // ── Sistema ──
     { chave:'sessao_timeout_minutos',       valor:'180',   tipo:'number',  grupo:'sistema',  descricao:'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)' },
@@ -1591,6 +1606,98 @@ router.post('/admin/excluir-por-periodo', async (req, res) => {
         const r = await req2.query(query);
         const total = r.rowsAffected?.[0] || 0;
         res.json({ success: true, total, liga: liga || 'Todas', dias: diasNum });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ── Slots esperados por liga (minutos do horário UTC) ──
+const LIGA_SLOTS_SRV = {
+    'World Cup':                [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,52,55,58],
+    'Euro Cup':                 [2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59],
+    'Premiership':              [0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57],
+    'Super Liga Sul-Americana': [1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,52,55,58],
+    'Express Cup':              Array.from({length:60},(_,i)=>i),
+};
+function _snapSlot(minuto, slots) {
+    let best = slots[0], bestDist = Infinity;
+    for (const s of slots) { const d = Math.abs(s - minuto); if (d < bestDist) { bestDist = d; best = s; } }
+    return best;
+}
+
+/**
+ * POST /api/bet365/admin/analisar-corrigir
+ * Analisa jogos com data_partida no minuto errado para a liga e corrige se solicitado
+ */
+router.post('/admin/analisar-corrigir', async (req, res) => {
+    try {
+        const { liga, data, hora, corrigir = false } = req.body || {};
+        if (!liga || !data) return res.status(400).json({ success: false, error: 'Liga e data são obrigatórios' });
+        const slots = LIGA_SLOTS_SRV[liga];
+        if (!slots) return res.status(400).json({ success: false, error: `Liga não reconhecida: ${liga}` });
+
+        const pool = await getDbPool();
+        const req2 = pool.request()
+            .input('liga', sql.NVarChar(200), liga)
+            .input('data', sql.NVarChar(10), data);
+        let where = `liga = @liga AND CONVERT(VARCHAR(10), data_partida, 120) = @data`;
+        if (hora !== undefined && hora !== null && hora !== '') {
+            req2.input('hora', sql.Int, parseInt(hora));
+            where += ` AND DATEPART(HOUR, data_partida) = @hora`;
+        }
+
+        const r = await req2.query(`
+            SELECT DISTINCT
+                data_partida,
+                time_casa, time_fora,
+                DATEPART(HOUR,   data_partida) AS h,
+                DATEPART(MINUTE, data_partida) AS m
+            FROM bet365_resultados_mercados
+            WHERE ${where}
+            ORDER BY data_partida
+        `);
+
+        const erros = [];
+        for (const row of r.recordset) {
+            const mCorreto = _snapSlot(row.m, slots);
+            if (row.m !== mCorreto) {
+                erros.push({
+                    data_partida: row.data_partida,
+                    time_casa:    row.time_casa,
+                    time_fora:    row.time_fora,
+                    hora:         row.h,
+                    minuto_atual: row.m,
+                    minuto_correto: mCorreto,
+                    diff: mCorreto - row.m,
+                });
+            }
+        }
+
+        let corrigidos = 0;
+        if (corrigir && erros.length > 0) {
+            for (const e of erros) {
+                const rUpd = await pool.request()
+                    .input('liga', sql.NVarChar(200), liga)
+                    .input('tc',   sql.NVarChar(100), e.time_casa)
+                    .input('tf',   sql.NVarChar(100), e.time_fora)
+                    .input('dp',   sql.DateTime2,     new Date(e.data_partida))
+                    .input('diff', sql.Int,            e.diff)
+                    .query(`
+                        UPDATE bet365_resultados_mercados
+                        SET data_partida = DATEADD(MINUTE, @diff, data_partida)
+                        WHERE liga=@liga AND time_casa=@tc AND time_fora=@tf AND data_partida=@dp
+                    `);
+                corrigidos += rUpd.rowsAffected?.[0] || 0;
+            }
+        }
+
+        res.json({
+            success: true, liga, data, hora: hora || null,
+            total_partidas: r.recordset.length,
+            erros_encontrados: erros.length,
+            erros,
+            corrigidos: corrigir ? corrigidos : null,
+        });
     } catch(e) {
         res.status(500).json({ success: false, error: e.message });
     }

@@ -882,6 +882,7 @@
             <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
             <button class="acao-btn" id="btn-exibir-clubes" onclick="S.showNomes=!S.showNomes;document.getElementById('btn-exibir-clubes').classList.toggle('ativo',S.showNomes);renderTabela()" title="Mostrar nomes dos clubes na grade">🏷️ Exibir Clubes</button>
             <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds</button>
+            <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
         </div>
         <div style="font-size:10px;color:#475569" id="tabela-info">—</div>
     </div>
@@ -962,8 +963,26 @@
                 <span style="font-size:9px;color:#94a3b8">dias</span>
                 <button class="acao-btn" onclick="confirmarExcluirPorPeriodo()" style="background:#4a1a1a;border-color:#7f1d1d;color:#f87171;padding:1px 8px;font-size:9px;height:20px;line-height:1">Excluir</button>
             </div>
+            <!-- Análise e Correção de Slots -->
+            <div style="display:flex;align-items:center;gap:4px;background:#0d1f3a;border:1px solid #1e3a5f;border-radius:5px;padding:2px 8px">
+                <span style="font-size:9px;color:#60a5fa;font-weight:700;white-space:nowrap">🔧 Análise:</span>
+                <select id="diag-fix-liga" style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;font-size:9px;border-radius:3px;padding:1px 4px;height:20px">
+                    <option value="World Cup">Copa do Mundo</option>
+                    <option value="Euro Cup">Euro Cup</option>
+                    <option value="Premiership">Premier League</option>
+                    <option value="Super Liga Sul-Americana">Super Liga</option>
+                    <option value="Express Cup">Express Cup</option>
+                </select>
+                <input id="diag-fix-data" type="date" style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;font-size:9px;border-radius:3px;padding:1px 4px;height:20px">
+                <input id="diag-fix-hora" type="number" min="0" max="23" placeholder="HH" title="Hora UTC (opcional)" style="width:36px;background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;font-size:9px;border-radius:3px;padding:1px 4px;height:20px;text-align:center">
+                <button class="acao-btn" onclick="diagAnalisar(false)" style="background:#0d2d4a;border-color:#1e4d7a;color:#60a5fa;padding:1px 8px;font-size:9px;height:20px;line-height:1">🔍 Analisar</button>
+                <button class="acao-btn" id="diag-fix-btn-corrigir" onclick="diagAnalisar(true)" style="display:none;background:#0a2d1a;border-color:#14532d;color:#4ade80;padding:1px 8px;font-size:9px;height:20px;line-height:1">✅ Corrigir</button>
+            </div>
         </div>
+        <!-- Resultado da análise -->
+        <div id="diag-fix-resultado" style="display:none;margin-top:6px;background:#060d1a;border:1px solid #1e3a5f;border-radius:5px;padding:8px;font-size:10px;color:#94a3b8;max-height:160px;overflow-y:auto"></div>
     </div>
+
 
     <!-- Corpo: 2 colunas — Jogos por Liga | Últimos Registros -->
     <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;flex-wrap:wrap">
@@ -1454,11 +1473,13 @@ async function carregarConfigLigas() {
         if (cfg.default_proximos_jogos !== undefined) S.showProximos = cfg.default_proximos_jogos === 'true';
         if (cfg.default_exibir_clubes  !== undefined) S.showNomes    = cfg.default_exibir_clubes  === 'true';
         if (cfg.default_exibir_odds    !== undefined) S.showOdds     = cfg.default_exibir_odds     === 'true';
+        if (cfg.default_exibir_ht      !== undefined) S.showHT       = cfg.default_exibir_ht       === 'true';
         // Sincroniza visual dos botões do header
         const _sb = id => document.getElementById(id);
         if (_sb('btn-proximos-jogos'))  _sb('btn-proximos-jogos').classList.toggle('ativo',  S.showProximos);
         if (_sb('btn-exibir-clubes'))   _sb('btn-exibir-clubes').classList.toggle('ativo',   S.showNomes);
         if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
+        if (_sb('btn-exibir-ht'))       _sb('btn-exibir-ht').classList.toggle('ativo',       S.showHT);
 
         // Timeout de sessão e auto-refresh
         S._sessionTimeoutMin  = parseInt(cfg.sessao_timeout_minutos) || 180;
@@ -1641,6 +1662,7 @@ const S = {
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
     showProximos:  false,   // exibe próximos jogos agendados na grade
+    showHT:        true,    // exibe placar do intervalo (HT) nas células do grid
     selCols:       new Set(),  // colunas selecionadas (índices)
     selRows:       new Set(),  // linhas selecionadas (índices de hora)
     selScore:      null,       // score selecionado para destaque
@@ -1911,6 +1933,19 @@ async function carregarHistorico() {
         }
 
         S.partidas = filtrarPartidas();
+
+        // Quando "Próximos Jogos" está ativo, busca eventos agendados para a grade
+        if (S.showProximos) {
+            try {
+                const re = await fetch('/api/bet365/eventos-completos');
+                const de = await re.json();
+                if (de.success) {
+                    S.eventosAgendados = (de.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
+                }
+            } catch(_) {}
+        } else {
+            S.eventosAgendados = [];
+        }
 
         renderLigas();
         if (S.view === 'historico') { renderFiltros(); renderLegenda(); renderTabela(); renderGrafico(); }
@@ -2436,6 +2471,7 @@ function renderFiltros() {
     const _b = id => document.getElementById(id);
     if (_b('btn-exibir-clubes')) _b('btn-exibir-clubes').classList.toggle('ativo', !!S.showNomes);
     if (_b('btn-exibir-odds'))   _b('btn-exibir-odds').classList.toggle('ativo',   !!S.showOdds);
+    if (_b('btn-exibir-ht'))     _b('btn-exibir-ht').classList.toggle('ativo',     !!S.showHT);
 
     const c = document.getElementById('filtros-row');
 
@@ -2763,7 +2799,8 @@ async function renderProximosJogos() {
         };
 
         el.innerHTML = jogos.map((j, idx) => {
-            const mins = Math.round((j.seconds_to_start || 0) / 60);
+            const secsToStart = j.horario ? Math.max(0, Math.round((new Date(j.horario) - Date.now()) / 1000)) : 0;
+            const mins = Math.round(secsToStart / 60);
             const tempo = mins <= 0 ? 'Ao vivo' : mins < 60 ? `em ${mins}min` : `${Math.floor(mins/60)}h${mins%60}m`;
             const hC  = histCasa(j.time_casa);
             const hF  = histFora(j.time_fora);
@@ -3294,17 +3331,17 @@ function renderTabela() {
                 ? (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
                   `<span data-action="clube" data-clube="${abbrev(j.time_casa)}" ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
                   `<span data-action="liga" style="display:block;font-size:10px;font-weight:800;cursor:pointer;line-height:1.3">${score}</span>`+
-                  (scoreHT ? `<span style="display:block;font-size:7px;font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
+                  (scoreHT && S.showHT ? `<span style="display:block;font-size:7px;font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
                   `<span data-action="clube" data-clube="${abbrev(j.time_fora)}" ${nmSlot} style="display:block;font-size:7px;line-height:1.2;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
                   (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
                 : `<span data-action="liga" style="cursor:pointer;display:block;line-height:1.25">${score}</span>`+
-                  (scoreHT ? `<span style="display:block;font-size:7px;color:var(--ht-txt);line-height:1;text-align:center">${scoreHT}</span>` : '')+
+                  (scoreHT && S.showHT ? `<span style="display:block;font-size:7px;color:var(--ht-txt);line-height:1;text-align:center">${scoreHT}</span>` : '')+
                   (temOdds ? `<span style="display:flex;gap:2px;margin-top:1px">`+
                     `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddC}">${fmtOdd(oddC)}</span>`+
                     `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddF}">${fmtOdd(oddF)}</span>`+
                     `</span>` : '');
             const opacityStyle = isEstimado ? 'opacity:0.35;' : isOculto ? 'opacity:0.7;' : '';
-            const hasHT    = scoreHT && !S.showNomes;
+            const hasHT    = scoreHT && S.showHT && !S.showNomes;
             const baseStyle = (S.showNomes || isOculto || temOdds || hasHT) ? 'padding:2px 3px;line-height:1;min-width:44px;' : '';
             const cellStyle    = (opacityStyle || baseStyle) ? ` style="${baseStyle}${opacityStyle}"` : '';
             const cellClass    = hitEfetivo ? 'c-verde' : 'c-verm';
@@ -3883,7 +3920,7 @@ async function renderDetalheClube(nomeTime) {
         if (d.success) {
             const evts = (d.data || []).filter(e => e.status === 'AGENDADO' &&
                 (e.time_casa === nomeTime || e.time_fora === nomeTime));
-            evts.sort((a,b) => (a.seconds_to_start||999) - (b.seconds_to_start||999));
+            evts.sort((a,b) => (new Date(a.horario||'9999') - new Date(b.horario||'9999')));
             proximoEvt = evts[0] || null;
         }
     } catch {}
@@ -3993,7 +4030,8 @@ async function renderDetalheClube(nomeTime) {
     // Próximo jogo card
     let proximoHtml = '';
     if (proximoEvt) {
-        const mins  = Math.round((proximoEvt.seconds_to_start||0) / 60);
+        const secsEvt = proximoEvt.horario ? Math.max(0, Math.round((new Date(proximoEvt.horario) - Date.now()) / 1000)) : 0;
+        const mins  = Math.round(secsEvt / 60);
         const tempo = mins <= 0 ? '<span style="color:#1fcc59">Ao vivo</span>' : `em <b style="color:#e2e8f0">${mins < 60 ? mins + ' min' : Math.floor(mins/60) + 'h' + (mins%60) + 'm'}</b>`;
         proximoHtml = `
         <div style="background:#0c1833;border:1px solid #1e3a5f;border-radius:8px;padding:14px;margin-top:10px">
@@ -4407,6 +4445,61 @@ async function confirmarExcluirLiga(liga) {
         }
     } catch(e) {
         alert('❌ Erro: ' + e.message);
+    }
+}
+
+async function diagAnalisar(corrigir = false) {
+    const liga = document.getElementById('diag-fix-liga').value;
+    const data = document.getElementById('diag-fix-data').value;
+    const hora = document.getElementById('diag-fix-hora').value;
+    if (!data) { alert('⚠️ Selecione uma data.'); return; }
+    if (corrigir && !confirm(`Corrigir automaticamente os jogos fora do slot correto em ${liga} no dia ${data}${hora ? ' às '+hora+'h' : ''}?\n\nEsta ação atualiza data_partida dos registros afetados.`)) return;
+
+    const res = document.getElementById('diag-fix-resultado');
+    const btnCorrigir = document.getElementById('diag-fix-btn-corrigir');
+    res.style.display = 'block';
+    res.innerHTML = '<span style="color:#60a5fa">Analisando...</span>';
+    btnCorrigir.style.display = 'none';
+
+    try {
+        const r = await fetch('/api/bet365/admin/analisar-corrigir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ liga, data, hora: hora || null, corrigir })
+        });
+        const d = await r.json();
+        if (!d.success) { res.innerHTML = `<span style="color:#f87171">❌ ${d.error}</span>`; return; }
+
+        const ligaNomes = { 'World Cup':'Copa do Mundo','Euro Cup':'Euro Cup','Premiership':'Premier League','Super Liga Sul-Americana':'Super Liga','Express Cup':'Express Cup' };
+        let html = `<div style="margin-bottom:6px;color:#e2e8f0;font-weight:700">${ligaNomes[liga]||liga} · ${data}${hora ? ' · '+hora+'h' : ''} — <span style="color:#94a3b8">${d.total_partidas} partida(s) encontrada(s)</span></div>`;
+
+        if (d.erros_encontrados === 0) {
+            html += `<span style="color:#4ade80">✅ Todos os registros estão no slot correto.</span>`;
+            btnCorrigir.style.display = 'none';
+        } else {
+            html += `<div style="color:#fbbf24;margin-bottom:4px">⚠️ ${d.erros_encontrados} partida(s) com minuto incorreto:</div>`;
+            html += d.erros.map(e => {
+                const hh = String(e.hora).padStart(2,'0');
+                const mm = String(e.minuto_atual).padStart(2,'0');
+                const mc = String(e.minuto_correto).padStart(2,'0');
+                return `<div style="padding:2px 0;border-bottom:1px solid #1e293b">
+                    <span style="color:#e2e8f0">${e.time_casa} × ${e.time_fora}</span>
+                    <span style="color:#94a3b8"> · ${hh}:${mm}</span>
+                    <span style="color:#f87171"> → </span>
+                    <span style="color:#4ade80">${hh}:${mc}</span>
+                    <span style="color:#475569"> (${e.diff > 0 ? '+' : ''}${e.diff} min)</span>
+                </div>`;
+            }).join('');
+            if (!corrigir) btnCorrigir.style.display = 'inline-flex';
+        }
+
+        if (corrigir && d.corrigidos !== null) {
+            html += `<div style="margin-top:6px;color:#4ade80;font-weight:700">✅ ${d.corrigidos} linha(s) corrigida(s).</div>`;
+            btnCorrigir.style.display = 'none';
+        }
+        res.innerHTML = html;
+    } catch(e) {
+        res.innerHTML = `<span style="color:#f87171">❌ Erro: ${e.message}</span>`;
     }
 }
 
@@ -4898,6 +4991,7 @@ const _CFG_LABELS = {
     default_proximos_jogos:     '🕐 Próximos Jogos ativado por padrão',
     default_exibir_clubes:      '🏷️ Exibir Clubes ativado por padrão',
     default_exibir_odds:        '💹 Exibir Odds ativado por padrão',
+    default_exibir_ht:          '🔍 Exibir HT ativado por padrão',
     auto_refresh_segundos:      'Atualização automática da grade (segundos; 0 = desativar)',
     proximos_antes_resultados:  'Coletar próximos jogos ANTES dos resultados',
     liga_world_cup:             'Copa do Mundo',
@@ -5365,12 +5459,12 @@ document.addEventListener('DOMContentLoaded', () => {
     _pingSession();
     setInterval(_pingSession, 2 * 60 * 1000);
 
-    // Define hoje como data padrão no filtro de diagnóstico
+    // Define hoje como data padrão nos campos de diagnóstico
+    const hoje = new Date().toISOString().slice(0, 10);
     const filtroDia = document.getElementById('diag-filtro-dia');
-    if (filtroDia) {
-        const hoje = new Date().toISOString().slice(0, 10);
-        filtroDia.value = hoje;
-    }
+    if (filtroDia) filtroDia.value = hoje;
+    const fixData = document.getElementById('diag-fix-data');
+    if (fixData) fixData.value = hoje;
 
     document.querySelectorAll('.modal-overlay').forEach(el =>
         el.addEventListener('click', e => {
