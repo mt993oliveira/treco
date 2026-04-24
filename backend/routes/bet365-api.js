@@ -472,17 +472,17 @@ router.get('/sugestoes', async (req, res) => {
             if (partidas.length < 5) continue;
 
             const FILTROS = [
-                { id: 'over0.5',   label: 'Over 0.5',    check: j => j.over05 },
-                { id: 'over1.5',   label: 'Over 1.5',    check: j => j.over15 },
-                { id: 'over2.5',   label: 'Over 2.5',    check: j => j.over25 },
-                { id: 'over3.5',   label: 'Over 3.5',    check: j => j.over35 },
-                { id: 'under1.5',  label: 'Under 1.5',   check: j => j.under15 },
-                { id: 'under2.5',  label: 'Under 2.5',   check: j => j.under25 },
+                { id: 'over0.5',   label: 'Mais de 0.5',  check: j => j.over05 },
+                { id: 'over1.5',   label: 'Mais de 1.5',  check: j => j.over15 },
+                { id: 'over2.5',   label: 'Mais de 2.5',  check: j => j.over25 },
+                { id: 'over3.5',   label: 'Mais de 3.5',  check: j => j.over35 },
+                { id: 'under1.5',  label: 'Menos de 1.5', check: j => j.under15 },
+                { id: 'under2.5',  label: 'Menos de 2.5', check: j => j.under25 },
                 { id: 'ambas',     label: 'Ambas Marcam', check: j => j.btts },
-                { id: 'ft_casa',   label: 'Casa Vence',  check: j => j.resultado === 'CASA' },
-                { id: 'ft_empate', label: 'Empate',      check: j => j.resultado === 'EMPATE' },
-                { id: 'ft_fora',   label: 'Fora Vence',  check: j => j.resultado === 'FORA' },
-                { id: 'btts_o25',  label: 'BTTS + O2.5', check: j => j.btts && j.over25 },
+                { id: 'ft_casa',   label: 'Casa Vence',   check: j => j.resultado === 'CASA' },
+                { id: 'ft_empate', label: 'Empate',       check: j => j.resultado === 'EMPATE' },
+                { id: 'ft_fora',   label: 'Fora Vence',   check: j => j.resultado === 'FORA' },
+                { id: 'btts_o25',  label: 'BTTS + Mais 2.5', check: j => j.btts && j.over25 },
             ];
 
             const n = partidas.length;
@@ -1496,6 +1496,19 @@ router.post('/admin/normalizar-dados', async (req, res) => {
             [`UPDATE bet365_resultados_mercados SET selecao='Sim' WHERE mercado='Ambos Marcam' AND selecao IN ('Yes')`, 'selecao Sim'],
             [`UPDATE bet365_resultados_mercados SET selecao='Não' WHERE mercado='Ambos Marcam' AND selecao IN ('No')`, 'selecao Não'],
             [`UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE mercado='Resultado Correto - Intervalo' AND selecao IN ('Any Other Score','Any Unquoted')`, 'selecao Qualquer Outro'],
+            // Team Goals
+            [`UPDATE bet365_resultados_mercados SET mercado='Gols por Time' WHERE mercado='Team Goals'`, 'mercado Gols por Time'],
+            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,' Goals',' Gols') WHERE mercado='Gols por Time' AND selecao LIKE '% Goals'`, 'selecao Goals→Gols'],
+            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,' Goal',' Gol') WHERE mercado='Gols por Time' AND selecao LIKE '% Goal'`, 'selecao Goal→Gol'],
+            // Over/Under como nomes de seleção
+            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 0.5' WHERE selecao='Over 0.5'`, 'selecao Over 0.5'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 1.5' WHERE selecao='Over 1.5'`, 'selecao Over 1.5'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 2.5' WHERE selecao='Over 2.5'`, 'selecao Over 2.5'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 3.5' WHERE selecao='Over 3.5'`, 'selecao Over 3.5'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 4.5' WHERE selecao='Over 4.5'`, 'selecao Over 4.5'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 1.5' WHERE selecao='Under 1.5'`, 'selecao Under 1.5'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 2.5' WHERE selecao='Under 2.5'`, 'selecao Under 2.5'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 3.5' WHERE selecao='Under 3.5'`, 'selecao Under 3.5'],
         ];
         let totalAffected = 0;
         const detalhes = [];
