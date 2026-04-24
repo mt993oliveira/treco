@@ -863,7 +863,31 @@ router.get('/historico-mercados', async (req, res) => {
             };
 
             // Placar HT de "Resultado Correto - Intervalo"
-            const htMkt = mkts.find(m => /correto.*intervalo|intervalo.*correto/i.test(m.mercado));
+            // Usa "Resultado Intervalo" (mercado simples, 1 linha) para confirmar qual linha é a correta
+            const htInterMkt = mkts.find(m => /^resultado\s+intervalo$/i.test(m.mercado.trim()));
+            const htCorMkts  = mkts.filter(m => /correto.*intervalo|intervalo.*correto/i.test(m.mercado));
+            let htMkt = htCorMkts[0] || null;
+            if (htCorMkts.length > 1 && htInterMkt) {
+                // htInterMkt.selecao = "Empate" | time_casa | time_fora
+                const htWinner = (htInterMkt.selecao || '').toLowerCase().trim();
+                const casaLow  = (j.time_casa || '').toLowerCase().trim();
+                const foraLow  = (j.time_fora || '').toLowerCase().trim();
+                let confirmed;
+                if (htWinner === 'empate') {
+                    confirmed = htCorMkts.find(m => /^empate/i.test(m.selecao));
+                } else if (casaLow && htWinner.includes(casaLow)) {
+                    confirmed = htCorMkts.find(m => {
+                        const sl = (m.selecao || '').toLowerCase().trim();
+                        return sl.startsWith(casaLow);
+                    });
+                } else if (foraLow && htWinner.includes(foraLow)) {
+                    confirmed = htCorMkts.find(m => {
+                        const sl = (m.selecao || '').toLowerCase().trim();
+                        return sl.startsWith(foraLow);
+                    });
+                }
+                if (confirmed) htMkt = confirmed;
+            }
             if (htMkt) {
                 if (/qualquer outro resultado/i.test(htMkt.selecao)) {
                     j.ht_outro = true; // HT teve 3+ gols — exibe "OUT" no frontend
@@ -874,7 +898,29 @@ router.get('/historico-mercados', async (req, res) => {
             }
 
             // Placar FT de "Resultado Correto" (sem "Intervalo")
-            const ftCorMkt = mkts.find(m => /resultado correto/i.test(m.mercado) && !/intervalo/i.test(m.mercado));
+            // Usa rfMkt.selecao (já confirmado) para escolher a linha correta quando houver múltiplas
+            const ftCorMkts = mkts.filter(m => /resultado correto/i.test(m.mercado) && !/intervalo/i.test(m.mercado));
+            let ftCorMkt = ftCorMkts[0] || null;
+            if (ftCorMkts.length > 1 && rfMkt) {
+                const winner = (rfMkt.selecao || '').toLowerCase().trim();
+                const casaLow = (j.time_casa || '').toLowerCase().trim();
+                const foraLow = (j.time_fora || '').toLowerCase().trim();
+                let confirmed;
+                if (winner === 'empate') {
+                    confirmed = ftCorMkts.find(m => /^empate/i.test(m.selecao));
+                } else if (casaLow && winner.includes(casaLow)) {
+                    confirmed = ftCorMkts.find(m => {
+                        const sl = (m.selecao || '').toLowerCase().trim();
+                        return sl.startsWith(casaLow);
+                    });
+                } else if (foraLow && winner.includes(foraLow)) {
+                    confirmed = ftCorMkts.find(m => {
+                        const sl = (m.selecao || '').toLowerCase().trim();
+                        return sl.startsWith(foraLow);
+                    });
+                }
+                if (confirmed) ftCorMkt = confirmed;
+            }
             if (ftCorMkt) {
                 const sc = parseSelecaoScore(ftCorMkt.selecao);
                 if (sc) { j.gol_casa = sc.casa; j.gol_fora = sc.fora; }
