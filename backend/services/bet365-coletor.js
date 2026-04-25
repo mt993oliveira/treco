@@ -761,17 +761,6 @@ class Bet365Coletor {
             eventos.push({ eventoId, liga: ligaNormal, timeCasa: normalizarNomeTime(infoJogo.timeCasa), timeFora: normalizarNomeTime(infoJogo.timeFora), horario, countdown, oddCasa, oddEmpate, oddFora, mercados });
             console.log(`      ✅ [${ligaNormal}] ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
         }
-
-        // Volta ao tab da liga para resetar o estado da página (garante que .vr-ResultsNavBarButton
-        // esteja visível caso _coletarResultados seja chamado em seguida)
-        await pg.evaluate((nomeLiga) => {
-            const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-            for (const tab of tabs) {
-                const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
-                if (txt === nomeLiga) { tab.click(); return; }
-            }
-        }, liga.nome);
-        await this._delay(this._cfgNum('delay_volta_proximos_ms', 2000));
     }
 
     async _coletarResultados(pg, liga, resultados) {
@@ -804,14 +793,40 @@ class Bet365Coletor {
         await this._tirarScreenshot(pg, normalizarNomeLiga(liga.nome));
     }
 
+    async _hardRefresh(pg, ligaNome) {
+        for (let r = 1; r <= 3; r++) {
+            try {
+                await pg.setCacheEnabled(false);
+                await pg.reload({ waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_navegacao_ms', 30000) });
+                await pg.setCacheEnabled(true);
+                await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
+                await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                break;
+            } catch(e) {
+                await pg.setCacheEnabled(true).catch(() => {});
+                if (r === 3) console.log(`   ⚠️  [${ligaNome}] Hard refresh falhou após 3 tentativas`);
+            }
+        }
+        // Volta ao tab da liga após o reload
+        await pg.evaluate((nomeLiga) => {
+            const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+            for (const tab of tabs) {
+                const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
+                if (txt === nomeLiga) { tab.click(); return; }
+            }
+        }, ligaNome);
+        await this._delay(this._cfgNum('delay_apos_clicar_liga_ms', 3000));
+    }
+
     async _coletarLiga(pg, liga) {
         const eventos    = [];
         const resultados = [];
         const proxAntesRes = this._cfgBool('proximos_antes_resultados', false);
 
         if (proxAntesRes) {
-            console.log(`   🔀 [${liga.nome}] Ordem: próximos → resultados`);
+            console.log(`   🔀 [${liga.nome}] Ordem: próximos → hard refresh → resultados`);
             await this._coletarProximos(pg, liga, eventos);
+            await this._hardRefresh(pg, liga.nome);
             await this._coletarResultados(pg, liga, resultados);
         } else {
             await this._coletarResultados(pg, liga, resultados);
