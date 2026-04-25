@@ -1422,7 +1422,7 @@ router.get('/analise/resumo', async (req, res) => {
 const CONFIG_DEFAULTS = [
     // ── Próximos jogos ──
     { chave:'coletar_proximos_jogos',       valor:'true',  tipo:'boolean', grupo:'coleta', descricao:'Habilitar coleta de próximos jogos agendados' },
-    { chave:'max_horarios_proximos',        valor:'4',     tipo:'number',  grupo:'coleta', descricao:'Máximo de horários futuros a coletar por liga (0 = desativar)' },
+    { chave:'max_horarios_proximos',        valor:'6',     tipo:'number',  grupo:'coleta', descricao:'Máximo de horários futuros a coletar por liga (0 = desativar)' },
     // ── Ciclo de coleta ──
     { chave:'intervalo_coleta_seg',         valor:'30',    tipo:'number',  grupo:'coleta', descricao:'Intervalo entre ciclos de coleta (segundos)' },
     // ── Delays de navegação ──
