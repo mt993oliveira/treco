@@ -1003,6 +1003,7 @@ class Bet365Coletor {
             }
         }
 
+        let histOk = 0;
         for (const res of resultados) {
             try {
                 // ── 1. Busca start_time_datetime + odds no banco (fonte autoritativa) ──
@@ -1108,15 +1109,22 @@ class Bet365Coletor {
                         `);
                 }
 
-                // ── 3. Log do resultado salvo via mercados ──
+                // ── 3. Desativa o evento em bet365_eventos (resultado coletado = finalizado) ──
+                if (eventoIdFixo) {
+                    await pool.request()
+                        .input('evIdFin', sql.BigInt, eventoIdFixo)
+                        .query(`UPDATE bet365_eventos SET ativo = 0, status = 'FINALIZADO' WHERE id = @evIdFin AND ativo = 1`);
+                }
+
+                histOk++;
                 console.log(`   ✅ Mercados: [${res.liga}] ${res.timeCasa} × ${res.timeFora} (UTC ${timeKey}) — ${(res.mercados||[]).length} mercado(s)`);
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
             }
         }
 
-        console.log(`   💾 Eventos:${eventosOk} | Mercados:${mercadosOk} | Odds:${oddsOk}`);
-        return { eventosOk, mercadosOk, oddsOk };
+        console.log(`   💾 Eventos:${eventosOk} | Mercados:${mercadosOk} | Odds:${oddsOk} | Resultados:${histOk}`);
+        return { eventosOk, mercadosOk, oddsOk, histOk };
     }
 
     // ─────────────────────────────────────────────────────────────
