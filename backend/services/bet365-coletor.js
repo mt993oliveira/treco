@@ -761,6 +761,17 @@ class Bet365Coletor {
             eventos.push({ eventoId, liga: ligaNormal, timeCasa: normalizarNomeTime(infoJogo.timeCasa), timeFora: normalizarNomeTime(infoJogo.timeFora), horario, countdown, oddCasa, oddEmpate, oddFora, mercados });
             console.log(`      ✅ [${ligaNormal}] ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
         }
+
+        // Volta ao tab da liga para resetar o estado da página (garante que .vr-ResultsNavBarButton
+        // esteja visível caso _coletarResultados seja chamado em seguida)
+        await pg.evaluate((nomeLiga) => {
+            const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+            for (const tab of tabs) {
+                const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
+                if (txt === nomeLiga) { tab.click(); return; }
+            }
+        }, liga.nome);
+        await this._delay(this._cfgNum('delay_volta_proximos_ms', 2000));
     }
 
     async _coletarResultados(pg, liga, resultados) {
