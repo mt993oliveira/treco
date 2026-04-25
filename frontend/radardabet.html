@@ -654,11 +654,30 @@
 </div>
 
 <!-- ========== VIEW SELECTOR ========== -->
-<div style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:8px 16px;display:flex;gap:8px;align-items:center">
+<div style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:8px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <button class="view-btn ativo" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
     <button class="view-btn" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
+    <!-- Período compacto — visível apenas na aba Histórico -->
+    <div id="periodo-nav" style="display:flex;align-items:center;gap:5px;margin-left:10px">
+        <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;white-space:nowrap">PERÍODO</span>
+        <select id="periodo-select" onchange="setPeriodoSelect(this.value)"
+            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 7px;cursor:pointer;height:26px;outline:none">
+            <option value="1">1H</option>
+            <option value="2">2H</option>
+            <option value="3">3H</option>
+            <option value="6" selected>6H</option>
+            <option value="12">12H</option>
+            <option value="24">24H</option>
+            <option value="custom">Nº H...</option>
+        </select>
+        <input type="number" id="periodo-custom" min="1" max="720" placeholder="Nº"
+            style="display:none;width:46px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;text-align:center;padding:3px 4px;height:26px;outline:none"
+            onkeydown="if(event.key==='Enter')setPeriodoCustom(this.value)"
+            onblur="if(this.value)setPeriodoCustom(this.value)">
+        <span id="periodo-custom-h" style="display:none;font-size:9px;color:#475569">H</span>
+    </div>
     <div style="margin-left:auto;font-size:10px;color:#334155" id="ultimo-update"></div>
 </div>
 
@@ -829,25 +848,8 @@
     <!-- Controls bar — linha 1: período + filtro de condição -->
     <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:10px">
 
-        <!-- Linha única: período + controles + blocos de filtros -->
+        <!-- Linha única: controles + blocos de filtros -->
         <div id="filtros-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
-            <!-- Período — renderizado estaticamente, sempre na mesma linha que os controles -->
-            <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em">PERÍODO</span>
-            <button class="secao-btn" data-h="1"  onclick="setHoras(1)">1H</button>
-            <button class="secao-btn" data-h="2"  onclick="setHoras(2)">2H</button>
-            <button class="secao-btn" data-h="3"  onclick="setHoras(3)">3H</button>
-            <button class="secao-btn ativo" data-h="6"  onclick="setHoras(6)">6H</button>
-            <button class="secao-btn" data-h="12" onclick="setHoras(12)">12H</button>
-            <button class="secao-btn" data-h="24" onclick="setHoras(24)">24H</button>
-            <div style="display:flex;align-items:center;gap:3px">
-                <input type="number" id="horas-custom" min="1" max="720" placeholder="Nº"
-                    style="width:40px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:2px 4px;font-size:11px;font-weight:700;text-align:center;outline:none"
-                    onkeydown="if(event.key==='Enter')setHorasCustom(this.value)"
-                    onblur="if(this.value)setHorasCustom(this.value)">
-                <span style="font-size:9px;color:#475569">H</span>
-            </div>
-            <!-- Separador visual -->
-            <div style="width:1px;height:16px;background:#1e293b;margin:0 2px"></div>
             <!-- Controles e blocos de filtros são inseridos aqui por renderFiltros() -->
         </div>
     </div>
@@ -1885,6 +1887,8 @@ function setView(v) {
         const el = document.getElementById('view-' + id);
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
+    const pn = document.getElementById('periodo-nav');
+    if (pn) pn.style.display = v === 'historico' ? 'flex' : 'none';
     if (v === 'historico')   { carregarHistorico(); }
     if (v === 'analise')     { renderAnalise(); carregarMercados(); }
     if (v === 'clubes')      { renderClubes(); }
@@ -2684,11 +2688,39 @@ function _aplicarHighlightGrid() {
     });
 }
 
+function _syncPeriodoSelect(n) {
+    const sel = document.getElementById('periodo-select');
+    const cust = document.getElementById('periodo-custom');
+    const custH = document.getElementById('periodo-custom-h');
+    const presets = [1,2,3,6,12,24];
+    if (sel) sel.value = presets.includes(n) ? String(n) : 'custom';
+    const isCustom = !presets.includes(n);
+    if (cust) { cust.style.display = isCustom ? 'inline-block' : 'none'; if (isCustom) cust.value = n; }
+    if (custH) custH.style.display = isCustom ? 'inline' : 'none';
+}
+function setPeriodoSelect(val) {
+    const cust = document.getElementById('periodo-custom');
+    const custH = document.getElementById('periodo-custom-h');
+    if (val === 'custom') {
+        if (cust) { cust.style.display = 'inline-block'; cust.value = ''; cust.focus(); }
+        if (custH) custH.style.display = 'inline';
+        return;
+    }
+    if (cust) cust.style.display = 'none';
+    if (custH) custH.style.display = 'none';
+    setHoras(parseInt(val));
+}
+function setPeriodoCustom(v) {
+    const n = parseInt(v);
+    if (!n || n < 1 || n > 720) return;
+    S.horas = n;
+    _syncPeriodoSelect(n);
+    carregarHistorico();
+}
 function setHoras(n) {
     S.horas = n;
-    document.querySelectorAll('.secao-btn[data-h]').forEach(b =>
-        b.classList.toggle('ativo', parseInt(b.dataset.h) === n));
-    carregarHistorico(); // recarrega do servidor com novo período
+    _syncPeriodoSelect(n);
+    carregarHistorico();
 }
 
 // ============================================================
@@ -4667,9 +4699,7 @@ function _faInit() {
     if (tipoSel) tipoSel.value = S.fa.tipoMercado || 'Todos';
     const vbChk = document.getElementById('fa-vb-chk');
     if (vbChk) vbChk.checked = !!S.fa.soValueBets;
-    // Sincroniza botão 6H no histórico
-    document.querySelectorAll('.secao-btn[data-h]').forEach(b =>
-        b.classList.toggle('ativo', parseInt(b.dataset.h) === S.horas));
+    _syncPeriodoSelect(S.horas);
     _faAtualizarStatus();
 }
 
@@ -5512,6 +5542,7 @@ function _usrMsg(txt, ok) {
 document.addEventListener('DOMContentLoaded', () => {
     _initUserMenu();
     _faInit();
+    _syncPeriodoSelect(S.horas);
     carregarConfigLigas().then(() => {
         _faInit();
         carregarTudo();
@@ -5878,12 +5909,7 @@ function _filtrarTabelaMkt() {
 // PERÍODO CUSTOMIZADO
 // ============================================================
 function setHorasCustom(v) {
-    const n = parseInt(v);
-    if (!n || n < 1 || n > 720) return;
-    // Remove ativo dos botões preset
-    document.querySelectorAll('.secao-btn[data-h]').forEach(b => b.classList.remove('ativo'));
-    S.horas = n;
-    carregarHistorico();
+    setPeriodoCustom(v);
 }
 
 // ============================================================
