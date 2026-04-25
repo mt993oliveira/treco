@@ -971,24 +971,7 @@
                 <span style="font-size:9px;color:#94a3b8">dias</span>
                 <button class="acao-btn" onclick="confirmarExcluirPorPeriodo()" style="background:#4a1a1a;border-color:#7f1d1d;color:#f87171;padding:1px 8px;font-size:9px;height:20px;line-height:1">Excluir</button>
             </div>
-            <!-- Análise e Correção de Slots -->
-            <div style="display:flex;align-items:center;gap:4px;background:#0d1f3a;border:1px solid #1e3a5f;border-radius:5px;padding:2px 8px">
-                <span style="font-size:9px;color:#60a5fa;font-weight:700;white-space:nowrap">🔧 Análise:</span>
-                <select id="diag-fix-liga" style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;font-size:9px;border-radius:3px;padding:1px 4px;height:20px">
-                    <option value="World Cup">Copa do Mundo</option>
-                    <option value="Euro Cup">Euro Cup</option>
-                    <option value="Premiership">Premier League</option>
-                    <option value="Super Liga Sul-Americana">Super Liga</option>
-                    <option value="Express Cup">Express Cup</option>
-                </select>
-                <input id="diag-fix-data" type="date" style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;font-size:9px;border-radius:3px;padding:1px 4px;height:20px">
-                <input id="diag-fix-hora" type="number" min="0" max="23" placeholder="HH" title="Hora UTC (opcional)" style="width:36px;background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;font-size:9px;border-radius:3px;padding:1px 4px;height:20px;text-align:center">
-                <button class="acao-btn" onclick="diagAnalisar(false)" style="background:#0d2d4a;border-color:#1e4d7a;color:#60a5fa;padding:1px 8px;font-size:9px;height:20px;line-height:1">🔍 Analisar</button>
-                <button class="acao-btn" id="diag-fix-btn-corrigir" onclick="diagAnalisar(true)" style="display:none;background:#0a2d1a;border-color:#14532d;color:#4ade80;padding:1px 8px;font-size:9px;height:20px;line-height:1">✅ Corrigir</button>
-            </div>
         </div>
-        <!-- Resultado da análise -->
-        <div id="diag-fix-resultado" style="display:none;margin-top:6px;background:#060d1a;border:1px solid #1e3a5f;border-radius:5px;padding:8px;font-size:10px;color:#94a3b8;max-height:160px;overflow-y:auto"></div>
     </div>
 
 
