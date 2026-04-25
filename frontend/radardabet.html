@@ -2974,7 +2974,16 @@ function renderGrafico() {
                     enabled: !S.showLegendas,
                     backgroundColor: 'rgba(15,23,42,0.65)', borderColor: '#334155', borderWidth: 1,
                     titleColor: '#94a3b8', bodyColor: '#cbd5e1',
-                    callbacks: { label: ctx => ` ${ctx.dataset.label}: ${typeof ctx.raw === 'object' ? ctx.raw.y : ctx.raw}${ctx.dataset.type !== 'scatter' ? '%' : ''}` }
+                    callbacks: {
+                        title: ctxArr => {
+                            const p = serie[ctxArr[0].dataIndex];
+                            if (!p) return '';
+                            const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
+                            const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
+                            return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}`;
+                        },
+                        label: ctx => ` ${ctx.dataset.label}: ${typeof ctx.raw === 'object' ? ctx.raw.y : ctx.raw}${ctx.dataset.type !== 'scatter' ? '%' : ''}`
+                    }
                 }
             },
             scales: {
