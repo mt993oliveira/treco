@@ -2971,6 +2971,7 @@ function renderGrafico() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    enabled: !S.showLegendas,
                     backgroundColor: 'rgba(15,23,42,0.65)', borderColor: '#334155', borderWidth: 1,
                     titleColor: '#94a3b8', bodyColor: '#cbd5e1',
                     callbacks: { label: ctx => ` ${ctx.dataset.label}: ${typeof ctx.raw === 'object' ? ctx.raw.y : ctx.raw}${ctx.dataset.type !== 'scatter' ? '%' : ''}` }
@@ -3496,6 +3497,8 @@ function toggleLegendas() {
     if (btn) btn.classList.toggle('ativo', S.showLegendas);
     if (S.showLegendas) hideTT();
     localStorage.setItem('showLegendas', S.showLegendas ? '1' : '0');
+    // Recriar gráfico principal para aplicar enabled do tooltip
+    if (S.view === 'historico') renderGrafico();
 }
 
 // ============================================================
@@ -5712,6 +5715,7 @@ function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    enabled: !S.showLegendas,
                     callbacks: {
                         title: ctxArr => top[ctxArr[0].dataIndex].label,
                         label: ctx => {
