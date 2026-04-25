@@ -906,9 +906,9 @@ class Bet365Coletor {
         const { eventos, resultados } = dados;
         let eventosOk = 0, mercadosOk = 0, oddsOk = 0;
 
-        // Desativa apenas jogos que já passaram (não desativa futuros — eles permanecem ativos
-        // mesmo que o Bet365 não os exiba mais nas abas, garantindo sempre N próximos no banco)
-        await pool.request().query(`UPDATE bet365_eventos SET ativo = 0 WHERE start_time_datetime < GETUTCDATE()`);
+        // Desativa apenas jogos com mais de 3h (mantém recentes visíveis na grid enquanto
+        // os resultados ainda não chegaram). Não faz mais wipe por liga — isso apagava futuros.
+        await pool.request().query(`UPDATE bet365_eventos SET ativo = 0 WHERE start_time_datetime < DATEADD(HOUR, -3, GETUTCDATE())`);
 
         for (const ev of eventos) {
             try {
