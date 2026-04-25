@@ -2951,16 +2951,11 @@ function renderGrafico() {
         });
     }
 
-    // Labels: mostra horário de cada jogo que seja o primeiro da sua hora UTC
-    const labels = serie.map((p, i) => {
+    // Labels: horário exato de cada jogo sempre visível no eixo X
+    const labels = serie.map(p => {
         if (!p.data_partida) return '';
         const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
-        // Mostra label no primeiro jogo de cada hora
-        if (i === 0) return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
-        const prev = serie[i-1];
-        if (!prev.data_partida) return '';
-        const dp = new Date((prev.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
-        return d.getUTCHours() !== dp.getUTCHours() ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
+        return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
 
     const cfg = {
@@ -2987,7 +2982,7 @@ function renderGrafico() {
                 }
             },
             scales: {
-                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxTicksLimit:12,maxRotation:0} },
+                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
                 y: { min:0, max:105, grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},callback:v=>v+'%'} }
             }
         }
