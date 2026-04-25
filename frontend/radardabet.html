@@ -2517,13 +2517,7 @@ function renderFiltros() {
     if (_b('btn-legendas'))      _b('btn-legendas').classList.toggle('ativo',      !!S.showLegendas);
 
     const c = document.getElementById('filtros-row');
-
-    // Remove apenas o conteúdo dinâmico anterior (preserva o período estático)
-    // O container já contém: PERÍODO + separador — removemos tudo após o separador
-    const divider = c.querySelector('div[style*="width:1px"][style*="height:16px"]');
-    // Remove todos os elementos após o separador
-    let el = divider ? divider.nextSibling : null;
-    while (el) { const nx = el.nextSibling; c.removeChild(el); el = nx; }
+    c.innerHTML = ''; // limpa tudo — todo conteúdo é dinâmico
 
     // ── Controles (Todos, Limpar, ferramentas) — inline com o período ──
     const ctrl = document.createElement('div');
