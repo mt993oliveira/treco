@@ -1503,6 +1503,7 @@ async function carregarConfigLigas() {
         if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
         if (_sb('btn-exibir-ht'))       _sb('btn-exibir-ht').classList.toggle('ativo',       S.showHT);
         // Legendas: persiste em localStorage (preferência local, não config do servidor)
+        // showLegendas: true = suprimido (ativo), false = visível (padrão)
         const _lsLeg = localStorage.getItem('showLegendas');
         if (_lsLeg !== null) S.showLegendas = _lsLeg === '1';
         if (_sb('btn-legendas')) _sb('btn-legendas').classList.toggle('ativo', S.showLegendas);
@@ -1691,7 +1692,7 @@ const S = {
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
     showProximos:  false,   // exibe próximos jogos agendados na grade
     showHT:        true,    // exibe placar do intervalo (HT) nas células do grid
-    showLegendas:  true,    // exibe tooltip ao passar o mouse nas células
+    showLegendas:  false,   // false = legendas visíveis; true = legendas suprimidas (botão marcado)
     selCols:       new Set(),  // colunas selecionadas (índices)
     selRows:       new Set(),  // linhas selecionadas (índices de hora)
     selScore:      null,       // score selecionado para destaque
@@ -3483,15 +3484,17 @@ function renderTabela() {
 // TOOLTIP
 // ============================================================
 const ttEl = document.getElementById('tt');
-function showTT(e) { if (!S.showLegendas) return; ttEl.textContent = e.currentTarget.dataset.tt; ttEl.style.display = 'block'; moveTT(e); }
-function moveTT(e) { if (!S.showLegendas) return; ttEl.style.left = (e.clientX + 14) + 'px'; ttEl.style.top = (e.clientY - 8) + 'px'; }
+// S.showLegendas = true → legendas OCULTAS (botão ativo/marcado = suprime tooltip)
+// S.showLegendas = false → legendas VISÍVEIS (padrão)
+function showTT(e) { if (S.showLegendas) return; ttEl.textContent = e.currentTarget.dataset.tt; ttEl.style.display = 'block'; moveTT(e); }
+function moveTT(e) { if (S.showLegendas) return; ttEl.style.left = (e.clientX + 14) + 'px'; ttEl.style.top = (e.clientY - 8) + 'px'; }
 function hideTT()  { ttEl.style.display = 'none'; }
 
 function toggleLegendas() {
     S.showLegendas = !S.showLegendas;
     const btn = document.getElementById('btn-legendas');
     if (btn) btn.classList.toggle('ativo', S.showLegendas);
-    if (!S.showLegendas) hideTT();
+    if (S.showLegendas) hideTT();
     localStorage.setItem('showLegendas', S.showLegendas ? '1' : '0');
 }
 
