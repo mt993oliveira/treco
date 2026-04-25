@@ -859,12 +859,20 @@
                 <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Over 1.5 — Evolução</div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                     <div style="width:1px;height:14px;background:#1e293b"></div>
-                    <button id="btn-caneta" class="acao-btn" onclick="toggleCaneta()" title="Riscar no gráfico">✏️ Caneta</button>
+                    <button id="btn-caneta" class="acao-btn" onclick="toggleCaneta()" title="Ativar/desativar desenho na grade e gráfico">✏️ Caneta</button>
+                    <select id="draw-tool" onchange="DRAW.ferramenta=this.value" title="Ferramenta de desenho"
+                        style="display:none;background:#0f172a;border:1px solid #1fcc59;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 7px;cursor:pointer;height:26px">
+                        <option value="livre">✏️ Livre</option>
+                        <option value="linha">📏 Linha</option>
+                        <option value="seta">➡️ Seta</option>
+                        <option value="retangulo">⬜ Retângulo</option>
+                        <option value="borracha">🧹 Borracha</option>
+                    </select>
                     <input type="color" id="caneta-cor" value="#f59e0b" title="Cor da caneta"
                         style="width:24px;height:24px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0">
                     <input type="range" id="caneta-esp" min="1" max="8" value="2" title="Espessura"
                         style="width:50px;accent-color:#f59e0b">
-                    <button class="acao-btn" onclick="limparDesenho()" title="Apagar riscos do gráfico">🗑 Limpar</button>
+                    <button class="acao-btn" onclick="limparDesenho()" title="Apagar riscos">🗑 Limpar</button>
                 </div>
             </div>
             <div style="position:relative;height:190px">
@@ -5879,45 +5887,82 @@ function setHorasCustom(v) {
 // ============================================================
 // CANETA — desenho livre sobre o gráfico
 // ============================================================
-const DRAW = { ativo: false, drawing: false, ctx: null };
+const DRAW = { ativo: false, drawing: false, ctx: null, ctxGrid: null, ferramenta: 'livre', sx: 0, sy: 0 };
 
-function _drawInit() {
-    const canvas = document.getElementById('grafico-draw');
-    if (!canvas || DRAW.ctx) return;
-    const parent = canvas.parentElement;
-    canvas.width  = parent.offsetWidth  || 600;
-    canvas.height = parent.offsetHeight || 190;
-    DRAW.ctx = canvas.getContext('2d');
+function _drawCor() { return document.getElementById('caneta-cor')?.value || '#f59e0b'; }
+function _drawEsp() { return parseInt(document.getElementById('caneta-esp')?.value) || 2; }
 
-    function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const t = e.touches ? e.touches[0] : e;
-        return { x: (t.clientX - rect.left) * (canvas.width  / rect.width),
-                 y: (t.clientY - rect.top)  * (canvas.height / rect.height) };
-    }
+function _drawStyle(ctx, cor, esp) {
+    ctx.strokeStyle = cor; ctx.fillStyle = cor;
+    ctx.lineWidth = esp; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+}
+
+function _drawArrow(ctx, x1, y1, x2, y2, esp) {
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    const h = Math.max(12, esp * 5);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - h * Math.cos(ang - Math.PI/6), y2 - h * Math.sin(ang - Math.PI/6));
+    ctx.lineTo(x2 - h * Math.cos(ang + Math.PI/6), y2 - h * Math.sin(ang + Math.PI/6));
+    ctx.closePath(); ctx.fill();
+}
+
+function _drawGetPos(e, canvas, scrollEl) {
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    const sx = scrollEl ? scrollEl.scrollLeft : 0;
+    const sy = scrollEl ? scrollEl.scrollTop  : 0;
+    return {
+        x: (t.clientX - rect.left + sx) * (canvas.width  / (rect.width  || canvas.width)),
+        y: (t.clientY - rect.top  + sy) * (canvas.height / (rect.height || canvas.height))
+    };
+}
+
+function _drawBind(canvas, ctxKey, scrollEl) {
+    function getP(e) { return _drawGetPos(e, canvas, scrollEl); }
     function startDraw(e) {
         if (!DRAW.ativo) return;
-        DRAW.drawing = true;
-        const p = getPos(e);
-        DRAW.ctx.beginPath();
-        DRAW.ctx.moveTo(p.x, p.y);
+        const p = getP(e); DRAW.drawing = true; DRAW.sx = p.x; DRAW.sy = p.y;
+        const ctx = DRAW[ctxKey]; if (!ctx) return;
+        const cor = _drawCor(), esp = _drawEsp();
+        if (DRAW.ferramenta === 'livre') {
+            ctx.globalCompositeOperation = 'source-over';
+            _drawStyle(ctx, cor, esp); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+        } else if (DRAW.ferramenta === 'borracha') {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.lineWidth = esp * 6; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(p.x, p.y);
+        } else {
+            DRAW[ctxKey + '_snap'] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
         e.preventDefault();
     }
     function moveDraw(e) {
         if (!DRAW.ativo || !DRAW.drawing) return;
-        const p = getPos(e);
-        const cor  = document.getElementById('caneta-cor')?.value || '#f59e0b';
-        const esp  = parseInt(document.getElementById('caneta-esp')?.value) || 2;
-        DRAW.ctx.lineTo(p.x, p.y);
-        DRAW.ctx.strokeStyle = cor;
-        DRAW.ctx.lineWidth   = esp;
-        DRAW.ctx.lineCap     = 'round';
-        DRAW.ctx.lineJoin    = 'round';
-        DRAW.ctx.stroke();
+        const p = getP(e); const ctx = DRAW[ctxKey]; if (!ctx) return;
+        const cor = _drawCor(), esp = _drawEsp();
+        if (DRAW.ferramenta === 'livre' || DRAW.ferramenta === 'borracha') {
+            ctx.lineTo(p.x, p.y); ctx.stroke();
+        } else {
+            const snap = DRAW[ctxKey + '_snap'];
+            if (snap) ctx.putImageData(snap, 0, 0);
+            ctx.globalCompositeOperation = 'source-over';
+            _drawStyle(ctx, cor, esp);
+            if (DRAW.ferramenta === 'linha') {
+                ctx.beginPath(); ctx.moveTo(DRAW.sx, DRAW.sy); ctx.lineTo(p.x, p.y); ctx.stroke();
+            } else if (DRAW.ferramenta === 'seta') {
+                _drawArrow(ctx, DRAW.sx, DRAW.sy, p.x, p.y, esp);
+            } else if (DRAW.ferramenta === 'retangulo') {
+                ctx.strokeRect(DRAW.sx, DRAW.sy, p.x - DRAW.sx, p.y - DRAW.sy);
+            }
+        }
         e.preventDefault();
     }
-    function stopDraw() { DRAW.drawing = false; }
-
+    function stopDraw() {
+        if (!DRAW.drawing) return; DRAW.drawing = false;
+        const ctx = DRAW[ctxKey]; if (ctx) ctx.globalCompositeOperation = 'source-over';
+    }
     canvas.addEventListener('mousedown',  startDraw);
     canvas.addEventListener('mousemove',  moveDraw);
     canvas.addEventListener('mouseup',    stopDraw);
@@ -5927,20 +5972,52 @@ function _drawInit() {
     canvas.addEventListener('touchend',   stopDraw);
 }
 
+function _drawInit() {
+    // Canvas sobre o gráfico
+    const chartCanvas = document.getElementById('grafico-draw');
+    if (chartCanvas && !DRAW.ctx) {
+        const p = chartCanvas.parentElement;
+        chartCanvas.width = p.offsetWidth || 600; chartCanvas.height = p.offsetHeight || 190;
+        DRAW.ctx = chartCanvas.getContext('2d');
+        _drawBind(chartCanvas, 'ctx', null);
+    }
+    // Canvas sobre a grade
+    let gridCanvas = document.getElementById('grid-draw');
+    const scroll = document.querySelector('.tabela-scroll');
+    if (!gridCanvas && scroll) {
+        scroll.style.position = 'relative';
+        gridCanvas = document.createElement('canvas');
+        gridCanvas.id = 'grid-draw';
+        gridCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:10;';
+        scroll.appendChild(gridCanvas);
+    }
+    if (gridCanvas && !DRAW.ctxGrid && scroll) {
+        const tbl = scroll.querySelector('table');
+        gridCanvas.width  = tbl ? tbl.offsetWidth  : scroll.scrollWidth;
+        gridCanvas.height = tbl ? tbl.offsetHeight : scroll.scrollHeight;
+        DRAW.ctxGrid = gridCanvas.getContext('2d');
+        _drawBind(gridCanvas, 'ctxGrid', scroll);
+    }
+}
+
 function toggleCaneta() {
     DRAW.ativo = !DRAW.ativo;
     const btn = document.getElementById('btn-caneta');
     if (btn) btn.classList.toggle('ativo', DRAW.ativo);
-    const canvas = document.getElementById('grafico-draw');
-    if (canvas) canvas.style.pointerEvents = DRAW.ativo ? 'auto' : 'none';
+    const chartCanvas = document.getElementById('grafico-draw');
+    if (chartCanvas) chartCanvas.style.pointerEvents = DRAW.ativo ? 'auto' : 'none';
+    const gridCanvas = document.getElementById('grid-draw');
+    if (gridCanvas) gridCanvas.style.pointerEvents = DRAW.ativo ? 'auto' : 'none';
+    const toolSel = document.getElementById('draw-tool');
+    if (toolSel) toolSel.style.display = DRAW.ativo ? 'inline-block' : 'none';
     _drawInit();
 }
 
 function limparDesenho() {
-    const canvas = document.getElementById('grafico-draw');
-    if (canvas && DRAW.ctx) {
-        DRAW.ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
+    const cc = document.getElementById('grafico-draw');
+    if (cc && DRAW.ctx) DRAW.ctx.clearRect(0, 0, cc.width, cc.height);
+    const gc = document.getElementById('grid-draw');
+    if (gc && DRAW.ctxGrid) DRAW.ctxGrid.clearRect(0, 0, gc.width, gc.height);
 }
 
 // ============================================================
