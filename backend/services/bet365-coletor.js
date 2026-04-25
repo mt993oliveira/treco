@@ -1117,7 +1117,7 @@ class Bet365Coletor {
                         .input('evIdFin', sql.BigInt, eventoIdFixo)
                         .query(`UPDATE bet365_eventos SET ativo = 0, status = 'FINALIZADO'
                                 WHERE id = @evIdFin AND ativo = 1
-                                  AND start_time_datetime <= GETUTCDATE()`);
+                                  AND start_time_datetime <= DATEADD(HOUR, 1, GETUTCDATE())`);
                 }
 
                 histOk++;
