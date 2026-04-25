@@ -1110,10 +1110,14 @@ class Bet365Coletor {
                 }
 
                 // ── 3. Desativa o evento em bet365_eventos (resultado coletado = finalizado) ──
+                // Guarda start_time_datetime <= GETUTCDATE(): evita desativar evento FUTURO com
+                // o mesmo par de times se a busca por eventoIdFixo retornou o slot errado.
                 if (eventoIdFixo) {
                     await pool.request()
                         .input('evIdFin', sql.BigInt, eventoIdFixo)
-                        .query(`UPDATE bet365_eventos SET ativo = 0, status = 'FINALIZADO' WHERE id = @evIdFin AND ativo = 1`);
+                        .query(`UPDATE bet365_eventos SET ativo = 0, status = 'FINALIZADO'
+                                WHERE id = @evIdFin AND ativo = 1
+                                  AND start_time_datetime <= GETUTCDATE()`);
                 }
 
                 histOk++;
