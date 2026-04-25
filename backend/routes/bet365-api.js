@@ -1440,7 +1440,7 @@ const CONFIG_DEFAULTS = [
     { chave:'timeout_ligas_ms',             valor:'20000', tipo:'number',  grupo:'coleta', descricao:'Timeout aguardando botões de liga (ms)' },
     { chave:'timeout_navegacao_ms',         valor:'30000', tipo:'number',  grupo:'coleta', descricao:'Timeout de navegação/reload (ms)' },
     // ── Ordem de coleta ──
-    { chave:'proximos_antes_resultados',    valor:'false', tipo:'boolean', grupo:'ordem',  descricao:'Coletar próximos jogos ANTES dos resultados' },
+    { chave:'proximos_antes_resultados',    valor:'true',  tipo:'boolean', grupo:'ordem',  descricao:'Coletar próximos jogos ANTES dos resultados' },
     // ── Ligas ──
     { chave:'liga_world_cup',               valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Copa do Mundo' },
     { chave:'liga_euro_cup',                valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Euro Cup' },
