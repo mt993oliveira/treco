@@ -2523,7 +2523,7 @@ function renderFiltros() {
         <button class="acao-btn" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
         <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking</button>
         <button class="acao-btn" onclick="abrirModalOdds()">📊 Odds</button>
-        <button class="acao-btn" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
+        <button class="acao-btn${S.showLegendas?' ativo':''}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
     `;
     c.appendChild(ctrl);
 
