@@ -723,6 +723,11 @@ class Bet365Coletor {
             if (numHorarios > 0) break;
             await this._delay(1000);
         }
+        // Aguarda mais para o Bet365 carregar todos os botões de horário (carregamento progressivo)
+        if (numHorarios > 0) {
+            await this._delay(2000);
+            numHorarios = await pg.evaluate(() => document.querySelectorAll('.vr-EventTimesNavBarButton').length);
+        }
         const coletarProximos = this._cfgBool('coletar_proximos_jogos', true);
         const maxHorarios = coletarProximos ? this._cfgNum('max_horarios_proximos', 6) : 0;
         numHorarios = Math.min(numHorarios, maxHorarios);
