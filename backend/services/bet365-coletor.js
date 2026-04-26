@@ -200,6 +200,16 @@ const LIGA_CONFIG_KEY = {
     'Super Liga Sul-Americana': 'liga_super_liga',
 };
 
+// Mapeamento: liga normalizada → IDs da página de resultados (extra.bet365.bet.br)
+// IDs descobertos via investigação em 2026-04-26
+const LIGA_RESULTADOS_URL = {
+    'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
+    'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
+    'Premiership':              { compId: '20120653', compNome: 'Premier League' },
+    'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
+    'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
+};
+
 class Bet365Coletor {
     constructor() {
         this.url       = URL_SOCCER;
@@ -705,59 +715,114 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _coletarProximos(pg, liga, eventos) {
-        // Garante que estamos na aba da liga (próximos)
-        await pg.evaluate((nomeLiga) => {
-            const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-            for (const tab of tabs) {
-                const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
-                if (txt === nomeLiga) { tab.click(); return; }
-            }
-        }, liga.nome);
-        await this._delay(this._cfgNum('delay_volta_proximos_ms', 2000));
-
-        let numHorarios = 0;
-        for (let t = 0; t < 10; t++) {
-            numHorarios = await pg.evaluate(() => document.querySelectorAll('.vr-EventTimesNavBarButton').length);
-            if (numHorarios > 0) break;
-            await this._delay(1000);
-        }
         const coletarProximos = this._cfgBool('coletar_proximos_jogos', true);
-        const maxHorarios = coletarProximos ? this._cfgNum('max_horarios_proximos', 4) : 0;
-        numHorarios = Math.min(numHorarios, maxHorarios);
-        console.log(`   ⏰ [${liga.nome}] ${numHorarios} horário(s)`);
+        const maxHorarios     = coletarProximos ? this._cfgNum('max_horarios_proximos', 4) : 0;
 
-        for (let i = 0; i < numHorarios; i++) {
-            const ok = await pg.evaluate((idx) => {
-                const btns = document.querySelectorAll('.vr-EventTimesNavBarButton');
-                if (btns[idx]) { btns[idx].click(); return true; }
-                return false;
-            }, i);
-            if (!ok) continue;
-            await this._delay(this._cfgNum('delay_entre_horarios_ms', 1500));
+        if (maxHorarios === 0) {
+            console.log(`   ⏭️  [${liga.nome}] Coleta de próximos desativada.`);
+            return;
+        }
 
-            let temMkt = false;
-            for (let t = 0; t < 16; t++) {
-                temMkt = await pg.evaluate(() => document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length > 0).catch(() => false);
-                if (temMkt) break;
-                await this._delay(this._cfgNum('delay_aguarda_mercado_ms', 500));
+        const ligaNorm = normalizarNomeLiga(liga.nome);
+        const ligaInfo = LIGA_RESULTADOS_URL[ligaNorm];
+
+        if (!ligaInfo) {
+            console.log(`   ⚠️  [${liga.nome}] Liga não mapeada para próximos. Pulando.`);
+            return;
+        }
+
+        // Data atual em BST (Bet365 usa UTC+1 como referência de horário)
+        const nowBST = new Date(Date.now() + 3600000);
+        const yyyy   = nowBST.getUTCFullYear();
+        const mm     = nowBST.getUTCMonth(); // 0-indexed
+        const dd     = nowBST.getUTCDate();
+        const dateStr = `${yyyy}-${String(mm + 1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+
+        const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
+                          'Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        const displayDate = `${dd}-${dd}%20${MESES_PT[mm]}%20${yyyy}`;
+
+        // Monta URL direta para a lista de fixtures da liga no dia de hoje (BST)
+        const b64 = s => Buffer.from(s).toString('base64');
+        const qParams = [
+            b64('2'),
+            b64('146'),
+            b64('Futebol%20Virtual'),
+            b64(dateStr),
+            b64(dateStr),
+            b64('0'),
+            b64('0'),
+            b64(displayDate),
+            b64('0'),
+            b64(encodeURIComponent(ligaInfo.compNome)),
+            b64(ligaInfo.compId),
+            b64('0'),
+            '',
+            b64('fixture'),
+            b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
+            '',
+            b64('0'),
+            b64('0'),
+        ].join('|');
+        const urlResultados = `https://extra.bet365.bet.br/results/br?q=${qParams}`;
+
+        const horaAtualBST = nowBST.getUTCHours();
+        const minAtualBST  = nowBST.getUTCMinutes();
+
+        let novaPg = null;
+        try {
+            novaPg = await pg.browser().newPage();
+            await novaPg.goto(urlResultados, { waitUntil: 'networkidle2', timeout: 30000 });
+            await this._delay(2000);
+
+            // Extrai apenas os jogos FUTUROS da lista de fixtures
+            const fixtures = await novaPg.evaluate((h, m, maxN) => {
+                const buttons = document.querySelectorAll('button.point-result__fixture');
+                const futuros = [];
+                for (const btn of buttons) {
+                    const parts = btn.querySelectorAll('.point-result__fixture-participant');
+                    if (parts.length < 2) continue;
+                    const p1    = parts[0].textContent.trim();
+                    const match = p1.match(/^(\d{1,2})\.(\d{2})\s+(.+)$/);
+                    if (!match) continue;
+                    const jH = parseInt(match[1]);
+                    const jM = parseInt(match[2]);
+                    if (jH > h || (jH === h && jM > m)) {
+                        futuros.push({
+                            horario:  `${jH}:${String(jM).padStart(2,'0')}`,
+                            timeCasa: match[3].trim(),
+                            timeFora: parts[1].textContent.trim(),
+                        });
+                        if (futuros.length >= maxN) break;
+                    }
+                }
+                return futuros;
+            }, horaAtualBST, minAtualBST, maxHorarios);
+
+            console.log(`   ⏰ [${liga.nome}] ${fixtures.length} próximo(s) via página de resultados`);
+
+            for (const f of fixtures) {
+                const tcNorm   = normalizarNomeTime(f.timeCasa);
+                const tfNorm   = normalizarNomeTime(f.timeFora);
+                const eventoId = this._gerarId(ligaNorm, tcNorm, tfNorm, f.horario);
+                eventos.push({
+                    eventoId,
+                    liga:      ligaNorm,
+                    timeCasa:  tcNorm,
+                    timeFora:  tfNorm,
+                    horario:   f.horario,
+                    countdown: null,
+                    oddCasa:   0,
+                    oddEmpate: 0,
+                    oddFora:   0,
+                    mercados:  [],
+                });
+                console.log(`      ✅ [${ligaNorm}] ${tcNorm} x ${tfNorm} [${f.horario}]`);
             }
-            if (!temMkt) continue;
-
-            const infoJogo = await this._extrairInfoJogo(liga.nome, pg);
-            if (!infoJogo.timeCasa || !infoJogo.timeFora) continue;
-
-            const { mercados, countdown } = await this._extrairMercadosDoPagina(pg);
-            const ftMkt     = mercados.find(m => /Fulltime Result|Resultado Final/i.test(m.nome));
-            const oddCasa   = ftMkt?.selecoes[0]?.odd || 0;
-            const oddEmpate = ftMkt?.selecoes[1]?.odd || 0;
-            const oddFora   = ftMkt?.selecoes[2]?.odd || 0;
-
-            const horario    = infoJogo.horario || countdown;
-            const ligaNormal = normalizarNomeLiga(liga.nome);
-            const eventoId   = this._gerarId(ligaNormal, infoJogo.timeCasa, infoJogo.timeFora, horario);
-
-            eventos.push({ eventoId, liga: ligaNormal, timeCasa: normalizarNomeTime(infoJogo.timeCasa), timeFora: normalizarNomeTime(infoJogo.timeFora), horario, countdown, oddCasa, oddEmpate, oddFora, mercados });
-            console.log(`      ✅ [${ligaNormal}] ${infoJogo.timeCasa} x ${infoJogo.timeFora} [${horario}]`);
+        } catch(err) {
+            console.error(`   ❌ [${liga.nome}] Erro _coletarProximos: ${err.message}`);
+        } finally {
+            if (novaPg) await novaPg.close().catch(() => {});
         }
     }
 
