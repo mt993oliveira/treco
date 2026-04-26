@@ -1432,7 +1432,7 @@ const CONFIG_DEFAULTS = [
     { chave:'delay_show_more_ms',           valor:'800',   tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques em "Mostrar Mais" (ms)' },
     { chave:'delay_expandir_mercados_ms',   valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay após expandir mercados internos (ms)' },
     { chave:'delay_volta_proximos_ms',      valor:'2000',  tipo:'number',  grupo:'coleta', descricao:'Delay ao voltar para Próximos Jogos (ms)' },
-    { chave:'delay_entre_horarios_ms',      valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques de horário (ms)' },
+    { chave:'delay_entre_horarios_ms',      valor:'3000',  tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques de horário (ms)' },
     { chave:'delay_aguarda_mercado_ms',     valor:'500',   tipo:'number',  grupo:'coleta', descricao:'Delay de polling ao aguardar mercados (ms)' },
     // ── Timeouts ──
     { chave:'timeout_goto_ms',              valor:'60000', tipo:'number',  grupo:'coleta', descricao:'Timeout ao navegar para a página inicial (ms)' },
