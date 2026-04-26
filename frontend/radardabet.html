@@ -5591,6 +5591,7 @@ function _usrMsg(txt, ok) {
 // CRIAR PADRÕES DE GRÁFICO
 // ============================================================
 let _padroesCache = [];
+let _editandoPadraoId = null;
 
 async function abrirModalPadroes() {
     document.getElementById('modal-padroes').classList.add('aberto');
@@ -5628,33 +5629,83 @@ function _renderListaPadroes(padroes) {
             return `Foco: ${filtro||'—'} · ${ativas.length} linha(s) ativa(s)`;
         } catch(e) { return '—'; }
     };
-    listEl.innerHTML = padroes.map(p => `
-        <div style="background:#0f172a;border:1px solid ${p.is_principal?'#1fcc59':'#1e293b'};border-radius:8px;
-             padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
-            <div style="flex:1;min-width:0">
-                <div style="font-size:13px;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                    ${p.is_principal?'<span style="color:#1fcc59;font-size:10px;font-weight:700;margin-right:4px">★</span>':''}${esc(p.nome)}
-                </div>
-                <div style="font-size:10px;color:#64748b;margin-top:2px">${desc(p.filtros)}</div>
+    listEl.innerHTML = padroes.map(p => {
+        const editando = _editandoPadraoId === p.id;
+        const nomeArea = editando ? `
+            <div style="display:flex;gap:6px;align-items:center">
+                <input id="padrao-edit-${p.id}" type="text" value="${esc(p.nome)}" maxlength="50"
+                    onkeydown="if(event.key==='Enter')confirmarEdicaoNome(${p.id});else if(event.key==='Escape')cancelarEdicaoNome();"
+                    style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:5px;
+                    padding:5px 8px;color:#e2e8f0;font-size:12px;outline:none;min-width:0">
+                <button onclick="confirmarEdicaoNome(${p.id})" title="Confirmar"
+                    style="padding:5px 9px;border-radius:5px;background:rgba(31,204,89,.15);
+                    border:1px solid #1fcc59;color:#1fcc59;font-size:12px;cursor:pointer;flex-shrink:0">✓</button>
+                <button onclick="cancelarEdicaoNome()" title="Cancelar"
+                    style="padding:5px 9px;border-radius:5px;background:#1e293b;
+                    border:1px solid #334155;color:#64748b;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>
+            </div>` : `
+            <div style="font-size:13px;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                ${p.is_principal?'<span style="color:#1fcc59;font-size:10px;font-weight:700;margin-right:4px">★</span>':''}${esc(p.nome)}
             </div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">${desc(p.filtros)}</div>`;
+        const acoes = editando ? '' : `
             <button onclick="aplicarPadrao(${p.id})" title="Aplicar este padrão"
                 style="padding:5px 10px;border-radius:5px;background:#1e293b;border:1px solid #334155;
-                color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
-                Aplicar
-            </button>
+                color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">Aplicar</button>
+            <button onclick="editarNomePadrao(${p.id})" title="Renomear padrão"
+                style="padding:5px 8px;border-radius:5px;background:#1e293b;border:1px solid #334155;
+                color:#94a3b8;font-size:11px;cursor:pointer">✏️</button>
             <button onclick="setPrincipalPadrao(${p.id})" title="${p.is_principal?'Já é principal':'Definir como principal'}"
                 style="padding:5px 8px;border-radius:5px;background:${p.is_principal?'rgba(31,204,89,.15)':'#1e293b'};
                 border:1px solid ${p.is_principal?'#1fcc59':'#334155'};
-                color:${p.is_principal?'#1fcc59':'#64748b'};font-size:11px;cursor:pointer">
-                ★
-            </button>
+                color:${p.is_principal?'#1fcc59':'#64748b'};font-size:11px;cursor:pointer">★</button>
             <button onclick="deletarPadrao(${p.id})" title="Excluir padrão"
                 style="padding:5px 8px;border-radius:5px;background:#1e293b;border:1px solid #334155;
-                color:#f87171;font-size:11px;cursor:pointer">
-                ✕
-            </button>
-        </div>
-    `).join('');
+                color:#f87171;font-size:11px;cursor:pointer">✕</button>`;
+        return `
+        <div style="background:#0f172a;border:1px solid ${p.is_principal?'#1fcc59':'#1e293b'};border-radius:8px;
+             padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+            <div style="flex:1;min-width:0">${nomeArea}</div>
+            ${acoes}
+        </div>`;
+    }).join('');
+    if (_editandoPadraoId !== null) {
+        setTimeout(() => {
+            const inp = document.getElementById(`padrao-edit-${_editandoPadraoId}`);
+            if (inp) { inp.focus(); inp.select(); }
+        }, 30);
+    }
+}
+
+function editarNomePadrao(id) {
+    _editandoPadraoId = id;
+    _renderListaPadroes(_padroesCache);
+}
+
+async function confirmarEdicaoNome(id) {
+    const u = _getUser();
+    if (!u) return;
+    const inp = document.getElementById(`padrao-edit-${id}`);
+    const novoNome = (inp ? inp.value : '').trim();
+    if (!novoNome) { if (inp) inp.focus(); return; }
+    const p = _padroesCache.find(x => x.id === id);
+    if (!p) return;
+    try {
+        const r = await fetch(`/api/usuario/padroes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id, nome: novoNome, filtros: p.filtros })
+        });
+        const d = await r.json();
+        if (!d.success) { alert(d.message || 'Erro ao renomear.'); return; }
+        _editandoPadraoId = null;
+        await _carregarPadroes();
+    } catch(e) { alert('Erro ao renomear padrão.'); }
+}
+
+function cancelarEdicaoNome() {
+    _editandoPadraoId = null;
+    _renderListaPadroes(_padroesCache);
 }
 
 function aplicarPadrao(id) {
