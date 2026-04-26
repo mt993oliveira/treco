@@ -744,6 +744,8 @@ class Bet365Coletor {
                 await this._delay(this._cfgNum('delay_aguarda_mercado_ms', 500));
             }
             if (!temMkt) continue;
+            // Aguarda nomes dos times carregarem (pods aparecem antes dos textos internos)
+            await this._delay(this._cfgNum('delay_entre_horarios_ms', 3000));
 
             const infoJogo = await this._extrairInfoJogo(liga.nome, pg);
             if (!infoJogo.timeCasa || !infoJogo.timeFora) continue;
