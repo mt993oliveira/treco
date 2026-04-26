@@ -847,6 +847,16 @@
         <div id="fa-status" style="margin-top:7px;font-size:9px;color:#334155"></div>
     </div>
 
+    <!-- Toggles de seções -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <button id="atog-ia"         onclick="toggleAnaliseSecao('ia')"         style="flex:1;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:border-color .2s,color .2s;white-space:nowrap;min-width:80px">🤖 IA</button>
+        <button id="atog-desempenho" onclick="toggleAnaliseSecao('desempenho')" style="flex:1;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:border-color .2s,color .2s;white-space:nowrap;min-width:80px">📊 Desempenho</button>
+        <button id="atog-detalhe"    onclick="toggleAnaliseSecao('detalhe')"    style="flex:1;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:border-color .2s,color .2s;white-space:nowrap;min-width:80px">🔍 Detalhe</button>
+        <button id="atog-valuebets"  onclick="toggleAnaliseSecao('valuebets')"  style="flex:1;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:border-color .2s,color .2s;white-space:nowrap;min-width:80px">💰 Value Bets</button>
+        <button id="atog-tendencias" onclick="toggleAnaliseSecao('tendencias')" style="flex:1;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:border-color .2s,color .2s;white-space:nowrap;min-width:80px">📈 Tendências</button>
+        <button id="atog-frequencia" onclick="toggleAnaliseSecao('frequencia')" style="flex:1;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:border-color .2s,color .2s;white-space:nowrap;min-width:80px">📊 Frequência</button>
+    </div>
+
     <!-- IA SUGESTÕES PRÓXIMOS JOGOS — aparece antes do Desempenho por Liga -->
     <div id="analise-secao-ia" style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:14px">
         <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.08em;margin-bottom:8px">🤖 IA — SUGESTÕES PARA PRÓXIMOS JOGOS (BASE: MERCADOS PAGOS)</div>
@@ -1825,6 +1835,7 @@ const S = {
     grafico:       null,
     grafTopo:      null,
     view:          'historico',
+    _analiseSecoes: { ia:true, desempenho:true, detalhe:true, valuebets:true, tendencias:true, frequencia:true },
     showGrafico:   true,   // toggle independente
     showMosaico:   true,   // toggle independente
     showMercados:  false,  // toggle painel de filtros/mercados
@@ -2023,6 +2034,24 @@ function setView(v) {
     if (v === 'analise')     { renderAnalise(); carregarMercados(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); }
+}
+
+const _ANALISE_SECOES_MAP = {
+    ia:         'analise-secao-ia',
+    desempenho: 'analise-secao-desempenho',
+    detalhe:    'analise-detalhe',
+    valuebets:  'analise-secao-value-bets',
+    tendencias: 'analise-secao-tendencias',
+    frequencia: 'analise-secao-frequencia',
+};
+
+function toggleAnaliseSecao(key) {
+    S._analiseSecoes[key] = !S._analiseSecoes[key];
+    const ativo = S._analiseSecoes[key];
+    const sec = document.getElementById(_ANALISE_SECOES_MAP[key]);
+    if (sec) sec.style.display = ativo ? '' : 'none';
+    const btn = document.getElementById(`atog-${key}`);
+    if (btn) { btn.style.borderColor = ativo ? '#1fcc59' : '#1e293b'; btn.style.color = ativo ? '#e2e8f0' : '#64748b'; }
 }
 
 function setSubView(v) {
@@ -2480,7 +2509,7 @@ function renderAnalise() {
     });
 
     // Detalhe da liga selecionada
-    if (S.ligaCardSel) {
+    if (S.ligaCardSel && S._analiseSecoes.detalhe !== false) {
         const ligaData = sugestoesMap.get(S.ligaCardSel);
         if (ligaData) renderAnaliseDetalhe(ligaData);
         document.getElementById('analise-detalhe').style.display = '';
