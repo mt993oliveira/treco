@@ -808,9 +808,9 @@ class Bet365Coletor {
             }, horaAtualBST, minAtualBST, maxHorarios);
 
             console.log(`   ⏰ [${liga.nome}] BST atual: ${horaAtualBST}:${String(minAtualBST).padStart(2,'0')} | Total fixtures na página: ${totalEncontrados} | Próximos: ${futuros.length}`);
-            if (totalEncontrados > 0) console.log(`      📋 Primeiros fixtures: ${amostra.join(' | ')}`);
+            if (futuros.length > 0) console.log(`      📋 Próximos fixtures: ${futuros.map(f => `${f.horario} ${f.timeCasa} x ${f.timeFora}`).join(' | ')}`);
 
-            for (const f of fixtures) {
+            for (const f of futuros) {
                 const tcNorm   = normalizarNomeTime(f.timeCasa);
                 const tfNorm   = normalizarNomeTime(f.timeFora);
                 const eventoId = this._gerarId(ligaNorm, tcNorm, tfNorm, f.horario);
