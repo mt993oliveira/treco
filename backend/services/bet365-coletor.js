@@ -1071,35 +1071,42 @@ class Bet365Coletor {
 
         for (const res of resultados) {
             try {
-                // ── 1. Busca start_time_datetime + odds no banco (fonte autoritativa) ──
-                // res.horario vem de um seletor errado e retorna valores como "0.55" (odds),
-                // portanto usamos start_time_datetime de bet365_eventos como hora real do jogo.
+                // ── 1. data_partida vem do horário real do jogo (label "Euro Cup - 13:56" na página) ──
+                // res.horario é extraído de .vrr-FixtureDetails_Event — fonte autoritativa do horário.
                 let dataPart = null;
+                if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
+                    const [h, m] = res.horario.replace('.', ':').split(':').map(Number);
+                    // Convenção BST-as-UTC: salva hora BST diretamente como UTC (sem conversão)
+                    let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), h, m, 0, 0);
+                    const nowB365 = Date.now() + 3600000;
+                    // Se o horário está mais de 3 min no futuro, o jogo foi ontem (resultado tardio)
+                    if (ms > nowB365 + 3 * 60000) ms -= 86400000;
+                    dataPart = new Date(ms);
+                }
+
                 let oddCasa = 0, oddEmpate = 0, oddFora = 0;
 
-                // Busca 1: janela recente (jogo coletado próximo do horário real)
+                // ── 2. Busca em bet365_eventos apenas para eventoId e odds ──
                 let evDb = await pool.request()
                     .input('liga2',     sql.NVarChar(200), res.liga)
                     .input('timeCasa2', sql.NVarChar(100), res.timeCasa)
                     .input('timeFora2', sql.NVarChar(100), res.timeFora)
                     .query(`
-                        SELECT TOP 1 id, start_time_datetime, odd_casa, odd_empate, odd_fora
+                        SELECT TOP 1 id, odd_casa, odd_empate, odd_fora
                         FROM bet365_eventos
                         WHERE league_name = @liga2
                           AND time_casa   = @timeCasa2
                           AND time_fora   = @timeFora2
-                          -- janela: -6h até BST agora (exclui eventos futuros que causavam deslocamento de coluna)
                           AND start_time_datetime BETWEEN DATEADD(HOUR,-6,GETUTCDATE()) AND DATEADD(HOUR,1,GETUTCDATE())
                         ORDER BY start_time_datetime DESC
                     `);
-                // Busca 2 (fallback): sem filtro de horário — pega o evento mais recente do dia
                 if (evDb.recordset.length === 0) {
                     evDb = await pool.request()
                         .input('liga2b',     sql.NVarChar(200), res.liga)
                         .input('timeCasa2b', sql.NVarChar(100), res.timeCasa)
                         .input('timeFora2b', sql.NVarChar(100), res.timeFora)
                         .query(`
-                            SELECT TOP 1 id, start_time_datetime, odd_casa, odd_empate, odd_fora
+                            SELECT TOP 1 id, odd_casa, odd_empate, odd_fora
                             FROM bet365_eventos
                             WHERE league_name = @liga2b
                               AND time_casa   = @timeCasa2b
@@ -1109,9 +1116,6 @@ class Bet365Coletor {
                         `);
                 }
 
-                // eventoIdFixo: quando encontramos o evento, usamos o ID dele diretamente.
-                // Isso garante que bet365_historico.evento_id = bet365_eventos.id,
-                // permitindo JOIN correto para buscar mercados e odds completos.
                 let eventoIdFixo = null;
                 if (evDb.recordset.length > 0) {
                     const ev = evDb.recordset[0];
@@ -1119,10 +1123,10 @@ class Bet365Coletor {
                     oddCasa   = parseFloat(ev.odd_casa)   || 0;
                     oddEmpate = parseFloat(ev.odd_empate) || 0;
                     oddFora   = parseFloat(ev.odd_fora)   || 0;
-                    if (ev.start_time_datetime) dataPart = new Date(ev.start_time_datetime);
+                    // NÃO sobrescreve dataPart — res.horario é a fonte autoritativa do horário
                 }
 
-                // Fallback 1: memória do ciclo atual
+                // Fallback odds: memória do ciclo atual
                 if (!oddCasa && !oddEmpate && !oddFora) {
                     const evMem = eventos.find(e =>
                         e.liga === res.liga &&
@@ -1132,9 +1136,9 @@ class Bet365Coletor {
                     if (evMem) { oddCasa = evMem.oddCasa; oddEmpate = evMem.oddEmpate; oddFora = evMem.oddFora; }
                 }
 
-                // Fallback: sem start_time do evento → usa "Bet365 agora" (UTC+1) snapado ao slot da liga
+                // Fallback data_partida: res.horario ausente → BST agora snapado ao slot
                 if (!dataPart) {
-                    dataPart = new Date(Date.now() + 1 * 3600000);
+                    dataPart = new Date(Date.now() + 3600000);
                     dataPart.setUTCSeconds(0, 0);
                     dataPart = snapMinutoSlot(dataPart, res.liga);
                 }
