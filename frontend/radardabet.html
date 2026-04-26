@@ -1743,6 +1743,7 @@ const S = {
     view:          'historico',
     showGrafico:   true,   // toggle independente
     showMosaico:   false,  // toggle independente
+    showMercados:  false,  // toggle painel de filtros/mercados
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
     showProximos:  false,   // exibe próximos jogos agendados na grade
@@ -2591,8 +2592,11 @@ function renderFiltros() {
         <button class="acao-btn" onclick="abrirModalOdds()">📊 Odds</button>
         <button class="acao-btn${S.showLegendas?' ativo':''}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
         <button class="acao-btn" onclick="abrirModalPadroes()" title="Gerenciar padrões de gráfico">📋 Padrões</button>
+        <button class="acao-btn${S.showMercados?' ativo':''}" id="btn-mercados" onclick="toggleMercados()" title="Selecionar mercados / filtros">🎯 Mercados</button>
     `;
     c.appendChild(ctrl);
+
+    if (!S.showMercados) return; // blocos ocultos enquanto Mercados estiver desligado
 
     // ── Quebra de linha forçada antes dos blocos de filtros ────
     const br = document.createElement('div');
@@ -3591,6 +3595,11 @@ const ttEl = document.getElementById('tt');
 function showTT(e) { if (S.showLegendas) return; ttEl.textContent = e.currentTarget.dataset.tt; ttEl.style.display = 'block'; moveTT(e); }
 function moveTT(e) { if (S.showLegendas) return; ttEl.style.left = (e.clientX + 14) + 'px'; ttEl.style.top = (e.clientY - 8) + 'px'; }
 function hideTT()  { ttEl.style.display = 'none'; }
+
+function toggleMercados() {
+    S.showMercados = !S.showMercados;
+    renderFiltros();
+}
 
 function toggleLegendas() {
     S.showLegendas = !S.showLegendas;
