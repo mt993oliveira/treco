@@ -1673,16 +1673,20 @@ async function _aplicarConfigFrontend() {
             data.data.forEach(d => { S._cfgSecoes[d.chave] = d.valor; });
         }
         const c = S._cfgSecoes;
-        const _vis = (id, key) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.style.display = (c[key] !== 'false') ? '' : 'none';
+        // key = chave config, togKey = chave em S._analiseSecoes, btnId = id do botão toggle
+        const _vis = (secId, cfgKey, togKey, btnId) => {
+            const ativo = c[cfgKey] !== 'false';
+            S._analiseSecoes[togKey] = ativo;
+            const el = document.getElementById(secId);
+            if (el) el.style.display = ativo ? '' : 'none';
+            const btn = document.getElementById(btnId);
+            if (btn) { btn.style.borderColor = ativo ? '#1fcc59' : '#1e293b'; btn.style.color = ativo ? '#e2e8f0' : '#64748b'; }
         };
-        _vis('analise-secao-ia',          'show_secao_ia');
-        _vis('analise-secao-value-bets',  'show_secao_value_bets');
-        _vis('analise-secao-tendencias',  'show_secao_tendencias');
-        _vis('analise-secao-frequencia',  'show_secao_frequencia');
-        _vis('analise-secao-desempenho',  'show_secao_desempenho');
+        _vis('analise-secao-ia',         'show_secao_ia',         'ia',         'atog-ia');
+        _vis('analise-secao-value-bets', 'show_secao_value_bets', 'valuebets',  'atog-valuebets');
+        _vis('analise-secao-tendencias', 'show_secao_tendencias', 'tendencias', 'atog-tendencias');
+        _vis('analise-secao-frequencia', 'show_secao_frequencia', 'frequencia', 'atog-frequencia');
+        _vis('analise-secao-desempenho', 'show_secao_desempenho', 'desempenho', 'atog-desempenho');
     } catch(e) {}
 }
 
