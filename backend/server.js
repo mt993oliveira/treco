@@ -875,6 +875,104 @@ app.post('/api/usuarios/delete', requireAuth, async (req, res) => {
 
 const path = require('path');
 
+// ─────────────────────────────────────────────────────────────
+// PADRÕES DE GRÁFICO — por usuário
+// ─────────────────────────────────────────────────────────────
+let _padroesMigrated = false;
+async function _ensurePadroesTable() {
+    if (_padroesMigrated) return;
+    await sql.query`
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='user_padroes_grafico' AND xtype='U')
+        CREATE TABLE user_padroes_grafico (
+            id               INT IDENTITY(1,1) PRIMARY KEY,
+            user_id          INT            NOT NULL,
+            nome             NVARCHAR(100)  NOT NULL,
+            filtros          NVARCHAR(2000) NOT NULL DEFAULT '{}',
+            is_principal     BIT            NOT NULL DEFAULT 0,
+            data_criacao     DATETIME2      DEFAULT GETUTCDATE(),
+            data_atualizacao DATETIME2      DEFAULT GETUTCDATE()
+        )
+    `;
+    _padroesMigrated = true;
+}
+async function _getMaxPadroes() {
+    try {
+        const { getSystemConfig } = require('./routes/bet365-api');
+        const cfg = await getSystemConfig();
+        return Math.max(1, Math.min(10, parseInt(cfg.max_padroes_usuario) || 5));
+    } catch(_) { return 5; }
+}
+
+// Listar padrões do usuário
+app.get('/api/usuario/padroes', async (req, res) => {
+    const usuarioId = parseInt(req.query.usuarioId);
+    if (!usuarioId) return res.json({ success: false, message: 'usuarioId obrigatório' });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await _ensurePadroesTable();
+        const r = await sql.query`
+            SELECT id, nome, filtros, is_principal, data_criacao
+            FROM user_padroes_grafico
+            WHERE user_id = ${usuarioId}
+            ORDER BY is_principal DESC, data_criacao ASC
+        `;
+        const limite = await _getMaxPadroes();
+        res.json({ success: true, data: r.recordset, limite });
+    } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
+// Criar padrão
+app.post('/api/usuario/padroes', async (req, res) => {
+    const { usuarioId, nome, filtros } = req.body;
+    if (!usuarioId || !nome || !filtros) return res.json({ success: false, message: 'Dados incompletos' });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await _ensurePadroesTable();
+        const limite = await _getMaxPadroes();
+        const cnt = (await sql.query`SELECT COUNT(*) AS n FROM user_padroes_grafico WHERE user_id=${usuarioId}`).recordset[0].n;
+        if (cnt >= limite) return res.json({ success: false, message: `Limite de ${limite} padrões atingido` });
+        const fs = typeof filtros === 'string' ? filtros : JSON.stringify(filtros);
+        const r = await sql.query`
+            INSERT INTO user_padroes_grafico (user_id, nome, filtros)
+            OUTPUT INSERTED.id VALUES (${usuarioId}, ${nome}, ${fs})
+        `;
+        res.json({ success: true, id: r.recordset[0].id });
+    } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
+// Atualizar padrão (nome/filtros) ou definir principal
+app.put('/api/usuario/padroes/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { usuarioId, nome, filtros, is_principal } = req.body;
+    if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await _ensurePadroesTable();
+        if (is_principal) {
+            await sql.query`UPDATE user_padroes_grafico SET is_principal=0 WHERE user_id=${usuarioId}`;
+            await sql.query`UPDATE user_padroes_grafico SET is_principal=1, data_atualizacao=GETUTCDATE() WHERE id=${id} AND user_id=${usuarioId}`;
+        }
+        if (nome && filtros) {
+            const fs = typeof filtros === 'string' ? filtros : JSON.stringify(filtros);
+            await sql.query`UPDATE user_padroes_grafico SET nome=${nome}, filtros=${fs}, data_atualizacao=GETUTCDATE() WHERE id=${id} AND user_id=${usuarioId}`;
+        }
+        res.json({ success: true });
+    } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
+// Apagar padrão
+app.delete('/api/usuario/padroes/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const usuarioId = parseInt(req.body.usuarioId || req.query.usuarioId);
+    if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await _ensurePadroesTable();
+        await sql.query`DELETE FROM user_padroes_grafico WHERE id=${id} AND user_id=${usuarioId}`;
+        res.json({ success: true });
+    } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
 // Rota de contato — encaminha para Formspree pelo backend (evita bloqueio CORS/domínio)
 app.post('/api/contato', async (req, res) => {
     const { name, email, phone, message } = req.body;

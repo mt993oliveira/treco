@@ -1322,6 +1322,29 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="modal-padroes">
+    <div class="modal-box" style="max-width:480px;width:96%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="font-size:14px;font-weight:700">📋 Padrões de Gráfico</h2>
+            <button onclick="fecharModal('modal-padroes')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:14px">
+            <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Salvar configuração atual</div>
+            <div style="display:flex;gap:8px">
+                <input id="padroes-nome-input" type="text" placeholder="Nome do padrão..." maxlength="50"
+                    style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:6px;
+                    padding:7px 10px;color:#e2e8f0;font-size:12px;outline:none">
+                <button onclick="salvarPadraoAtual()"
+                    style="padding:7px 14px;border-radius:6px;background:#1fcc59;border:none;
+                    color:#000;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+                    Salvar
+                </button>
+            </div>
+        </div>
+        <div id="padroes-lista" style="min-height:60px"></div>
+    </div>
+</div>
+
 <div id="tt"></div>
 
 <script>
@@ -2529,6 +2552,7 @@ function renderFiltros() {
         <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking</button>
         <button class="acao-btn" onclick="abrirModalOdds()">📊 Odds</button>
         <button class="acao-btn${S.showLegendas?' ativo':''}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
+        <button class="acao-btn" onclick="abrirModalPadroes()" title="Gerenciar padrões de gráfico">📋 Padrões</button>
     `;
     c.appendChild(ctrl);
 
@@ -5564,14 +5588,164 @@ function _usrMsg(txt, ok) {
 }
 
 // ============================================================
+// CRIAR PADRÕES DE GRÁFICO
+// ============================================================
+let _padroesCache = [];
+
+async function abrirModalPadroes() {
+    document.getElementById('modal-padroes').classList.add('aberto');
+    document.getElementById('padroes-nome-input').value = '';
+    await _carregarPadroes();
+}
+
+async function _carregarPadroes() {
+    const u = _getUser();
+    if (!u) return;
+    const listEl = document.getElementById('padroes-lista');
+    listEl.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:12px">Carregando...</div>';
+    try {
+        const r = await fetch(`/api/usuario/padroes?usuarioId=${u.Id}`);
+        const data = await r.json();
+        _padroesCache = data.padroes || [];
+        _renderListaPadroes(_padroesCache);
+    } catch(e) {
+        listEl.innerHTML = '<div style="color:#f87171;font-size:12px;text-align:center;padding:12px">Erro ao carregar padrões.</div>';
+    }
+}
+
+function _renderListaPadroes(padroes) {
+    const listEl = document.getElementById('padroes-lista');
+    if (!padroes.length) {
+        listEl.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:16px">Nenhum padrão salvo.<br><span style="font-size:11px;opacity:.7">Salve a configuração atual de filtros acima.</span></div>';
+        return;
+    }
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const desc = filtrosJson => {
+        try {
+            const f = typeof filtrosJson === 'string' ? JSON.parse(filtrosJson) : filtrosJson;
+            const ativas = Object.keys(f.linhas||{}).filter(k => f.linhas[k]);
+            const filtro = f.filtro ? (TODOS_FILTROS.find(x=>x.id===f.filtro)||{label:f.filtro}).label : '';
+            return `Foco: ${filtro||'—'} · ${ativas.length} linha(s) ativa(s)`;
+        } catch(e) { return '—'; }
+    };
+    listEl.innerHTML = padroes.map(p => `
+        <div style="background:#0f172a;border:1px solid ${p.is_principal?'#1fcc59':'#1e293b'};border-radius:8px;
+             padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+            <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${p.is_principal?'<span style="color:#1fcc59;font-size:10px;font-weight:700;margin-right:4px">★</span>':''}${esc(p.nome)}
+                </div>
+                <div style="font-size:10px;color:#64748b;margin-top:2px">${desc(p.filtros)}</div>
+            </div>
+            <button onclick="aplicarPadrao(${p.id})" title="Aplicar este padrão"
+                style="padding:5px 10px;border-radius:5px;background:#1e293b;border:1px solid #334155;
+                color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+                Aplicar
+            </button>
+            <button onclick="setPrincipalPadrao(${p.id})" title="${p.is_principal?'Já é principal':'Definir como principal'}"
+                style="padding:5px 8px;border-radius:5px;background:${p.is_principal?'rgba(31,204,89,.15)':'#1e293b'};
+                border:1px solid ${p.is_principal?'#1fcc59':'#334155'};
+                color:${p.is_principal?'#1fcc59':'#64748b'};font-size:11px;cursor:pointer">
+                ★
+            </button>
+            <button onclick="deletarPadrao(${p.id})" title="Excluir padrão"
+                style="padding:5px 8px;border-radius:5px;background:#1e293b;border:1px solid #334155;
+                color:#f87171;font-size:11px;cursor:pointer">
+                ✕
+            </button>
+        </div>
+    `).join('');
+}
+
+function aplicarPadrao(id) {
+    const p = _padroesCache.find(x => x.id === id);
+    if (!p) return;
+    try {
+        const f = typeof p.filtros === 'string' ? JSON.parse(p.filtros) : p.filtros;
+        if (f.linhas) {
+            TODOS_FILTROS.forEach(x => { S.linhas[x.id] = false; });
+            Object.assign(S.linhas, f.linhas);
+        }
+        if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
+        fecharModal('modal-padroes');
+        renderFiltros(); renderTabela(); renderGrafico();
+    } catch(e) { console.error('Erro ao aplicar padrão', e); }
+}
+
+async function salvarPadraoAtual() {
+    const u = _getUser();
+    if (!u) return;
+    const inp = document.getElementById('padroes-nome-input');
+    const nome = (inp.value || '').trim();
+    if (!nome) { inp.focus(); return; }
+    const filtros = JSON.stringify({ linhas: { ...S.linhas }, filtro: S.filtro });
+    try {
+        const r = await fetch('/api/usuario/padroes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id, nome, filtros })
+        });
+        const d = await r.json();
+        if (!r.ok) { alert(d.erro || 'Erro ao salvar padrão.'); return; }
+        inp.value = '';
+        await _carregarPadroes();
+    } catch(e) { alert('Erro ao salvar padrão.'); }
+}
+
+async function setPrincipalPadrao(id) {
+    const u = _getUser();
+    if (!u) return;
+    try {
+        await fetch(`/api/usuario/padroes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id, setPrincipal: true })
+        });
+        await _carregarPadroes();
+    } catch(e) { alert('Erro ao definir padrão principal.'); }
+}
+
+async function deletarPadrao(id) {
+    const u = _getUser();
+    if (!u) return;
+    if (!confirm('Excluir este padrão?')) return;
+    try {
+        await fetch(`/api/usuario/padroes/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id })
+        });
+        await _carregarPadroes();
+    } catch(e) { alert('Erro ao excluir padrão.'); }
+}
+
+async function setPadraoLogin() {
+    const u = _getUser();
+    if (!u) return;
+    try {
+        const r = await fetch(`/api/usuario/padroes?usuarioId=${u.Id}`);
+        const data = await r.json();
+        const principal = (data.padroes || []).find(p => p.is_principal);
+        if (!principal) return;
+        const f = typeof principal.filtros === 'string' ? JSON.parse(principal.filtros) : principal.filtros;
+        if (f.linhas) {
+            TODOS_FILTROS.forEach(x => { S.linhas[x.id] = false; });
+            Object.assign(S.linhas, f.linhas);
+        }
+        if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
+    } catch(e) { /* silencioso */ }
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
     _initUserMenu();
     _faInit();
     _syncPeriodoSelect(S.horas);
-    carregarConfigLigas().then(() => {
+    carregarConfigLigas().then(async () => {
         _faInit();
+        await setPadraoLogin();
         carregarTudo();
         const seg = S._autoRefreshSeg ?? 120;
         if (seg > 0) setInterval(carregarTudo, seg * 1000);
