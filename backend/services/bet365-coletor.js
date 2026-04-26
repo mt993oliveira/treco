@@ -1087,10 +1087,13 @@ class Bet365Coletor {
                 let dataPart = null;
                 if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
                     const [h, m] = res.horario.replace('.', ':').split(':').map(Number);
-                    // Convenção BST-as-UTC: salva hora BST diretamente como UTC (sem conversão)
-                    let ms = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), h, m, 0, 0);
+                    // Convenção BST-as-UTC: salva hora BST diretamente como UTC (sem conversão).
+                    // Usa a data BST (nowB365) como base — não a data UTC — para que jogos às 00:xx BST
+                    // (coletados às 23:xx UTC do dia anterior) recebam a data correta.
                     const nowB365 = Date.now() + 3600000;
-                    // Se o horário está mais de 3 min no futuro, o jogo foi ontem (resultado tardio)
+                    const bst = new Date(nowB365);
+                    let ms = Date.UTC(bst.getUTCFullYear(), bst.getUTCMonth(), bst.getUTCDate(), h, m, 0, 0);
+                    // Se o horário ficou mais de 3 min no futuro, o jogo foi ontem (resultado tardio)
                     if (ms > nowB365 + 3 * 60000) ms -= 86400000;
                     dataPart = new Date(ms);
                 }
