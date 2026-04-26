@@ -850,8 +850,26 @@
         </div>
     </div>
 
+    <!-- Toggle: Gráfico de Mercados | Menu Mosaico -->
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button id="sub-btn-grafico" onclick="setSubView('grafico')"
+            style="flex:1;padding:10px 14px;background:#0f172a;border:1.5px solid #1fcc59;
+            border-radius:8px;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:7px;transition:border-color .2s,color .2s">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Gráfico de Mercados
+        </button>
+        <button id="sub-btn-mosaico" onclick="setSubView('mosaico')"
+            style="flex:1;padding:10px 14px;background:#0f172a;border:1.5px solid #1e293b;
+            border-radius:8px;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:7px;transition:border-color .2s,color .2s">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Menu Mosaico
+        </button>
+    </div>
+
     <!-- Chart + Legend -->
-    <div style="display:flex;gap:10px;margin-bottom:10px">
+    <div id="historico-chart-section" style="display:flex;gap:10px;margin-bottom:10px">
         <div style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;min-width:0">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Over 1.5 — Evolução</div>
@@ -880,6 +898,8 @@
         </div>
     </div>
 
+    <!-- Mosaico (tabela) -->
+    <div id="historico-table-section" style="display:none">
     <!-- Table header -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
         <div style="display:flex;gap:7px">
@@ -903,6 +923,7 @@
             </table>
         </div>
     </div>
+    </div><!-- /historico-table-section -->
 
 </div>
 
@@ -1720,6 +1741,7 @@ const S = {
     grafico:       null,
     grafTopo:      null,
     view:          'historico',
+    subView:       'grafico',   // 'grafico' | 'mosaico'
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
     showProximos:  false,   // exibe próximos jogos agendados na grade
@@ -1915,6 +1937,20 @@ function setView(v) {
     if (v === 'analise')     { renderAnalise(); carregarMercados(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); }
+}
+
+function setSubView(v) {
+    S.subView = v;
+    const chartSec = document.getElementById('historico-chart-section');
+    const tableSec = document.getElementById('historico-table-section');
+    const btnG     = document.getElementById('sub-btn-grafico');
+    const btnM     = document.getElementById('sub-btn-mosaico');
+    if (chartSec) chartSec.style.display = v === 'grafico'  ? '' : 'none';
+    if (tableSec) tableSec.style.display = v === 'mosaico' ? '' : 'none';
+    if (btnG) { btnG.style.borderColor = v === 'grafico'  ? '#1fcc59' : '#1e293b'; btnG.style.color = v === 'grafico'  ? '#e2e8f0' : '#64748b'; }
+    if (btnM) { btnM.style.borderColor = v === 'mosaico' ? '#1fcc59' : '#1e293b'; btnM.style.color = v === 'mosaico' ? '#e2e8f0' : '#64748b'; }
+    if (v === 'grafico')  renderGrafico();
+    if (v === 'mosaico') renderTabela();
 }
 
 // ============================================================
@@ -2952,6 +2988,7 @@ function macd(serie, f, sl, sg) {
 // GRÁFICO SUPERIOR — estilo Caramelo: pontos por jogo + média móvel
 // ============================================================
 function renderGrafico() {
+    if (S.view === 'historico' && S.subView !== 'grafico') return;
     const serie = serieFlat();
     if (!serie.length) {
         if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
@@ -3161,6 +3198,7 @@ function minutosParaLiga(liga) {
 // Estilo CarameloBet: score na célula, cor = filtro ativo
 // ============================================================
 function renderTabela() {
+    if (S.view === 'historico' && S.subView !== 'mosaico') return;
     const gs = grupos();
     const fi = TODOS_FILTROS.find(f => f.id === S.filtro) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
     const gridCores = carregarCoresGrid();
