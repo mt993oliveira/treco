@@ -1178,7 +1178,37 @@ class Bet365Coletor {
                         `);
                 }
 
-                // ── 3. Log do resultado salvo via mercados ──
+                // ── 3. Upsert bet365_eventos com dados reais do jogo ──
+                // Garante que o JOIN (bet365_eventos.id = bet365_resultados_mercados.evento_id) sempre funciona,
+                // mesmo quando _coletarProximos gravou times errados (placeholder ≠ real).
+                await pool.request()
+                    .input('evId',     sql.BigInt,        eventoId)
+                    .input('evLiga',   sql.NVarChar(200), res.liga)
+                    .input('evCasa',   sql.NVarChar(100), res.timeCasa)
+                    .input('evFora',   sql.NVarChar(100), res.timeFora)
+                    .input('evDt',     sql.DateTime2,     dataPart)
+                    .input('evOdCasa', sql.Decimal(10,2), oddCasa   || 0)
+                    .input('evOdEmp',  sql.Decimal(10,2), oddEmpate || 0)
+                    .input('evOdFora', sql.Decimal(10,2), oddFora   || 0)
+                    .input('evAgora',  sql.DateTime2,     new Date())
+                    .query(`
+                        MERGE bet365_eventos AS t
+                        USING (SELECT @evId AS id) AS s ON t.id = s.id
+                        WHEN MATCHED THEN UPDATE SET
+                            t.league_name=@evLiga, t.time_casa=@evCasa, t.time_fora=@evFora,
+                            t.start_time_datetime=@evDt,
+                            t.odd_casa=@evOdCasa, t.odd_empate=@evOdEmp, t.odd_fora=@evOdFora,
+                            t.data_atualizacao=@evAgora, t.ativo=0
+                        WHEN NOT MATCHED THEN INSERT
+                            (id, url, league_name, time_casa, time_fora, status,
+                             start_time_datetime, odd_casa, odd_empate, odd_fora,
+                             data_coleta, data_atualizacao, ativo)
+                        VALUES (@evId, '', @evLiga, @evCasa, @evFora, 'FINALIZADO',
+                                @evDt, @evOdCasa, @evOdEmp, @evOdFora,
+                                @evAgora, @evAgora, 0);
+                    `);
+
+                // ── 4. Log do resultado salvo via mercados ──
                 console.log(`   ✅ Mercados: [${res.liga}] ${res.timeCasa} × ${res.timeFora} (UTC ${timeKey}) — ${(res.mercados||[]).length} mercado(s)`);
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
