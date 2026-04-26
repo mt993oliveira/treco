@@ -2579,13 +2579,10 @@ function renderFiltros() {
     const c = document.getElementById('filtros-row');
     c.innerHTML = ''; // limpa tudo — todo conteúdo é dinâmico
 
-    // ── Controles (Todos, Limpar, ferramentas) — inline com o período ──
+    // ── Controles principais ──
     const ctrl = document.createElement('div');
-    ctrl.style.cssText = 'display:contents'; // não cria caixa, os filhos entram direto no flex
+    ctrl.style.cssText = 'display:contents';
     ctrl.innerHTML = `
-        <button class="filtro-btn" onclick="_lgTodos()" title="Ligar tudo">Todos</button>
-        <button class="filtro-btn" onclick="_lgLimpar()" title="Desligar tudo">Limpar</button>
-        <div style="width:1px;height:14px;background:#1e293b"></div>
         <button class="acao-btn" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
         <button class="acao-btn${S.showLegendas?' ativo':''}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
         <button class="acao-btn" onclick="abrirModalPadroes()" title="Gerenciar padrões de gráfico">📋 Padrões</button>
@@ -2593,12 +2590,22 @@ function renderFiltros() {
     `;
     c.appendChild(ctrl);
 
-    if (!S.showMercados) return; // blocos ocultos enquanto Mercados estiver desligado
+    if (!S.showMercados) return;
 
     // ── Quebra de linha forçada antes dos blocos de filtros ────
     const br = document.createElement('div');
-    br.style.cssText = 'width:100%;height:0;margin:0'; // força wrap
+    br.style.cssText = 'width:100%;height:0;margin:0';
     c.appendChild(br);
+
+    // ── Todos / Limpar — só dentro do painel de Mercados ──
+    const mktCtrl = document.createElement('div');
+    mktCtrl.style.cssText = 'display:contents';
+    mktCtrl.innerHTML = `
+        <button class="filtro-btn" onclick="_lgTodos()" title="Ligar todos os mercados">Todos</button>
+        <button class="filtro-btn" onclick="_lgLimpar()" title="Desligar todos os mercados">Limpar</button>
+        <div style="width:1px;height:14px;background:#1e293b"></div>
+    `;
+    c.appendChild(mktCtrl);
 
     // ── Grupos em blocos lado a lado ────────────────────────────
     const blocksRow = document.createElement('div');
