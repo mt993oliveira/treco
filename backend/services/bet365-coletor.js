@@ -1088,8 +1088,8 @@ class Bet365Coletor {
                         WHERE league_name = @liga2
                           AND time_casa   = @timeCasa2
                           AND time_fora   = @timeFora2
-                          -- janela ampliada de -6h a +65min (cobre atrasos maiores na coleta)
-                          AND start_time_datetime BETWEEN DATEADD(HOUR,-6,GETUTCDATE()) AND DATEADD(MINUTE,65,GETUTCDATE())
+                          -- janela: -6h até BST agora (exclui eventos futuros que causavam deslocamento de coluna)
+                          AND start_time_datetime BETWEEN DATEADD(HOUR,-6,GETUTCDATE()) AND DATEADD(HOUR,1,GETUTCDATE())
                         ORDER BY start_time_datetime DESC
                     `);
                 // Busca 2 (fallback): sem filtro de horário — pega o evento mais recente do dia
@@ -1104,7 +1104,7 @@ class Bet365Coletor {
                             WHERE league_name = @liga2b
                               AND time_casa   = @timeCasa2b
                               AND time_fora   = @timeFora2b
-                              AND start_time_datetime >= DATEADD(HOUR,-12,GETUTCDATE())
+                              AND start_time_datetime BETWEEN DATEADD(HOUR,-12,GETUTCDATE()) AND DATEADD(HOUR,1,GETUTCDATE())
                             ORDER BY start_time_datetime DESC
                         `);
                 }
