@@ -391,7 +391,8 @@ class Bet365Coletor {
                 return `UPDATE bet365_resultados_mercados SET selecao=STUFF(selecao,1,${cap.length},'${pt}') WHERE mercado='Gols por Time' AND (selecao LIKE '${cap} - %' OR selecao LIKE '${en} - %')`;
             }),
             // ── Remover linhas futuras (pré-odds) incorretamente salvas ──
-            `DELETE FROM bet365_resultados_mercados WHERE data_partida > GETUTCDATE()`,
+            // data_partida usa convenção BST-as-UTC (+1h vs UTC real), então compara contra B365-now
+            `DELETE FROM bet365_resultados_mercados WHERE data_partida > DATEADD(HOUR, 1, GETUTCDATE())`,
             // ── Remover duplicatas de Resultado Final por evento (bug pré-odds) ──
             // Para cada evento com >1 linha de Resultado Final, apaga as extras
             `DELETE brm FROM bet365_resultados_mercados brm
