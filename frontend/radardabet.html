@@ -2282,6 +2282,12 @@ function renderAnalise() {
         sugestoesMap.get(nome) || { liga: nome, total: 0, amostras: 0, melhor: null, filtros: [], stats: null }
     );
 
+    // Auto-seleciona a primeira liga com dados se nenhuma estiver selecionada
+    if (!S.ligaCardSel) {
+        const primeira = sugestoesCanon.find(l => l.melhor);
+        if (primeira) S.ligaCardSel = primeira.liga;
+    }
+
     sugestoesCanon.forEach(liga => {
         // Card "sem dados" para ligas sem histórico suficiente
         if (!liga.melhor) {
@@ -2368,12 +2374,6 @@ function renderAnalise() {
                 }).join('')}
             </div>` : `<div style="background:#060810;border-radius:6px;padding:8px;margin-bottom:8px;border:1px solid #1e293b;color:#334155;font-size:10px;text-align:center">⏳ Coletando mercados...</div>`;
 
-        // ── Análise de resultados (filtros históricos — referência secundária) ──
-        const filtrosHtml = `
-            <div style="background:#060810;border-radius:6px;padding:8px;margin-bottom:8px;border:1px solid #0f172a">
-                <div style="font-size:9px;color:#475569;font-weight:700;margin-bottom:5px">📊 ANÁLISE RESULTADOS <span style="color:#334155">(ult. ${melhor.n_custom}J)</span></div>
-                ${linhasTop5}
-            </div>`;
 
         const div = document.createElement('div');
         div.className = 'liga-card' + (selecionado ? ' selecionado' : '');
@@ -2385,7 +2385,6 @@ function renderAnalise() {
             </div>
             <div style="font-size:10px;color:#475569;margin-bottom:8px">${liga.amostras} partidas · melhor: <b style="color:#1fcc59">${melhor.label} ${melhor.tx_ultn}%</b></div>
             ${mktPrimaryHtml}
-            ${filtrosHtml}
             <div style="display:flex;gap:5px;flex-wrap:wrap">
                 <span class="badge ${streakBadge2}">${streakIcon2} ${melhor.streak} seguidos</span>
                 <span class="stat-pill">Geral <b>${melhor.tx_geral}%</b></span>
