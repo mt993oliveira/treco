@@ -639,11 +639,9 @@ class Bet365Coletor {
             for (const grupo of document.querySelectorAll('.vrr-HeadToHeadMarketGroup')) {
                 const eventLabel   = grupo.querySelector('.vrr-FixtureDetails_Event');
                 const textoLabel   = eventLabel?.textContent.trim() || '';
-                // Pula jogos em andamento: label termina com minuto (ex: "65'")
+                // Pula jogos em andamento: o label termina com minuto de jogo (ex: "65'")
+                // Jogos finalizados mostram data no formato "DD.MM" (ex: "15.03")
                 if (/\d{1,3}['´]\s*$/.test(textoLabel)) continue;
-                // Pula jogos futuros: label termina com horário HH:MM (ex: "22:10")
-                // Jogos finalizados mostram data DD.MM (ex: "25.04") — separador é ponto, não dois pontos
-                if (/\d{1,2}:\d{2}\s*$/.test(textoLabel)) continue;
                 const horarioMatch = textoLabel.match(/(\d{1,2}[.:]\d{2})$/);
                 const horario      = horarioMatch ? horarioMatch[1] : null;
                 const t1El         = grupo.querySelector('.vrr-HTHTeamDetails_TeamOne');
@@ -723,13 +721,8 @@ class Bet365Coletor {
             if (numHorarios > 0) break;
             await this._delay(1000);
         }
-        // Aguarda mais para o Bet365 carregar todos os botões de horário (carregamento progressivo)
-        if (numHorarios > 0) {
-            await this._delay(2000);
-            numHorarios = await pg.evaluate(() => document.querySelectorAll('.vr-EventTimesNavBarButton').length);
-        }
         const coletarProximos = this._cfgBool('coletar_proximos_jogos', true);
-        const maxHorarios = coletarProximos ? this._cfgNum('max_horarios_proximos', 6) : 0;
+        const maxHorarios = coletarProximos ? this._cfgNum('max_horarios_proximos', 4) : 0;
         numHorarios = Math.min(numHorarios, maxHorarios);
         console.log(`   ⏰ [${liga.nome}] ${numHorarios} horário(s)`);
 
@@ -749,8 +742,6 @@ class Bet365Coletor {
                 await this._delay(this._cfgNum('delay_aguarda_mercado_ms', 500));
             }
             if (!temMkt) continue;
-            // Aguarda nomes dos times carregarem (pods aparecem antes dos textos internos)
-            await this._delay(this._cfgNum('delay_entre_horarios_ms', 3000));
 
             const infoJogo = await this._extrairInfoJogo(liga.nome, pg);
             if (!infoJogo.timeCasa || !infoJogo.timeFora) continue;
@@ -800,40 +791,14 @@ class Bet365Coletor {
         await this._tirarScreenshot(pg, normalizarNomeLiga(liga.nome));
     }
 
-    async _hardRefresh(pg, ligaNome) {
-        for (let r = 1; r <= 3; r++) {
-            try {
-                await pg.setCacheEnabled(false);
-                await pg.reload({ waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_navegacao_ms', 30000) });
-                await pg.setCacheEnabled(true);
-                await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
-                await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
-                break;
-            } catch(e) {
-                await pg.setCacheEnabled(true).catch(() => {});
-                if (r === 3) console.log(`   ⚠️  [${ligaNome}] Hard refresh falhou após 3 tentativas`);
-            }
-        }
-        // Volta ao tab da liga após o reload
-        await pg.evaluate((nomeLiga) => {
-            const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-            for (const tab of tabs) {
-                const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
-                if (txt === nomeLiga) { tab.click(); return; }
-            }
-        }, ligaNome);
-        await this._delay(this._cfgNum('delay_apos_clicar_liga_ms', 3000));
-    }
-
     async _coletarLiga(pg, liga) {
         const eventos    = [];
         const resultados = [];
         const proxAntesRes = this._cfgBool('proximos_antes_resultados', false);
 
         if (proxAntesRes) {
-            console.log(`   🔀 [${liga.nome}] Ordem: próximos → hard refresh → resultados`);
+            console.log(`   🔀 [${liga.nome}] Ordem: próximos → resultados`);
             await this._coletarProximos(pg, liga, eventos);
-            await this._hardRefresh(pg, liga.nome);
             await this._coletarResultados(pg, liga, resultados);
         } else {
             await this._coletarResultados(pg, liga, resultados);
@@ -939,8 +904,11 @@ class Bet365Coletor {
         const { eventos, resultados } = dados;
         let eventosOk = 0, mercadosOk = 0, oddsOk = 0;
 
-        // Desativa apenas jogos com mais de 3h (mantém recentes visíveis na grid enquanto
-        // os resultados ainda não chegaram). Não faz mais wipe por liga — isso apagava futuros.
+        const ligasPresentes = [...new Set(eventos.map(e => e.liga))];
+        for (const ligaNome of ligasPresentes) {
+            await pool.request().input('liga', sql.NVarChar(200), ligaNome)
+                .query(`UPDATE bet365_eventos SET ativo = 0 WHERE league_name = @liga`);
+        }
         await pool.request().query(`UPDATE bet365_eventos SET ativo = 0 WHERE start_time_datetime < DATEADD(HOUR, -3, GETUTCDATE())`);
 
         for (const ev of eventos) {
@@ -1036,7 +1004,6 @@ class Bet365Coletor {
             }
         }
 
-        let histOk = 0;
         for (const res of resultados) {
             try {
                 // ── 1. Busca start_time_datetime + odds no banco (fonte autoritativa) ──
@@ -1142,26 +1109,15 @@ class Bet365Coletor {
                         `);
                 }
 
-                // ── 3. Desativa o evento em bet365_eventos (resultado coletado = finalizado) ──
-                // Guarda start_time_datetime <= GETUTCDATE(): evita desativar evento FUTURO com
-                // o mesmo par de times se a busca por eventoIdFixo retornou o slot errado.
-                if (eventoIdFixo) {
-                    await pool.request()
-                        .input('evIdFin', sql.BigInt, eventoIdFixo)
-                        .query(`UPDATE bet365_eventos SET ativo = 0, status = 'FINALIZADO'
-                                WHERE id = @evIdFin AND ativo = 1
-                                  AND start_time_datetime <= DATEADD(HOUR, 1, GETUTCDATE())`);
-                }
-
-                histOk++;
+                // ── 3. Log do resultado salvo via mercados ──
                 console.log(`   ✅ Mercados: [${res.liga}] ${res.timeCasa} × ${res.timeFora} (UTC ${timeKey}) — ${(res.mercados||[]).length} mercado(s)`);
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
             }
         }
 
-        console.log(`   💾 Eventos:${eventosOk} | Mercados:${mercadosOk} | Odds:${oddsOk} | Resultados:${histOk}`);
-        return { eventosOk, mercadosOk, oddsOk, histOk };
+        console.log(`   💾 Eventos:${eventosOk} | Mercados:${mercadosOk} | Odds:${oddsOk}`);
+        return { eventosOk, mercadosOk, oddsOk };
     }
 
     // ─────────────────────────────────────────────────────────────

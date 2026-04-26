@@ -1422,7 +1422,7 @@ router.get('/analise/resumo', async (req, res) => {
 const CONFIG_DEFAULTS = [
     // ── Próximos jogos ──
     { chave:'coletar_proximos_jogos',       valor:'true',  tipo:'boolean', grupo:'coleta', descricao:'Habilitar coleta de próximos jogos agendados' },
-    { chave:'max_horarios_proximos',        valor:'6',     tipo:'number',  grupo:'coleta', descricao:'Máximo de horários futuros a coletar por liga (0 = desativar)' },
+    { chave:'max_horarios_proximos',        valor:'4',     tipo:'number',  grupo:'coleta', descricao:'Máximo de horários futuros a coletar por liga (0 = desativar)' },
     // ── Ciclo de coleta ──
     { chave:'intervalo_coleta_seg',         valor:'30',    tipo:'number',  grupo:'coleta', descricao:'Intervalo entre ciclos de coleta (segundos)' },
     // ── Delays de navegação ──
@@ -1432,7 +1432,7 @@ const CONFIG_DEFAULTS = [
     { chave:'delay_show_more_ms',           valor:'800',   tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques em "Mostrar Mais" (ms)' },
     { chave:'delay_expandir_mercados_ms',   valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay após expandir mercados internos (ms)' },
     { chave:'delay_volta_proximos_ms',      valor:'2000',  tipo:'number',  grupo:'coleta', descricao:'Delay ao voltar para Próximos Jogos (ms)' },
-    { chave:'delay_entre_horarios_ms',      valor:'3000',  tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques de horário (ms)' },
+    { chave:'delay_entre_horarios_ms',      valor:'1500',  tipo:'number',  grupo:'coleta', descricao:'Delay entre cliques de horário (ms)' },
     { chave:'delay_aguarda_mercado_ms',     valor:'500',   tipo:'number',  grupo:'coleta', descricao:'Delay de polling ao aguardar mercados (ms)' },
     // ── Timeouts ──
     { chave:'timeout_goto_ms',              valor:'60000', tipo:'number',  grupo:'coleta', descricao:'Timeout ao navegar para a página inicial (ms)' },
@@ -1440,7 +1440,7 @@ const CONFIG_DEFAULTS = [
     { chave:'timeout_ligas_ms',             valor:'20000', tipo:'number',  grupo:'coleta', descricao:'Timeout aguardando botões de liga (ms)' },
     { chave:'timeout_navegacao_ms',         valor:'30000', tipo:'number',  grupo:'coleta', descricao:'Timeout de navegação/reload (ms)' },
     // ── Ordem de coleta ──
-    { chave:'proximos_antes_resultados',    valor:'true',  tipo:'boolean', grupo:'ordem',  descricao:'Coletar próximos jogos ANTES dos resultados' },
+    { chave:'proximos_antes_resultados',    valor:'false', tipo:'boolean', grupo:'ordem',  descricao:'Coletar próximos jogos ANTES dos resultados' },
     // ── Ligas ──
     { chave:'liga_world_cup',               valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Copa do Mundo' },
     { chave:'liga_euro_cup',                valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Euro Cup' },
