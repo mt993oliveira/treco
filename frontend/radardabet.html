@@ -1741,7 +1741,8 @@ const S = {
     grafico:       null,
     grafTopo:      null,
     view:          'historico',
-    subView:       'grafico',   // 'grafico' | 'mosaico'
+    showGrafico:   true,   // toggle independente
+    showMosaico:   false,  // toggle independente
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
     showProximos:  false,   // exibe próximos jogos agendados na grade
@@ -1940,17 +1941,18 @@ function setView(v) {
 }
 
 function setSubView(v) {
-    S.subView = v;
+    if (v === 'grafico') S.showGrafico = !S.showGrafico;
+    if (v === 'mosaico') S.showMosaico = !S.showMosaico;
     const chartSec = document.getElementById('historico-chart-section');
     const tableSec = document.getElementById('historico-table-section');
     const btnG     = document.getElementById('sub-btn-grafico');
     const btnM     = document.getElementById('sub-btn-mosaico');
-    if (chartSec) chartSec.style.display = v === 'grafico'  ? '' : 'none';
-    if (tableSec) tableSec.style.display = v === 'mosaico' ? '' : 'none';
-    if (btnG) { btnG.style.borderColor = v === 'grafico'  ? '#1fcc59' : '#1e293b'; btnG.style.color = v === 'grafico'  ? '#e2e8f0' : '#64748b'; }
-    if (btnM) { btnM.style.borderColor = v === 'mosaico' ? '#1fcc59' : '#1e293b'; btnM.style.color = v === 'mosaico' ? '#e2e8f0' : '#64748b'; }
-    if (v === 'grafico')  renderGrafico();
-    if (v === 'mosaico') renderTabela();
+    if (chartSec) chartSec.style.display = S.showGrafico ? '' : 'none';
+    if (tableSec) tableSec.style.display = S.showMosaico ? '' : 'none';
+    if (btnG) { btnG.style.borderColor = S.showGrafico ? '#1fcc59' : '#1e293b'; btnG.style.color = S.showGrafico ? '#e2e8f0' : '#64748b'; }
+    if (btnM) { btnM.style.borderColor = S.showMosaico ? '#1fcc59' : '#1e293b'; btnM.style.color = S.showMosaico ? '#e2e8f0' : '#64748b'; }
+    if (v === 'grafico' && S.showGrafico) renderGrafico();
+    if (v === 'mosaico' && S.showMosaico) renderTabela();
 }
 
 // ============================================================
@@ -2988,7 +2990,7 @@ function macd(serie, f, sl, sg) {
 // GRÁFICO SUPERIOR — estilo Caramelo: pontos por jogo + média móvel
 // ============================================================
 function renderGrafico() {
-    if (S.view === 'historico' && S.subView !== 'grafico') return;
+    if (S.view === 'historico' && !S.showGrafico) return;
     const serie = serieFlat();
     if (!serie.length) {
         if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
@@ -3198,7 +3200,7 @@ function minutosParaLiga(liga) {
 // Estilo CarameloBet: score na célula, cor = filtro ativo
 // ============================================================
 function renderTabela() {
-    if (S.view === 'historico' && S.subView !== 'mosaico') return;
+    if (S.view === 'historico' && !S.showMosaico) return;
     const gs = grupos();
     const fi = TODOS_FILTROS.find(f => f.id === S.filtro) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
     const gridCores = carregarCoresGrid();
