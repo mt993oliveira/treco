@@ -917,7 +917,7 @@ app.get('/api/usuario/padroes', async (req, res) => {
             ORDER BY is_principal DESC, data_criacao ASC
         `;
         const limite = await _getMaxPadroes();
-        res.json({ success: true, data: r.recordset, limite });
+        res.json({ success: true, padroes: r.recordset, limite });
     } catch(e) { res.json({ success: false, message: e.message }); }
 });
 

@@ -5699,7 +5699,7 @@ async function setPrincipalPadrao(id) {
         await fetch(`/api/usuario/padroes/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: u.Id, setPrincipal: true })
+            body: JSON.stringify({ usuarioId: u.Id, is_principal: true })
         });
         await _carregarPadroes();
     } catch(e) { alert('Erro ao definir padrão principal.'); }
