@@ -844,7 +844,8 @@ class Bet365Coletor {
         await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
         await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
 
-        for (let sm = 0; sm < 10; sm++) {
+        const maxVerMais = this._cfgNum('max_ver_mais_clicks', 10);
+        for (let sm = 0; sm < maxVerMais; sm++) {
             const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
             if (!temMore) break;
             await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());

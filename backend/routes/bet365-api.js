@@ -1468,6 +1468,7 @@ const CONFIG_DEFAULTS = [
     { chave:'max_padroes_usuario',          valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'Limite de padrões de gráfico por usuário (1–10)' },
     { chave:'max_value_bets',               valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'Máximo de sugestões exibidas em 💰 Value Bets (1–20)' },
     { chave:'max_tendencias',               valor:'8',     tipo:'number',  grupo:'sistema',  descricao:'Máximo de itens exibidos em 📈 Tendências (1–20)' },
+    { chave:'max_ver_mais_clicks',          valor:'10',    tipo:'number',  grupo:'sistema',  descricao:'Cliques em "Ver Mais" ao coletar resultados (mais cliques = mais jogos históricos por ciclo)' },
     // ── Seções da Análise ──
     { chave:'show_secao_ia',                valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: IA — Sugestões para Próximos Jogos' },
     { chave:'show_secao_value_bets',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Value Bets' },

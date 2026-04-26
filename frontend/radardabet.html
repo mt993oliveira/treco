@@ -5463,6 +5463,15 @@ async function _loadConfigSistema() {
                     <div style="font-size:10px;color:#475569;margin-top:4px">Quantidade de mercados exibidos em 📈 Tendências (1–20) · padrão: 8</div>
                 </div>`;
             }
+            if (d.chave === 'max_ver_mais_clicks') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">🖱️ CLIQUES "VER MAIS" — COLETA DE RESULTADOS</label>
+                    <input type="number" id="cfg-max_ver_mais_clicks" value="${d.valor}" min="1" max="50"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Quantos cliques em "Ver Mais" por liga ao coletar resultados. Mais cliques = mais jogos históricos, porém ciclo mais lento (1–50) · padrão: 10</div>
+                </div>`;
+            }
             return `<div style="margin-bottom:14px">
                 <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
                 <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="0"
