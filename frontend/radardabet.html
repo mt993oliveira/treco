@@ -2960,17 +2960,21 @@ function renderGrafico() {
         return;
     }
 
-    // MM auto: derivado do tamanho da série (~15% e ~30% dos jogos, mínimos razoáveis)
-    const n   = serie.length;
-    const mm1 = Math.max(3,  Math.round(n * 0.15));
-    const mm2 = Math.max(5,  Math.round(n * 0.30));
-    const mms = Math.max(2,  Math.round(mm2 * 0.35));
-
     const opcoes = TODOS_FILTROS;
     const datasets = [];
-
-    // Todos os filtros ativos viram linhas — MM10 por filtro
     const ativos = opcoes.filter(f => S.linhas[f.id]);
+
+    // Porcentagem acumulada corrida: para cada jogo i = (ocorrências até i / jogos até i) * 100
+    const cumPct = pts => pts.map((_, i) => {
+        const hits = pts.slice(0, i + 1).filter(v => v).length;
+        return +((hits / (i + 1)) * 100).toFixed(1);
+    });
+
+    // hits por filtro — reutilizado no dataset e no tooltip
+    const hitsMap = {};
+    ativos.forEach(f => {
+        if (f.id !== 'equilibrio') hitsMap[f.id] = serie.map(j => checa(j, f.id) ? 1 : 0);
+    });
 
     ativos.forEach(f => {
         if (f.id === 'equilibrio') {
@@ -2979,41 +2983,27 @@ function renderGrafico() {
                 borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0 });
             return;
         }
-        const pts = serie.map(j => checa(j, f.id) ? 100 : 0);
-        const mm10 = pts.map((_, i) => {
-            const w = pts.slice(Math.max(0, i - 9), i + 1);
-            return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);
-        });
+        const pts = hitsMap[f.id];
         const pct = Math.round(pts.filter(v=>v).length / serie.length * 100);
+        const isPrimario = S.filtro === f.id;
         datasets.push({
             type: 'line',
             label: `${f.label} ${pct}%`,
-            data: mm10,
+            data: cumPct(pts),
             borderColor: f.cor,
             backgroundColor: 'transparent',
-            borderWidth: S.filtro === f.id ? 2.5 : 1.5,
+            borderWidth: isPrimario ? 2.5 : 1.5,
             borderDash: f.dashed ? [6,4] : [],
-            pointRadius: 0,
-            tension: 0.4,
+            pointRadius: isPrimario ? 3 : 2,
+            pointHoverRadius: 5,
+            pointBackgroundColor: isPrimario
+                ? pts.map(v => v ? f.cor : '#dc2626')
+                : f.cor,
+            tension: 0,
         });
     });
 
-    // Filtro primário: adiciona scatter por cima da linha
-    const fi = opcoes.find(f => f.id === S.filtro && S.linhas[f.id]) || ativos[0];
-    if (fi && fi.id !== 'equilibrio') {
-        const pts = serie.map(j => checa(j, fi.id) ? 100 : 0);
-        datasets.push({
-            type: 'scatter',
-            label: fi.label,
-            data: pts.map((v, i) => ({ x: i, y: v })),
-            backgroundColor: pts.map(v => v ? fi.cor + '50' : '#dc262630'),
-            pointRadius: 2.5,
-            pointHoverRadius: 5,
-            order: -1,
-        });
-    }
-
-    // Labels: horário exato de cada jogo sempre visível no eixo X
+    // Labels: horário + times no tooltip
     const labels = serie.map(p => {
         if (!p.data_partida) return '';
         const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
@@ -3039,13 +3029,19 @@ function renderGrafico() {
                             const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
                             return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}`;
                         },
-                        label: ctx => ` ${ctx.dataset.label}: ${typeof ctx.raw === 'object' ? ctx.raw.y : ctx.raw}${ctx.dataset.type !== 'scatter' ? '%' : ''}`
+                        label: ctx => {
+                            const i = ctx.dataIndex;
+                            const f = ativos.find(f => f.id !== 'equilibrio' &&
+                                ctx.dataset.label === `${f.label} ${Math.round(hitsMap[f.id].filter(v=>v).length/serie.length*100)}%`);
+                            const marcador = f ? (hitsMap[f.id][i] ? ' ✓' : ' ✗') : '';
+                            return ` ${ctx.dataset.label}: ${ctx.raw}%${marcador}`;
+                        }
                     }
                 }
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min:0, max:105, grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},callback:v=>v+'%'} }
+                y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},callback:v=>v+'%'} }
             }
         }
     };
