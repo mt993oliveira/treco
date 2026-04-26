@@ -1557,7 +1557,9 @@ async function carregarConfigLigas() {
         if (cfg.auto_refresh_segundos !== undefined) S._autoRefreshSeg = parseInt(cfg.auto_refresh_segundos) ?? 120;
 
         // Expõe globals para tour.js e outros módulos
-        window.TOUR_DIAS = cfg.tour_dias !== undefined ? parseInt(cfg.tour_dias) : 7;
+        window.TOUR_DIAS      = cfg.tour_dias      !== undefined ? parseInt(cfg.tour_dias)      : 7;
+        S._maxValueBets       = cfg.max_value_bets  !== undefined ? parseInt(cfg.max_value_bets)  : 5;
+        S._maxTendencias      = cfg.max_tendencias  !== undefined ? parseInt(cfg.max_tendencias)  : 8;
 
         // Aplica visibilidade das seções
         S._cfgSecoes = cfg;
@@ -5328,6 +5330,24 @@ async function _loadConfigSistema() {
                     <div style="font-size:10px;color:#475569;margin-top:4px">Máximo de padrões de seleção de gráfico que cada usuário pode criar (1–10)</div>
                 </div>`;
             }
+            if (d.chave === 'max_value_bets') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">💰 MÁXIMO DE SUGESTÕES — VALUE BETS</label>
+                    <input type="number" id="cfg-max_value_bets" value="${d.valor}" min="1" max="20"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Quantidade de cards exibidos em 💰 Value Bets (1–20) · padrão: 5</div>
+                </div>`;
+            }
+            if (d.chave === 'max_tendencias') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">📈 MÁXIMO DE ITENS — TENDÊNCIAS</label>
+                    <input type="number" id="cfg-max_tendencias" value="${d.valor}" min="1" max="20"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Quantidade de mercados exibidos em 📈 Tendências (1–20) · padrão: 8</div>
+                </div>`;
+            }
             return `<div style="margin-bottom:14px">
                 <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
                 <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="0"
@@ -5965,7 +5985,7 @@ function renderMktResumo(res) {
 function renderMktValueBets(res, prefix = 'mkt') {
     const el = document.getElementById(`${prefix}-value-bets`);
     if (!el) return;
-    const vb = (res.value_bets || []);
+    const vb = (res.value_bets || []).slice(0, S._maxValueBets || 5);
     if (!vb.length) { el.innerHTML = '<span style="color:#475569">Ainda sem dados suficientes. Continue coletando.</span>'; return; }
     el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">` + vb.map(v => `
         <div style="background:#052e16;border:1px solid #166534;border-radius:6px;padding:8px 12px;min-width:200px;flex:1">
@@ -5986,8 +6006,7 @@ function renderMktTendencias(res, prefix = 'mkt') {
     const el = document.getElementById(`${prefix}-tendencias`);
     if (!el) return;
     const all = (res.data || []);
-    // Top 16 por variação absoluta; separa subindo/caindo de estáveis
-    const t = [...all].sort((a,b) => Math.abs(b.variacao) - Math.abs(a.variacao)).slice(0, 16);
+    const t = [...all].sort((a,b) => Math.abs(b.variacao) - Math.abs(a.variacao)).slice(0, S._maxTendencias || 8);
     if (!t.length) { el.innerHTML = '<span style="color:#475569">Ainda sem dados suficientes para detectar tendências.</span>'; return; }
     el.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">` + t.map(r => {
         const up     = r.tendencia === 'subindo';

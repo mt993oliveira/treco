@@ -1466,6 +1466,8 @@ const CONFIG_DEFAULTS = [
     { chave:'tour_dias',                    valor:'7',     tipo:'number',  grupo:'sistema',  descricao:'Tour de onboarding: exibir por N dias após a data de licença (0 = desativado para todos)' },
     { chave:'fonte_proximos',               valor:'results',tipo:'text',   grupo:'sistema',  descricao:'Fonte dos próximos jogos: results = página de resultados | none = desativado' },
     { chave:'max_padroes_usuario',          valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'Limite de padrões de gráfico por usuário (1–10)' },
+    { chave:'max_value_bets',               valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'Máximo de sugestões exibidas em 💰 Value Bets (1–20)' },
+    { chave:'max_tendencias',               valor:'8',     tipo:'number',  grupo:'sistema',  descricao:'Máximo de itens exibidos em 📈 Tendências (1–20)' },
     // ── Seções da Análise ──
     { chave:'show_secao_ia',                valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: IA — Sugestões para Próximos Jogos' },
     { chave:'show_secao_value_bets',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Value Bets' },
