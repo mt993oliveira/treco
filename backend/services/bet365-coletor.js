@@ -715,11 +715,13 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _coletarProximos(pg, liga, eventos) {
+        const fonteProximos   = (this.cfg?.fonte_proximos || 'results').trim().toLowerCase();
         const coletarProximos = this._cfgBool('coletar_proximos_jogos', true);
-        const maxHorarios     = coletarProximos ? this._cfgNum('max_horarios_proximos', 4) : 0;
+        const maxHorarios     = (fonteProximos === 'none' || !coletarProximos)
+            ? 0 : this._cfgNum('max_horarios_proximos', 4);
 
         if (maxHorarios === 0) {
-            console.log(`   ⏭️  [${liga.nome}] Coleta de próximos desativada.`);
+            console.log(`   ⏭️  [${liga.nome}] Coleta de próximos desativada (fonte: ${fonteProximos}).`);
             return;
         }
 

@@ -184,31 +184,16 @@
         .liga-tbl td:first-child { text-align:left; color:#e2e8f0; font-weight:700; white-space:nowrap; }
         .liga-tbl tr:last-child td { border-bottom:none; }
         .liga-tbl tr:hover td { background:#0a1220; }
-    /* WhatsApp float button */
-    .wa-btn {
-        position: fixed;
-        bottom: 22px;
-        right: 22px;
-        z-index: 999;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: #25d366;
-        color: #fff;
-        border: none;
-        border-radius: 50px;
-        padding: 10px 18px 10px 14px;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        text-decoration: none;
-        box-shadow: 0 4px 18px rgba(37,211,102,.45);
-        transition: all .2s;
-        white-space: nowrap;
-        font-family: inherit;
+    /* WhatsApp inline button (header) */
+    .wa-header-btn {
+        display: flex; align-items: center; gap: 5px;
+        background: rgba(37,211,102,.12); border: 1px solid rgba(37,211,102,.25);
+        border-radius: 6px; padding: 5px 10px; color: #25d366;
+        text-decoration: none; font-size: 11px; font-weight: 700;
+        flex-shrink: 0; white-space: nowrap; transition: background .15s; cursor: pointer;
     }
-    .wa-btn:hover { background: #1ebe5d; transform: translateY(-2px); box-shadow: 0 6px 22px rgba(37,211,102,.55); }
-    .wa-btn svg  { flex-shrink: 0; }
+    .wa-header-btn:hover { background: rgba(37,211,102,.22); }
+    .wa-header-btn svg   { flex-shrink: 0; }
 
     /* ── RESPONSIVIDADE ───────────────────────────── */
     @media (max-width: 768px) {
@@ -219,9 +204,9 @@
         .liga-tab { font-size: 10px; padding: 3px 8px; }
         /* User menu: esconde nome, deixa só avatar */
         #user-nome { display: none !important; }
-        /* WhatsApp: só ícone no mobile */
-        .wa-btn span { display: none; }
-        .wa-btn { padding: 11px 13px; border-radius: 50%; }
+        /* WhatsApp header: só ícone no mobile */
+        .wa-header-btn span { display: none; }
+        .wa-header-btn { padding: 5px 7px; }
         /* Modal: largura total no mobile */
         .modal-box { padding: 20px 16px !important; }
         /* Painéis com min-width alto: zeramos para flex-wrap funcionar */
@@ -256,6 +241,17 @@
                 style="background:none;border:none;color:#475569;font-size:16px;cursor:pointer;line-height:1"
                 onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#475569'">↻</button>
         </div>
+
+        <!-- WhatsApp Admin -->
+        <a class="wa-header-btn"
+           href="https://api.whatsapp.com/send/?phone=5548999359690&text=Ol%C3%A1%21+Quero+falar+com+o+Administrador.&type=phone_number&app_absent=0"
+           target="_blank" rel="noopener noreferrer" title="Falar com o Administrador via WhatsApp">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#25d366">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.524 5.823L.057 23.885a.5.5 0 0 0 .606.61l6.198-1.437A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.878 9.878 0 0 1-5.032-1.376l-.36-.214-3.733.865.934-3.618-.235-.372A9.865 9.865 0 0 1 2.1 12C2.1 6.533 6.533 2.1 12 2.1S21.9 6.533 21.9 12 17.467 21.9 12 21.9z"/>
+            </svg>
+            <span>Admin</span>
+        </a>
 
         <!-- User menu -->
         <div style="position:relative;flex-shrink:0" id="user-menu-wrap">
@@ -1515,6 +1511,9 @@ async function carregarConfigLigas() {
         // Timeout de sessão e auto-refresh
         S._sessionTimeoutMin  = parseInt(cfg.sessao_timeout_minutos) || 180;
         if (cfg.auto_refresh_segundos !== undefined) S._autoRefreshSeg = parseInt(cfg.auto_refresh_segundos) ?? 120;
+
+        // Expõe globals para tour.js e outros módulos
+        window.TOUR_DIAS = cfg.tour_dias !== undefined ? parseInt(cfg.tour_dias) : 7;
 
         // Aplica visibilidade das seções
         S._cfgSecoes = cfg;
@@ -5218,6 +5217,36 @@ async function _loadConfigSistema() {
 
         fSistema.innerHTML = (byGroup.sistema || []).map(d => {
             const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+            if (d.chave === 'fonte_proximos') {
+                const opts = [
+                    { v:'results', t:'📄 Página de resultados (extra.bet365.bet.br)' },
+                    { v:'none',    t:'🚫 Desativado (não coletar próximos jogos)' },
+                ].map(o => `<option value="${o.v}"${d.valor===o.v?' selected':''}>${o.t}</option>`).join('');
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">FONTE DOS PRÓXIMOS JOGOS</label>
+                    <select id="cfg-fonte_proximos" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">${opts}</select>
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Define se o coletor busca os próximos jogos e por qual fonte.</div>
+                </div>`;
+            }
+            if (d.chave === 'tour_dias') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">TOUR DE ONBOARDING — DIAS APÓS LICENÇA</label>
+                    <input type="number" id="cfg-tour_dias" value="${d.valor}" min="0" max="365"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">0 = desativado para todos · MASTER nunca vê o tour · padrão: 7 dias</div>
+                </div>`;
+            }
+            if (d.chave === 'max_padroes_usuario') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">LIMITE DE PADRÕES DE GRÁFICO POR USUÁRIO</label>
+                    <input type="number" id="cfg-max_padroes_usuario" value="${d.valor}" min="1" max="10"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Máximo de padrões de seleção de gráfico que cada usuário pode criar (1–10)</div>
+                </div>`;
+            }
             return `<div style="margin-bottom:14px">
                 <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
                 <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="0"
@@ -6070,15 +6099,5 @@ function limparDesenho() {
 <!-- Onboarding Tour -->
 <script src="/tour.js" defer></script>
 
-<!-- WhatsApp flutuante -->
-<a class="wa-btn"
-   href="https://api.whatsapp.com/send/?phone=5548999359690&text=Ol%C3%A1%21+Quero+falar+com+o+Administrador.&type=phone_number&app_absent=0"
-   target="_blank" rel="noopener noreferrer" title="Falar com o Administrador">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white">
-        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.524 5.823L.057 23.885a.5.5 0 0 0 .606.61l6.198-1.437A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.878 9.878 0 0 1-5.032-1.376l-.36-.214-3.733.865.934-3.618-.235-.372A9.865 9.865 0 0 1 2.1 12C2.1 6.533 6.533 2.1 12 2.1S21.9 6.533 21.9 12 17.467 21.9 12 21.9z"/>
-    </svg>
-    Falar com Administrador
-</a>
 </body>
 </html>

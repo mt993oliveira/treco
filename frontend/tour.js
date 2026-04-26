@@ -79,13 +79,28 @@
     // INICIALIZAÇÃO
     // =====================================================================
     function init() {
-        if (localStorage.getItem(TOUR_KEY)) return;
-
         var user;
         try { user = JSON.parse(localStorage.getItem('currentUser')); } catch (e) { return; }
         if (!user) return;
 
-        steps = getSteps(user.TipoUsuario === 'master');
+        // MASTER nunca vê o tour
+        if (user.TipoUsuario === 'master') return;
+
+        // Verifica se o administrador desativou o tour
+        var tourDias = (window.TOUR_DIAS !== undefined) ? window.TOUR_DIAS : 7;
+        if (tourDias === 0) return;
+
+        // Verifica se a janela de dias desde a licença expirou
+        if (user.DataInicioLicenca) {
+            var inicio     = new Date(user.DataInicioLicenca).getTime();
+            var diasDecorridos = (Date.now() - inicio) / 86400000;
+            if (diasDecorridos > tourDias) return;
+        }
+
+        // Já completou o tour neste browser
+        if (localStorage.getItem(TOUR_KEY)) return;
+
+        steps = getSteps(false);
 
         // Aguarda um momento para a página carregar o conteúdo dinâmico
         setTimeout(function () { showWelcome(user); }, 2000);
