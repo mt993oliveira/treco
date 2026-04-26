@@ -2579,14 +2579,19 @@ function renderFiltros() {
     const c = document.getElementById('filtros-row');
     c.innerHTML = ''; // limpa tudo — todo conteúdo é dinâmico
 
-    // ── Controles principais ──
+    // ── Controles principais — estilo full-width centralizado ──
+    const _bs = (ativo) => `flex:1;padding:9px 12px;background:#0f172a;
+        border:1.5px solid ${ativo ? '#1fcc59' : '#1e293b'};border-radius:8px;
+        color:${ativo ? '#e2e8f0' : '#94a3b8'};font-size:12px;font-weight:600;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;gap:6px;
+        transition:border-color .2s,color .2s;white-space:nowrap`;
     const ctrl = document.createElement('div');
-    ctrl.style.cssText = 'display:contents';
+    ctrl.style.cssText = 'display:flex;gap:8px;width:100%';
     ctrl.innerHTML = `
-        <button class="acao-btn" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
-        <button class="acao-btn${S.showLegendas?' ativo':''}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
-        <button class="acao-btn" onclick="abrirModalPadroes()" title="Gerenciar padrões de gráfico">📋 Padrões</button>
-        <button class="acao-btn${S.showMercados?' ativo':''}" id="btn-mercados" onclick="toggleMercados()" title="Selecionar mercados / filtros">🎯 Mercados</button>
+        <button style="${_bs(false)}" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
+        <button style="${_bs(S.showLegendas)}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
+        <button style="${_bs(false)}" onclick="abrirModalPadroes()" title="Gerenciar padrões de gráfico">📋 Padrões</button>
+        <button style="${_bs(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Selecionar mercados / filtros">🎯 Mercados</button>
     `;
     c.appendChild(ctrl);
 
@@ -3608,10 +3613,9 @@ function toggleMercados() {
 function toggleLegendas() {
     S.showLegendas = !S.showLegendas;
     const btn = document.getElementById('btn-legendas');
-    if (btn) btn.classList.toggle('ativo', S.showLegendas);
+    if (btn) { btn.style.borderColor = S.showLegendas ? '#1fcc59' : '#1e293b'; btn.style.color = S.showLegendas ? '#e2e8f0' : '#94a3b8'; }
     if (S.showLegendas) hideTT();
     localStorage.setItem('showLegendas', S.showLegendas ? '1' : '0');
-    // Recriar gráfico principal para aplicar enabled do tooltip
     if (S.view === 'historico') renderGrafico();
 }
 
