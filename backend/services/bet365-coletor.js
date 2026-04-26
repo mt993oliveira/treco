@@ -772,13 +772,20 @@ class Bet365Coletor {
         let novaPg = null;
         try {
             novaPg = await pg.browser().newPage();
+            console.log(`   🔗 [${liga.nome}] URL próximos: ${urlResultados.substring(0, 120)}...`);
             await novaPg.goto(urlResultados, { waitUntil: 'networkidle2', timeout: 30000 });
-            await this._delay(2000);
 
-            // Extrai apenas os jogos FUTUROS da lista de fixtures
-            const fixtures = await novaPg.evaluate((h, m, maxN) => {
+            // Aguarda os botões de fixture aparecerem (até 10s), evita leitura prematura
+            try {
+                await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 });
+            } catch(_) { /* continua mesmo sem fixtures */ }
+            await this._delay(1000);
+
+            // Extrai fixtures: lista completa para diagnóstico + filtra futuros
+            const { futuros, totalEncontrados, amostra } = await novaPg.evaluate((h, m, maxN) => {
                 const buttons = document.querySelectorAll('button.point-result__fixture');
                 const futuros = [];
+                const amostra = []; // primeiros 5 para log
                 for (const btn of buttons) {
                     const parts = btn.querySelectorAll('.point-result__fixture-participant');
                     if (parts.length < 2) continue;
@@ -787,6 +794,7 @@ class Bet365Coletor {
                     if (!match) continue;
                     const jH = parseInt(match[1]);
                     const jM = parseInt(match[2]);
+                    if (amostra.length < 5) amostra.push(`${jH}:${String(jM).padStart(2,'0')} ${match[3].trim()} x ${parts[1].textContent.trim()}`);
                     if (jH > h || (jH === h && jM > m)) {
                         futuros.push({
                             horario:  `${jH}:${String(jM).padStart(2,'0')}`,
@@ -796,10 +804,11 @@ class Bet365Coletor {
                         if (futuros.length >= maxN) break;
                     }
                 }
-                return futuros;
+                return { futuros, totalEncontrados: buttons.length, amostra };
             }, horaAtualBST, minAtualBST, maxHorarios);
 
-            console.log(`   ⏰ [${liga.nome}] ${fixtures.length} próximo(s) via página de resultados`);
+            console.log(`   ⏰ [${liga.nome}] BST atual: ${horaAtualBST}:${String(minAtualBST).padStart(2,'0')} | Total fixtures na página: ${totalEncontrados} | Próximos: ${futuros.length}`);
+            if (totalEncontrados > 0) console.log(`      📋 Primeiros fixtures: ${amostra.join(' | ')}`);
 
             for (const f of fixtures) {
                 const tcNorm   = normalizarNomeTime(f.timeCasa);
