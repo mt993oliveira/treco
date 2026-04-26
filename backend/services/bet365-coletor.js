@@ -795,7 +795,9 @@ class Bet365Coletor {
                     const jH = parseInt(match[1]);
                     const jM = parseInt(match[2]);
                     if (amostra.length < 5) amostra.push(`${jH}:${String(jM).padStart(2,'0')} ${match[3].trim()} x ${parts[1].textContent.trim()}`);
-                    if (jH > h || (jH === h && jM > m)) {
+                    const nowMins = h * 60 + m;
+                    const jMins   = jH * 60 + jM;
+                    if (jMins > nowMins && jMins <= nowMins + 6) {
                         futuros.push({
                             horario:  `${jH}:${String(jM).padStart(2,'0')}`,
                             timeCasa: match[3].trim(),
