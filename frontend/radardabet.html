@@ -2929,7 +2929,12 @@ function macd(serie, f, sl, sg) {
 // ============================================================
 function renderGrafico() {
     const serie = serieFlat();
-    if (!serie.length) return;
+    if (!serie.length) {
+        if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
+        const t = document.getElementById('g-titulo');
+        if (t) t.textContent = 'Sem dados para o período';
+        return;
+    }
 
     // MM auto: derivado do tamanho da série (~15% e ~30% dos jogos, mínimos razoáveis)
     const n   = serie.length;
@@ -3137,8 +3142,7 @@ function minutosParaLiga(liga) {
 // ============================================================
 function renderTabela() {
     const gs = grupos();
-    const filtrosDaSec = FILTROS[S.secao] || [];
-    const fi = filtrosDaSec.find(f => f.id === S.filtro) || filtrosDaSec[0];
+    const fi = TODOS_FILTROS.find(f => f.id === S.filtro) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
     const gridCores = carregarCoresGrid();
     const corOdd = v => v <= 0 ? '#64748b' : v < 2.0 ? gridCores.oddFav : v < 3.0 ? gridCores.oddMed : gridCores.oddAzarao;
 
@@ -3810,7 +3814,7 @@ function handleGridClick(e) {
 function abrirModalSlot(min) {
     const minStr = pad2(min);
     document.getElementById('modal-slot-titulo').textContent = `Jogos no slot :${minStr}`;
-    const fi = (FILTROS[S.secao] || []).find(f => f.id === S.filtro);
+    const fi = TODOS_FILTROS.find(f => f.id === S.filtro);
     const jogos = S.partidas
         .filter(p => p.data_partida && new Date(p.data_partida).getUTCMinutes() === min)
         .sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida));
@@ -3855,7 +3859,7 @@ function abrirModalSlot(min) {
 function abrirModalLigaResultados() {
     const ligaLabel = S.ligaAtiva || 'Todas as ligas';
     document.getElementById('modal-liga-res-titulo').textContent = `Resultados — ${ligaLabel}`;
-    const fi = (FILTROS[S.secao] || []).find(f => f.id === S.filtro);
+    const fi = TODOS_FILTROS.find(f => f.id === S.filtro);
     const jogos = [...S.partidas].sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida));
 
     const body = document.getElementById('modal-liga-res-body');
