@@ -1281,169 +1281,214 @@
 
 <!-- ========== MODAL: CORES DA GRID ========== -->
 <div class="modal-overlay" id="modal-cores">
-    <div class="modal-box" style="max-width:360px;width:96%">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <h2 style="font-size:14px;font-weight:700">🎨 Cores da Grid</h2>
+    <div class="modal-box" style="max-width:400px;width:96%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="font-size:14px;font-weight:700">⚙️ Config</h2>
             <button onclick="cancelarCoresGrid()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
         </div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-            <!-- Verde -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Acerto (verde)</div>
-                <div style="display:flex;gap:12px;align-items:center">
-                    <div style="display:flex;align-items:center;gap:5px;flex:1">
-                        <span style="font-size:9px;color:#475569">Fundo</span>
-                        <input id="gc-verdeBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:5px;flex:1">
-                        <span style="font-size:9px;color:#475569">Texto</span>
-                        <input id="gc-verdeTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div id="prev-verde" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">1-0</div>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:74vh;overflow-y:auto;padding-right:2px">
+
+            <!-- ── Tamanhos de Fonte (aberto por padrão) ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">📐 Tamanhos de Fonte</span>
+                    <span style="color:#475569;font-size:11px">▾</span>
                 </div>
-            </div>
-            <!-- Vermelho -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Erro (vermelho)</div>
-                <div style="display:flex;gap:12px;align-items:center">
-                    <div style="display:flex;align-items:center;gap:5px;flex:1">
-                        <span style="font-size:9px;color:#475569">Fundo</span>
-                        <input id="gc-vermBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:5px;flex:1">
-                        <span style="font-size:9px;color:#475569">Texto</span>
-                        <input id="gc-vermTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div id="prev-verm" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">0-1</div>
-                </div>
-            </div>
-            <!-- Futuro -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Próximos jogos (azul)</div>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Fundo</span>
-                        <input id="gc-futuroBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Texto</span>
-                        <input id="gc-futuroTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Borda</span>
-                        <input id="gc-futuroBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div id="prev-futuro" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center;border:1px dashed">2.10</div>
-                </div>
-            </div>
-            <!-- Odds -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Odds pré-jogo</div>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Fav &lt;2.00</span>
-                        <input id="gc-oddFav"    type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Médio 2–3</span>
-                        <input id="gc-oddMed"    type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Azarão &gt;3</span>
-                        <input id="gc-oddAzarao" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;gap:4px;align-items:center">
-                        <span id="prev-odd-fav"    style="font-size:10px;font-weight:800;min-width:28px;text-align:center">1.75</span>
-                        <span id="prev-odd-med"    style="font-size:10px;font-weight:800;min-width:28px;text-align:center">2.50</span>
-                        <span id="prev-odd-azarao" style="font-size:10px;font-weight:800;min-width:28px;text-align:center">3.80</span>
+                <div style="padding:4px 12px 10px">
+                    <input type="hidden" id="gc-clubeFs" value="7">
+                    <input type="hidden" id="gc-ftFs"    value="10">
+                    <input type="hidden" id="gc-htFs"    value="10">
+                    <input type="hidden" id="gc-oddFs"   value="6">
+                    <div style="display:flex;flex-direction:column;gap:7px;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:9px;color:#475569;min-width:80px">Clube (casa/fora)</span>
+                            <button type="button" onclick="_adjFs('clube',-1)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex-shrink:0">−</button>
+                            <span id="gc-fs-clube-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">7px</span>
+                            <button type="button" onclick="_adjFs('clube',1)"  style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex-shrink:0">+</button>
+                            <span id="gc-fs-prev-clube" style="font-size:7px;color:var(--clube-txt);font-weight:700;flex:1;text-align:right">Arsenal</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:9px;color:#475569;min-width:80px">Resultado FT</span>
+                            <button type="button" onclick="_adjFs('ft',-1)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex-shrink:0">−</button>
+                            <span id="gc-fs-ft-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">10px</span>
+                            <button type="button" onclick="_adjFs('ft',1)"  style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex-shrink:0">+</button>
+                            <span id="gc-fs-prev-ft" style="font-size:10px;color:var(--ft-txt);font-weight:800;flex:1;text-align:right">1-0</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:9px;color:#475569;min-width:80px">Resultado HT</span>
+                            <button type="button" onclick="_adjFs('ht',-1)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex-shrink:0">−</button>
+                            <span id="gc-fs-ht-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">10px</span>
+                            <button type="button" onclick="_adjFs('ht',1)"  style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex-shrink:0">+</button>
+                            <span id="gc-fs-prev-ht" style="font-size:10px;color:var(--ht-txt);font-weight:600;flex:1;text-align:right">(0-0)</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:9px;color:#475569;min-width:80px">Odds</span>
+                            <button type="button" onclick="_adjFs('odd',-1)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex-shrink:0">−</button>
+                            <span id="gc-fs-odd-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">6px</span>
+                            <button type="button" onclick="_adjFs('odd',1)"  style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex-shrink:0">+</button>
+                            <span id="gc-fs-prev-odd" style="font-size:6px;font-weight:800;color:#4ade80;flex:1;text-align:right">2.10</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <!-- Destaque Coluna -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Destaque de Coluna (clique no :MM)</div>
-                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Fundo</span>
-                        <input id="gc-selColBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+
+            <!-- ── Acerto (verde) ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Acerto (verde)</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:12px;align-items:center;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px;flex:1"><span style="font-size:9px;color:#475569">Fundo</span><input id="gc-verdeBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px;flex:1"><span style="font-size:9px;color:#475569">Texto</span><input id="gc-verdeTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-verde" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">1-0</div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Texto</span>
-                        <input id="gc-selColTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Borda</span>
-                        <input id="gc-selColBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div id="prev-sel-col" style="border-radius:4px;padding:4px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">:05</div>
                 </div>
             </div>
-            <!-- Destaque Linha -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Destaque de Linha (clique no horário)</div>
-                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Fundo</span>
-                        <input id="gc-selRowBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+
+            <!-- ── Erro (vermelho) ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Erro (vermelho)</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:12px;align-items:center;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px;flex:1"><span style="font-size:9px;color:#475569">Fundo</span><input id="gc-vermBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px;flex:1"><span style="font-size:9px;color:#475569">Texto</span><input id="gc-vermTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-verm" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">0-1</div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Texto</span>
-                        <input id="gc-selRowTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                        <span style="font-size:9px;color:#475569">Borda</span>
-                        <input id="gc-selRowBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
-                    </div>
-                    <div id="prev-sel-row" style="border-radius:4px;padding:4px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">14h</div>
                 </div>
             </div>
-            <!-- Clubes -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Nomes dos Clubes</div>
-                <div style="display:flex;gap:12px;align-items:center">
-                    <div style="display:flex;align-items:center;gap:5px;flex:1">
-                        <span style="font-size:9px;color:#475569">Texto</span>
-                        <input id="gc-clubeTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+
+            <!-- ── Próximos jogos (azul) ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Próximos jogos (azul)</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Fundo</span><input id="gc-futuroBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Texto</span><input id="gc-futuroTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Borda</span><input id="gc-futuroBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-futuro" style="border-radius:4px;padding:5px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center;border:1px dashed">2.10</div>
                     </div>
-                    <div id="prev-clube-txt" style="font-size:7px;font-weight:700;min-width:36px;text-align:center">Arsenal</div>
                 </div>
             </div>
-            <!-- Placar FT -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Placar FT (resultado final)</div>
-                <div style="display:flex;gap:12px;align-items:center">
-                    <div style="display:flex;align-items:center;gap:5px;flex:1">
-                        <span style="font-size:9px;color:#475569">Texto</span>
-                        <input id="gc-ftTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+
+            <!-- ── Odds pré-jogo ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Odds pré-jogo</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Fav &lt;2.00</span><input id="gc-oddFav"    type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Médio 2–3</span><input id="gc-oddMed"    type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Azarão &gt;3</span><input id="gc-oddAzarao" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;gap:4px;align-items:center">
+                            <span id="prev-odd-fav"    style="font-size:10px;font-weight:800;min-width:28px;text-align:center">1.75</span>
+                            <span id="prev-odd-med"    style="font-size:10px;font-weight:800;min-width:28px;text-align:center">2.50</span>
+                            <span id="prev-odd-azarao" style="font-size:10px;font-weight:800;min-width:28px;text-align:center">3.80</span>
+                        </div>
                     </div>
-                    <div id="prev-ft-txt" style="font-size:10px;font-weight:800;min-width:36px;text-align:center">1-0</div>
                 </div>
             </div>
-            <!-- Placar HT -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Placar HT (intervalo)</div>
-                <div style="display:flex;gap:12px;align-items:center">
-                    <div style="display:flex;align-items:center;gap:5px;flex:1">
-                        <span style="font-size:9px;color:#475569">Texto</span>
-                        <input id="gc-htTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+
+            <!-- ── Destaque de Coluna ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Destaque de Coluna (clique no :MM)</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Fundo</span><input id="gc-selColBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Texto</span><input id="gc-selColTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Borda</span><input id="gc-selColBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-sel-col" style="border-radius:4px;padding:4px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">:05</div>
                     </div>
-                    <div id="prev-ht-txt" style="font-size:10px;font-weight:700;min-width:36px;text-align:center">(0-0)</div>
                 </div>
             </div>
-            <!-- Caneta -->
-            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;padding:10px 12px">
-                <div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">✏️ Caneta (cor padrão)</div>
-                <div style="display:flex;gap:12px;align-items:center">
-                    <div style="display:flex;align-items:center;gap:5px;flex:1">
-                        <span style="font-size:9px;color:#475569">Cor</span>
-                        <input id="gc-canetaCor" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+
+            <!-- ── Destaque de Linha ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Destaque de Linha (clique no horário)</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Fundo</span><input id="gc-selRowBg"  type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Texto</span><input id="gc-selRowTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;color:#475569">Borda</span><input id="gc-selRowBrd" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-sel-row" style="border-radius:4px;padding:4px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">14h</div>
                     </div>
-                    <div id="prev-caneta-cor" style="font-size:11px;font-weight:800;min-width:36px;text-align:center">✏️</div>
                 </div>
             </div>
+
+            <!-- ── Cor dos Clubes ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Cor dos Clubes</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:12px;align-items:center;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px;flex:1"><span style="font-size:9px;color:#475569">Texto</span><input id="gc-clubeTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-clube-txt" style="font-size:7px;font-weight:700;min-width:36px;text-align:center">Arsenal</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Cor Placar FT ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Cor Placar FT (resultado final)</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:12px;align-items:center;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px;flex:1"><span style="font-size:9px;color:#475569">Texto</span><input id="gc-ftTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-ft-txt" style="font-size:10px;font-weight:800;min-width:36px;text-align:center">1-0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Cor Placar HT ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Cor Placar HT (intervalo)</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:12px;align-items:center;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px;flex:1"><span style="font-size:9px;color:#475569">Texto</span><input id="gc-htTxt" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-ht-txt" style="font-size:10px;font-weight:700;min-width:36px;text-align:center">(0-0)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Caneta ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this)" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">✏️ Caneta (cor padrão)</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="display:flex;gap:12px;align-items:center;margin-top:4px">
+                        <div style="display:flex;align-items:center;gap:5px;flex:1"><span style="font-size:9px;color:#475569">Cor</span><input id="gc-canetaCor" type="color" oninput="previewCoresGrid()" style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none"></div>
+                        <div id="prev-caneta-cor" style="font-size:11px;font-weight:800;min-width:36px;text-align:center">✏️</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-            <button onclick="restaurarCoresGrid()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:11px;cursor:pointer" title="Restaurar cores originais">↺ Padrão</button>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+            <button onclick="restaurarCoresGrid()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:11px;cursor:pointer" title="Restaurar configurações originais">↺ Padrão</button>
             <button onclick="cancelarCoresGrid()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:11px;cursor:pointer">Cancelar</button>
             <button onclick="salvarCoresGrid()" style="background:#1d4ed8;border:1px solid #2563eb;color:#fff;border-radius:5px;padding:7px 16px;font-size:11px;font-weight:700;cursor:pointer">Salvar</button>
         </div>
@@ -1821,15 +1866,17 @@ const GRID_CORES_PADRAO = {
     verdeBg:    '#14532d', verdeTxt:   '#4ade80',
     vermBg:     '#3b0a0a', vermTxt:    '#f87171',
     futuroBg:   '#0a1628', futuroTxt:  '#3b82f6', futuroBrd: '#1e3a5f',
-    oddFav:     '#4ade80',   // odd < 2.00 — favorito
-    oddMed:     '#fbbf24',   // odd 2.00–3.00 — médio
-    oddAzarao:  '#f87171',   // odd > 3.00 — azarão
-    clubeTxt:   '#94a3b8',   // nomes dos clubes (cinza claro por padrão)
-    ftTxt:      '#e2e8f0',   // placar FT (branco por padrão)
-    htTxt:      '#64748b',   // placar HT (cinza por padrão)
-    selColBg:   '#1e3a5f', selColTxt: '#60a5fa', selColBrd: '#3b82f6', // destaque coluna
-    selRowBg:   '#1e1b4b', selRowTxt: '#a78bfa', selRowBrd: '#a78bfa', // destaque linha
-    canetaCor:  '#f59e0b', // cor padrão da caneta de desenho
+    oddFav:     '#4ade80',
+    oddMed:     '#fbbf24',
+    oddAzarao:  '#f87171',
+    clubeTxt:   '#94a3b8',
+    ftTxt:      '#e2e8f0',
+    htTxt:      '#64748b',
+    selColBg:   '#1e3a5f', selColTxt: '#60a5fa', selColBrd: '#3b82f6',
+    selRowBg:   '#1e1b4b', selRowTxt: '#a78bfa', selRowBrd: '#a78bfa',
+    canetaCor:  '#f59e0b',
+    // tamanhos de fonte do mosaico (px)
+    clubeFs: 7, ftFs: 10, htFs: 10, oddFs: 6,
 };
 function carregarCoresGrid() {
     try { return Object.assign({}, GRID_CORES_PADRAO, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
@@ -1844,7 +1891,7 @@ function aplicarCoresGrid(c) {
     let s = document.getElementById('grid-cores-style');
     if (!s) { s = document.createElement('style'); s.id = 'grid-cores-style'; document.head.appendChild(s); }
     s.textContent =
-        `:root { --clube-txt: ${c.clubeTxt}; --ft-txt: ${c.ftTxt}; --ht-txt: ${c.htTxt}; }\n` +
+        `:root { --clube-txt: ${c.clubeTxt}; --ft-txt: ${c.ftTxt}; --ht-txt: ${c.htTxt}; --fs-clube: ${c.clubeFs||7}px; --fs-ft: ${c.ftFs||10}px; --fs-ht: ${c.htFs||10}px; --fs-odd: ${c.oddFs||6}px; }\n` +
         `.c-verde  { background: ${c.verdeBg}  !important; color: ${c.verdeTxt}  !important; }\n` +
         `.c-verm   { background: ${c.vermBg}   !important; color: ${c.vermTxt}   !important; }\n` +
         `.c-futuro { background: ${c.futuroBg} !important; color: ${c.futuroTxt} !important; border: 1px dashed ${c.futuroBrd} !important; }\n` +
@@ -2743,7 +2790,7 @@ function renderFiltros() {
     const ctrl = document.createElement('div');
     ctrl.style.cssText = 'display:flex;gap:6px;width:100%';
     ctrl.innerHTML = `
-        <button style="${_bs(false)}" onclick="abrirModalCores()" title="Configurar cores da grid">🎨${isMob ? '' : ' Cores'}</button>
+        <button style="${_bs(false)}" onclick="abrirModalCores()" title="Configurar cores e fontes da grid">⚙️${isMob ? '' : ' Config'}</button>
         <button style="${_bs(S.showLegendas)}" id="btn-legendas" onclick="toggleLegendas()" title="Legendas">💬${isMob ? '' : ' Legendas'}</button>
         <button style="${_bs(false)}" onclick="abrirModalPadroes()" title="Padrões de gráfico">📋${isMob ? '' : ' Padrões'}</button>
         <button style="${_bs(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Mercados / filtros">🎯${isMob ? '' : ' Mercados'}</button>
@@ -3630,17 +3677,17 @@ function renderTabela() {
             const corOddF = corOdd(oddF);
             const nmSlot  = `data-action="slot" data-min="${minuteSlots[ci]}"`;
             const cellContent = S.showNomes
-                ? (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
-                  `<span data-action="clube" data-clube="${abbrev(j.time_casa)}" ${nmSlot} style="display:block;font-size:7px;line-height:1.2;color:var(--clube-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
-                  `<span data-action="liga" style="display:block;font-size:10px;font-weight:800;cursor:pointer;line-height:1.3;color:var(--ft-txt)">${score}</span>`+
-                  (scoreHT && S.showHT ? `<span style="display:block;font-size:10px;font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
-                  `<span data-action="clube" data-clube="${abbrev(j.time_fora)}" ${nmSlot} style="display:block;font-size:7px;line-height:1.2;color:var(--clube-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
-                  (temOdds ? `<span style="display:block;font-size:6px;font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
-                : `<span data-action="liga" style="cursor:pointer;display:block;line-height:1.25;color:var(--ft-txt)">${score}</span>`+
-                  (scoreHT && S.showHT ? `<span style="display:block;color:var(--ht-txt);line-height:1;text-align:center">${scoreHT}</span>` : '')+
+                ? (temOdds ? `<span style="display:block;font-size:var(--fs-odd);font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
+                  `<span data-action="clube" data-clube="${abbrev(j.time_casa)}" ${nmSlot} style="display:block;font-size:var(--fs-clube);line-height:1.2;color:var(--clube-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
+                  `<span data-action="liga" style="display:block;font-size:var(--fs-ft);font-weight:800;cursor:pointer;line-height:1.3;color:var(--ft-txt)">${score}</span>`+
+                  (scoreHT && S.showHT ? `<span style="display:block;font-size:var(--fs-ht);font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
+                  `<span data-action="clube" data-clube="${abbrev(j.time_fora)}" ${nmSlot} style="display:block;font-size:var(--fs-clube);line-height:1.2;color:var(--clube-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
+                  (temOdds ? `<span style="display:block;font-size:var(--fs-odd);font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
+                : `<span data-action="liga" style="cursor:pointer;display:block;font-size:var(--fs-ft);line-height:1.25;color:var(--ft-txt)">${score}</span>`+
+                  (scoreHT && S.showHT ? `<span style="display:block;font-size:var(--fs-ht);color:var(--ht-txt);line-height:1;text-align:center">${scoreHT}</span>` : '')+
                   (temOdds ? `<span style="display:flex;gap:2px;margin-top:1px">`+
-                    `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddC}">${fmtOdd(oddC)}</span>`+
-                    `<span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${corOddF}">${fmtOdd(oddF)}</span>`+
+                    `<span style="flex:1;text-align:center;font-size:var(--fs-odd);font-weight:700;color:${corOddC}">${fmtOdd(oddC)}</span>`+
+                    `<span style="flex:1;text-align:center;font-size:var(--fs-odd);font-weight:700;color:${corOddF}">${fmtOdd(oddF)}</span>`+
                     `</span>` : '');
             const opacityStyle = isEstimado ? 'opacity:0.35;' : isOculto ? 'opacity:0.7;' : '';
             const hasHT    = scoreHT && S.showHT && !S.showNomes;
@@ -3938,14 +3985,53 @@ function renderRankOdds() {
 function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
 
 // ============================================================
-// CONFIGURAÇÃO DE CORES DA GRID
+// CONFIGURAÇÃO DE CORES / FONTES DA GRID (modal "Config")
 // ============================================================
+
+function _toggleCfgSection(hdr) {
+    const body = hdr.nextElementSibling;
+    if (!body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    const arrow = hdr.children[hdr.children.length - 1];
+    if (arrow) arrow.textContent = open ? '▸' : '▾';
+}
+
+const _FS_RANGES = { clube: [5, 14], ft: [7, 18], ht: [7, 18], odd: [4, 12] };
+function _adjFs(key, delta) {
+    const inp = document.getElementById(`gc-${key}Fs`);
+    if (!inp) return;
+    const [mn, mx] = _FS_RANGES[key] || [5, 18];
+    let val = parseInt(inp.value || '0') + delta;
+    val = Math.max(mn, Math.min(mx, val));
+    inp.value = String(val);
+    const disp = document.getElementById(`gc-fs-${key}-val`);
+    if (disp) disp.textContent = val + 'px';
+    const prev = document.getElementById(`gc-fs-prev-${key}`);
+    if (prev) prev.style.fontSize = val + 'px';
+    previewCoresGrid();
+}
+
+function _syncFsDisplays(c) {
+    const map = { clube: 'clubeFs', ft: 'ftFs', ht: 'htFs', odd: 'oddFs' };
+    Object.entries(map).forEach(([key, cfgKey]) => {
+        const val = parseInt(c[cfgKey] !== undefined ? c[cfgKey] : GRID_CORES_PADRAO[cfgKey]);
+        const inp  = document.getElementById(`gc-${cfgKey}`);
+        if (inp)  inp.value = String(val);
+        const disp = document.getElementById(`gc-fs-${key}-val`);
+        if (disp) disp.textContent = val + 'px';
+        const prev = document.getElementById(`gc-fs-prev-${key}`);
+        if (prev) prev.style.fontSize = val + 'px';
+    });
+}
+
 function abrirModalCores() {
     const cores = carregarCoresGrid();
     Object.keys(GRID_CORES_PADRAO).forEach(k => {
         const el = document.getElementById(`gc-${k}`);
         if (el) el.value = cores[k];
     });
+    _syncFsDisplays(cores);
     _atualizarPreviewCores(cores);
     document.getElementById('modal-cores').classList.add('aberto');
 }
@@ -4013,6 +4099,7 @@ function restaurarCoresGrid() {
         const el = document.getElementById(`gc-${k}`);
         if (el) el.value = GRID_CORES_PADRAO[k];
     });
+    _syncFsDisplays(GRID_CORES_PADRAO);
     _atualizarPreviewCores(GRID_CORES_PADRAO);
 }
 
