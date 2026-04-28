@@ -59,7 +59,7 @@ async function dispararAlerta(cfg, pool, titulo, mensagem) {
 
     // ── Telegram ──────────────────────────────────────────────
     if (token && chatIds) {
-        const tgMsg = `<b>🤖 Radardabet</b>\n<b>${titulo}</b>\n\n${mensagem.replace(/\n/g, '\n')}`;
+        const tgMsg = `<b>🤖 Radardabet</b>\n<b>${titulo}</b>\n\n${mensagem}`;
         promises.push(
             _sendTelegram(token, chatIds, tgMsg)
                 .catch(e => console.error('[Alerta Telegram]', e.message))

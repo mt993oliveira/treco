@@ -5557,8 +5557,17 @@ async function _loadConfigSistema() {
 
 function _telMask(el) {
     let v = el.value.replace(/\D/g, '').substring(0, 11);
-    if (v.length <= 10) v = v.replace(/^(\d{0,2})(\d{0,4})(\d{0,4})$/, (_, a, b, c) => a ? `(${a}${b ? ') '+b : ''}${c ? '-'+c : ''}`) : '');
-    else                v = v.replace(/^(\d{2})(\d{5})(\d{0,4})$/, '($1) $2-$3');
+    if (v.length <= 10) {
+        v = v.replace(/^(\d{0,2})(\d{0,4})(\d{0,4})$/, function(_, a, b, c) {
+            if (!a) return '';
+            var r = '(' + a;
+            if (b) r += ') ' + b;
+            if (c) r += '-' + c;
+            return r;
+        });
+    } else {
+        v = v.replace(/^(\d{2})(\d{5})(\d{0,4})$/, '($1) $2-$3');
+    }
     el.value = v;
 }
 
