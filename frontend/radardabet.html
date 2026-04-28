@@ -2698,20 +2698,20 @@ function renderFiltros() {
     const c = document.getElementById('filtros-row');
     c.innerHTML = ''; // limpa tudo — todo conteúdo é dinâmico
 
-    // ── Controles principais — estilo full-width centralizado ──
-    const _bs = (ativo) => `flex:1;padding:9px 12px;background:#0f172a;
-        border:1.5px solid ${ativo ? '#1fcc59' : '#1e293b'};border-radius:8px;
-        color:${ativo ? '#e2e8f0' : '#94a3b8'};font-size:12px;font-weight:600;cursor:pointer;
-        display:flex;align-items:center;justify-content:center;gap:6px;
+    // ── Controles principais — compactos, numa linha ──
+    const isMob = window.innerWidth < 640;
+    const _bs = (ativo) => `flex:1;padding:${isMob ? '6px 8px' : '7px 10px'};background:#0f172a;
+        border:1.5px solid ${ativo ? '#1fcc59' : '#1e293b'};border-radius:7px;
+        color:${ativo ? '#e2e8f0' : '#94a3b8'};font-size:${isMob ? '11px' : '12px'};font-weight:600;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;gap:4px;
         transition:border-color .2s,color .2s;white-space:nowrap`;
     const ctrl = document.createElement('div');
-    ctrl.style.cssText = 'display:flex;gap:8px;width:100%;flex-wrap:wrap';
-    const _bsMob = (ativo) => _bs(ativo) + ';flex:1 1 calc(50% - 4px);min-width:120px';
+    ctrl.style.cssText = 'display:flex;gap:6px;width:100%';
     ctrl.innerHTML = `
-        <button style="${_bsMob(false)}" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
-        <button style="${_bsMob(S.showLegendas)}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
-        <button style="${_bsMob(false)}" onclick="abrirModalPadroes()" title="Gerenciar padrões de gráfico">📋 Padrões</button>
-        <button style="${_bsMob(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Selecionar mercados / filtros">🎯 Mercados</button>
+        <button style="${_bs(false)}" onclick="abrirModalCores()" title="Configurar cores da grid">🎨${isMob ? '' : ' Cores'}</button>
+        <button style="${_bs(S.showLegendas)}" id="btn-legendas" onclick="toggleLegendas()" title="Legendas">💬${isMob ? '' : ' Legendas'}</button>
+        <button style="${_bs(false)}" onclick="abrirModalPadroes()" title="Padrões de gráfico">📋${isMob ? '' : ' Padrões'}</button>
+        <button style="${_bs(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Mercados / filtros">🎯${isMob ? '' : ' Mercados'}</button>
     `;
     c.appendChild(ctrl);
 
