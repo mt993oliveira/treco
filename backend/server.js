@@ -251,6 +251,29 @@ app.post('/api/login', async (req, res) => {
                     return;
                 }
 
+                // Bloquear acesso simultâneo (exceto master)
+                if (user.TipoUsuario !== 'master') {
+                    const sessao = activeSessions.get(String(user.Id));
+                    const limite = Date.now() - 5 * 60 * 1000;
+                    if (sessao && sessao.lastSeen.getTime() >= limite) {
+                        const restam = Math.ceil((sessao.lastSeen.getTime() + 5 * 60 * 1000 - Date.now()) / 60000);
+                        return res.json({
+                            success: false,
+                            message: `Usuário já possui uma sessão ativa em outro dispositivo. Faça logout no outro dispositivo ou aguarde ${restam} minuto(s).`
+                        });
+                    }
+                }
+
+                // Registrar sessão ao logar
+                activeSessions.set(String(user.Id), {
+                    id: String(user.Id),
+                    usuario: user.Usuario,
+                    nome: user.NomeCompleto,
+                    tipo: user.TipoUsuario,
+                    lastSeen: new Date(),
+                    ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?',
+                });
+
                 const { Senha, ...userWithoutPassword } = user;
                 res.json({ success: true, user: userWithoutPassword });
             } else {
@@ -1018,6 +1041,12 @@ app.post('/api/usuarios/ping', async (req, res) => {
         ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?',
     });
     res.json({ ok: true });
+});
+
+app.post('/api/logout', async (req, res) => {
+    const { usuarioId } = req.body;
+    if (usuarioId) activeSessions.delete(String(usuarioId));
+    res.json({ success: true });
 });
 
 /**

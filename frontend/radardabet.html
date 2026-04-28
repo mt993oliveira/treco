@@ -5196,6 +5196,14 @@ document.addEventListener('click', e => {
 
 function fazerLogout(silencioso = false) {
     if (!silencioso && !confirm('Deseja sair da plataforma?')) return;
+    const u = _getUser();
+    if (u?.Id) {
+        fetch('/api/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id })
+        }).catch(() => {});
+    }
     localStorage.removeItem('currentUser');
     localStorage.removeItem('loginTime');
     window.location.replace('/');
