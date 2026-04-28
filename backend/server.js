@@ -630,7 +630,7 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
         }
 
         const result = await sql.query`
-            SELECT Id, NomeCompleto, Usuario, Email, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo
+            SELECT Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo
             FROM Usuarios
             ORDER BY Id DESC
         `;
@@ -662,8 +662,9 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
 
 // Rota para salvar usuário - CORRIGIDA
 app.post('/api/usuarios/save', requireAuth, async (req, res) => {
-    const { id, nomeCompleto, usuario, email, senha, tipoUsuario, ativo, sqlConfig } = req.body;
+    const { id, nomeCompleto, usuario, email, telefone, senha, tipoUsuario, ativo, sqlConfig } = req.body;
     const ativoVal = ativo !== undefined ? (ativo ? 1 : 0) : null;
+    const telefoneVal = telefone !== undefined ? (telefone || null) : undefined;
 
     try {
         await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
@@ -777,6 +778,10 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             if (ativoVal !== null) {
                 await sql.query`UPDATE Usuarios SET Ativo = ${ativoVal} WHERE Id = ${id}`;
             }
+            // Atualizar Telefone se informado
+            if (telefoneVal !== undefined) {
+                await sql.query`UPDATE Usuarios SET Telefone = ${telefoneVal} WHERE Id = ${id}`;
+            }
 
             // Registrar no histórico de usuários
             const historicoUsuario = usuario || (await sql.query`SELECT Usuario FROM Usuarios WHERE Id = ${id}`).recordset[0]?.Usuario || 'usuário';
@@ -796,8 +801,8 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             const dataFimLicenca = req.body.dataFimLicenca || null;
 
             await sql.query`
-                INSERT INTO Usuarios (NomeCompleto, Usuario, Email, Senha, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, DataAtualizacao)
-                VALUES (${nomeCompleto}, ${usuario}, ${email}, ${hashedPassword}, ${tipoUsuario}, ${dataInicioLicenca}, ${dataFimLicenca}, GETDATE(), GETDATE())
+                INSERT INTO Usuarios (NomeCompleto, Usuario, Email, Telefone, Senha, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, DataAtualizacao)
+                VALUES (${nomeCompleto}, ${usuario}, ${email}, ${telefoneVal || null}, ${hashedPassword}, ${tipoUsuario}, ${dataInicioLicenca}, ${dataFimLicenca}, GETDATE(), GETDATE())
             `;
 
             await sql.query`
@@ -1175,21 +1180,62 @@ server.listen(PORT, () => {
     console.log(`🌐 Acesse: http://localhost:${PORT}`);
     console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
     garantirSchemaEventos();
+    // Garante coluna Telefone na tabela Usuarios
+    (async () => {
+        try {
+            await connectSQL(getDatabaseConfigFromEnv());
+            await sql.query`
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'Usuarios' AND COLUMN_NAME = 'Telefone'
+                )
+                    ALTER TABLE Usuarios ADD Telefone NVARCHAR(20) NULL
+            `;
+        } catch(e) { console.warn('⚠️ Schema Telefone:', e.message); }
+    })();
 
     // ── Inicia o agendador Bet365 junto com o servidor ──
     if (process.env.BET365_AGENDADOR_ATIVADO !== 'false') {
-        const Bet365Coletor   = require('./services/bet365-coletor');
-        const { getSystemConfig } = require('./routes/bet365-api');
+        const Bet365Coletor               = require('./services/bet365-coletor');
+        const { getSystemConfig, getDbPool } = require('./routes/bet365-api');
+        const { dispararAlerta }          = require('./services/alertas');
         const coletor365 = new Bet365Coletor();
 
-        // Loop dinâmico: após cada coleta lê o intervalo atualizado do banco
-        // (sem restart) e agenda a próxima com setTimeout.
-        let _coletorTimer = null;
+        let _coletorTimer  = null;
+        let _alertaEnviado = false;
+        let _ultimaColetaOk = Date.now(); // grace period inicial
+
         async function _cicloColeta() {
             const inicio = Date.now();
             await coletor365.coletar().catch(e => console.error('Bet365 coletar:', e.message));
             const cfg  = await getSystemConfig().catch(() => ({}));
-            const seg  = Math.max(10, parseInt(cfg.intervalo_coleta_seg) || 30);
+
+            // ── Verificar alertas ──────────────────────────────────
+            if (coletor365.ultimaColetaSucesso && coletor365.ultimaColetaSucesso > _ultimaColetaOk) {
+                _ultimaColetaOk = coletor365.ultimaColetaSucesso;
+                if (_alertaEnviado) {
+                    _alertaEnviado = false;
+                    const pool  = await getDbPool().catch(() => null);
+                    const agora = new Date().toLocaleString('pt-BR');
+                    dispararAlerta(cfg, pool, '✅ Coletor recuperado',
+                        `O coletor voltou a funcionar normalmente.\n🕐 ${agora}`).catch(() => {});
+                }
+            }
+            if (cfg.alerta_ativado !== 'false' && !_alertaEnviado) {
+                const alertMin  = Math.max(5, parseInt(cfg.alerta_minutos_sem_coleta) || 15);
+                const semColeta = (Date.now() - _ultimaColetaOk) / 60000;
+                if (semColeta >= alertMin) {
+                    _alertaEnviado = true;
+                    const pool  = await getDbPool().catch(() => null);
+                    const agora = new Date().toLocaleString('pt-BR');
+                    const erro  = coletor365.ultimoErro ? `\n❌ Erro: ${coletor365.ultimoErro}` : '';
+                    dispararAlerta(cfg, pool, '⚠️ Coletor parado',
+                        `Sem coleta há ${Math.round(semColeta)} minuto(s).${erro}\n🕐 ${agora}`).catch(() => {});
+                }
+            }
+            // ──────────────────────────────────────────────────────
+
+            const seg   = Math.max(10, parseInt(cfg.intervalo_coleta_seg) || 30);
             const gasto = Math.round((Date.now() - inicio) / 1000);
             const espera = Math.max(5, seg - gasto);
             console.log(`⏱️  Bet365 - próxima coleta em ${espera}s (ciclo configurado: ${seg}s, coleta levou: ${gasto}s)`);

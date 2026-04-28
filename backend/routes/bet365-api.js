@@ -1474,6 +1474,11 @@ const CONFIG_DEFAULTS = [
     { chave:'max_value_bets',               valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'Máximo de sugestões exibidas em 💰 Value Bets (1–20)' },
     { chave:'max_tendencias',               valor:'8',     tipo:'number',  grupo:'sistema',  descricao:'Máximo de itens exibidos em 📈 Tendências (1–20)' },
     { chave:'max_ver_mais_clicks',          valor:'10',    tipo:'number',  grupo:'sistema',  descricao:'Cliques em "Ver Mais" ao coletar resultados (mais cliques = mais jogos históricos por ciclo)' },
+    // ── Alertas ──
+    { chave:'alerta_ativado',               valor:'true',  tipo:'boolean', grupo:'alertas',  descricao:'Ativar sistema de alertas (Telegram + e-mail)' },
+    { chave:'alerta_minutos_sem_coleta',    valor:'15',    tipo:'number',  grupo:'alertas',  descricao:'Minutos sem coleta bem-sucedida para disparar alerta' },
+    { chave:'telegram_bot_token',           valor:'8189807116:AAEByra9URAFBh_Hutwn_-lVzWinpk68BOY', tipo:'text', grupo:'alertas', descricao:'Token do bot Telegram (obtido via @BotFather)' },
+    { chave:'telegram_chat_ids',            valor:'5493649790', tipo:'text', grupo:'alertas', descricao:'Chat IDs do Telegram separados por vírgula' },
     // ── Seções da Análise ──
     { chave:'show_secao_ia',                valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: IA — Sugestões para Próximos Jogos' },
     { chave:'show_secao_value_bets',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Value Bets' },
@@ -1762,5 +1767,20 @@ router.post('/admin/analisar-corrigir', async (req, res) => {
     }
 });
 
+// Endpoint: testar alertas
+router.post('/admin/testar-alerta', async (req, res) => {
+    try {
+        const { dispararAlerta } = require('../services/alertas');
+        const cfg  = await getSystemConfig();
+        const pool = await getDbPool();
+        const agora = new Date().toLocaleString('pt-BR');
+        await dispararAlerta(cfg, pool, '🧪 Teste de Alerta', `Se você recebeu esta mensagem, os alertas estão configurados corretamente!\n🕐 ${agora}`);
+        res.json({ success: true });
+    } catch(e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
 module.exports = router;
 module.exports.getSystemConfig = getSystemConfig;
+module.exports.getDbPool       = getDbPool;

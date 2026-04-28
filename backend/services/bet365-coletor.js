@@ -212,13 +212,15 @@ const LIGA_RESULTADOS_URL = {
 
 class Bet365Coletor {
     constructor() {
-        this.url       = URL_SOCCER;
-        this.browser   = null;
-        this.page      = null;
-        this.pool      = null;
-        this.coletando = false;
-        this._coletas  = 0;
-        this.cfg       = null;
+        this.url                 = URL_SOCCER;
+        this.browser             = null;
+        this.page                = null;
+        this.pool                = null;
+        this.coletando           = false;
+        this._coletas            = 0;
+        this.cfg                 = null;
+        this.ultimaColetaSucesso = null;
+        this.ultimoErro          = null;
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1324,9 +1326,12 @@ class Bet365Coletor {
                 global.wsBroadcast({ tipo: 'coleta', fonte: 'bet365', novos: contadores.eventosOk, resultadosSalvos: contadores.histOk, timestamp: new Date().toISOString() });
             }
 
+            this.ultimaColetaSucesso = Date.now();
+            this.ultimoErro          = null;
             console.log(`✅ Bet365 - Coleta concluída`);
 
         } catch(err) {
+            this.ultimoErro = err.message;
             console.error(`❌ Bet365 - Erro: ${err.message}`);
             await this._logColeta(inicio, 'ERRO', null, err.message);
 

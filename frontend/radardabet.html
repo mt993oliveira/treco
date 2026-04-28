@@ -456,6 +456,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 🔒 Sistema
             </button>
+            <button id="cfg-tab-alertas" onclick="_cfgSetTab('alertas')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🔔 Alertas
+            </button>
         </div>
 
         <!-- Seção Coleta -->
@@ -509,6 +514,13 @@
             </div>
         </div>
 
+        <!-- Seção Alertas -->
+        <div id="cfg-section-alertas" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-alertas-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
         <div id="cfg-msg" style="display:none;padding:8px 12px;border-radius:5px;font-size:11px;margin-top:14px"></div>
 
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;border-top:1px solid #1e293b;padding-top:14px">
@@ -555,9 +567,16 @@
                         <option value="master">Master</option>
                     </select>
                 </div>
-                <div style="grid-column:1/-1">
+                <div>
                     <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">E-MAIL</label>
                     <input id="usr-email" type="email"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div>
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">TELEFONE</label>
+                    <input id="usr-telefone" type="text" placeholder="(00) 00000-0000" maxlength="15"
+                        oninput="_telMask(this)"
                         style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                 </div>
@@ -5249,7 +5268,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'ordem', 'sistema'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'ordem', 'sistema', 'alertas'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -5322,8 +5341,9 @@ async function _loadConfigSistema() {
     const fSecoes  = document.getElementById('cfg-secoes-fields');
     const fOrdem   = document.getElementById('cfg-ordem-fields');
     const fSistema = document.getElementById('cfg-sistema-fields');
+    const fAlertas = document.getElementById('cfg-alertas-fields');
     const loadHtml = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = loadHtml;
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = loadHtml;
 
     // Opções para selects de tipo_mercado
     const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
@@ -5484,10 +5504,86 @@ async function _loadConfigSistema() {
             </div>`;
         }).join('');
 
+        const inpStyle = 'width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none';
+        const lblStyle = 'display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px';
+        const fldWrap  = (label, inner, hint) =>
+            `<div style="margin-bottom:14px">
+                <label style="${lblStyle}">${label}</label>
+                ${inner}
+                ${hint ? `<div style="font-size:10px;color:#475569;margin-top:4px">${hint}</div>` : ''}
+            </div>`;
+
+        const dAlertas = byGroup.alertas || [];
+        const cfgAlertas = {};
+        dAlertas.forEach(d => { cfgAlertas[d.chave] = d.valor; });
+
+        const ativadoD = dAlertas.find(d => d.chave === 'alerta_ativado') || { chave:'alerta_ativado', valor:'true' };
+
+        fAlertas.innerHTML =
+            `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+                Configure Telegram e e-mail para receber alertas quando o coletor parar.
+                E-mails são enviados automaticamente para <b style="color:#e2e8f0">todos os usuários Master</b> cadastrados.
+            </div>` +
+            _toggleHtml(ativadoD) +
+            fldWrap('MINUTOS SEM COLETA PARA ALERTAR',
+                `<input type="number" id="cfg-alerta_minutos_sem_coleta" value="${escHtml(cfgAlertas.alerta_minutos_sem_coleta||'15')}" min="5" max="120"
+                    style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
+                'Padrão: 15 min · Alerta de recuperação enviado automaticamente quando o coletor voltar') +
+            `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
+                <span style="font-size:11px;font-weight:700;color:#e2e8f0">📱 Telegram</span>
+            </div>` +
+            fldWrap('TOKEN DO BOT',
+                `<input type="text" id="cfg-telegram_bot_token" value="${escHtml(cfgAlertas.telegram_bot_token||'')}"
+                    style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'" autocomplete="off">`,
+                'Obtido via @BotFather no Telegram') +
+            fldWrap('CHAT IDs (separados por vírgula)',
+                `<input type="text" id="cfg-telegram_chat_ids" value="${escHtml(cfgAlertas.telegram_chat_ids||'')}"
+                    style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
+                'Para obter seu ID: envie qualquer mensagem para @userinfobot no Telegram') +
+            `<div style="margin-top:4px">
+                <button id="cfg-testar-alerta-btn" onclick="testarAlerta()"
+                    style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;
+                           padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer">
+                    🔔 Testar Alertas
+                </button>
+                <span id="cfg-testar-msg" style="font-size:11px;margin-left:10px"></span>
+            </div>`;
+
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = err;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = err;
     }
+}
+
+function _telMask(el) {
+    let v = el.value.replace(/\D/g, '').substring(0, 11);
+    if (v.length <= 10) v = v.replace(/^(\d{0,2})(\d{0,4})(\d{0,4})$/, (_, a, b, c) => a ? `(${a}${b ? ') '+b : ''}${c ? '-'+c : ''}`) : '');
+    else                v = v.replace(/^(\d{2})(\d{5})(\d{0,4})$/, '($1) $2-$3');
+    el.value = v;
+}
+
+async function testarAlerta() {
+    const btn = document.getElementById('cfg-testar-alerta-btn');
+    const msg = document.getElementById('cfg-testar-msg');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    msg.textContent = '';
+    try {
+        const r = await fetch('/api/bet365/admin/testar-alerta', { method: 'POST' });
+        const d = await r.json();
+        if (d.success) {
+            msg.style.color = '#4ade80';
+            msg.textContent = '✅ Mensagem enviada!';
+        } else {
+            msg.style.color = '#f87171';
+            msg.textContent = '❌ ' + (d.error || 'Erro desconhecido');
+        }
+    } catch(e) {
+        msg.style.color = '#f87171';
+        msg.textContent = '❌ ' + e.message;
+    }
+    btn.disabled = false;
+    btn.textContent = '🔔 Testar Alertas';
 }
 
 async function salvarConfigSistema() {
@@ -5687,27 +5783,29 @@ function _renderTabelaUsuarios(lista) {
 function abrirFormUsuario(id) {
     const msg = document.getElementById('usr-form-msg');
     msg.style.display = 'none';
-    document.getElementById('usr-id').value       = '';
-    document.getElementById('usr-nome').value     = '';
-    document.getElementById('usr-login').value    = '';
-    document.getElementById('usr-email').value    = '';
-    document.getElementById('usr-senha').value    = '';
-    document.getElementById('usr-senha2').value   = '';
-    document.getElementById('usr-tipo').value     = 'user';
-    document.getElementById('usr-lic-ini').value  = '';
-    document.getElementById('usr-lic-fim').value  = '';
-    document.getElementById('usr-ativo').value    = '1';
+    document.getElementById('usr-id').value        = '';
+    document.getElementById('usr-nome').value      = '';
+    document.getElementById('usr-login').value     = '';
+    document.getElementById('usr-email').value     = '';
+    document.getElementById('usr-telefone').value  = '';
+    document.getElementById('usr-senha').value     = '';
+    document.getElementById('usr-senha2').value    = '';
+    document.getElementById('usr-tipo').value      = 'user';
+    document.getElementById('usr-lic-ini').value   = '';
+    document.getElementById('usr-lic-fim').value   = '';
+    document.getElementById('usr-ativo').value     = '1';
 
     if (id) {
         const u = _todosUsuarios.find(x => x.Id === id);
         if (u) {
             document.getElementById('usr-form-titulo').textContent = 'Editar Usuário';
             document.getElementById('usr-id').value      = u.Id;
-            document.getElementById('usr-nome').value    = u.NomeCompleto || '';
-            document.getElementById('usr-login').value   = u.Usuario || '';
-            document.getElementById('usr-email').value   = u.Email || '';
-            document.getElementById('usr-tipo').value    = u.TipoUsuario || 'user';
-            document.getElementById('usr-ativo').value   = u.Ativo ? '1' : '0';
+            document.getElementById('usr-nome').value     = u.NomeCompleto || '';
+            document.getElementById('usr-login').value    = u.Usuario || '';
+            document.getElementById('usr-email').value    = u.Email || '';
+            document.getElementById('usr-telefone').value = u.Telefone || '';
+            document.getElementById('usr-tipo').value     = u.TipoUsuario || 'user';
+            document.getElementById('usr-ativo').value    = u.Ativo ? '1' : '0';
             if (u.DataInicioLicenca) document.getElementById('usr-lic-ini').value = new Date(u.DataInicioLicenca).toISOString().split('T')[0];
             if (u.DataFimLicenca)    document.getElementById('usr-lic-fim').value = new Date(u.DataFimLicenca).toISOString().split('T')[0];
         }
@@ -5734,6 +5832,7 @@ async function salvarUsuario(e) {
         nomeCompleto:     document.getElementById('usr-nome').value.trim(),
         usuario:          document.getElementById('usr-login').value.trim(),
         email:            document.getElementById('usr-email').value.trim(),
+        telefone:         document.getElementById('usr-telefone').value.trim() || null,
         tipoUsuario:      document.getElementById('usr-tipo').value,
         ativo:            document.getElementById('usr-ativo').value === '1',
         dataInicioLicenca: document.getElementById('usr-lic-ini').value || null,
