@@ -5510,7 +5510,20 @@ async function _loadConfigSistema() {
                     onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                 <div style="font-size:10px;color:#334155;margin-top:4px">0 = nunca expirar · MASTER nunca expira</div>
             </div>`;
-        }).join('');
+        }).join('') +
+        `<div style="margin-top:18px;padding-top:14px;border-top:1px solid #1e293b">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">SESSÕES ATIVAS</div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:10px">
+                Desconecta imediatamente todos os usuários logados, exceto Masters. Útil para forçar re-login após mudanças de configuração.
+            </div>
+            <button onclick="desconectarTodos()"
+                style="background:#3b0a0a;border:1px solid #7f1d1d;color:#f87171;border-radius:6px;
+                       padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer"
+                onmouseover="this.style.background='#450a0a'" onmouseout="this.style.background='#3b0a0a'">
+                ⏏ Desconectar Todos os Usuários
+            </button>
+            <span id="cfg-desconectar-msg" style="font-size:11px;margin-left:10px"></span>
+        </div>`;
 
         const inpStyle = 'width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none';
         const lblStyle = 'display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px';
@@ -5577,6 +5590,32 @@ function _telMask(el) {
         v = v.replace(/^(\d{2})(\d{5})(\d{0,4})$/, '($1) $2-$3');
     }
     el.value = v;
+}
+
+async function desconectarTodos() {
+    if (!confirm('Desconectar todos os usuários ativos (exceto Masters)?\nEles precisarão fazer login novamente.')) return;
+    const msg = document.getElementById('cfg-desconectar-msg');
+    msg.style.color = '#94a3b8';
+    msg.textContent = 'Aguarde...';
+    try {
+        const r = await fetch('/api/usuarios/desconectar-todos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: _getUser()?.Id })
+        });
+        const d = await r.json();
+        if (d.success) {
+            msg.style.color = '#4ade80';
+            msg.textContent = `✅ ${d.removidos} sessão(ões) encerrada(s).`;
+        } else {
+            msg.style.color = '#f87171';
+            msg.textContent = '❌ ' + (d.message || 'Erro');
+        }
+    } catch(e) {
+        msg.style.color = '#f87171';
+        msg.textContent = '❌ ' + e.message;
+    }
+    setTimeout(() => { if(msg) msg.textContent = ''; }, 4000);
 }
 
 async function testarAlerta() {

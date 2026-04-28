@@ -1049,6 +1049,23 @@ app.post('/api/logout', async (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/usuarios/desconectar-todos', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const check = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!check.recordset.length || check.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso negado' });
+        }
+        let removidos = 0;
+        for (const [key, s] of activeSessions.entries()) {
+            if (s.tipo !== 'master') { activeSessions.delete(key); removidos++; }
+        }
+        res.json({ success: true, removidos });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
 /**
  * POST /api/usuarios/ativos
  * Retorna usuários com lastSeen nos últimos 15 min. Apenas para master.
