@@ -4,8 +4,11 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 
-// Map de sessões ativas: userId -> { id, usuario, nome, tipo, lastSeen, ip }
+// Map de sessões ativas: userId -> { id, usuario, nome, tipo, lastSeen, loginTime, ip, userAgent }
 const activeSessions = new Map();
+const loginHistory  = new Map(); // String(userId) -> { countToday, lastLoginDate }
+const loginFailures = new Map(); // username_lower -> [{ ip, ts }]
+const _geoCache     = new Map(); // ip -> { city, region, country, org, cachedAt }
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -130,6 +133,61 @@ function getDatabaseConfigFromEnv() {
         port: parseInt(process.env.DB_PORT, 10) || 1433
     };
 }
+
+// ── Helpers: login tracking, UA parse, geo lookup ─────────────
+function _todayUTC() { return new Date().toISOString().slice(0, 10); }
+
+function _trackLoginSuccess(userId) {
+    const k = String(userId), today = _todayUTC();
+    const h = loginHistory.get(k) || { countToday: 0, lastLoginDate: '' };
+    if (h.lastLoginDate !== today) { h.countToday = 0; h.lastLoginDate = today; }
+    h.countToday++;
+    loginHistory.set(k, h);
+}
+
+function _trackLoginFail(username, ip) {
+    const k = (username || '').toLowerCase();
+    const arr = loginFailures.get(k) || [];
+    arr.unshift({ ip: ip || '?', ts: Date.now() });
+    loginFailures.set(k, arr.slice(0, 50));
+}
+
+function _parseUA(ua) {
+    if (!ua) return { browser: '?', os: '?' };
+    let browser = '?', os = '?';
+    if      (/Windows NT 1[01]/i.test(ua)) os = 'Windows 10/11';
+    else if (/Windows/i.test(ua))           os = 'Windows';
+    else if (/Mac OS X/i.test(ua))          os = 'macOS';
+    else if (/Android ([0-9]+)/i.test(ua)) { const m = ua.match(/Android ([0-9]+)/i); os = 'Android' + (m ? ' '+m[1] : ''); }
+    else if (/iPhone|iPad/i.test(ua))       os = 'iOS';
+    else if (/Linux/i.test(ua))             os = 'Linux';
+    if      (/Edg\/([0-9]+)/i.test(ua))    { const m = ua.match(/Edg\/([0-9]+)/i);     browser = 'Edge'    + (m ? ' '+m[1] : ''); }
+    else if (/OPR\/([0-9]+)/i.test(ua))    { const m = ua.match(/OPR\/([0-9]+)/i);     browser = 'Opera'   + (m ? ' '+m[1] : ''); }
+    else if (/Chrome\/([0-9]+)/i.test(ua)) { const m = ua.match(/Chrome\/([0-9]+)/i);  browser = 'Chrome'  + (m ? ' '+m[1] : ''); }
+    else if (/Firefox\/([0-9]+)/i.test(ua)){ const m = ua.match(/Firefox\/([0-9]+)/i); browser = 'Firefox' + (m ? ' '+m[1] : ''); }
+    else if (/Safari\//i.test(ua))          browser = 'Safari';
+    return { browser, os };
+}
+
+async function _geoLookup(ip) {
+    if (!ip || ip === '?' || ip === '::1' || /^(127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) {
+        return { city: 'Local', region: '', country: 'BR', org: 'Rede local' };
+    }
+    const cached = _geoCache.get(ip);
+    if (cached && Date.now() - cached.cachedAt < 6 * 60 * 60 * 1000) {
+        const { cachedAt, ...geo } = cached; return geo;
+    }
+    try {
+        const r = await axios.get(`https://ipinfo.io/${ip}/json`, { timeout: 3000 });
+        const d = r.data || {};
+        const geo = { city: d.city||'', region: d.region||'', country: d.country||'', org: d.org||'' };
+        _geoCache.set(ip, { ...geo, cachedAt: Date.now() });
+        return geo;
+    } catch(e) {
+        return { city: '', region: '', country: '', org: '' };
+    }
+}
+// ──────────────────────────────────────────────────────────────
 
 // Middleware para verificar autenticação
 function requireAuth(req, res, next) {
@@ -265,21 +323,27 @@ app.post('/api/login', async (req, res) => {
                 }
 
                 // Registrar sessão ao logar
+                const _loginIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?';
                 activeSessions.set(String(user.Id), {
                     id: String(user.Id),
                     usuario: user.Usuario,
                     nome: user.NomeCompleto,
                     tipo: user.TipoUsuario,
                     lastSeen: new Date(),
-                    ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?',
+                    loginTime: new Date(),
+                    ip: _loginIp,
+                    userAgent: req.headers['user-agent'] || '',
                 });
+                _trackLoginSuccess(user.Id);
 
                 const { Senha, ...userWithoutPassword } = user;
                 res.json({ success: true, user: userWithoutPassword });
             } else {
+                _trackLoginFail(username, req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip);
                 res.json({ success: false, message: 'Credenciais inválidas' });
             }
         } else {
+            _trackLoginFail(username, req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip);
             res.json({ success: false, message: 'Credenciais inválidas' });
         }
 
@@ -1032,13 +1096,16 @@ app.post('/api/contato', async (req, res) => {
 app.post('/api/usuarios/ping', async (req, res) => {
     const { usuarioId, usuario, nome, tipo } = req.body;
     if (!usuarioId) return res.json({ ok: false });
+    const existing = activeSessions.get(String(usuarioId)) || {};
     activeSessions.set(String(usuarioId), {
+        ...existing,
         id: String(usuarioId),
-        usuario: usuario || '?',
-        nome: nome || '?',
-        tipo: tipo || 'user',
+        usuario: usuario || existing.usuario || '?',
+        nome: nome || existing.nome || '?',
+        tipo: tipo || existing.tipo || 'user',
         lastSeen: new Date(),
-        ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?',
+        ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || existing.ip || '?',
+        userAgent: existing.userAgent || req.headers['user-agent'] || '',
     });
     res.json({ ok: true });
 });
@@ -1061,6 +1128,68 @@ app.post('/api/usuarios/desconectar-todos', requireAuth, async (req, res) => {
             if (s.tipo !== 'master') { activeSessions.delete(key); removidos++; }
         }
         res.json({ success: true, removidos });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+/**
+ * POST /api/usuarios/desconectar/:id
+ * Desconecta um usuário específico (exceto master). Apenas para master.
+ */
+app.post('/api/usuarios/desconectar/:id', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const check = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!check.recordset.length || check.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso negado' });
+        }
+        const targetId = String(req.params.id);
+        const target = activeSessions.get(targetId);
+        if (target && target.tipo === 'master') {
+            return res.json({ success: false, message: 'Não é possível desconectar um Master' });
+        }
+        activeSessions.delete(targetId);
+        res.json({ success: true });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+/**
+ * POST /api/usuarios/online-detalhe
+ * Retorna sessões ativas enriquecidas com geo, device, login stats. Apenas para master.
+ */
+app.post('/api/usuarios/online-detalhe', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const chk = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!chk.recordset.length || chk.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso negado' });
+        }
+        const limite = Date.now() - 15 * 60 * 1000;
+        const ativos = [...activeSessions.values()]
+            .filter(s => s.lastSeen.getTime() >= limite)
+            .sort((a, b) => b.lastSeen - a.lastSeen);
+
+        const enriched = await Promise.all(ativos.map(async s => {
+            const geo  = await _geoLookup(s.ip);
+            const device = _parseUA(s.userAgent || '');
+            const hist = loginHistory.get(s.id) || { countToday: 0 };
+            const fails = (loginFailures.get((s.usuario||'').toLowerCase()) || [])
+                .filter(f => Date.now() - f.ts < 60 * 60 * 1000).length;
+            return {
+                id: s.id, usuario: s.usuario, nome: s.nome, tipo: s.tipo,
+                ip: s.ip, userAgent: s.userAgent||'',
+                lastSeen: s.lastSeen.toISOString(),
+                loginTime: s.loginTime ? s.loginTime.toISOString() : null,
+                geo, device,
+                loginsHoje: hist.countToday || 0,
+                falhasUltimaHora: fails,
+            };
+        }));
+
+        res.json({ success: true, total: enriched.length, data: enriched });
     } catch(e) {
         res.json({ success: false, message: e.message });
     }

@@ -296,6 +296,12 @@
                     onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
                     ⚙️ Configurações do Sistema
                 </button>
+                <button id="dd-btn-online" onclick="abrirOnlineAgora()"
+                    style="width:100%;background:none;border:none;color:#4ade80;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    🟢 Usuários Online
+                </button>
                 <button onclick="fazerLogout()"
                     style="width:100%;background:none;border:none;color:#f87171;font-size:12px;
                            padding:9px 14px;text-align:left;cursor:pointer;display:flex;gap:8px;align-items:center;
@@ -398,19 +404,29 @@
             </table>
         </div>
 
-        <!-- Usuários Online Agora (master only) -->
-        <div style="margin-top:20px;border-top:1px solid #1e293b;padding-top:16px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                <div style="font-size:11px;font-weight:700;color:#94a3b8">
-                    🟢 ONLINE AGORA
-                    <span id="online-count" style="background:#0f4c20;color:#4ade80;font-size:9px;font-weight:700;
-                        padding:2px 7px;border-radius:9px;margin-left:6px">0</span>
-                </div>
-                <button onclick="_carregarAtivos()"
-                    style="background:#0f172a;border:1px solid #334155;color:#64748b;border-radius:4px;
-                           padding:3px 10px;font-size:9px;cursor:pointer">↺ Atualizar</button>
+    </div>
+</div>
+
+<!-- ========== MODAL: USUÁRIOS ONLINE (master only) ========== -->
+<div class="modal-overlay" id="modal-usuarios-online">
+    <div class="modal-box" style="max-width:1080px;width:98%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px">
+                <h2 style="font-size:14px;font-weight:700">🟢 Usuários Online</h2>
+                <span id="online-det-count" style="background:#0f4c20;color:#4ade80;font-size:9px;font-weight:700;padding:2px 8px;border-radius:9px">0</span>
             </div>
-            <div id="online-lista" style="font-size:10px;color:#475569">Carregando...</div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button onclick="_carregarOnlineAgora()"
+                    style="background:#0f172a;border:1px solid #334155;color:#64748b;border-radius:4px;padding:4px 12px;font-size:10px;cursor:pointer">↺ Atualizar</button>
+                <button onclick="fecharOnlineAgora()"
+                    style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+            </div>
+        </div>
+        <div id="online-det-content" style="overflow-x:auto">
+            <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+        </div>
+        <div style="margin-top:10px;font-size:9px;color:#334155;text-align:right">
+            Atualiza a cada 30s · Sessões inativas há mais de 15min são removidas automaticamente
         </div>
     </div>
 </div>
@@ -5177,6 +5193,8 @@ function _initUserMenu() {
         if (btnUsr) btnUsr.style.display = 'flex';
         const btnCfg = document.getElementById('dd-btn-config');
         if (btnCfg) btnCfg.style.display = 'flex';
+        const btnOnline = document.getElementById('dd-btn-online');
+        if (btnOnline) btnOnline.style.display = 'flex';
     }
 }
 
@@ -5701,7 +5719,147 @@ async function abrirGerenciarUsuarios() {
     document.getElementById('usr-busca').value = '';
     document.getElementById('modal-usuarios').classList.add('aberto');
     await _carregarUsuarios();
-    _carregarAtivos();
+}
+
+// ──────────────────────────────────────────────────────────────
+// PAINEL USUÁRIOS ONLINE — dedicado, master only
+// ──────────────────────────────────────────────────────────────
+let _onlineTimer = null;
+
+function abrirOnlineAgora() {
+    document.getElementById('user-dropdown').style.display = 'none';
+    document.getElementById('modal-usuarios-online').classList.add('aberto');
+    _carregarOnlineAgora();
+    if (_onlineTimer) clearInterval(_onlineTimer);
+    _onlineTimer = setInterval(_carregarOnlineAgora, 30000);
+}
+
+function fecharOnlineAgora() {
+    clearInterval(_onlineTimer);
+    _onlineTimer = null;
+    fecharModal('modal-usuarios-online');
+}
+
+async function _carregarOnlineAgora() {
+    const el  = document.getElementById('online-det-content');
+    const cnt = document.getElementById('online-det-count');
+    if (!el) return;
+    try {
+        const u = _getUser();
+        const r = await fetch('/api/usuarios/online-detalhe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u?.Id }),
+        });
+        const ct = r.headers.get('content-type') || '';
+        if (!r.ok || !ct.includes('application/json')) {
+            el.innerHTML = '<div style="color:#334155;padding:20px;text-align:center">Reinicie o servidor para ativar este painel.</div>';
+            return;
+        }
+        const d = await r.json();
+        if (!d.success) {
+            el.innerHTML = `<div style="color:#ef4444;padding:20px;text-align:center">${escHtml(d.message||'Sem permissão')}</div>`;
+            return;
+        }
+        cnt.textContent = d.total;
+        if (!d.data || !d.data.length) {
+            el.innerHTML = '<div style="color:#475569;font-size:11px;padding:30px;text-align:center">Nenhum usuário ativo no momento.</div>';
+            return;
+        }
+        const ago = iso => {
+            if (!iso) return '—';
+            const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+            if (s < 60) return `${s}s`;
+            if (s < 3600) return `${Math.floor(s/60)}min ${s%60}s`;
+            return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}min`;
+        };
+        const fmt = iso => {
+            if (!iso) return '—';
+            return new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        };
+        const TIPO_LABEL = { master: '⭐ Master', admin: '🔑 Admin', user: '👤 Usuário' };
+        const TIPO_COR   = { master: '#fbbf24',   admin: '#60a5fa',   user: '#94a3b8' };
+        const th = 'padding:7px 8px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b;white-space:nowrap;background:#0c1220';
+        const td = 'padding:6px 8px;border-bottom:1px solid #0d1421;vertical-align:middle;font-size:10px';
+        const rows = d.data.map(s => {
+            const locArr = [s.geo?.city, s.geo?.region, s.geo?.country].filter(Boolean);
+            const loc    = locArr.join(', ') || '—';
+            const isp    = s.geo?.org ? s.geo.org.replace(/^AS\d+ /, '') : '—';
+            const dev    = s.device ? `${s.device.browser} / ${s.device.os}` : '—';
+            const tc     = TIPO_COR[s.tipo] || '#94a3b8';
+            const falhasStyle  = s.falhasUltimaHora > 5  ? 'color:#f87171;font-weight:700' : 'color:#64748b';
+            const loginsStyle  = s.loginsHoje > 10        ? 'color:#fbbf24;font-weight:700' : 'color:#e2e8f0';
+            const isMaster = s.tipo === 'master';
+            return `<tr onmouseover="this.style.background='#0a1020'" onmouseout="this.style.background=''">
+                <td style="${td}">
+                    <span style="color:#4ade80;font-size:8px;margin-right:5px">●</span>
+                    <span style="color:#e2e8f0;font-weight:600">${escHtml(s.nome)}</span>
+                    <div style="color:#475569;font-size:9px;margin-left:13px">@${escHtml(s.usuario)}</div>
+                </td>
+                <td style="${td}"><span style="color:${tc};font-size:9px;font-weight:700;white-space:nowrap">${TIPO_LABEL[s.tipo]||s.tipo}</span></td>
+                <td style="${td}"><span style="color:#64748b;font-family:monospace;font-size:9px">${escHtml(s.ip)}</span></td>
+                <td style="${td}"><span style="color:#94a3b8">${escHtml(loc)}</span></td>
+                <td style="${td}"><span style="color:#64748b;font-size:9px">${escHtml(isp)}</span></td>
+                <td style="${td}"><span style="color:#94a3b8;font-size:9px">${escHtml(dev)}</span></td>
+                <td style="${td}"><span style="color:#64748b">${fmt(s.loginTime)}</span></td>
+                <td style="${td}"><span style="color:#e2e8f0">${ago(s.loginTime)}</span></td>
+                <td style="${td}"><span style="color:#64748b">${ago(s.lastSeen)}</span></td>
+                <td style="${td}"><span style="${loginsStyle}">${s.loginsHoje||0}</span></td>
+                <td style="${td}" title="Tentativas de login com senha errada na última hora">
+                    <span style="${falhasStyle}">${s.falhasUltimaHora||0}${s.falhasUltimaHora > 5 ? ' ⚠️' : ''}</span>
+                </td>
+                <td style="${td}">
+                    ${isMaster
+                        ? '<span style="color:#334155;font-size:9px">—</span>'
+                        : `<button onclick="desconectarUsuario('${escHtml(s.id)}')"
+                               style="background:#3b0a0a;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;
+                                      padding:3px 9px;font-size:9px;cursor:pointer;white-space:nowrap"
+                               onmouseover="this.style.background='#450a0a'" onmouseout="this.style.background='#3b0a0a'">
+                               ⏏ Desconectar</button>`}
+                </td>
+            </tr>`;
+        }).join('');
+        el.innerHTML = `
+            <table style="width:100%;border-collapse:collapse;min-width:980px">
+                <thead><tr>
+                    <th style="${th}">USUÁRIO</th>
+                    <th style="${th}">TIPO</th>
+                    <th style="${th}">IP</th>
+                    <th style="${th}">LOCALIZAÇÃO</th>
+                    <th style="${th}">PROVEDOR</th>
+                    <th style="${th}">NAVEGADOR / SO</th>
+                    <th style="${th}">HORA LOGIN</th>
+                    <th style="${th}">TEMPO ONLINE</th>
+                    <th style="${th}">ÚLTIMO PING</th>
+                    <th style="${th}" title="Logins realizados hoje (reseta à meia-noite UTC)">LOGINS HOJE</th>
+                    <th style="${th}" title="Tentativas com senha errada na última hora">FALHAS/1H</th>
+                    <th style="${th}">AÇÕES</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+    } catch(e) {
+        if (el) el.innerHTML = `<div style="color:#ef4444;padding:20px;text-align:center">${escHtml(e.message)}</div>`;
+    }
+}
+
+async function desconectarUsuario(userId) {
+    if (!confirm('Desconectar este usuário? Ele precisará fazer login novamente.')) return;
+    try {
+        const u = _getUser();
+        const r = await fetch(`/api/usuarios/desconectar/${userId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u?.Id }),
+        });
+        const d = await r.json();
+        if (d.success) {
+            _carregarOnlineAgora();
+        } else {
+            alert('Erro: ' + (d.message || 'Falha ao desconectar'));
+        }
+    } catch(e) {
+        alert('Erro: ' + e.message);
+    }
 }
 
 async function _carregarAtivos() {
@@ -6173,6 +6331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('click', e => {
             if (e.target !== el) return;
             if (el.id === 'modal-cores') cancelarCoresGrid();
+            else if (el.id === 'modal-usuarios-online') fecharOnlineAgora();
             else el.classList.remove('aberto');
         }));
 });
