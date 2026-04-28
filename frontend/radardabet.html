@@ -234,11 +234,14 @@
             <span id="header-subtitle" style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
         </div>
         <div id="liga-tabs" style="display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:0"></div>
-        <div class="master-only" style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <span class="sdot idle" id="sdot"></span>
-            <span style="font-size:10px;color:#475569" id="s-txt">Carregando...</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span style="font-size:10px;color:#475569;white-space:nowrap" id="tabela-info"></span>
+            <div class="master-only" style="display:flex;align-items:center;gap:8px">
+                <span class="sdot idle" id="sdot"></span>
+                <span style="font-size:10px;color:#475569" id="s-txt">Carregando...</span>
+            </div>
             <button onclick="carregarTudo()" title="Atualizar"
-                style="background:none;border:none;color:#475569;font-size:16px;cursor:pointer;line-height:1"
+                style="background:none;border:none;color:#475569;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0"
                 onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#475569'">↻</button>
         </div>
 
@@ -1002,7 +1005,6 @@
             <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds</button>
             <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
         </div>
-        <div style="font-size:10px;color:#475569" id="tabela-info">—</div>
     </div>
 
     <!-- Grid principal: 1 linha = 1 hora, 20 colunas = 20 jogos -->
