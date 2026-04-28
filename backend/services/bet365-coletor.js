@@ -1102,32 +1102,37 @@ class Bet365Coletor {
                 let oddCasa = 0, oddEmpate = 0, oddFora = 0;
 
                 // ── 2. Busca em bet365_eventos apenas para eventoId e odds ──
+                // Busca pelo horário REAL do resultado (dataPart ±10 min) para não
+                // pegar o evento de outro jogo com os mesmos times em horário diferente.
                 let evDb = await pool.request()
                     .input('liga2',     sql.NVarChar(200), res.liga)
                     .input('timeCasa2', sql.NVarChar(100), res.timeCasa)
                     .input('timeFora2', sql.NVarChar(100), res.timeFora)
+                    .input('dataPart2', sql.DateTime2,     dataPart)
                     .query(`
                         SELECT TOP 1 id, odd_casa, odd_empate, odd_fora
                         FROM bet365_eventos
                         WHERE league_name = @liga2
                           AND time_casa   = @timeCasa2
                           AND time_fora   = @timeFora2
-                          AND start_time_datetime BETWEEN DATEADD(HOUR,-6,GETUTCDATE()) AND DATEADD(HOUR,1,GETUTCDATE())
-                        ORDER BY start_time_datetime DESC
+                          AND start_time_datetime BETWEEN DATEADD(MINUTE,-10,@dataPart2) AND DATEADD(MINUTE,10,@dataPart2)
+                        ORDER BY ABS(DATEDIFF(SECOND, start_time_datetime, @dataPart2)) ASC
                     `);
                 if (evDb.recordset.length === 0) {
+                    // Fallback: janela de 30 min ao redor do horário real (nunca usa janela genérica)
                     evDb = await pool.request()
                         .input('liga2b',     sql.NVarChar(200), res.liga)
                         .input('timeCasa2b', sql.NVarChar(100), res.timeCasa)
                         .input('timeFora2b', sql.NVarChar(100), res.timeFora)
+                        .input('dataPart2b', sql.DateTime2,     dataPart)
                         .query(`
                             SELECT TOP 1 id, odd_casa, odd_empate, odd_fora
                             FROM bet365_eventos
                             WHERE league_name = @liga2b
                               AND time_casa   = @timeCasa2b
                               AND time_fora   = @timeFora2b
-                              AND start_time_datetime BETWEEN DATEADD(HOUR,-12,GETUTCDATE()) AND DATEADD(HOUR,1,GETUTCDATE())
-                            ORDER BY start_time_datetime DESC
+                              AND start_time_datetime BETWEEN DATEADD(MINUTE,-30,@dataPart2b) AND DATEADD(MINUTE,30,@dataPart2b)
+                            ORDER BY ABS(DATEDIFF(SECOND, start_time_datetime, @dataPart2b)) ASC
                         `);
                 }
 

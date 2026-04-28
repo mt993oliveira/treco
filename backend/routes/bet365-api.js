@@ -779,10 +779,15 @@ router.get('/historico-mercados', async (req, res) => {
 
         const result = await request.query(query);
 
-        // Agrupa por evento_id
+        // Agrupa por evento_id + minuto do data_partida.
+        // O mesmo evento_id pode ter data_partida diferentes quando o coletor associa
+        // erroneamente o resultado de um jogo ao evento de outro jogo com os mesmos times
+        // em horário diferente. A chave composta garante que cada slot de tempo gera
+        // uma entrada separada, evitando que o jogo apareça no bucket de hora errado.
         const gamesMap = new Map();
         for (const r of result.recordset) {
-            const key = String(r.evento_id);
+            const minuteKey = String(r.data_partida).substring(0, 16);
+            const key = `${r.evento_id}|${minuteKey}`;
             if (!gamesMap.has(key)) {
                 gamesMap.set(key, {
                     evento_id:    r.evento_id,
