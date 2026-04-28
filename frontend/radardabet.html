@@ -994,7 +994,7 @@
     <div id="historico-table-section" style="display:block">
     <!-- Table header -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-        <div style="display:flex;gap:7px">
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
             <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
             <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
             <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
@@ -2703,12 +2703,13 @@ function renderFiltros() {
         display:flex;align-items:center;justify-content:center;gap:6px;
         transition:border-color .2s,color .2s;white-space:nowrap`;
     const ctrl = document.createElement('div');
-    ctrl.style.cssText = 'display:flex;gap:8px;width:100%';
+    ctrl.style.cssText = 'display:flex;gap:8px;width:100%;flex-wrap:wrap';
+    const _bsMob = (ativo) => _bs(ativo) + ';flex:1 1 calc(50% - 4px);min-width:120px';
     ctrl.innerHTML = `
-        <button style="${_bs(false)}" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
-        <button style="${_bs(S.showLegendas)}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
-        <button style="${_bs(false)}" onclick="abrirModalPadroes()" title="Gerenciar padrões de gráfico">📋 Padrões</button>
-        <button style="${_bs(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Selecionar mercados / filtros">🎯 Mercados</button>
+        <button style="${_bsMob(false)}" onclick="abrirModalCores()" title="Configurar cores da grid">🎨 Cores</button>
+        <button style="${_bsMob(S.showLegendas)}" id="btn-legendas" onclick="toggleLegendas()" title="Exibir legenda ao passar o mouse sobre os jogos">💬 Legendas</button>
+        <button style="${_bsMob(false)}" onclick="abrirModalPadroes()" title="Gerenciar padrões de gráfico">📋 Padrões</button>
+        <button style="${_bsMob(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Selecionar mercados / filtros">🎯 Mercados</button>
     `;
     c.appendChild(ctrl);
 
