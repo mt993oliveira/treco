@@ -786,7 +786,7 @@ router.get('/historico-mercados', async (req, res) => {
         // uma entrada separada, evitando que o jogo apareça no bucket de hora errado.
         const gamesMap = new Map();
         for (const r of result.recordset) {
-            const minuteKey = String(r.data_partida).substring(0, 16);
+            const minuteKey = new Date(r.data_partida).toISOString().substring(0, 16);
             const key = `${r.evento_id}|${minuteKey}`;
             if (!gamesMap.has(key)) {
                 gamesMap.set(key, {
