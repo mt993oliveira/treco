@@ -548,6 +548,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 📈 Gráfico
             </button>
+            <button id="cfg-tab-cores" onclick="_cfgSetTab('cores')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🎨 Cores
+            </button>
         </div>
 
         <!-- Seção Coleta -->
@@ -611,6 +616,13 @@
         <!-- Seção Gráfico -->
         <div id="cfg-section-grafico" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
             <div id="cfg-grafico-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Cores do Gráfico -->
+        <div id="cfg-section-cores" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-cores-fields">
                 <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
@@ -1104,7 +1116,7 @@
                     <button class="acao-btn" onclick="limparDesenho()" title="Apagar riscos">🗑 Limpar</button>
                 </div>
             </div>
-            <div style="position:relative;height:190px">
+            <div style="position:relative;height:300px">
                 <canvas id="grafico"></canvas>
                 <canvas id="grafico-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
             </div>
@@ -1847,6 +1859,17 @@ async function carregarConfigLigas() {
           ds.textContent = `.tabela-hist td { min-width:${S._mosaicoCelulaLarg}px !important; max-width:${maxW}px !important; font-size:${S._mosaicoCelulaFonte}px !important; }`;
         }
 
+        // Cores personalizadas do gráfico
+        S._chartCores = {};
+        TODOS_FILTROS.forEach(f => {
+            const chave = 'chart_cor_' + f.id.replace(/[^a-zA-Z0-9]/g, '_');
+            if (cfg[chave]) S._chartCores[f.id] = cfg[chave];
+        });
+        // Altura do painel do gráfico
+        S._grafAltura = parseInt(cfg.grafico_altura) || 300;
+        { const gw = document.getElementById('grafico')?.parentElement;
+          if (gw) gw.style.height = S._grafAltura + 'px'; }
+
         // Modo manutenção
         S._manutencaoAtiva    = cfg.manutencao_ativa    === 'true';
         S._manutencaoMensagem = cfg.manutencao_mensagem || 'Estamos realizando melhorias no sistema. Voltamos em breve!';
@@ -2045,6 +2068,8 @@ const S = {
     grafTopoFundo: false,
     grafCongest:   false,
     grafMedias:    false,
+    _grafAltura:   300,
+    _chartCores:   {},
     view:          'historico',
     _analiseSecoes: { ia:true, desempenho:true, detalhe:true, valuebets:true, tendencias:true, frequencia:true },
     showGrafico:   true,   // toggle independente
@@ -3383,15 +3408,16 @@ function renderGrafico() {
         const pct  = Math.round(pts.filter(v => v).length / serie.length * 100);
         const isPrimario = S.filtro === f.id;
         const data = cumPct(pts);
+        const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
 
         // Topo e Fundo: destaca índice de max (amarelo) e min (vermelho)
-        let pointRadius = isPrimario ? 3 : 2;
-        let pointBgColor = isPrimario ? pts.map(v => v ? f.cor : '#dc2626') : f.cor;
+        let pointRadius = isPrimario ? 5 : 3;
+        let pointBgColor = isPrimario ? pts.map(v => v ? cor : '#dc2626') : cor;
         if (S.grafTopoFundo && data.length > 1) {
             const maxIdx = data.reduce((b, v, i) => v > data[b] ? i : b, 0);
             const minIdx = data.reduce((b, v, i) => v < data[b] ? i : b, 0);
-            const base   = isPrimario ? pts.map(v => v ? f.cor : '#dc2626') : data.map(() => f.cor);
-            pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : (isPrimario ? 3 : 2));
+            const base   = isPrimario ? pts.map(v => v ? cor : '#dc2626') : data.map(() => cor);
+            pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : (isPrimario ? 5 : 3));
             pointBgColor = base.map((c, i) => i === maxIdx ? '#fbbf24' : i === minIdx ? '#f87171' : c);
         }
 
@@ -3399,9 +3425,9 @@ function renderGrafico() {
             type: 'line',
             label: `${f.label} ${pct}%`,
             data,
-            borderColor: f.cor,
+            borderColor: cor,
             backgroundColor: 'transparent',
-            borderWidth: isPrimario ? 2.5 : 1.5,
+            borderWidth: isPrimario ? 3 : 2,
             borderDash: f.dashed ? [6,4] : [],
             pointRadius,
             pointHoverRadius: 5,
@@ -3416,7 +3442,7 @@ function renderGrafico() {
                 type: 'line',
                 label: `${f.label} MM5`,
                 data: movAvg(data, 5),
-                borderColor: f.cor,
+                borderColor: cor,
                 backgroundColor: 'transparent',
                 borderWidth: 1,
                 borderDash: [4, 3],
@@ -3532,7 +3558,7 @@ function renderGrafico() {
                 y: {
                     min: S.grafFixa ? 0 : undefined,
                     max: S.grafFixa ? 100 : undefined,
-                    grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},callback:v=>v+'%'}
+                    grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback:v=>v+'%'}
                 }
             }
         },
@@ -5622,7 +5648,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'ordem', 'sistema', 'alertas', 'grafico'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'ordem', 'sistema', 'alertas', 'grafico', 'cores'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -5672,6 +5698,7 @@ const _CFG_LABELS = {
     default_janela_recente:     'Janela recente padrão em jogos (Análise)',
     default_so_value_bets:      'Apenas value bets por padrão (Análise)',
     // Gráfico
+    grafico_altura:      '📐 Altura do painel do gráfico (px)',
     grafico_fixa:        '📌 Escala Y fixa em 0–100%',
     grafico_pct:         '% Exibir valor % no final das linhas',
     grafico_topo_fundo:  '⛰ Marcar topo (🟡) e fundo (🔴) de cada linha',
@@ -5717,8 +5744,9 @@ async function _loadConfigSistema() {
     const fSistema = document.getElementById('cfg-sistema-fields');
     const fAlertas = document.getElementById('cfg-alertas-fields');
     const fGrafico = document.getElementById('cfg-grafico-fields');
+    const fCores   = document.getElementById('cfg-cores-fields');
     const loadHtml = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = loadHtml;
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = loadHtml;
 
     // Opções para selects de tipo_mercado
     const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
@@ -5963,11 +5991,49 @@ async function _loadConfigSistema() {
                 Define quais botões do gráfico começam ativos quando a página é carregada.
                 Você pode alterá-los a qualquer momento clicando nos botões da barra do gráfico.
             </div>` +
-            (byGroup.grafico || []).map(d => _toggleHtml(d)).join('');
+            (byGroup.grafico || []).map(d => {
+                if (d.tipo === 'number') {
+                    const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+                    return `<div style="margin-bottom:14px">
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                        <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="80" max="600"
+                            style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    </div>`;
+                }
+                return _toggleHtml(d);
+            }).join('');
+
+        { const savedCores = {};
+          (data.data || []).filter(d => d.chave.startsWith('chart_cor_')).forEach(d => { savedCores[d.chave] = d.valor; });
+          fCores.innerHTML =
+            `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+                Personalize a cor de cada mercado no gráfico. Alterações aplicadas na próxima renderização do gráfico.
+            </div>` +
+            GRUPOS_LEGENDA.map(grupo => {
+                const items = grupo.ids.map(id => {
+                    const f = TODOS_FILTROS.find(x => x.id === id);
+                    if (!f) return '';
+                    const chave = 'chart_cor_' + id.replace(/[^a-zA-Z0-9]/g, '_');
+                    const val = savedCores[chave] || f.cor;
+                    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0f172a">
+                        <input type="color" id="cfg-${chave}" value="${val}"
+                            style="width:32px;height:22px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0;flex-shrink:0">
+                        <span style="font-size:11px;color:#e2e8f0;flex:1">${f.label}</span>
+                        <span style="font-size:9px;color:#475569;font-family:monospace">${val}</span>
+                    </div>`;
+                }).join('');
+                return `<div style="margin-bottom:16px">
+                    <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:6px;
+                                padding-bottom:4px;border-bottom:1px solid #1e293b">${grupo.label.toUpperCase()}</div>
+                    ${items}
+                </div>`;
+            }).join('');
+        }
 
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = err;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = err;
     }
 }
 
@@ -6054,6 +6120,7 @@ async function salvarConfigSistema() {
         if (el.type === 'checkbox') payload[chave] = String(el.checked);
         else if (el.type === 'number' && el.value !== '') payload[chave] = el.value;
         else if (el.type === 'text') payload[chave] = el.value;
+        else if (el.type === 'color') payload[chave] = el.value;
     });
 
     try {
