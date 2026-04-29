@@ -410,23 +410,89 @@
 <!-- ========== MODAL: USUÁRIOS ONLINE (master only) ========== -->
 <div class="modal-overlay" id="modal-usuarios-online">
     <div class="modal-box" style="max-width:1080px;width:98%">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <div style="display:flex;align-items:center;gap:10px">
-                <h2 style="font-size:14px;font-weight:700">🟢 Usuários Online</h2>
-                <span id="online-det-count" style="background:#0f4c20;color:#4ade80;font-size:9px;font-weight:700;padding:2px 8px;border-radius:9px">0</span>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center">
+        <!-- Cabeçalho -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="font-size:14px;font-weight:700">Painel de Acesso</h2>
+            <button onclick="fecharOnlineAgora()"
+                style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <!-- Abas -->
+        <div style="display:flex;gap:2px;border-bottom:1px solid #1e293b;margin-bottom:14px">
+            <button id="ol-tab-online" onclick="_setOnlineTab('online')"
+                style="background:none;border:none;border-bottom:2px solid #1fcc59;color:#e2e8f0;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px;display:flex;gap:6px;align-items:center">
+                🟢 Online Agora
+                <span id="online-det-count" style="background:#0f4c20;color:#4ade80;font-size:9px;font-weight:700;padding:1px 7px;border-radius:9px">0</span>
+            </button>
+            <button id="ol-tab-hist" onclick="_setOnlineTab('hist')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🕐 Histórico
+            </button>
+        </div>
+
+        <!-- Painel: Online Agora -->
+        <div id="ol-pane-online">
+            <div style="margin-bottom:8px;text-align:right">
                 <button onclick="_carregarOnlineAgora()"
                     style="background:#0f172a;border:1px solid #334155;color:#64748b;border-radius:4px;padding:4px 12px;font-size:10px;cursor:pointer">↺ Atualizar</button>
-                <button onclick="fecharOnlineAgora()"
-                    style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+            </div>
+            <div id="online-det-content" style="overflow-x:auto">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+            <div style="margin-top:10px;font-size:9px;color:#334155;text-align:right">
+                Atualiza a cada 30s · Sessões inativas há mais de 15min são removidas automaticamente
             </div>
         </div>
-        <div id="online-det-content" style="overflow-x:auto">
-            <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
-        </div>
-        <div style="margin-top:10px;font-size:9px;color:#334155;text-align:right">
-            Atualiza a cada 30s · Sessões inativas há mais de 15min são removidas automaticamente
+
+        <!-- Painel: Histórico -->
+        <div id="ol-pane-hist" style="display:none">
+            <!-- Filtros -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+                <input id="hist-f-usuario" placeholder="Usuário ou IP..."
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;
+                           padding:5px 10px;font-size:10px;width:150px" />
+                <select id="hist-f-tipo"
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;
+                           padding:5px 8px;font-size:10px">
+                    <option value="">Todos os eventos</option>
+                    <option value="login_ok">✅ Login OK</option>
+                    <option value="login_fail">❌ Falha Login</option>
+                    <option value="logout">🚪 Logout</option>
+                    <option value="desconectado">⏏ Desconectado</option>
+                </select>
+                <input id="hist-f-di" type="date"
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;
+                           padding:5px 8px;font-size:10px" />
+                <span style="color:#475569;font-size:10px">até</span>
+                <input id="hist-f-df" type="date"
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;
+                           padding:5px 8px;font-size:10px" />
+                <button onclick="_carregarHistoricoAcessos(1)"
+                    style="background:#1fcc59;border:none;color:#000;border-radius:4px;padding:5px 14px;font-size:10px;font-weight:700;cursor:pointer">
+                    Filtrar
+                </button>
+                <button onclick="document.getElementById('hist-f-usuario').value='';document.getElementById('hist-f-tipo').value='';document.getElementById('hist-f-di').value='';document.getElementById('hist-f-df').value='';_carregarHistoricoAcessos(1)"
+                    style="background:#0f172a;border:1px solid #334155;color:#64748b;border-radius:4px;padding:5px 10px;font-size:10px;cursor:pointer">
+                    Limpar
+                </button>
+            </div>
+            <!-- Tabela -->
+            <div id="hist-content" style="overflow-x:auto">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+            <!-- Paginação -->
+            <div id="hist-paginacao"></div>
+            <!-- Limpeza -->
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid #1e293b;display:flex;justify-content:flex-end;align-items:center;gap:10px">
+                <span style="color:#475569;font-size:9px">Manutenção:</span>
+                <button onclick="_limparHistorico()"
+                    style="background:#2c0f0f;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;
+                           padding:4px 12px;font-size:9px;cursor:pointer"
+                    onmouseover="this.style.background='#450a0a'" onmouseout="this.style.background='#2c0f0f'">
+                    🗑 Apagar registros com mais de 30 dias
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -5812,19 +5878,40 @@ async function abrirGerenciarUsuarios() {
 // PAINEL USUÁRIOS ONLINE — dedicado, master only
 // ──────────────────────────────────────────────────────────────
 let _onlineTimer = null;
+let _onlineCurrentTab = 'online';
+let _histPagina = 1;
 
 function abrirOnlineAgora() {
     document.getElementById('user-dropdown').style.display = 'none';
     document.getElementById('modal-usuarios-online').classList.add('aberto');
-    _carregarOnlineAgora();
-    if (_onlineTimer) clearInterval(_onlineTimer);
-    _onlineTimer = setInterval(_carregarOnlineAgora, 30000);
+    _setOnlineTab('online');
 }
 
 function fecharOnlineAgora() {
     clearInterval(_onlineTimer);
     _onlineTimer = null;
     fecharModal('modal-usuarios-online');
+}
+
+function _setOnlineTab(tab) {
+    _onlineCurrentTab = tab;
+    ['online','hist'].forEach(t => {
+        const btn  = document.getElementById(`ol-tab-${t}`);
+        const pane = document.getElementById(`ol-pane-${t}`);
+        if (!btn || !pane) return;
+        const active = t === tab;
+        btn.style.borderBottom = active ? '2px solid #1fcc59' : '2px solid transparent';
+        btn.style.color = active ? '#e2e8f0' : '#64748b';
+        pane.style.display = active ? '' : 'none';
+    });
+    clearInterval(_onlineTimer);
+    _onlineTimer = null;
+    if (tab === 'online') {
+        _carregarOnlineAgora();
+        _onlineTimer = setInterval(_carregarOnlineAgora, 30000);
+    } else {
+        _carregarHistoricoAcessos(1);
+    }
 }
 
 async function _carregarOnlineAgora() {
@@ -5943,6 +6030,127 @@ async function desconectarUsuario(userId) {
             _carregarOnlineAgora();
         } else {
             alert('Erro: ' + (d.message || 'Falha ao desconectar'));
+        }
+    } catch(e) {
+        alert('Erro: ' + e.message);
+    }
+}
+
+function _parseUAfrontend(ua) {
+    if (!ua) return '—';
+    let browser = '?', os = '?';
+    if      (/Windows NT 1[01]/i.test(ua)) os = 'Win 10/11';
+    else if (/Windows/i.test(ua))           os = 'Windows';
+    else if (/Mac OS X/i.test(ua))          os = 'macOS';
+    else if (/Android ([0-9]+)/i.test(ua)) { const m = ua.match(/Android ([0-9]+)/i); os = 'Android' + (m ? ' '+m[1] : ''); }
+    else if (/iPhone|iPad/i.test(ua))       os = 'iOS';
+    else if (/Linux/i.test(ua))             os = 'Linux';
+    if      (/Edg\/([0-9]+)/i.test(ua))    { const m = ua.match(/Edg\/([0-9]+)/i);    browser = 'Edge'    + (m ? ' '+m[1] : ''); }
+    else if (/OPR\/([0-9]+)/i.test(ua))    { const m = ua.match(/OPR\/([0-9]+)/i);    browser = 'Opera'   + (m ? ' '+m[1] : ''); }
+    else if (/Chrome\/([0-9]+)/i.test(ua)) { const m = ua.match(/Chrome\/([0-9]+)/i); browser = 'Chrome'  + (m ? ' '+m[1] : ''); }
+    else if (/Firefox\/([0-9]+)/i.test(ua)){ const m = ua.match(/Firefox\/([0-9]+)/i);browser = 'Firefox' + (m ? ' '+m[1] : ''); }
+    else if (/Safari\//i.test(ua))          browser = 'Safari';
+    return `${browser} / ${os}`;
+}
+
+async function _carregarHistoricoAcessos(pagina) {
+    _histPagina = pagina || 1;
+    const el = document.getElementById('hist-content');
+    const pg = document.getElementById('hist-paginacao');
+    if (!el) return;
+    el.innerHTML = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
+    try {
+        const u       = _getUser();
+        const usuario = document.getElementById('hist-f-usuario')?.value || '';
+        const tipo    = document.getElementById('hist-f-tipo')?.value || '';
+        const diVal   = document.getElementById('hist-f-di')?.value || '';
+        const dfVal   = document.getElementById('hist-f-df')?.value || '';
+        const r = await fetch('/api/usuarios/historico-acessos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                usuarioId: u?.Id, usuario, tipo,
+                dataInicio: diVal ? diVal + 'T00:00:00' : '',
+                dataFim:    dfVal ? dfVal + 'T23:59:59' : '',
+                pagina: _histPagina, porPagina: 50,
+            }),
+        });
+        const d = await r.json();
+        if (!d.success) {
+            el.innerHTML = `<div style="color:#ef4444;padding:20px;text-align:center">${escHtml(d.message||'Erro')}</div>`;
+            return;
+        }
+        if (!d.data?.length) {
+            el.innerHTML = '<div style="color:#475569;font-size:11px;padding:30px;text-align:center">Nenhum registro encontrado.</div>';
+            if (pg) pg.innerHTML = '';
+            return;
+        }
+        const TIPO_STYLE = {
+            login_ok:     { bg:'#0f2c1a', color:'#4ade80', label:'✅ Login OK' },
+            login_fail:   { bg:'#2c0f0f', color:'#f87171', label:'❌ Falha Login' },
+            logout:       { bg:'#0f172a', color:'#94a3b8', label:'🚪 Logout' },
+            desconectado: { bg:'#1c1a0a', color:'#fbbf24', label:'⏏ Desconectado' },
+        };
+        const th = 'padding:7px 8px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b;white-space:nowrap;background:#0c1220';
+        const td = 'padding:6px 8px;border-bottom:1px solid #0d1421;vertical-align:middle;font-size:10px';
+        const rows = d.data.map(h => {
+            const ts = TIPO_STYLE[h.tipo] || { bg:'#0f172a', color:'#e2e8f0', label: escHtml(h.tipo) };
+            const dt = h.data_hora ? new Date(h.data_hora).toLocaleString('pt-BR') : '—';
+            const ua = _parseUAfrontend(h.user_agent);
+            return `<tr onmouseover="this.style.background='#0a1020'" onmouseout="this.style.background=''">
+                <td style="${td}"><span style="color:#e2e8f0;font-weight:600">${escHtml(h.usuario||'?')}</span></td>
+                <td style="${td}"><span style="background:${ts.bg};color:${ts.color};padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;white-space:nowrap">${ts.label}</span></td>
+                <td style="${td}"><span style="color:#64748b;font-family:monospace;font-size:9px">${escHtml(h.ip||'—')}</span></td>
+                <td style="${td}"><span style="color:#94a3b8;font-size:9px">${escHtml(ua)}</span></td>
+                <td style="${td}"><span style="color:#64748b;font-size:9px">${dt}</span></td>
+            </tr>`;
+        }).join('');
+        el.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:620px">
+            <thead><tr>
+                <th style="${th}">USUÁRIO</th>
+                <th style="${th}">EVENTO</th>
+                <th style="${th}">IP</th>
+                <th style="${th}">NAVEGADOR / SO</th>
+                <th style="${th}">DATA/HORA (UTC)</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+        if (pg) {
+            const totalPages = Math.ceil(d.total / d.porPagina);
+            const btnStyle = (active) =>
+                `background:${active?'#1fcc59':'#0f172a'};border:1px solid ${active?'#1fcc59':'#334155'};` +
+                `color:${active?'#000':'#94a3b8'};border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer`;
+            const pages = [];
+            for (let i = Math.max(1, _histPagina-2); i <= Math.min(totalPages, _histPagina+2); i++) {
+                pages.push(`<button onclick="_carregarHistoricoAcessos(${i})" style="${btnStyle(i===_histPagina)}">${i}</button>`);
+            }
+            pg.innerHTML = `<div style="display:flex;gap:6px;align-items:center;justify-content:center;padding:10px 0;flex-wrap:wrap">
+                <span style="color:#475569;font-size:10px">${d.total} registro(s)</span>
+                ${_histPagina > 1 ? `<button onclick="_carregarHistoricoAcessos(${_histPagina-1})" style="${btnStyle(false)}">‹</button>` : ''}
+                ${pages.join('')}
+                ${_histPagina < totalPages ? `<button onclick="_carregarHistoricoAcessos(${_histPagina+1})" style="${btnStyle(false)}">›</button>` : ''}
+            </div>`;
+        }
+    } catch(e) {
+        if (el) el.innerHTML = `<div style="color:#ef4444;padding:20px;text-align:center">${escHtml(e.message)}</div>`;
+    }
+}
+
+async function _limparHistorico() {
+    if (!confirm('Apagar todos os registros com mais de 30 dias?\nEsta ação não pode ser desfeita.')) return;
+    try {
+        const u = _getUser();
+        const r = await fetch('/api/usuarios/historico-limpar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u?.Id, dias: 30 }),
+        });
+        const d = await r.json();
+        if (d.success) {
+            alert(`${d.removidos} registro(s) removido(s).`);
+            _carregarHistoricoAcessos(1);
+        } else {
+            alert('Erro: ' + (d.message || 'Falha'));
         }
     } catch(e) {
         alert('Erro: ' + e.message);

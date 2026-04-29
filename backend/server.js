@@ -187,6 +187,17 @@ async function _geoLookup(ip) {
         return { city: '', region: '', country: '', org: '' };
     }
 }
+
+async function _registrarAcesso(usuarioId, usuario, tipo, ip, userAgent) {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await sql.query`
+            INSERT INTO HistoricoAcessos (usuario_id, usuario, tipo, ip, user_agent, data_hora)
+            VALUES (${usuarioId ? Number(usuarioId) : null}, ${(usuario||'?').substring(0,100)},
+                    ${tipo}, ${(ip||'?').substring(0,60)}, ${(userAgent||'').substring(0,500)}, GETUTCDATE())
+        `;
+    } catch(e) { /* fire-and-forget */ }
+}
 // ──────────────────────────────────────────────────────────────
 
 // Middleware para verificar autenticação
@@ -335,15 +346,20 @@ app.post('/api/login', async (req, res) => {
                     userAgent: req.headers['user-agent'] || '',
                 });
                 _trackLoginSuccess(user.Id);
+                _registrarAcesso(user.Id, user.Usuario, 'login_ok', _loginIp, req.headers['user-agent']).catch(()=>{});
 
                 const { Senha, ...userWithoutPassword } = user;
                 res.json({ success: true, user: userWithoutPassword });
             } else {
-                _trackLoginFail(username, req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip);
+                const _failIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+                _trackLoginFail(username, _failIp);
+                _registrarAcesso(null, username, 'login_fail', _failIp, req.headers['user-agent']).catch(()=>{});
                 res.json({ success: false, message: 'Credenciais inválidas' });
             }
         } else {
-            _trackLoginFail(username, req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip);
+            const _failIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+            _trackLoginFail(username, _failIp);
+            _registrarAcesso(null, username, 'login_fail', _failIp, req.headers['user-agent']).catch(()=>{});
             res.json({ success: false, message: 'Credenciais inválidas' });
         }
 
@@ -1112,7 +1128,12 @@ app.post('/api/usuarios/ping', async (req, res) => {
 
 app.post('/api/logout', async (req, res) => {
     const { usuarioId } = req.body;
-    if (usuarioId) activeSessions.delete(String(usuarioId));
+    if (usuarioId) {
+        const _lgtSess = activeSessions.get(String(usuarioId));
+        const _lgtIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+        _registrarAcesso(usuarioId, _lgtSess?.usuario || '?', 'logout', _lgtIp, req.headers['user-agent']).catch(()=>{});
+        activeSessions.delete(String(usuarioId));
+    }
     res.json({ success: true });
 });
 
@@ -1125,7 +1146,11 @@ app.post('/api/usuarios/desconectar-todos', requireAuth, async (req, res) => {
         }
         let removidos = 0;
         for (const [key, s] of activeSessions.entries()) {
-            if (s.tipo !== 'master') { activeSessions.delete(key); removidos++; }
+            if (s.tipo !== 'master') {
+                _registrarAcesso(s.id, s.usuario, 'desconectado', s.ip, s.userAgent).catch(()=>{});
+                activeSessions.delete(key);
+                removidos++;
+            }
         }
         res.json({ success: true, removidos });
     } catch(e) {
@@ -1149,6 +1174,7 @@ app.post('/api/usuarios/desconectar/:id', requireAuth, async (req, res) => {
         if (target && target.tipo === 'master') {
             return res.json({ success: false, message: 'Não é possível desconectar um Master' });
         }
+        if (target) _registrarAcesso(target.id, target.usuario, 'desconectado', target.ip, target.userAgent).catch(()=>{});
         activeSessions.delete(targetId);
         res.json({ success: true });
     } catch(e) {
@@ -1216,6 +1242,68 @@ app.post('/api/usuarios/ativos', requireAuth, async (req, res) => {
         res.json({ success: true, total: ativos.length, data: ativos });
     } catch (e) {
         res.json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * POST /api/usuarios/historico-acessos
+ * Retorna histórico paginado e filtrado. Apenas master.
+ */
+app.post('/api/usuarios/historico-acessos', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const chk = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!chk.recordset.length || chk.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso negado' });
+        }
+        const { usuario = '', tipo = '', dataInicio = '', dataFim = '', pagina = 1, porPagina = 50 } = req.body;
+        const pp  = Math.min(200, Math.max(1, Number(porPagina)));
+        const off = (Math.max(1, Number(pagina)) - 1) * pp;
+
+        const cntReq = sqlConnectionPool.request();
+        const mainReq = sqlConnectionPool.request();
+        const wheres = [];
+        if (usuario)    { wheres.push('(usuario LIKE @usuario OR ip LIKE @usuario)'); cntReq.input('usuario', sql.NVarChar, `%${usuario}%`); mainReq.input('usuario', sql.NVarChar, `%${usuario}%`); }
+        if (tipo)       { wheres.push('tipo = @tipo');       cntReq.input('tipo', sql.NVarChar, tipo);       mainReq.input('tipo', sql.NVarChar, tipo); }
+        if (dataInicio) { wheres.push('data_hora >= @di');   cntReq.input('di', sql.DateTime2, new Date(dataInicio)); mainReq.input('di', sql.DateTime2, new Date(dataInicio)); }
+        if (dataFim)    { wheres.push('data_hora <= @df');   cntReq.input('df', sql.DateTime2, new Date(dataFim));    mainReq.input('df', sql.DateTime2, new Date(dataFim)); }
+        const w = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
+
+        const cntResult = await cntReq.query(`SELECT COUNT(*) AS total FROM HistoricoAcessos ${w}`);
+        const total = cntResult.recordset[0].total;
+
+        mainReq.input('off', sql.Int, off);
+        mainReq.input('pp',  sql.Int, pp);
+        const rows = await mainReq.query(`
+            SELECT id, usuario_id, usuario, tipo, ip, user_agent, data_hora
+            FROM HistoricoAcessos ${w}
+            ORDER BY data_hora DESC
+            OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
+        `);
+        res.json({ success: true, total, pagina: Number(pagina), porPagina: pp, data: rows.recordset });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+/**
+ * POST /api/usuarios/historico-limpar
+ * Remove registros mais antigos que N dias. Apenas master.
+ */
+app.post('/api/usuarios/historico-limpar', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const chk = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!chk.recordset.length || chk.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso negado' });
+        }
+        const dias = Math.max(1, Number(req.body.dias) || 30);
+        const r = await sql.query`
+            DELETE FROM HistoricoAcessos WHERE data_hora < DATEADD(DAY, -${dias}, GETUTCDATE())
+        `;
+        res.json({ success: true, removidos: r.rowsAffected[0] || 0 });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
     }
 });
 
@@ -1367,6 +1455,34 @@ server.listen(PORT, () => {
                     ALTER TABLE Usuarios ADD Telefone NVARCHAR(20) NULL
             `;
         } catch(e) { console.warn('⚠️ Schema Telefone:', e.message); }
+    })();
+
+    // Garante tabela HistoricoAcessos
+    (async () => {
+        try {
+            await connectSQL(getDatabaseConfigFromEnv());
+            await sql.query`
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistoricoAcessos' AND xtype='U')
+                CREATE TABLE HistoricoAcessos (
+                    id          INT IDENTITY(1,1) PRIMARY KEY,
+                    usuario_id  INT NULL,
+                    usuario     NVARCHAR(100) NOT NULL,
+                    tipo        NVARCHAR(30)  NOT NULL,
+                    ip          NVARCHAR(60),
+                    user_agent  NVARCHAR(500),
+                    data_hora   DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+                )
+            `;
+            await sql.query`
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('HistoricoAcessos') AND name='IX_HA_data_hora')
+                    CREATE INDEX IX_HA_data_hora ON HistoricoAcessos (data_hora DESC)
+            `;
+            await sql.query`
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('HistoricoAcessos') AND name='IX_HA_usuario_id')
+                    CREATE INDEX IX_HA_usuario_id ON HistoricoAcessos (usuario_id)
+            `;
+            console.log('✅ Schema HistoricoAcessos verificado');
+        } catch(e) { console.warn('⚠️ Schema HistoricoAcessos:', e.message); }
     })();
 
     // ── Inicia o agendador Bet365 junto com o servidor ──
