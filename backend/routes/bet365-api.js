@@ -1471,7 +1471,7 @@ const CONFIG_DEFAULTS = [
     // ── Sistema ──
     { chave:'manutencao_ativa',             valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'Ativar modo manutenção — bloqueia acesso de usuários não-Master' },
     { chave:'manutencao_mensagem',          valor:'Estamos realizando melhorias no sistema. Voltamos em breve!', tipo:'text', grupo:'sistema', descricao:'Mensagem exibida na tela de manutenção' },
-    { chave:'manutencao_previsao',          valor:'',      tipo:'text',    grupo:'sistema',  descricao:'Previsão de retorno (ex: "às 14:00" ou "em 30 min") — deixe vazio para não exibir' },
+    { chave:'manutencao_previsao',          valor:'Em breve', tipo:'text', grupo:'sistema',  descricao:'Previsão de retorno (ex: "às 14:00" ou "em 30 min") — deixe vazio para não exibir' },
     { chave:'sessao_timeout_minutos',       valor:'180',   tipo:'number',  grupo:'sistema',  descricao:'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)' },
     { chave:'auto_refresh_segundos',        valor:'120',   tipo:'number',  grupo:'sistema',  descricao:'Intervalo de atualização automática da grade (segundos; 0 = desativar)' },
     { chave:'tour_dias',                    valor:'7',     tipo:'number',  grupo:'sistema',  descricao:'Tour de onboarding: exibir por N dias após a data de licença (0 = desativado para todos)' },
@@ -1514,8 +1514,11 @@ async function _ensureConfigTable(pool) {
             .input('descricao',sql.VarChar, d.descricao)
             .query(`
                 IF NOT EXISTS (SELECT 1 FROM bet365_config WHERE chave = @chave)
-                INSERT INTO bet365_config (chave,valor,tipo,grupo,descricao)
-                VALUES (@chave,@valor,@tipo,@grupo,@descricao)
+                    INSERT INTO bet365_config (chave,valor,tipo,grupo,descricao)
+                    VALUES (@chave,@valor,@tipo,@grupo,@descricao)
+                ELSE
+                    UPDATE bet365_config SET tipo=@tipo, grupo=@grupo, descricao=@descricao
+                    WHERE chave=@chave AND tipo <> @tipo
             `);
     }
 }

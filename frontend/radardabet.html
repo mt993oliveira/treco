@@ -5629,6 +5629,27 @@ async function _loadConfigSistema() {
 
         fSistema.innerHTML = (byGroup.sistema || []).map(d => {
             const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+            // Boolean → toggle (inclui manutencao_ativa e futuros booleanos)
+            if (d.tipo === 'boolean') return _toggleHtml(d);
+            // Manutenção — campos de texto dedicados
+            if (d.chave === 'manutencao_mensagem') return `
+                <div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                    <textarea id="cfg-manutencao_mensagem" rows="3"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                               padding:8px 10px;font-size:12px;outline:none;resize:vertical;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">${escHtml(d.valor)}</textarea>
+                </div>`;
+            if (d.chave === 'manutencao_previsao') return `
+                <div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                    <input type="text" id="cfg-manutencao_previsao" value="${escHtml(d.valor)}"
+                        placeholder="Ex: às 14:00  /  em 30 min  /  amanhã"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                               padding:8px 10px;font-size:12px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Deixe vazio para não exibir previsão na tela de manutenção</div>
+                </div>`;
             if (d.chave === 'fonte_proximos') {
                 const opts = [
                     { v:'results', t:'📄 Página de resultados (extra.bet365.bet.br)' },
@@ -5837,9 +5858,11 @@ async function salvarConfigSistema() {
         if (el.id.startsWith('cfg-tab') || el.id.startsWith('cfg-toggle') || el.id.startsWith('cfg-msg') || el.id.startsWith('cfg-salvar')) return;
         const chave = el.id.replace(/^cfg-/, '');
         if (el.tagName === 'SELECT' && el.value) { payload[chave] = el.value; return; }
+        if (el.tagName === 'TEXTAREA') { payload[chave] = el.value; return; }
         if (el.tagName !== 'INPUT') return;
         if (el.type === 'checkbox') payload[chave] = String(el.checked);
-        else if ((el.type === 'number' || el.type === 'text') && el.value !== '') payload[chave] = el.value;
+        else if (el.type === 'number' && el.value !== '') payload[chave] = el.value;
+        else if (el.type === 'text') payload[chave] = el.value;
     });
 
     try {
