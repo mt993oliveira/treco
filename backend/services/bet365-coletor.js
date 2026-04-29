@@ -630,19 +630,31 @@ class Bet365Coletor {
         return await pg.evaluate((liga) => {
             const timeBtn  = document.querySelector('.vr-EventTimesNavBarButton-selected .vr-EventTimesNavBarButton_Text');
             const horario  = timeBtn ? timeBtn.textContent.trim() : null;
-            const nomes    = [];
+            const participantes = [];
             const ftPod    = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
                 .find(p => { const txt = p.querySelector('.gl-MarketGroupButton_Text')?.textContent.trim(); return txt === 'Fulltime Result' || txt === 'Resultado Final'; });
             if (ftPod) {
-                for (const n of ftPod.querySelectorAll('.srb-ParticipantStackedBorderless_Name')) {
-                    const t = n.textContent.trim();
-                    if (t && t !== 'Draw' && t !== 'Empate') nomes.push(t);
+                for (const el of ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')) {
+                    const nEl = el.querySelector('.srb-ParticipantStackedBorderless_Name');
+                    const oEl = el.querySelector('.srb-ParticipantStackedBorderless_Odds');
+                    const nome = nEl ? nEl.textContent.trim() : '';
+                    const odd  = oEl ? parseFloat(oEl.textContent.trim()) || 0 : 0;
+                    participantes.push({ nome, odd });
                 }
             }
             const bcText   = document.querySelector('.svc-MarketGroup_BookCloses span:last-child');
             const raceOff  = document.querySelector('.svc-MarketGroup_RaceOff');
             const countdown = raceOff ? 'EVENTO INICIADO' : (bcText ? bcText.textContent.trim() : null);
-            return { liga, horario, timeCasa: nomes[0] || null, timeFora: nomes[1] || null, countdown };
+            // Identifica casa/empate/fora pela posição: [0]=casa, [1]=empate, [2]=fora
+            const isEmpate = n => n === 'Draw' || n === 'Empate';
+            const empIdx   = participantes.findIndex(p => isEmpate(p.nome));
+            const times    = participantes.filter(p => !isEmpate(p.nome));
+            const oddCasa   = times[0]?.odd  || 0;
+            const oddEmpate = empIdx >= 0 ? participantes[empIdx].odd : 0;
+            const oddFora   = times[1]?.odd  || 0;
+            const timeCasa  = times[0]?.nome || null;
+            const timeFora  = times[1]?.nome || null;
+            return { liga, horario, timeCasa, timeFora, countdown, oddCasa, oddEmpate, oddFora };
         }, liga);
     }
 
@@ -877,6 +889,36 @@ class Bet365Coletor {
         const eventos    = [];
         const resultados = [];
         const proxAntesRes = this._cfgBool('proximos_antes_resultados', false);
+
+        // Captura odds pré-jogo da página principal (antes de navegar para resultados).
+        // Só registra se o jogo ainda não começou (sem raceOff) e se as 3 odds estão presentes.
+        // Independente de coletar_proximos_jogos — é uma leitura da página que já estamos.
+        try {
+            const ligaNorm = normalizarNomeLiga(liga.nome);
+            const info = await this._extrairInfoJogo(ligaNorm, pg);
+            if (info && info.countdown !== 'EVENTO INICIADO' &&
+                info.timeCasa && info.timeFora &&
+                info.oddCasa > 0 && info.oddEmpate > 0 && info.oddFora > 0) {
+                const tcNorm   = normalizarNomeTime(info.timeCasa);
+                const tfNorm   = normalizarNomeTime(info.timeFora);
+                const eventoId = this._gerarId(ligaNorm, tcNorm, tfNorm, info.horario || '');
+                eventos.push({
+                    eventoId,
+                    liga:      ligaNorm,
+                    timeCasa:  tcNorm,
+                    timeFora:  tfNorm,
+                    horario:   info.horario || '',
+                    countdown: info.countdown,
+                    oddCasa:   info.oddCasa,
+                    oddEmpate: info.oddEmpate,
+                    oddFora:   info.oddFora,
+                    mercados:  [],
+                });
+                console.log(`   💰 [${ligaNorm}] Odds pré-jogo: ${tcNorm} × ${tfNorm} | C:${info.oddCasa} E:${info.oddEmpate} F:${info.oddFora}`);
+            }
+        } catch(err) {
+            console.warn(`   ⚠️  [${liga.nome}] Falha ao capturar odds pré-jogo: ${err.message}`);
+        }
 
         if (proxAntesRes) {
             console.log(`   🔀 [${liga.nome}] Ordem: próximos → resultados`);
