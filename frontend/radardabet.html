@@ -3142,9 +3142,11 @@ function grupos() {
         .sort((a, b) => a.hora - b.hora);
 }
 
-// Série flat de todas as partidas para o gráfico
+// Série flat de todas as partidas para o gráfico — usa os mesmos slots do mosaico
 function serieFlat() {
-    return S.partidas.slice(); // já em ordem ASC
+    return grupos()
+        .flatMap(g => g.jogos)
+        .sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
 }
 
 // ============================================================
