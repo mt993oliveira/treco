@@ -1242,6 +1242,106 @@ class Bet365Coletor {
     }
 
     // ─────────────────────────────────────────────────────────────
+    // SESSÃO — detecta "Faça Login para Assistir" e reconecta
+    // ─────────────────────────────────────────────────────────────
+
+    async _verificarSessao(pg) {
+        try {
+            const temAviso = await pg.evaluate(() =>
+                [...document.querySelectorAll('button')].some(b =>
+                    (b.textContent || '').trim().includes('Faça Login para Assistir'))
+            );
+            if (!temAviso) return; // sessão OK
+
+            console.log('   🔐 Sessão expirada — "Faça Login para Assistir" detectado, reconectando...');
+
+            // Passo 1: clica em "Faça Login para Assistir"
+            await pg.evaluate(() => {
+                const btn = [...document.querySelectorAll('button')]
+                    .find(b => (b.textContent || '').trim().includes('Faça Login para Assistir'));
+                if (btn) btn.click();
+            });
+            await this._delay(2500);
+
+            // Passo 2: clica em "Login" no modal (credenciais já preenchidas pelo browser/cookies)
+            const clicou = await pg.evaluate(() => {
+                // Botão com texto exato "Login" para não re-clicar no aviso
+                const btn = [...document.querySelectorAll('button')]
+                    .find(b => (b.textContent || '').trim() === 'Login');
+                if (btn) { btn.click(); return true; }
+                return false;
+            });
+
+            if (!clicou) {
+                console.log('   ⚠️  Botão "Login" não encontrado no modal — tentando com credenciais .env...');
+                await this._loginComCredenciais(pg);
+                return;
+            }
+
+            console.log('   ⏳ Aguardando confirmação do login (cookie)...');
+            await this._delay(4000);
+
+            // Verifica se o aviso sumiu
+            const sessaoOk = await pg.evaluate(() =>
+                ![...document.querySelectorAll('button')].some(b =>
+                    (b.textContent || '').trim().includes('Faça Login para Assistir'))
+            );
+
+            if (sessaoOk) {
+                console.log('   ✅ Sessão restaurada via cookie!');
+            } else {
+                console.log('   ⚠️  Cookie insuficiente — tentando com credenciais .env...');
+                await this._loginComCredenciais(pg);
+            }
+        } catch(e) {
+            console.warn('   ⚠️  _verificarSessao:', e.message);
+        }
+    }
+
+    async _loginComCredenciais(pg) {
+        const usuario = (process.env.BET365_USERNAME || '').trim();
+        const senha   = (process.env.BET365_PASSWORD || '').trim();
+        if (!usuario || !senha) {
+            console.log('   ⚠️  BET365_USERNAME/BET365_PASSWORD não definidos no .env — impossível fazer login automático');
+            return false;
+        }
+        try {
+            // Preenche usuário (limpa o campo antes)
+            const inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+            if (inputUser) {
+                await inputUser.click({ clickCount: 3 });
+                await inputUser.type(usuario, { delay: 60 });
+            }
+            // Preenche senha
+            const inputPass = await pg.$('input[type="password"]');
+            if (inputPass) {
+                await inputPass.click({ clickCount: 3 });
+                await inputPass.type(senha, { delay: 60 });
+            }
+            // Clica Login
+            const clicou = await pg.evaluate(() => {
+                const btn = [...document.querySelectorAll('button')]
+                    .find(b => (b.textContent || '').trim() === 'Login');
+                if (btn) { btn.click(); return true; }
+                return false;
+            });
+            if (!clicou) { console.log('   ❌ Botão Login não encontrado (credenciais)'); return false; }
+
+            await this._delay(5000);
+            const ok = await pg.evaluate(() =>
+                ![...document.querySelectorAll('button')].some(b =>
+                    (b.textContent || '').trim().includes('Faça Login para Assistir'))
+            );
+            if (ok) { console.log('   ✅ Login com credenciais bem-sucedido!'); return true; }
+            console.log('   ❌ Login com credenciais falhou');
+            return false;
+        } catch(e) {
+            console.log('   ❌ Erro no login com credenciais:', e.message);
+            return false;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // LOG DE COLETA
     // ─────────────────────────────────────────────────────────────
 
@@ -1319,16 +1419,25 @@ class Bet365Coletor {
                 throw new Error('Ligas não apareceram após 3 tentativas — verifique se a página está aberta no Edge');
             }
 
-            const { contadores } = await this._extrairDados(this.page);
+            // Verifica sessão — se "Faça Login para Assistir" aparecer, reconecta automaticamente
+            await this._verificarSessao(this.page);
+
+            const { eventos: evBrutos, resultados: resBrutos, contadores } = await this._extrairDados(this.page);
             await this._logColeta(inicio, 'SUCESSO', contadores, null);
 
             if (typeof global.wsBroadcast === 'function') {
                 global.wsBroadcast({ tipo: 'coleta', fonte: 'bet365', novos: contadores.eventosOk, resultadosSalvos: contadores.histOk, timestamp: new Date().toISOString() });
             }
 
-            this.ultimaColetaSucesso = Date.now();
-            this.ultimoErro          = null;
-            console.log(`✅ Bet365 - Coleta concluída`);
+            // Só marca sucesso se extraiu algum dado — garante alerta quando sessão falha silenciosamente
+            if (evBrutos.length > 0 || resBrutos.length > 0) {
+                this.ultimaColetaSucesso = Date.now();
+                this.ultimoErro          = null;
+                console.log(`✅ Bet365 - Coleta concluída`);
+            } else {
+                this.ultimoErro = 'Coleta retornou 0 eventos e 0 resultados';
+                console.log(`⚠️  Bet365 - Coleta concluída mas sem dados extraídos (sessão pode ter expirado)`);
+            }
 
         } catch(err) {
             this.ultimoErro = err.message;
