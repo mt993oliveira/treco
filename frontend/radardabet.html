@@ -1070,6 +1070,11 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Over 1.5 — Evolução</div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-g-fixa"  class="acao-btn ativo" onclick="_gToggle('grafFixa','btn-g-fixa')"    title="Escala Y fixa em 0–100% (desativar para auto-escala)">📌 Fixa</button>
+                    <button id="btn-g-pct"   class="acao-btn"       onclick="_gToggle('grafPct','btn-g-pct')"      title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
+                    <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')" title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
+                    <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')" title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
+                    <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"   title="Adiciona linha de média móvel (5 jogos) para cada filtro ativo">📈 Médias</button>
                     <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button id="btn-caneta" class="acao-btn" onclick="toggleCaneta()" title="Ativar/desativar desenho na grade e gráfico">✏️ Caneta</button>
                     <select id="draw-tool" onchange="DRAW.ferramenta=this.value" title="Ferramenta de desenho"
@@ -2010,6 +2015,11 @@ const S = {
     linhas:        {},
     grafico:       null,
     grafTopo:      null,
+    grafFixa:      true,
+    grafPct:       false,
+    grafTopoFundo: false,
+    grafCongest:   false,
+    grafMedias:    false,
     view:          'historico',
     _analiseSecoes: { ia:true, desempenho:true, detalhe:true, valuebets:true, tendencias:true, frequencia:true },
     showGrafico:   true,   // toggle independente
@@ -3292,6 +3302,16 @@ function macd(serie, f, sl, sg) {
 }
 
 // ============================================================
+// GRÁFICO — toggle de features
+// ============================================================
+function _gToggle(key, btnId) {
+    S[key] = !S[key];
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.toggle('ativo', S[key]);
+    renderGrafico();
+}
+
+// ============================================================
 // GRÁFICO SUPERIOR — estilo Caramelo: pontos por jogo + média móvel
 // ============================================================
 function renderGrafico() {
@@ -3308,13 +3328,19 @@ function renderGrafico() {
     const datasets = [];
     const ativos = opcoes.filter(f => S.linhas[f.id]);
 
-    // Porcentagem acumulada corrida: para cada jogo i = (ocorrências até i / jogos até i) * 100
+    // % acumulada corrida: hits até i / jogos até i * 100
     const cumPct = pts => pts.map((_, i) => {
         const hits = pts.slice(0, i + 1).filter(v => v).length;
         return +((hits / (i + 1)) * 100).toFixed(1);
     });
 
-    // hits por filtro — reutilizado no dataset e no tooltip
+    // Média móvel simples de N pontos
+    const movAvg = (data, n = 5) => data.map((_, i) => {
+        const sl = data.slice(Math.max(0, i - n + 1), i + 1);
+        return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
+    });
+
+    // hits por filtro
     const hitsMap = {};
     ativos.forEach(f => {
         if (f.id !== 'equilibrio') hitsMap[f.id] = serie.map(j => checa(j, f.id) ? 1 : 0);
@@ -3324,35 +3350,126 @@ function renderGrafico() {
         if (f.id === 'equilibrio') {
             datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => 50),
                 borderColor:'#64748b', backgroundColor:'transparent',
-                borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0 });
+                borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0,
+                _isEquilibrio: true });
             return;
         }
-        const pts = hitsMap[f.id];
-        const pct = Math.round(pts.filter(v=>v).length / serie.length * 100);
+        const pts  = hitsMap[f.id];
+        const pct  = Math.round(pts.filter(v => v).length / serie.length * 100);
         const isPrimario = S.filtro === f.id;
+        const data = cumPct(pts);
+
+        // Topo e Fundo: destaca índice de max (amarelo) e min (vermelho)
+        let pointRadius = isPrimario ? 3 : 2;
+        let pointBgColor = isPrimario ? pts.map(v => v ? f.cor : '#dc2626') : f.cor;
+        if (S.grafTopoFundo && data.length > 1) {
+            const maxIdx = data.reduce((b, v, i) => v > data[b] ? i : b, 0);
+            const minIdx = data.reduce((b, v, i) => v < data[b] ? i : b, 0);
+            const base   = isPrimario ? pts.map(v => v ? f.cor : '#dc2626') : data.map(() => f.cor);
+            pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : (isPrimario ? 3 : 2));
+            pointBgColor = base.map((c, i) => i === maxIdx ? '#fbbf24' : i === minIdx ? '#f87171' : c);
+        }
+
         datasets.push({
             type: 'line',
             label: `${f.label} ${pct}%`,
-            data: cumPct(pts),
+            data,
             borderColor: f.cor,
             backgroundColor: 'transparent',
             borderWidth: isPrimario ? 2.5 : 1.5,
             borderDash: f.dashed ? [6,4] : [],
-            pointRadius: isPrimario ? 3 : 2,
+            pointRadius,
             pointHoverRadius: 5,
-            pointBackgroundColor: isPrimario
-                ? pts.map(v => v ? f.cor : '#dc2626')
-                : f.cor,
+            pointBackgroundColor: pointBgColor,
             tension: 0,
+            _filtroId: f.id,
         });
+
+        // Médias: linha de média móvel (5 jogos), mesma cor mas tracejada e fina
+        if (S.grafMedias) {
+            datasets.push({
+                type: 'line',
+                label: `${f.label} MM5`,
+                data: movAvg(data, 5),
+                borderColor: f.cor,
+                backgroundColor: 'transparent',
+                borderWidth: 1,
+                borderDash: [4, 3],
+                pointRadius: 0,
+                tension: 0.3,
+                _isMA: true,
+            });
+        }
     });
 
-    // Labels: horário + times no tooltip
+    // Labels do eixo X
     const labels = serie.map(p => {
         if (!p.data_partida) return '';
         const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
+
+    // Plugin customizado: Exibir % (label no final de cada linha) + Congestão (faixas laterais)
+    const grafPlugin = {
+        id: 'grafCustom',
+        afterDraw(chart) {
+            const ctx2 = chart.ctx;
+            const { top, bottom } = chart.chartArea;
+
+            chart.data.datasets.forEach((ds, di) => {
+                if (ds._isEquilibrio || ds._isMA) return;
+                const meta = chart.getDatasetMeta(di);
+                if (!meta.data || !meta.data.length) return;
+                const data = ds.data;
+
+                // ── Exibir %: valor no último ponto de cada linha ──
+                if (S.grafPct) {
+                    const lastPt  = meta.data[meta.data.length - 1];
+                    const lastVal = data[data.length - 1];
+                    if (lastPt && lastVal != null) {
+                        ctx2.save();
+                        ctx2.font        = 'bold 9px sans-serif';
+                        ctx2.fillStyle   = ds.borderColor;
+                        ctx2.textAlign   = 'left';
+                        ctx2.shadowColor = '#000';
+                        ctx2.shadowBlur  = 3;
+                        ctx2.fillText(`${lastVal}%`, lastPt.x + 5, lastPt.y + 3);
+                        ctx2.restore();
+                    }
+                }
+
+                // ── Congestão: janela deslizante de 5 pontos, range ≤ 8% ──
+                if (S.grafCongest && data.length >= 5) {
+                    const THRESHOLD = 8, MIN_RUN = 5;
+                    // marca cada índice como "lateral" se a janela [-2,+2] tiver range ≤ threshold
+                    const lateral = data.map((_, i) => {
+                        const sl = data.slice(Math.max(0, i - 2), Math.min(data.length, i + 3));
+                        return Math.max(...sl) - Math.min(...sl) <= THRESHOLD;
+                    });
+                    // agrupa em zonas contíguas de comprimento >= MIN_RUN
+                    let i = 0;
+                    while (i < lateral.length) {
+                        if (!lateral[i]) { i++; continue; }
+                        let j = i;
+                        while (j < lateral.length && lateral[j]) j++;
+                        if (j - i >= MIN_RUN) {
+                            const x0 = meta.data[i]?.x, x1 = meta.data[j - 1]?.x;
+                            if (x0 != null && x1 != null && x1 > x0) {
+                                ctx2.save();
+                                ctx2.fillStyle   = ds.borderColor + '1a'; // ~10% opacidade
+                                ctx2.strokeStyle = ds.borderColor + '44';
+                                ctx2.lineWidth   = 0.5;
+                                ctx2.fillRect(x0, top, x1 - x0, bottom - top);
+                                ctx2.strokeRect(x0, top, x1 - x0, bottom - top);
+                                ctx2.restore();
+                            }
+                        }
+                        i = j > i ? j : i + 1;
+                    }
+                }
+            });
+        }
+    };
 
     const cfg = {
         type: 'line', data: { labels, datasets },
@@ -3363,6 +3480,7 @@ function renderGrafico() {
                 legend: { display: false },
                 tooltip: {
                     enabled: !S.showLegendas,
+                    filter: item => !item.dataset._isMA,
                     backgroundColor: 'rgba(15,23,42,0.65)', borderColor: '#334155', borderWidth: 1,
                     titleColor: '#94a3b8', bodyColor: '#cbd5e1',
                     callbacks: {
@@ -3374,6 +3492,7 @@ function renderGrafico() {
                             return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}`;
                         },
                         label: ctx => {
+                            if (ctx.dataset._isMA) return null;
                             const i = ctx.dataIndex;
                             const f = ativos.find(f => f.id !== 'equilibrio' &&
                                 ctx.dataset.label === `${f.label} ${Math.round(hitsMap[f.id].filter(v=>v).length/serie.length*100)}%`);
@@ -3385,9 +3504,14 @@ function renderGrafico() {
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},callback:v=>v+'%'} }
+                y: {
+                    min: S.grafFixa ? 0 : undefined,
+                    max: S.grafFixa ? 100 : undefined,
+                    grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},callback:v=>v+'%'}
+                }
             }
-        }
+        },
+        plugins: [grafPlugin]
     };
 
     if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
