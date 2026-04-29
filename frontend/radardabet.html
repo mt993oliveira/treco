@@ -3847,13 +3847,13 @@ function renderTabela() {
     if (!tfoot?.parentElement) return;
     tfoot.parentElement.innerHTML = `
         <tr>
-            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:9px;color:#475569;font-weight:700">% / POSIÇÃO</td>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#475569;font-weight:700">% / POS</td>
             <td class="td-pct"></td>
             <td></td>
             ${footPct}
         </tr>
         <tr>
-            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:9px;color:#fbbf24;font-weight:700">⚽ MÉD GOLS</td>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700">⚽ GOLS</td>
             <td class="td-pct"></td>
             <td></td>
             ${footGols}
