@@ -1468,6 +1468,12 @@ const CONFIG_DEFAULTS = [
     { chave:'default_proximos_jogos',       valor:'false', tipo:'boolean', grupo:'frontend', descricao:'🕐 Próximos Jogos ativado por padrão na grade' },
     { chave:'default_exibir_ht',            valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'🔍 Exibir HT ativado por padrão na grade' },
     { chave:'default_so_value_bets',        valor:'false', tipo:'boolean', grupo:'frontend', descricao:'Apenas value bets por padrão (Análise)' },
+    // ── Mosaico — colunas esquerda ──
+    { chave:'mosaico_hora_largura',         valor:'22',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna HORA (px)' },
+    { chave:'mosaico_hora_fonte_hh',        valor:'8',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte do horário HH:00 (px)' },
+    { chave:'mosaico_hora_fonte_dd',        valor:'6',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte da data DD/MM (px)' },
+    { chave:'mosaico_pct_largura',          valor:'10',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna % (px)' },
+    { chave:'mosaico_gols_largura',         valor:'8',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna ⚽ Gols (px)' },
     // ── Sistema ──
     { chave:'manutencao_ativa',             valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'Ativar modo manutenção — bloqueia acesso de usuários não-Master' },
     { chave:'manutencao_mensagem',          valor:'Estamos realizando melhorias no sistema. Voltamos em breve!', tipo:'text', grupo:'sistema', descricao:'Mensagem exibida na tela de manutenção' },
