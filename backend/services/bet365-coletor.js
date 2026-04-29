@@ -890,36 +890,6 @@ class Bet365Coletor {
         const resultados = [];
         const proxAntesRes = this._cfgBool('proximos_antes_resultados', false);
 
-        // Captura odds pré-jogo da página principal (antes de navegar para resultados).
-        // Só registra se o jogo ainda não começou (sem raceOff) e se as 3 odds estão presentes.
-        // Independente de coletar_proximos_jogos — é uma leitura da página que já estamos.
-        try {
-            const ligaNorm = normalizarNomeLiga(liga.nome);
-            const info = await this._extrairInfoJogo(ligaNorm, pg);
-            if (info && info.countdown !== 'EVENTO INICIADO' &&
-                info.timeCasa && info.timeFora &&
-                info.oddCasa > 0 && info.oddEmpate > 0 && info.oddFora > 0) {
-                const tcNorm   = normalizarNomeTime(info.timeCasa);
-                const tfNorm   = normalizarNomeTime(info.timeFora);
-                const eventoId = this._gerarId(ligaNorm, tcNorm, tfNorm, info.horario || '');
-                eventos.push({
-                    eventoId,
-                    liga:      ligaNorm,
-                    timeCasa:  tcNorm,
-                    timeFora:  tfNorm,
-                    horario:   info.horario || '',
-                    countdown: info.countdown,
-                    oddCasa:   info.oddCasa,
-                    oddEmpate: info.oddEmpate,
-                    oddFora:   info.oddFora,
-                    mercados:  [],
-                });
-                console.log(`   💰 [${ligaNorm}] Odds pré-jogo: ${tcNorm} × ${tfNorm} | C:${info.oddCasa} E:${info.oddEmpate} F:${info.oddFora}`);
-            }
-        } catch(err) {
-            console.warn(`   ⚠️  [${liga.nome}] Falha ao capturar odds pré-jogo: ${err.message}`);
-        }
-
         if (proxAntesRes) {
             console.log(`   🔀 [${liga.nome}] Ordem: próximos → resultados`);
             await this._coletarProximos(pg, liga, eventos);
