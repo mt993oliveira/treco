@@ -1474,6 +1474,8 @@ const CONFIG_DEFAULTS = [
     { chave:'mosaico_hora_fonte_dd',        valor:'6',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte da data DD/MM (px)' },
     { chave:'mosaico_pct_largura',          valor:'10',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna % (px)' },
     { chave:'mosaico_gols_largura',         valor:'8',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna ⚽ Gols (px)' },
+    { chave:'mosaico_celula_largura',       valor:'40',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: largura das células de jogo (px)' },
+    { chave:'mosaico_celula_fonte',         valor:'11',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte das células de jogo (px)' },
     // ── Sistema ──
     { chave:'manutencao_ativa',             valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'Ativar modo manutenção — bloqueia acesso de usuários não-Master' },
     { chave:'manutencao_mensagem',          valor:'Estamos realizando melhorias no sistema. Voltamos em breve!', tipo:'text', grupo:'sistema', descricao:'Mensagem exibida na tela de manutenção' },
