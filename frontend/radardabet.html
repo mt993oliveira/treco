@@ -1098,7 +1098,19 @@
                     <button id="btn-g-pct"   class="acao-btn"       onclick="_gToggle('grafPct','btn-g-pct')"      title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
                     <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')" title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')" title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
-                    <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"   title="Adiciona linha de média móvel (5 jogos) para cada filtro ativo">📈 Médias</button>
+                    <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"   title="Exibe MM curta e MM longa (rolling hit rate) para cada filtro ativo">📈 MM</button>
+                    <input id="inp-mm1" type="number" min="2" max="99" value="9"
+                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico()"
+                        title="Período da MM curta (jogos)"
+                        style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
+                               font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <input id="inp-mm2" type="number" min="2" max="200" value="21"
+                        onchange="S.grafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.grafMM2;renderGrafico()"
+                        title="Período da MM longa (jogos)"
+                        style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
+                               font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button id="btn-caneta" class="acao-btn" onclick="toggleCaneta()" title="Ativar/desativar desenho na grade e gráfico">✏️ Caneta</button>
                     <select id="draw-tool" onchange="DRAW.ferramenta=this.value" title="Ferramenta de desenho"
@@ -1836,6 +1848,8 @@ async function carregarConfigLigas() {
         S.grafTopoFundo = cfg.grafico_topo_fundo === 'true';
         S.grafCongest   = cfg.grafico_congest    === 'true';
         S.grafMedias    = cfg.grafico_medias     === 'true';
+        if (cfg.grafico_mm1) { S.grafMM1 = parseInt(cfg.grafico_mm1) || 9;  const el = document.getElementById('inp-mm1'); if (el) el.value = S.grafMM1; }
+        if (cfg.grafico_mm2) { S.grafMM2 = parseInt(cfg.grafico_mm2) || 21; const el = document.getElementById('inp-mm2'); if (el) el.value = S.grafMM2; }
         // Sincroniza classes dos botões com o estado carregado
         [['grafFixa','btn-g-fixa'],['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
          ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med']].forEach(([k,id]) => {
@@ -2068,6 +2082,8 @@ const S = {
     grafTopoFundo: false,
     grafCongest:   false,
     grafMedias:    false,
+    grafMM1:       9,
+    grafMM2:       21,
     _grafAltura:   300,
     _chartCores:   {},
     view:          'historico',
@@ -3384,11 +3400,16 @@ function renderGrafico() {
         return +((hits / (i + 1)) * 100).toFixed(1);
     });
 
-    // Média móvel simples de N pontos
-    const movAvg = (data, n = 5) => data.map((_, i) => {
-        const sl = data.slice(Math.max(0, i - n + 1), i + 1);
-        return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
+    // Rolling hit rate: % de hits nos últimos N jogos (0/1 brutos)
+    const rollingPct = (hits, n) => hits.map((_, i) => {
+        const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
+        return +(sl.reduce((a, b) => a + b, 0) / sl.length * 100).toFixed(1);
     });
+    // Converte hex para rgba com alpha
+    const _rgba = (hex, a) => {
+        const c = hex.replace('#', '');
+        return `rgba(${parseInt(c.slice(0,2),16)},${parseInt(c.slice(2,4),16)},${parseInt(c.slice(4,6),16)},${a})`;
+    };
 
     // hits por filtro
     const hitsMap = {};
@@ -3436,18 +3457,35 @@ function renderGrafico() {
             _filtroId: f.id,
         });
 
-        // Médias: linha de média móvel (5 jogos), mesma cor mas tracejada e fina
+        // Médias móveis rolling: MM curta (MM1) e MM longa (MM2)
         if (S.grafMedias) {
+            const n1 = S.grafMM1 || 9;
+            const n2 = S.grafMM2 || 21;
+            const corHex = cor.startsWith('#') ? cor : '#64748b';
+            // MM curta — mais reativa, tracejado curto, 75% opacidade
             datasets.push({
                 type: 'line',
-                label: `${f.label} MM5`,
-                data: movAvg(data, 5),
-                borderColor: cor,
+                label: `${f.label} MM${n1}`,
+                data: rollingPct(pts, n1),
+                borderColor: _rgba(corHex, 0.75),
                 backgroundColor: 'transparent',
-                borderWidth: 1,
-                borderDash: [4, 3],
+                borderWidth: 1.5,
+                borderDash: [5, 3],
                 pointRadius: 0,
                 tension: 0.3,
+                _isMA: true,
+            });
+            // MM longa — mais suave, tracejado espaçado, 45% opacidade
+            datasets.push({
+                type: 'line',
+                label: `${f.label} MM${n2}`,
+                data: rollingPct(pts, n2),
+                borderColor: _rgba(corHex, 0.45),
+                backgroundColor: 'transparent',
+                borderWidth: 1,
+                borderDash: [2, 5],
+                pointRadius: 0,
+                tension: 0.4,
                 _isMA: true,
             });
         }
@@ -5703,7 +5741,9 @@ const _CFG_LABELS = {
     grafico_pct:         '% Exibir valor % no final das linhas',
     grafico_topo_fundo:  '⛰ Marcar topo (🟡) e fundo (🔴) de cada linha',
     grafico_congest:     '〰 Destacar zonas de congestão (mercado lateral)',
-    grafico_medias:      '📈 Exibir médias móveis (MM5)',
+    grafico_medias:      '📈 Exibir médias móveis por padrão',
+    grafico_mm1:         '📈 Período da MM curta (padrão 9 jogos)',
+    grafico_mm2:         '📈 Período da MM longa (padrão 21 jogos)',
     // Mosaico
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
     mosaico_hora_fonte_hh:      '📐 Mosaico: tamanho da fonte HH:00 (px)',

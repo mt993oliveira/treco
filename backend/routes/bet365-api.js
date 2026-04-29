@@ -1482,7 +1482,9 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_pct',         valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir % no final das linhas por padrão' },
     { chave:'grafico_topo_fundo',  valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: marcar topo (🟡) e fundo (🔴) por padrão' },
     { chave:'grafico_congest',     valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: destacar zonas de congestão por padrão' },
-    { chave:'grafico_medias',      valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir médias móveis (MM5) por padrão' },
+    { chave:'grafico_medias',      valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir médias móveis por padrão' },
+    { chave:'grafico_mm1',         valor:'9',     tipo:'number',  grupo:'grafico', descricao:'Gráfico: período da MM curta (padrão 9 jogos)' },
+    { chave:'grafico_mm2',         valor:'21',    tipo:'number',  grupo:'grafico', descricao:'Gráfico: período da MM longa (padrão 21 jogos)' },
     // ── Sistema ──
     { chave:'manutencao_ativa',             valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'Ativar modo manutenção — bloqueia acesso de usuários não-Master' },
     { chave:'manutencao_mensagem',          valor:'Estamos realizando melhorias no sistema. Voltamos em breve!', tipo:'text', grupo:'sistema', descricao:'Mensagem exibida na tela de manutenção' },
