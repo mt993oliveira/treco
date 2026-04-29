@@ -1476,6 +1476,12 @@ const CONFIG_DEFAULTS = [
     { chave:'mosaico_gols_largura',         valor:'8',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna ⚽ Gols (px)' },
     { chave:'mosaico_celula_largura',       valor:'40',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: largura das células de jogo (px)' },
     { chave:'mosaico_celula_fonte',         valor:'11',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte das células de jogo (px)' },
+    // ── Gráfico — padrões dos botões ──
+    { chave:'grafico_fixa',        valor:'true',  tipo:'boolean', grupo:'grafico', descricao:'Gráfico: escala Y fixa em 0–100% por padrão' },
+    { chave:'grafico_pct',         valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir % no final das linhas por padrão' },
+    { chave:'grafico_topo_fundo',  valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: marcar topo (🟡) e fundo (🔴) por padrão' },
+    { chave:'grafico_congest',     valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: destacar zonas de congestão por padrão' },
+    { chave:'grafico_medias',      valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir médias móveis (MM5) por padrão' },
     // ── Sistema ──
     { chave:'manutencao_ativa',             valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'Ativar modo manutenção — bloqueia acesso de usuários não-Master' },
     { chave:'manutencao_mensagem',          valor:'Estamos realizando melhorias no sistema. Voltamos em breve!', tipo:'text', grupo:'sistema', descricao:'Mensagem exibida na tela de manutenção' },

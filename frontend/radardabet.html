@@ -543,6 +543,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 🔔 Alertas
             </button>
+            <button id="cfg-tab-grafico" onclick="_cfgSetTab('grafico')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                📈 Gráfico
+            </button>
         </div>
 
         <!-- Seção Coleta -->
@@ -599,6 +604,13 @@
         <!-- Seção Alertas -->
         <div id="cfg-section-alertas" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
             <div id="cfg-alertas-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Gráfico -->
+        <div id="cfg-section-grafico" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-grafico-fields">
                 <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
@@ -1805,6 +1817,19 @@ async function carregarConfigLigas() {
         window.TOUR_DIAS      = cfg.tour_dias      !== undefined ? parseInt(cfg.tour_dias)      : 7;
         S._maxValueBets       = cfg.max_value_bets  !== undefined ? parseInt(cfg.max_value_bets)  : 5;
         S._maxTendencias      = cfg.max_tendencias  !== undefined ? parseInt(cfg.max_tendencias)  : 8;
+
+        // Gráfico — padrões dos botões
+        S.grafFixa      = cfg.grafico_fixa       !== 'false';
+        S.grafPct       = cfg.grafico_pct        === 'true';
+        S.grafTopoFundo = cfg.grafico_topo_fundo === 'true';
+        S.grafCongest   = cfg.grafico_congest    === 'true';
+        S.grafMedias    = cfg.grafico_medias     === 'true';
+        // Sincroniza classes dos botões com o estado carregado
+        [['grafFixa','btn-g-fixa'],['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
+         ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med']].forEach(([k,id]) => {
+            const b = document.getElementById(id);
+            if (b) b.classList.toggle('ativo', !!S[k]);
+        });
 
         // Mosaico — colunas esquerda
         S._mosaicoHoraLarg   = parseInt(cfg.mosaico_hora_largura)  || 22;
@@ -5597,7 +5622,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'ordem', 'sistema', 'alertas'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'ordem', 'sistema', 'alertas', 'grafico'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -5646,6 +5671,12 @@ const _CFG_LABELS = {
     default_tipo_mercado:       'Tipo de mercado padrão (Análise)',
     default_janela_recente:     'Janela recente padrão em jogos (Análise)',
     default_so_value_bets:      'Apenas value bets por padrão (Análise)',
+    // Gráfico
+    grafico_fixa:        '📌 Escala Y fixa em 0–100%',
+    grafico_pct:         '% Exibir valor % no final das linhas',
+    grafico_topo_fundo:  '⛰ Marcar topo (🟡) e fundo (🔴) de cada linha',
+    grafico_congest:     '〰 Destacar zonas de congestão (mercado lateral)',
+    grafico_medias:      '📈 Exibir médias móveis (MM5)',
     // Mosaico
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
     mosaico_hora_fonte_hh:      '📐 Mosaico: tamanho da fonte HH:00 (px)',
@@ -5685,8 +5716,9 @@ async function _loadConfigSistema() {
     const fOrdem   = document.getElementById('cfg-ordem-fields');
     const fSistema = document.getElementById('cfg-sistema-fields');
     const fAlertas = document.getElementById('cfg-alertas-fields');
+    const fGrafico = document.getElementById('cfg-grafico-fields');
     const loadHtml = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = loadHtml;
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = loadHtml;
 
     // Opções para selects de tipo_mercado
     const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
@@ -5926,9 +5958,16 @@ async function _loadConfigSistema() {
                 <span id="cfg-testar-msg" style="font-size:11px;margin-left:10px"></span>
             </div>`;
 
+        fGrafico.innerHTML =
+            `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+                Define quais botões do gráfico começam ativos quando a página é carregada.
+                Você pode alterá-los a qualquer momento clicando nos botões da barra do gráfico.
+            </div>` +
+            (byGroup.grafico || []).map(d => _toggleHtml(d)).join('');
+
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = err;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = err;
     }
 }
 
