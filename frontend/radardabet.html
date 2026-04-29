@@ -3183,10 +3183,15 @@ function grupos() {
     const agora  = new Date(Date.now() + BET365_OFFSET_MS);
     const byHour = new Map();
 
-    // 1. Cria PRIMEIRO os slots exatos: S.horas passados + próxima hora (para agendados)
-    //    h=-1 = próxima hora, h=0 = hora atual, h=1..S.horas-1 = horas passadas
-    for (let h = -1; h < S.horas; h++) {
+    // 1. Cria PRIMEIRO os slots exatos: S.horas passados
+    for (let h = 0; h < S.horas; h++) {
         const ms  = utcHourStart(new Date(agora.getTime() - h * 3600000));
+        const key = horaKey(new Date(ms));
+        byHour.set(key, { key, hora: new Date(ms), jogos: [] });
+    }
+    // Slot da próxima hora: apenas quando "Próximos Jogos" está ativo
+    if (S.showProximos) {
+        const ms  = utcHourStart(new Date(agora.getTime() + 3600000));
         const key = horaKey(new Date(ms));
         byHour.set(key, { key, hora: new Date(ms), jogos: [] });
     }
