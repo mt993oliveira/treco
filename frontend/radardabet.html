@@ -3394,12 +3394,6 @@ function renderGrafico() {
     const datasets = [];
     const ativos = opcoes.filter(f => S.linhas[f.id]);
 
-    // % acumulada corrida: hits até i / jogos até i * 100
-    const cumPct = pts => pts.map((_, i) => {
-        const hits = pts.slice(0, i + 1).filter(v => v).length;
-        return +((hits / (i + 1)) * 100).toFixed(1);
-    });
-
     // Rolling hit rate: % de hits nos últimos N jogos (0/1 brutos)
     const rollingPct = (hits, n) => hits.map((_, i) => {
         const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
@@ -3425,11 +3419,13 @@ function renderGrafico() {
                 _isEquilibrio: true });
             return;
         }
-        const pts  = hitsMap[f.id];
-        const pct  = Math.round(pts.filter(v => v).length / serie.length * 100);
+        const pts      = hitsMap[f.id];
+        const pct      = Math.round(pts.filter(v => v).length / serie.length * 100);
         const isPrimario = S.filtro === f.id;
-        const data = cumPct(pts);
-        const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
+        const n1       = S.grafMM1 || 9;
+        const data     = rollingPct(pts, n1);   // linha principal = rolling MM1
+        const cor      = (S._chartCores && S._chartCores[f.id]) || f.cor;
+        const corHex   = cor.startsWith('#') ? cor : '#64748b';
 
         // Topo e Fundo: destaca índice de max (amarelo) e min (vermelho)
         let pointRadius = isPrimario ? 5 : 3;
@@ -3453,36 +3449,20 @@ function renderGrafico() {
             pointRadius,
             pointHoverRadius: 5,
             pointBackgroundColor: pointBgColor,
-            tension: 0,
+            tension: 0.2,
             _filtroId: f.id,
         });
 
-        // Médias móveis rolling: MM curta (MM1) e MM longa (MM2)
+        // MM longa — tendência de prazo mais longo (visível quando 📈 MM ativo)
         if (S.grafMedias) {
-            const n1 = S.grafMM1 || 9;
             const n2 = S.grafMM2 || 21;
-            const corHex = cor.startsWith('#') ? cor : '#64748b';
-            // MM curta — mais reativa, tracejado curto, 75% opacidade
-            datasets.push({
-                type: 'line',
-                label: `${f.label} MM${n1}`,
-                data: rollingPct(pts, n1),
-                borderColor: _rgba(corHex, 0.75),
-                backgroundColor: 'transparent',
-                borderWidth: 1.5,
-                borderDash: [5, 3],
-                pointRadius: 0,
-                tension: 0.3,
-                _isMA: true,
-            });
-            // MM longa — mais suave, tracejado espaçado, 45% opacidade
             datasets.push({
                 type: 'line',
                 label: `${f.label} MM${n2}`,
                 data: rollingPct(pts, n2),
                 borderColor: _rgba(corHex, 0.45),
                 backgroundColor: 'transparent',
-                borderWidth: 1,
+                borderWidth: 1.5,
                 borderDash: [2, 5],
                 pointRadius: 0,
                 tension: 0.4,
@@ -3511,20 +3491,22 @@ function renderGrafico() {
                 if (!meta.data || !meta.data.length) return;
                 const data = ds.data;
 
-                // ── Exibir %: valor no último ponto de cada linha ──
+                // ── Exibir %: valor em cada ponto da linha (com espaçamento mínimo) ──
                 if (S.grafPct) {
-                    const lastPt  = meta.data[meta.data.length - 1];
-                    const lastVal = data[data.length - 1];
-                    if (lastPt && lastVal != null) {
-                        ctx2.save();
-                        ctx2.font        = 'bold 9px sans-serif';
-                        ctx2.fillStyle   = ds.borderColor;
-                        ctx2.textAlign   = 'left';
-                        ctx2.shadowColor = '#000';
-                        ctx2.shadowBlur  = 3;
-                        ctx2.fillText(`${lastVal}%`, lastPt.x + 5, lastPt.y + 3);
-                        ctx2.restore();
-                    }
+                    ctx2.save();
+                    ctx2.font        = 'bold 7px sans-serif';
+                    ctx2.fillStyle   = ds.borderColor;
+                    ctx2.textAlign   = 'center';
+                    ctx2.shadowColor = '#000';
+                    ctx2.shadowBlur  = 2;
+                    let lastLblX = -999;
+                    meta.data.forEach((pt, i) => {
+                        if (!pt || data[i] == null) return;
+                        if (pt.x - lastLblX < 24) return; // pula se muito próximo do anterior
+                        ctx2.fillText(`${data[i]}%`, pt.x, pt.y - 5);
+                        lastLblX = pt.x;
+                    });
+                    ctx2.restore();
                 }
 
                 // ── Congestão: janela deslizante de 5 pontos, range ≤ 8% ──
