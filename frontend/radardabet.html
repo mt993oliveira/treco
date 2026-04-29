@@ -3428,11 +3428,13 @@ function renderGrafico() {
         const corHex   = cor.startsWith('#') ? cor : '#64748b';
 
         // Topo e Fundo: destaca índice de max (amarelo) e min (vermelho)
+        // Ignora os primeiros n1-1 pontos (warm-up da janela rolling)
         let pointRadius = isPrimario ? 5 : 3;
         let pointBgColor = isPrimario ? pts.map(v => v ? cor : '#dc2626') : cor;
         if (S.grafTopoFundo && data.length > 1) {
-            const maxIdx = data.reduce((b, v, i) => v > data[b] ? i : b, 0);
-            const minIdx = data.reduce((b, v, i) => v < data[b] ? i : b, 0);
+            const warmup = Math.min(n1 - 1, data.length - 1);
+            const maxIdx = data.reduce((b, v, i) => i >= warmup && v > data[b] ? i : b, warmup);
+            const minIdx = data.reduce((b, v, i) => i >= warmup && v < data[b] ? i : b, warmup);
             const base   = isPrimario ? pts.map(v => v ? cor : '#dc2626') : data.map(() => cor);
             pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : (isPrimario ? 5 : 3));
             pointBgColor = base.map((c, i) => i === maxIdx ? '#fbbf24' : i === minIdx ? '#f87171' : c);
