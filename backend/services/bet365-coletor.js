@@ -25,6 +25,8 @@ const http   = require('http');
 const dotenv = require('dotenv');
 dotenv.config();
 
+const { dispararAlerta } = require('./alertas');
+
 const fs   = require('fs');
 const path = require('path');
 
@@ -221,6 +223,7 @@ class Bet365Coletor {
         this.cfg                 = null;
         this.ultimaColetaSucesso = null;
         this.ultimoErro          = null;
+        this._ultimoAlertaLoginTs = 0; // throttle: evita spam de alertas de login
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1264,34 +1267,49 @@ class Bet365Coletor {
             await this._delay(this._cfgNum('delay_modal_login_ms', 2500));
 
             // Passo 2: clica em "Login" no modal (credenciais já preenchidas pelo browser/cookies)
+            let sessaoOk = false;
             const clicou = await pg.evaluate(() => {
-                // Botão com texto exato "Login" para não re-clicar no aviso
                 const btn = [...document.querySelectorAll('button')]
                     .find(b => (b.textContent || '').trim() === 'Login');
                 if (btn) { btn.click(); return true; }
                 return false;
             });
 
-            if (!clicou) {
-                console.log('   ⚠️  Botão "Login" não encontrado no modal — tentando com credenciais .env...');
-                await this._loginComCredenciais(pg);
-                return;
+            if (clicou) {
+                console.log('   ⏳ Aguardando confirmação do login (cookie)...');
+                await this._delay(this._cfgNum('delay_pos_login_ms', 4000));
+                sessaoOk = await pg.evaluate(() =>
+                    ![...document.querySelectorAll('button')].some(b =>
+                        (b.textContent || '').trim().includes('Faça Login para Assistir'))
+                );
             }
 
-            console.log('   ⏳ Aguardando confirmação do login (cookie)...');
-            await this._delay(this._cfgNum('delay_pos_login_ms', 4000));
+            // Fallback: credenciais do .env
+            if (!sessaoOk) {
+                const motivo = clicou ? 'Cookie insuficiente' : 'Botão "Login" não encontrado no modal';
+                console.log(`   ⚠️  ${motivo} — tentando com credenciais .env...`);
+                sessaoOk = await this._loginComCredenciais(pg);
+            }
 
-            // Verifica se o aviso sumiu
-            const sessaoOk = await pg.evaluate(() =>
-                ![...document.querySelectorAll('button')].some(b =>
-                    (b.textContent || '').trim().includes('Faça Login para Assistir'))
-            );
-
-            if (sessaoOk) {
-                console.log('   ✅ Sessão restaurada via cookie!');
-            } else {
-                console.log('   ⚠️  Cookie insuficiente — tentando com credenciais .env...');
-                await this._loginComCredenciais(pg);
+            // ── Notificação Telegram ───────────────────────────────
+            const agora = new Date().toLocaleTimeString('pt-BR');
+            const throttle = 10 * 60 * 1000; // máx 1 alerta de login a cada 10 min
+            if (Date.now() - this._ultimoAlertaLoginTs >= throttle) {
+                this._ultimoAlertaLoginTs = Date.now();
+                const pool = await this.conectarBanco().catch(() => null);
+                if (sessaoOk) {
+                    console.log('   ✅ Sessão restaurada!');
+                    dispararAlerta(this.cfg, pool,
+                        '🔐 Sessão Bet365 expirou — restaurada',
+                        `A tela de login foi detectada e o acesso foi restaurado automaticamente.\n✅ Coleta continuando normalmente.\n🕐 ${agora}`
+                    ).catch(() => {});
+                } else {
+                    console.log('   ❌ Não foi possível restaurar a sessão');
+                    dispararAlerta(this.cfg, pool,
+                        '❌ Sessão Bet365 expirou — falha no login',
+                        `A tela de login foi detectada mas o auto-login não funcionou.\n⚠️ Intervenção manual necessária: abra o Edge e faça o login.\n🕐 ${agora}`
+                    ).catch(() => {});
+                }
             }
         } catch(e) {
             console.warn('   ⚠️  _verificarSessao:', e.message);
