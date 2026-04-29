@@ -1801,9 +1801,15 @@ async function carregarConfigLigas() {
         S._maxValueBets       = cfg.max_value_bets  !== undefined ? parseInt(cfg.max_value_bets)  : 5;
         S._maxTendencias      = cfg.max_tendencias  !== undefined ? parseInt(cfg.max_tendencias)  : 8;
 
+        // Modo manutenção
+        S._manutencaoAtiva    = cfg.manutencao_ativa    === 'true';
+        S._manutencaoMensagem = cfg.manutencao_mensagem || 'Estamos realizando melhorias no sistema. Voltamos em breve!';
+        S._manutencaoPrevisao = cfg.manutencao_previsao || '';
+
         // Aplica visibilidade das seções
         S._cfgSecoes = cfg;
         _aplicarConfigFrontend();
+        _verificarManutencao();
 
     } catch(e) {
         // falha silenciosa — mantém defaults
@@ -5496,6 +5502,10 @@ const _CFG_LABELS = {
     default_tipo_mercado:       'Tipo de mercado padrão (Análise)',
     default_janela_recente:     'Janela recente padrão em jogos (Análise)',
     default_so_value_bets:      'Apenas value bets por padrão (Análise)',
+    // Manutenção
+    manutencao_ativa:           '🚧 Ativar modo manutenção (bloqueia usuários não-Master)',
+    manutencao_mensagem:        '🚧 Mensagem exibida na tela de manutenção',
+    manutencao_previsao:        '🚧 Previsão de retorno (ex: "às 14:00" ou "em 30 min")',
     // Sistema
     sessao_timeout_minutos:     'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)',
     // Seções
@@ -6598,6 +6608,37 @@ async function setPadraoLogin() {
 }
 
 // ============================================================
+// MODO MANUTENÇÃO
+// ============================================================
+function _verificarManutencao() {
+    const u       = _getUser();
+    const overlay = document.getElementById('overlay-manutencao');
+    const banner  = document.getElementById('banner-manutencao-master');
+    if (!overlay) return;
+
+    if (!S._manutencaoAtiva) {
+        overlay.style.display = 'none';
+        if (banner) banner.style.display = 'none';
+        return;
+    }
+
+    if (u?.TipoUsuario === 'master') {
+        overlay.style.display = 'none';
+        if (banner) banner.style.display = 'flex';
+        return;
+    }
+
+    // Usuário não-master: bloqueia com overlay
+    const msgEl = document.getElementById('mnt-msg');
+    const prevEl = document.getElementById('mnt-previsao');
+    if (msgEl)  msgEl.textContent  = S._manutencaoMensagem;
+    if (prevEl) prevEl.textContent = S._manutencaoPrevisao
+        ? `⏱️ Previsão de retorno: ${S._manutencaoPrevisao}`
+        : '';
+    overlay.style.display = 'flex';
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -7137,6 +7178,74 @@ function limparDesenho() {
 
 <!-- Onboarding Tour -->
 <script src="/tour.js" defer></script>
+
+<!-- ========== OVERLAY: MODO MANUTENÇÃO ========== -->
+<div id="overlay-manutencao" style="display:none;position:fixed;inset:0;z-index:9998;
+     background:linear-gradient(135deg,#020812 0%,#060d1a 50%,#020c14 100%);
+     align-items:center;justify-content:center;font-family:system-ui,sans-serif">
+    <style>
+        @keyframes mnt-spin-cw  { to { transform:rotate(360deg); } }
+        @keyframes mnt-spin-ccw { to { transform:rotate(-360deg); } }
+        @keyframes mnt-bar      { 0%{left:-40%} 100%{left:120%} }
+        @keyframes mnt-pulse    { 0%,100%{opacity:.25;transform:scale(.85)} 50%{opacity:1;transform:scale(1)} }
+        @keyframes mnt-glow     { 0%,100%{text-shadow:0 0 20px #1fcc5940} 50%{text-shadow:0 0 40px #1fcc59cc,0 0 80px #1fcc5940} }
+        @keyframes mnt-fade-in  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    </style>
+    <div style="text-align:center;max-width:520px;padding:48px 32px;animation:mnt-fade-in .5s ease-out">
+
+        <!-- Engrenagens animadas -->
+        <div style="position:relative;height:90px;display:flex;align-items:center;justify-content:center;margin-bottom:28px">
+            <span style="font-size:64px;display:inline-block;animation:mnt-spin-cw 6s linear infinite;filter:drop-shadow(0 0 12px #1fcc5966)">⚙️</span>
+            <span style="font-size:32px;display:inline-block;animation:mnt-spin-ccw 4s linear infinite;position:absolute;top:6px;right:calc(50% - 72px);filter:drop-shadow(0 0 8px #1fcc5944)">⚙️</span>
+            <span style="font-size:24px;display:inline-block;animation:mnt-spin-cw 3s linear infinite;position:absolute;bottom:0px;left:calc(50% - 68px);filter:drop-shadow(0 0 6px #1fcc5933)">⚙️</span>
+        </div>
+
+        <!-- Título -->
+        <h1 style="font-size:30px;font-weight:800;color:#f1f5f9;margin:0 0 6px;letter-spacing:-0.5px">
+            Em Manutenção
+        </h1>
+        <p style="font-size:11px;font-weight:700;color:#1fcc59;letter-spacing:3px;margin:0 0 28px;animation:mnt-glow 3s ease-in-out infinite">
+            RADARDABET
+        </p>
+
+        <!-- Barra de progresso animada -->
+        <div style="width:100%;height:3px;background:#0f172a;border-radius:3px;overflow:hidden;margin-bottom:32px;position:relative">
+            <div style="position:absolute;top:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,#1fcc59,#4ade80,transparent);
+                        border-radius:3px;animation:mnt-bar 2.2s ease-in-out infinite"></div>
+        </div>
+
+        <!-- Mensagem customizável -->
+        <p id="mnt-msg" style="font-size:15px;color:#94a3b8;line-height:1.7;margin:0 0 12px;max-width:380px;margin-left:auto;margin-right:auto">
+            Estamos realizando melhorias no sistema.
+        </p>
+
+        <!-- Previsão de retorno -->
+        <p id="mnt-previsao" style="font-size:12px;color:#475569;margin:0 0 36px;min-height:18px"></p>
+
+        <!-- Pontos pulsantes -->
+        <div style="display:flex;gap:10px;justify-content:center;margin-bottom:40px">
+            <div style="width:9px;height:9px;border-radius:50%;background:#1fcc59;animation:mnt-pulse 1.5s ease-in-out infinite"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#1fcc59;animation:mnt-pulse 1.5s ease-in-out .25s infinite"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#1fcc59;animation:mnt-pulse 1.5s ease-in-out .5s infinite"></div>
+        </div>
+
+        <!-- Rodapé -->
+        <p style="font-size:10px;color:#1e293b;margin:0">
+            Pedimos desculpas pelo inconveniente. Em breve estaremos de volta!
+        </p>
+    </div>
+</div>
+
+<!-- Banner master (manutenção ativa mas master pode continuar) -->
+<div id="banner-manutencao-master" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9997;
+     background:linear-gradient(90deg,#7c2d12,#92400e);border-bottom:2px solid #f97316;
+     padding:6px 16px;display:none;align-items:center;justify-content:space-between;gap:12px">
+    <span style="font-size:11px;color:#fed7aa;font-weight:600">
+        🚧 <strong>Modo Manutenção ATIVO</strong> — usuários não-Master estão bloqueados. Desative em ⚙️ Configurações do Sistema → Sistema.
+    </span>
+    <button onclick="document.getElementById('banner-manutencao-master').style.display='none'"
+        style="background:none;border:none;color:#fb923c;font-size:16px;cursor:pointer;flex-shrink:0;line-height:1">×</button>
+</div>
 
 </body>
 </html>
