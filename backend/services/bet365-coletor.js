@@ -1261,7 +1261,7 @@ class Bet365Coletor {
                     .find(b => (b.textContent || '').trim().includes('Faça Login para Assistir'));
                 if (btn) btn.click();
             });
-            await this._delay(2500);
+            await this._delay(this._cfgNum('delay_modal_login_ms', 2500));
 
             // Passo 2: clica em "Login" no modal (credenciais já preenchidas pelo browser/cookies)
             const clicou = await pg.evaluate(() => {
@@ -1279,7 +1279,7 @@ class Bet365Coletor {
             }
 
             console.log('   ⏳ Aguardando confirmação do login (cookie)...');
-            await this._delay(4000);
+            await this._delay(this._cfgNum('delay_pos_login_ms', 4000));
 
             // Verifica se o aviso sumiu
             const sessaoOk = await pg.evaluate(() =>
