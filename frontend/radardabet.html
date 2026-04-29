@@ -3180,39 +3180,31 @@ function utcHourStart(d) {
 }
 
 function grupos() {
+    const agora  = new Date(Date.now() + BET365_OFFSET_MS);
     const byHour = new Map();
 
-    // Popula com partidas existentes
-    // Força parsing como UTC (sem sufixo Z o browser adiciona fuso local, deslocando +3h em BRT)
+    // 1. Cria PRIMEIRO os slots exatos: S.horas passados + próxima hora (para agendados)
+    //    h=-1 = próxima hora, h=0 = hora atual, h=1..S.horas-1 = horas passadas
+    for (let h = -1; h < S.horas; h++) {
+        const ms  = utcHourStart(new Date(agora.getTime() - h * 3600000));
+        const key = horaKey(new Date(ms));
+        byHour.set(key, { key, hora: new Date(ms), jogos: [] });
+    }
+
+    // 2. Distribui partidas APENAS nos slots criados — descarta jogos fora da janela
+    //    (evita bucket extra da hora parcial que o backend retorna em now-Nh)
     S.partidas.forEach(p => {
         if (!p.data_partida) return;
-        const raw = typeof p.data_partida === 'string' ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z') : p.data_partida;
+        const raw = typeof p.data_partida === 'string'
+            ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z')
+            : p.data_partida;
         const d = new Date(raw);
         if (isNaN(d)) return;
         const key = horaKey(d);
-        if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(utcHourStart(d)), jogos: [] });
-        byHour.get(key).jogos.push(p);
+        if (byHour.has(key)) byHour.get(key).jogos.push(p);
     });
 
-    // Garante slots para o período selecionado + próxima hora (prévia de agendados)
-    const agora = new Date(Date.now() + BET365_OFFSET_MS);
-
-    // Slots do passado: S.horas horas para trás
-    for (let h = 0; h < S.horas; h++) {
-        const ms  = utcHourStart(new Date(agora.getTime() - h * 3600000));
-        const key = horaKey(new Date(ms));
-        if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(ms), jogos: [] });
-    }
-
-    // Filtra artefatos muito no futuro (>2h): evita entradas de rollover do coletor antigo
-    const limFuturo = agora.getTime() + 2 * 3600000;
-    const validos = [...byHour.values()].filter(g => g.hora.getTime() <= limFuturo);
-
-    // Ordena desc, limita a S.horas+1 linhas (S.horas passado + 1 próxima), depois reverte para asc
-    return validos
-        .sort((a, b) => b.hora - a.hora)
-        .slice(0, S.horas + 1)
-        .sort((a, b) => a.hora - b.hora);
+    return [...byHour.values()].sort((a, b) => a.hora - b.hora);
 }
 
 // Série flat de todas as partidas para o gráfico — usa os mesmos slots do mosaico
