@@ -1478,7 +1478,6 @@ const CONFIG_DEFAULTS = [
     { chave:'mosaico_celula_fonte',         valor:'11',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte das células de jogo (px)' },
     // ── Gráfico — padrões dos botões ──
     { chave:'grafico_altura',      valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico: altura do painel (px; 80–600)' },
-    { chave:'grafico_fixa',        valor:'true',  tipo:'boolean', grupo:'grafico', descricao:'Gráfico: escala Y fixa em 0–100% por padrão' },
     { chave:'grafico_pct',         valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir % no final das linhas por padrão' },
     { chave:'grafico_topo_fundo',  valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: marcar topo (🟡) e fundo (🔴) por padrão' },
     { chave:'grafico_congest',     valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: destacar zonas de congestão por padrão' },
