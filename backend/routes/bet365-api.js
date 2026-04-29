@@ -1579,7 +1579,13 @@ router.post('/admin/config', async (req, res) => {
             await pool.request()
                 .input('chave', sql.VarChar, chave)
                 .input('valor', sql.VarChar, String(valor))
-                .query(`UPDATE bet365_config SET valor=@valor, atualizado=GETUTCDATE() WHERE chave=@chave`);
+                .query(`
+                    IF EXISTS (SELECT 1 FROM bet365_config WHERE chave=@chave)
+                        UPDATE bet365_config SET valor=@valor, atualizado=GETUTCDATE() WHERE chave=@chave
+                    ELSE
+                        INSERT INTO bet365_config (chave,valor,tipo,grupo,descricao)
+                        VALUES (@chave,@valor,'text','cores','')
+                `);
         }
         res.json({ success: true });
     } catch(e) {
