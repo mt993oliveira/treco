@@ -761,21 +761,23 @@ router.get('/historico-mercados', async (req, res) => {
         request.input('horas', sql.Int, horasNum);
 
         let query = `
-            SELECT evento_id, liga, time_casa, time_fora, data_partida,
-                   mercado, selecao, CAST(odd_paga AS FLOAT) AS odd_paga, data_registro
-            FROM bet365_resultados_mercados
-            WHERE data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
-              AND data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
+            SELECT m.evento_id, m.liga, m.time_casa, m.time_fora, m.data_partida,
+                   m.mercado, m.selecao, CAST(m.odd_paga AS FLOAT) AS odd_paga, m.data_registro,
+                   e.odd_casa, e.odd_empate, e.odd_fora
+            FROM bet365_resultados_mercados m
+            LEFT JOIN bet365_eventos e ON e.id = m.evento_id
+            WHERE m.data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
+              AND m.data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
         `;
 
         if (liga && liga !== 'all') {
-            query += ' AND liga LIKE @liga';
+            query += ' AND m.liga LIKE @liga';
             request.input('liga', sql.NVarChar(200), `%${ligaParaBanco(liga)}%`);
         }
 
         // data_registro DESC garante que linhas mais recentes (resultado final real) venham
         // primeiro ao iterar mkts — evita retornar placar intermediário de jogo em andamento
-        query += ' ORDER BY data_partida ASC, evento_id, data_registro DESC';
+        query += ' ORDER BY m.data_partida ASC, m.evento_id, m.data_registro DESC';
 
         const result = await request.query(query);
 
@@ -801,9 +803,9 @@ router.get('/historico-mercados', async (req, res) => {
                     gol_casa_ht:  null,
                     gol_fora_ht:  null,
                     resultado:    null,
-                    odd_casa:     0,
-                    odd_fora:     0,
-                    odd_empate:   0,
+                    odd_casa:     parseFloat(r.odd_casa) || 0,
+                    odd_fora:     parseFloat(r.odd_fora) || 0,
+                    odd_empate:   parseFloat(r.odd_empate) || 0,
                 });
             }
             gamesMap.get(key).mercados.push({
