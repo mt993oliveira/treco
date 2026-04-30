@@ -133,6 +133,134 @@ function gerarMercadoId(eventoId, mercado, selecao) {
     return Number(BigInt(h) & BigInt('0x7FFFFFFFFFFFFFFF'));
 }
 
+// ============================================================
+// PRÓXIMOS JOGOS VIA extra.bet365.bet.br — IMPLEMENTAÇÃO FUTURA
+// ============================================================
+// Esta função foi desenvolvida e testada no coletor de odds
+// (bet365-coletor-odds.js, commit f8a2f80) e depois removida
+// para ser integrada aqui quando a abordagem for validada.
+//
+// O que faz: abre uma nova aba na URL abaixo, raspa os botões
+// de fixture e retorna os jogos que começam nos próximos N min.
+//
+// URL base: https://extra.bet365.bet.br/results/br?q=<params_b64>
+//
+// Seletores identificados na página (a confirmar se ainda válidos):
+//   button.point-result__fixture         → cada jogo
+//   .point-result__fixture-participant   → participantes (>=2 por jogo)
+//   Texto do participante[0]: "HH.MM NomeTime" (ex: "21.07 Portugal")
+//   Texto do participante[1]: "NomeTime" (ex: "Brasil")
+//
+// IDs das competições (descobertos em 2026-04-26):
+//   World Cup:                compId='20120650', compNome='Copa do Mundo'
+//   Euro Cup:                 compId='20700663', compNome='Euro Cup'
+//   Premiership:              compId='20120653', compNome='Premier League'
+//   Express Cup:              compId='20940364', compNome='Express Cup'
+//   Super Liga Sul-Americana: compId='20849528', compNome='Super Liga Sul-Americana'
+//
+// Parâmetros da querystring (cada item encodado em base64, separados por "|"):
+//   [0]  '2'
+//   [1]  '146'
+//   [2]  'Futebol%20Virtual'
+//   [3]  dateStr     (ex: '2026-04-29')
+//   [4]  dateStr     (mesmo — início e fim do range)
+//   [5]  '0'
+//   [6]  '0'
+//   [7]  displayDate (ex: '29-29 Abril 2026' — formato PT-BR)
+//   [8]  '0'
+//   [9]  compNome    (encodeURIComponent — ex: 'Copa%20do%20Mundo')
+//   [10] compId      (ex: '20120650')
+//   [11] '0'
+//   [12] ''          (vazio — sem b64)
+//   [13] 'fixture'   (ou 'result' para buscar resultados passados)
+//   [14..18] '0','0','0','0','0'
+//   [19] ''          (vazio — sem b64)
+//   [20] '0'
+//   [21] '0'
+//
+// Código da função (pronto para descomentar e adaptar):
+//
+// async function buscarProximosFixtures(pg, ligaNorm, maxProximos = 4) {
+//     const LIGA_COMP = {
+//         'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
+//         'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
+//         'Premiership':              { compId: '20120653', compNome: 'Premier League' },
+//         'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
+//         'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
+//     };
+//     const ligaInfo = LIGA_COMP[ligaNorm];
+//     if (!ligaInfo) return [];
+//
+//     const nowBST  = new Date(Date.now() + 3600000); // UTC+1 (referência Bet365)
+//     const yyyy    = nowBST.getUTCFullYear();
+//     const mm      = nowBST.getUTCMonth();
+//     const dd      = nowBST.getUTCDate();
+//     const dateStr = `${yyyy}-${String(mm+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+//     const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
+//                       'Agosto','Setembro','Outubro','Novembro','Dezembro'];
+//     const displayDate = `${dd}-${dd}%20${MESES_PT[mm]}%20${yyyy}`;
+//
+//     const b64 = s => Buffer.from(s).toString('base64');
+//     const qParams = [
+//         b64('2'), b64('146'), b64('Futebol%20Virtual'),
+//         b64(dateStr), b64(dateStr), b64('0'), b64('0'),
+//         b64(displayDate), b64('0'),
+//         b64(encodeURIComponent(ligaInfo.compNome)),
+//         b64(ligaInfo.compId), b64('0'), '',
+//         b64('fixture'),
+//         b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
+//         '', b64('0'), b64('0'),
+//     ].join('|');
+//     const url = `https://extra.bet365.bet.br/results/br?q=${qParams}`;
+//
+//     const horaAtualBST = nowBST.getUTCHours();
+//     const minAtualBST  = nowBST.getUTCMinutes();
+//
+//     let novaPg = null;
+//     try {
+//         novaPg = await pg.browser().newPage();
+//         await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+//         try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 }); } catch(_) {}
+//         await new Promise(r => setTimeout(r, 1000));
+//
+//         const { futuros, total } = await novaPg.evaluate((h, m, maxN) => {
+//             const buttons = document.querySelectorAll('button.point-result__fixture');
+//             const futuros = [];
+//             for (const btn of buttons) {
+//                 const parts = btn.querySelectorAll('.point-result__fixture-participant');
+//                 if (parts.length < 2) continue;
+//                 const p1    = parts[0].textContent.trim();
+//                 const match = p1.match(/^(\d{1,2})\.(\d{2})\s+(.+)$/);
+//                 if (!match) continue;
+//                 const jH = parseInt(match[1]);
+//                 const jM = parseInt(match[2]);
+//                 const nowMins = h * 60 + m;
+//                 const jMins   = jH * 60 + jM;
+//                 if (jMins > nowMins && jMins <= nowMins + 6) {
+//                     futuros.push({
+//                         horario:  `${jH}:${String(jM).padStart(2,'0')}`,
+//                         timeCasa: match[3].trim(),
+//                         timeFora: parts[1].textContent.trim(),
+//                     });
+//                     if (futuros.length >= maxN) break;
+//                 }
+//             }
+//             return { futuros, total: buttons.length };
+//         }, horaAtualBST, minAtualBST, maxProximos);
+//
+//         console.log(`   📅 [${ligaNorm}] Fixtures: ${total} encontrados | ${futuros.length} próximos`);
+//         if (futuros.length > 0)
+//             console.log(`      → ${futuros.map(f => `${f.horario} ${f.timeCasa} x ${f.timeFora}`).join(' | ')}`);
+//         return futuros;
+//     } catch(err) {
+//         console.warn(`   ⚠️  [${ligaNorm}] Erro fixtures: ${err.message}`);
+//         return [];
+//     } finally {
+//         if (novaPg) await novaPg.close().catch(() => {});
+//     }
+// }
+// ============================================================
+
 // ── Filtro de hora ───────────────────────────────────────────
 function dentroDoFiltroHora(horario) {
     if (!HORA_INI && !HORA_FIM) return true;
