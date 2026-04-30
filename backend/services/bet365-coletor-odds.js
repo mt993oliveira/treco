@@ -264,7 +264,7 @@ async function ciclo(pg) {
     }
 
     console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
-    return { oddsOk, proximosOk };
+    return { oddsOk };
 }
 
 // ── Entry point ──────────────────────────────────────────────
