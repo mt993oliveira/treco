@@ -117,25 +117,6 @@ async function conectarEdge() {
     return { browser, pg };
 }
 
-// ── Tenta ler nomes dos clubes da página (fallback sem mercado) ──
-function _lerNomesEquipes() {
-    // Tenta vários seletores onde os nomes podem aparecer na pré-visualização
-    const seletores = [
-        // Cabeçalho do evento / H2H
-        ['.vr-HeadToHeadParticipantName_Name', 2],
-        // Botões de participante no topo
-        ['.vr-ParticipantName_Name', 2],
-        // Área de detalhes do evento
-        ['.vr-EventDetails_Participant', 2],
-        // Qualquer texto de participante visível
-        ['.vr-Participant_Name', 2],
-    ];
-    for (const [sel, min] of seletores) {
-        const els = [...document.querySelectorAll(sel)].map(e => e.textContent.trim()).filter(Boolean);
-        if (els.length >= min) return { timeCasa: els[0], timeFora: els[1] };
-    }
-    return { timeCasa: null, timeFora: null };
-}
 
 // ── Diagnóstico DOM (chamado uma vez por liga quando sem mercado) ─
 async function diagnosticarPagina(pg, ligaNorm, horario) {
@@ -162,95 +143,95 @@ async function diagnosticarPagina(pg, ligaNorm, horario) {
     if (info.containers.length) console.log(`      Classes: ${info.containers.join(', ')}`);
 }
 
-// ── Lê odds pré-jogo da página principal ────────────────────
-// Busca o pod "Fulltime Result" que NÃO está dentro do bloco race-off
-// (jogo em andamento). O próximo jogo aparece na mesma página,
-// num container separado, sem o elemento .svc-MarketGroup_RaceOff.
+// ── Lê odds pré-jogo ─────────────────────────────────────────
+// Estratégia:
+//   1) Verifica página atual — se tiver pod com odds NÃO suspensas, usa direto
+//   2) Se odds suspensas (jogo em race-off), clica no próximo botão de horário
+//      e aguarda os pods carregarem (waitForSelector, até 6s)
+//   3) Lê odds do pod não suspenso
+//
+// NOTA: .svc-MarketGroup_RaceOff é IRMÃO dos pods, não ancestral.
+// Indicador correto de jogo em andamento: _Suspended em TODOS os participantes.
 async function lerOddsPreJogo(pg) {
-    return await pg.evaluate(() => {
-        // Horário: pega o PRÓXIMO botão de hora (o que vem após o selecionado)
-        const todosHorarios = [...document.querySelectorAll('.vr-EventTimesNavBarButton')];
-        const selIdx = todosHorarios.findIndex(b => b.classList.contains('vr-EventTimesNavBarButton-selected')
-            || b.querySelector('.vr-EventTimesNavBarButton_Text--selected')
-            || b.classList.contains('selected'));
-        const proximoBtn = todosHorarios[selIdx + 1] || todosHorarios[0];
-        const horario = proximoBtn
-            ? proximoBtn.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || proximoBtn.textContent.trim()
-            : null;
-
-        // Encontra TODOS os pods "Fulltime Result"
+    // Função DOM pura: encontra pod Resultado Final com odds NÃO suspensas
+    const lerOddsDOM = () => {
         const allPods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
             .filter(p => {
                 const txt = p.querySelector('.gl-MarketGroupButton_Text')?.textContent.trim();
                 return txt === 'Fulltime Result' || txt === 'Resultado Final';
             });
+        if (allPods.length === 0) return { motivo: 'sem_mercado' };
 
-        if (allPods.length === 0) {
-            const nomes = _lerNomesEquipes();
-            return { motivo: 'sem_mercado', ...nomes };
-        }
-
-        // Escolhe o pod que NÃO está dentro de um bloco com race-off
-        // (race-off pertence ao jogo atual; o próximo jogo fica num bloco separado)
         let ftPod = null;
         for (const pod of allPods) {
-            let el = pod.parentElement;
-            let dentroRaceOff = false;
-            for (let i = 0; i < 8; i++) {
-                if (!el) break;
-                if (el.querySelector(':scope > .svc-MarketGroup_RaceOff')) { dentroRaceOff = true; break; }
-                el = el.parentElement;
-            }
-            if (!dentroRaceOff) { ftPod = pod; break; }
+            const parts = [...pod.querySelectorAll('.srb-ParticipantStackedBorderless')];
+            // Se TODOS estão suspensos = jogo em race-off, pula
+            const allSusp = parts.length > 0 &&
+                parts.every(p => p.classList.contains('srb-ParticipantStackedBorderless_Suspended'));
+            if (!allSusp) { ftPod = pod; break; }
         }
 
-        // Se todos os pods têm race-off → jogo em andamento sem próximo visível ainda
         if (!ftPod) {
-            const nomes = _lerNomesEquipes();
-            return { motivo: 'em_andamento', ...nomes };
+            const sels = [['.vr-HeadToHeadParticipantName_Name',2],['.vr-ParticipantName_Name',2],['.vr-EventDetails_Participant',2]];
+            for (const [s,m] of sels) {
+                const els = [...document.querySelectorAll(s)].map(e => e.textContent.trim()).filter(Boolean);
+                if (els.length >= m) return { motivo: 'em_andamento', timeCasa: els[0], timeFora: els[1] };
+            }
+            return { motivo: 'em_andamento' };
         }
 
-        const participantes = [];
-        for (const el of ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')) {
-            const nEl = el.querySelector('.srb-ParticipantStackedBorderless_Name');
-            const oEl = el.querySelector('.srb-ParticipantStackedBorderless_Odds');
-            participantes.push({
-                nome: nEl ? nEl.textContent.trim() : '',
-                odd:  oEl ? parseFloat(oEl.textContent.trim()) || 0 : 0,
-            });
-        }
-
+        const participantes = [...ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')].map(el => ({
+            nome: el.querySelector('.srb-ParticipantStackedBorderless_Name')?.textContent.trim() || '',
+            odd:  parseFloat(el.querySelector('.srb-ParticipantStackedBorderless_Odds')?.textContent.trim()) || 0,
+        }));
         if (participantes.length < 3) return { motivo: 'participantes_insuficientes', qtd: participantes.length };
 
         const isEmpate = n => n === 'Draw' || n === 'Empate';
         const empIdx   = participantes.findIndex(p => isEmpate(p.nome));
         const times    = participantes.filter(p => !isEmpate(p.nome));
-
-        const oddCasa   = times[0]?.odd  || 0;
+        const oddCasa   = times[0]?.odd || 0;
         const oddEmpate = empIdx >= 0 ? participantes[empIdx].odd : 0;
-        const oddFora   = times[1]?.odd  || 0;
+        const oddFora   = times[1]?.odd || 0;
         const timeCasa  = times[0]?.nome || null;
         const timeFora  = times[1]?.nome || null;
 
         if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0)
             return { motivo: 'odds_zeradas' };
 
-        return { ok: true, horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
+        return { ok: true, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
+    };
 
-        function _lerNomesEquipes() {
-            const seletores = [
-                ['.vr-HeadToHeadParticipantName_Name', 2],
-                ['.vr-ParticipantName_Name', 2],
-                ['.vr-EventDetails_Participant', 2],
-                ['.vr-Participant_Name', 2],
-            ];
-            for (const [sel, min] of seletores) {
-                const els = [...document.querySelectorAll(sel)].map(e => e.textContent.trim()).filter(Boolean);
-                if (els.length >= min) return { timeCasa: els[0], timeFora: els[1] };
-            }
-            return { timeCasa: null, timeFora: null };
-        }
+    // 1ª tentativa: página atual
+    let odds = await pg.evaluate(lerOddsDOM);
+    if (odds.ok) return odds;
+
+    // 2ª tentativa: clica no próximo botão de horário (o não selecionado imediatamente após o atual)
+    const horarioClicado = await pg.evaluate(() => {
+        const btns = [...document.querySelectorAll('.vr-EventTimesNavBarButton')];
+        const selIdx = btns.findIndex(b =>
+            b.classList.contains('vr-EventTimesNavBarButton-selected') ||
+            b.querySelector('.vr-EventTimesNavBarButton_Text--selected') ||
+            b.classList.contains('selected'));
+        const proximo = selIdx >= 0 ? btns[selIdx + 1] : btns[0];
+        if (!proximo) return null;
+        const texto = proximo.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim()
+            || proximo.textContent.trim();
+        proximo.click();
+        return texto;
     });
+
+    if (!horarioClicado) return { motivo: 'sem_botao_proximo' };
+
+    // Aguarda pods aparecerem (re-render da página ao mudar de horário)
+    try {
+        await pg.waitForSelector('.gl-MarketGroupPod.gl-MarketGroup', { timeout: 6000 });
+    } catch(_) {
+        return { motivo: 'sem_mercado', horario: horarioClicado };
+    }
+    await new Promise(r => setTimeout(r, 500));
+
+    odds = await pg.evaluate(lerOddsDOM);
+    return { ...odds, horario: horarioClicado };
 }
 
 // ── Salva evento no banco (MERGE) ────────────────────────────
