@@ -137,6 +137,31 @@ function _lerNomesEquipes() {
     return { timeCasa: null, timeFora: null };
 }
 
+// ── Diagnóstico DOM (chamado uma vez por liga quando sem mercado) ─
+async function diagnosticarPagina(pg, ligaNorm, horario) {
+    const info = await pg.evaluate(() => {
+        // Conta elementos chave para entender o estado da página
+        return {
+            pods:         document.querySelectorAll('.gl-MarketGroupPod').length,
+            marketGroups: document.querySelectorAll('.gl-MarketGroup').length,
+            glMarkets:    document.querySelectorAll('[class*="gl-Market"]').length,
+            vrMarkets:    document.querySelectorAll('[class*="vr-Market"]').length,
+            svcMarkets:   document.querySelectorAll('[class*="svc-Market"]').length,
+            raceOff:      !!document.querySelector('.svc-MarketGroup_RaceOff'),
+            // Primeiros textos de botões de mercado visíveis
+            btnTextos:    [...document.querySelectorAll('[class*="MarketGroupButton_Text"],[class*="MarketGroup_Title"]')]
+                              .slice(0, 6).map(e => e.textContent.trim()),
+            // Classes dos containers principais
+            containers:   [...new Set([...document.querySelectorAll('[class*="MarketGroup"]')]
+                              .map(e => e.className.split(' ').find(c => c.includes('MarketGroup')) || ''))
+                          ].slice(0, 10),
+        };
+    });
+    console.log(`   🔬 [${ligaNorm}] ${horario} DOM: pods=${info.pods} groups=${info.marketGroups} gl=${info.glMarkets} vr=${info.vrMarkets} svc=${info.svcMarkets} raceOff=${info.raceOff}`);
+    if (info.btnTextos.length) console.log(`      Botões mercado: ${info.btnTextos.join(' | ')}`);
+    if (info.containers.length) console.log(`      Classes: ${info.containers.join(', ')}`);
+}
+
 // ── Lê odds pré-jogo da página principal ────────────────────
 async function lerOddsPreJogo(pg) {
     return await pg.evaluate(() => {
@@ -150,7 +175,6 @@ async function lerOddsPreJogo(pg) {
             });
 
         if (!ftPod) {
-            // Sem mercado — tenta pegar nomes dos clubes de outra forma
             const nomes = _lerNomesEquipes();
             return { motivo: 'sem_mercado', ...nomes };
         }
@@ -339,6 +363,10 @@ async function ciclo(pg) {
                         oddsOk++;
                     } else {
                         console.log(`   ⏭️  [${ligaNorm}] ${h.texto}${clubes} — ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
+                        // Diagnóstico apenas no primeiro "sem mercado" de cada liga (2º horário = próximo jogo)
+                        if (odds.motivo === 'sem_mercado' && h.idx === horarios[1]?.idx) {
+                            await diagnosticarPagina(pg, ligaNorm, h.texto);
+                        }
                     }
                 }
             }
