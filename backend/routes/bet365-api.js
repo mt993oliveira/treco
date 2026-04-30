@@ -1486,6 +1486,9 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_medias',      valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir médias móveis por padrão' },
     { chave:'grafico_mm1',         valor:'9',     tipo:'number',  grupo:'grafico', descricao:'Gráfico: período da MM curta (padrão 9 jogos)' },
     { chave:'grafico_mm2',         valor:'21',    tipo:'number',  grupo:'grafico', descricao:'Gráfico: período da MM longa (padrão 21 jogos)' },
+    // ── Coletores ──
+    { chave:'coletor2_ativo', valor:'true',  tipo:'boolean', grupo:'sistema', descricao:'⚡ Coletor 2 (Odds pré-jogo) — ativar/pausar coleta automática de odds' },
+    { chave:'coletor3_ativo', valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📚 Coletor 3 (Histórico) — ativar/pausar backfill de dados históricos' },
     // ── Sistema ──
     { chave:'manutencao_ativa',             valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'Ativar modo manutenção — bloqueia acesso de usuários não-Master' },
     { chave:'manutencao_mensagem',          valor:'Estamos realizando melhorias no sistema. Voltamos em breve!', tipo:'text', grupo:'sistema', descricao:'Mensagem exibida na tela de manutenção' },

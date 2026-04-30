@@ -411,6 +411,17 @@ async function run() {
         console.log(`============================================`);
 
         try {
+            // Verifica se coletor 2 está ativo nas configurações do sistema
+            try {
+                const db  = await getPool();
+                const res = await db.request().query(`SELECT valor FROM bet365_config WHERE chave = 'coletor2_ativo'`);
+                if (res.recordset[0]?.valor === 'false') {
+                    console.log(`   ⏸️  [Odds] Coletor 2 pausado nas configurações do sistema.`);
+                    await new Promise(r => setTimeout(r, INTERVALO_MS));
+                    continue;
+                }
+            } catch(_) { /* DB indisponível — continua normalmente */ }
+
             if (!pg || pg.isClosed()) {
                 const conn = await conectarEdge();
                 browser = conn.browser;
