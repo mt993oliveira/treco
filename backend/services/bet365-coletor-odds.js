@@ -319,12 +319,11 @@ async function ciclo(pg) {
         const nomeLiga = ligasFiltradas[i];
         const ligaNorm = normalizarNomeLiga(nomeLiga);
         try {
-            // Captura identidade do conteúdo atual antes de navegar
-            // (usado para detectar quando o re-render da nova liga completou)
-            const conteudoAntes = await pg.evaluate(() => {
-                const names = [...document.querySelectorAll('.srb-ParticipantStackedBorderless_Name')];
-                return names.slice(0, 2).map(n => n.textContent.trim()).join('|');
-            });
+            // Captura times atuais para detectar se esta liga tem o mesmo jogo (aviso de possível duplicata)
+            const timesAntes = await pg.evaluate(() =>
+                [...document.querySelectorAll('.srb-ParticipantStackedBorderless_Name')]
+                    .slice(0, 2).map(n => n.textContent.trim()).join('|')
+            );
 
             // Clica na aba da liga
             const clicou = await pg.evaluate((nome) => {
@@ -339,32 +338,17 @@ async function ciclo(pg) {
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
 
-            // Se havia conteúdo anterior, aguarda ele mudar (indica re-render da nova liga)
-            // Timeout curto: se não mudar em 3s, pode ser mesmo jogo em todas as ligas
-            if (conteudoAntes.length > 0) {
-                const mudou = await pg.waitForFunction(
-                    (antes) => {
-                        const names = [...document.querySelectorAll('.srb-ParticipantStackedBorderless_Name')];
-                        const agora = names.slice(0, 2).map(n => n.textContent.trim()).join('|');
-                        return agora.length > 0 && agora !== antes;
-                    },
-                    { timeout: 3000 },
-                    conteudoAntes
-                ).then(() => true).catch(() => false);
-                if (!mudou) {
-                    console.log(`   🔁 [${ligaNorm}] Conteúdo igual à liga anterior (mesmo jogo ou timeout)`);
-                }
-            }
+            // Pausa para o re-render da nova liga iniciar antes de aguardar pods
+            await new Promise(r => setTimeout(r, 800));
 
-            // Aguarda pods ou indicador de race-off estarem na página
+            // Aguarda pods ou indicador de race-off (se não aparecer em 6s = sem jogo no momento)
             try {
                 await pg.waitForSelector(
                     '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff, .svc-MarketGroup-eventstarted',
-                    { timeout: 8000 }
+                    { timeout: 6000 }
                 );
             } catch(_) {
-                console.log(`   ⏳ [${ligaNorm}] Conteúdo não carregou em 8s`);
-                await diagnosticarPagina(pg, ligaNorm, '(timeout)');
+                console.log(`   ⏭️  [${ligaNorm}] Sem jogo no momento`);
                 continue;
             }
 
@@ -390,8 +374,12 @@ async function ciclo(pg) {
         } catch(err) {
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
-        // Sem hard refresh entre ligas — o reload inicial já garante estado limpo
-        // e evitar refresh por liga reduz o ciclo de ~5min para ~30s
+
+        // Hard refresh após cada liga (exceto a última) — reseta o estado do SPA
+        // para garantir que a próxima liga carregue corretamente ao clicar na aba
+        if (i < ligasFiltradas.length - 1) {
+            await hardRefresh(pg);
+        }
     }
 
     console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
