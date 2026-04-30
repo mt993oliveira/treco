@@ -109,7 +109,7 @@ async function conectarEdge() {
         req.on('error', reject);
         req.setTimeout(5000, () => { req.destroy(); reject(new Error(`timeout porta ${DEBUG_PORT}`)); });
     });
-    const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null });
+    const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null, protocolTimeout: 60000 });
     const pages   = await browser.pages();
     const pg      = pages.find(p => { try { return p.url().includes('bet365'); } catch(_) { return false; } });
     if (!pg) throw new Error('Aba bet365 não encontrada na porta ' + DEBUG_PORT);
@@ -319,18 +319,18 @@ async function ciclo(pg) {
             await pg.bringToFront();
 
             // Clique nativo via ElementHandle — dispara eventos reais de mouse (mousedown/up/click)
-            // O SPA do Bet365 ignora element.click() sintético para carregar conteúdo da liga
-            const tabs = await pg.$$('.vrl-MeetingsHeaderButton');
-            let clicou = false;
-            for (const tab of tabs) {
-                const titulo = await pg.evaluate(
-                    el => el.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '', tab
+            // Busca o índice em uma única chamada evaluate (evita N round-trips ao browser)
+            const tabIdx = await pg.evaluate((nome) => {
+                const tabs = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')];
+                return tabs.findIndex(t =>
+                    t.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome
                 );
-                if (titulo === nomeLiga) {
-                    await tab.click();
-                    clicou = true;
-                    break;
-                }
+            }, nomeLiga);
+
+            let clicou = false;
+            if (tabIdx >= 0) {
+                const tabs = await pg.$$('.vrl-MeetingsHeaderButton');
+                if (tabs[tabIdx]) { await tabs[tabIdx].click(); clicou = true; }
             }
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
