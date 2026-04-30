@@ -315,32 +315,28 @@ async function ciclo(pg) {
         const nomeLiga = ligasFiltradas[i];
         const ligaNorm = normalizarNomeLiga(nomeLiga);
         try {
-            // Captura times atuais para detectar se esta liga tem o mesmo jogo (aviso de possível duplicata)
-            const timesAntes = await pg.evaluate(() =>
-                [...document.querySelectorAll('.srb-ParticipantStackedBorderless_Name')]
-                    .slice(0, 2).map(n => n.textContent.trim()).join('|')
-            );
+            // Garante que a aba do browser está em foco (necessário para eventos de mouse reais)
+            await pg.bringToFront();
 
-            // Clica na aba da liga
-            const clicou = await pg.evaluate((nome) => {
-                const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-                for (const tab of tabs) {
-                    if (tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome) {
-                        tab.click(); return true;
-                    }
+            // Clique nativo via ElementHandle — dispara eventos reais de mouse (mousedown/up/click)
+            // O SPA do Bet365 ignora element.click() sintético para carregar conteúdo da liga
+            const tabs = await pg.$$('.vrl-MeetingsHeaderButton');
+            let clicou = false;
+            for (const tab of tabs) {
+                const titulo = await pg.evaluate(
+                    el => el.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '', tab
+                );
+                if (titulo === nomeLiga) {
+                    await tab.click();
+                    clicou = true;
+                    break;
                 }
-                return false;
-            }, nomeLiga);
+            }
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
 
-            // Aguarda URL atualizar com o hash da liga (SPA routing)
-            await new Promise(r => setTimeout(r, 600));
-
-            // Recarrega a página no contexto da liga atual (equivalente ao F5 manual)
-            // O clique na aba muda a URL/hash; reload força o SPA a carregar o conteúdo da liga
-            await pg.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
-            await new Promise(r => setTimeout(r, 1500));
+            // Aguarda SPA carregar o conteúdo da liga após o clique
+            await new Promise(r => setTimeout(r, 3000));
 
             // Verificação rápida: se não há botões de horário, a liga está inativa agora
             const estadoApos = await pg.evaluate(() => {
@@ -352,7 +348,6 @@ async function ciclo(pg) {
                     timeBtns: document.querySelectorAll('.vr-EventTimesNavBarButton').length,
                     pods: document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length,
                     ligaAtiva,
-                    url: location.href.slice(-40),
                 };
             });
             if (estadoApos.timeBtns === 0) {
