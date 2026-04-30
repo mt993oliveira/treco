@@ -337,15 +337,24 @@ async function ciclo(pg) {
             // Pausa para o re-render iniciar após o clique na aba
             await new Promise(r => setTimeout(r, 800));
 
-            // Aguarda pods ou race-off — timeout 15s (SPA pode demorar após hard refresh)
+            // Verificação rápida: se não há botões de horário, a liga está inativa agora
+            // (timeBtns=0 = sem jogos agendados — não precisa esperar mais)
+            const timeBtns = await pg.evaluate(() =>
+                document.querySelectorAll('.vr-EventTimesNavBarButton').length
+            );
+            if (timeBtns === 0) {
+                console.log(`   ⏭️  [${ligaNorm}] Liga inativa`);
+                continue;
+            }
+
+            // Tem jogos agendados — aguarda pods ou race-off carregarem
             try {
                 await pg.waitForSelector(
                     '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff, .svc-MarketGroup-eventstarted',
-                    { timeout: 15000 }
+                    { timeout: 8000 }
                 );
             } catch(_) {
-                // Diagnóstico: mostra se o tab ficou ativo e quantos timeBtns existem
-                await diagnosticarPagina(pg, ligaNorm, ' sem jogo/timeout:');
+                await diagnosticarPagina(pg, ligaNorm, ' pods não carregaram:');
                 continue;
             }
 
