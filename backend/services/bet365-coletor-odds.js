@@ -350,9 +350,9 @@ async function ciclo(pg) {
                     ligaAtiva,
                 };
             });
-            if (estadoApos.timeBtns === 0) {
+            if (estadoApos.timeBtns === 0 && estadoApos.pods === 0) {
                 const navOk = estadoApos.ligaAtiva === nomeLiga ? '✅nav' : `❌nav(=${estadoApos.ligaAtiva})`;
-                console.log(`   ⏭️  [${ligaNorm}] Liga inativa | ${navOk} pods=${estadoApos.pods}`);
+                console.log(`   ⏭️  [${ligaNorm}] Liga inativa | ${navOk}`);
                 continue;
             }
 
