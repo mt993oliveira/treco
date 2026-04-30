@@ -1,16 +1,14 @@
 /**
  * ============================================================
- * COLETOR BET365 - ODDS PRÉ-JOGO (EXPERIMENTAL)
+ * COLETOR BET365 - ODDS + PRÓXIMOS JOGOS (EXPERIMENTAL)
  * ============================================================
- * Objetivo: capturar odds 1X2 (casa/empate/fora) do mercado
- * Fulltime Result ANTES do jogo começar e salvar em bet365_eventos.
+ * Roda em segundo Edge (porta 9223) — independente do principal.
+ * Por ciclo, para cada liga:
+ *   1. Lê odds pré-jogo do Fulltime Result (página principal)
+ *   2. Busca próximos fixtures via URL de resultados
+ *   3. Salva tudo em bet365_eventos (MERGE)
  *
- * PRÉ-REQUISITO:
- *   Segundo Edge aberto via porta 9223 (abrir-edge-debug-odds.bat)
- *   com a página de futebol virtual carregada e login feito.
- *
- * IMPORTANTE: NÃO navega para resultados, NÃO faz F5.
- * Completamente independente do coletor principal (porta 9222).
+ * Não navega para Resultados — não interfere com coletor principal.
  * ============================================================
  */
 
@@ -23,11 +21,13 @@ const http   = require('http');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const DEBUG_PORT  = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9223;
-const URL_SOCCER  = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
+const DEBUG_PORT   = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9223;
+const URL_SOCCER   = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR = ['super league'];
+const MAX_PROXIMOS  = parseInt(process.env.BET365_ODDS_MAX_PROXIMOS) || 4;
+const INTERVALO_MS  = parseInt(process.env.BET365_ODDS_INTERVALO_MS) || 90000;
 
-// ── Normalização de nomes ────────────────────────────────────
+// ── Normalização ─────────────────────────────────────────────
 const LIGA_NORMALIZAR = {
     'copa do mundo':               'World Cup',
     'world cup':                   'World Cup',
@@ -38,7 +38,6 @@ const LIGA_NORMALIZAR = {
     'south american super league': 'Super Liga Sul-Americana',
     'super liga sul-americana':    'Super Liga Sul-Americana',
 };
-
 function normalizarNomeLiga(nome) {
     return LIGA_NORMALIZAR[(nome || '').toLowerCase().trim()] || nome;
 }
@@ -49,11 +48,19 @@ const TIME_NORMALIZAR = {
     'tottenham': 'Tottenham', 'spurs': 'Tottenham',
     'newcastle': 'Newcastle', 'newcastle utd': 'Newcastle',
 };
-
 function normalizarNomeTime(nome) {
     if (!nome) return nome;
     return TIME_NORMALIZAR[nome.toLowerCase().trim()] || nome;
 }
+
+// URLs para coleta de fixtures por liga
+const LIGA_RESULTADOS_URL = {
+    'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
+    'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
+    'Premiership':              { compId: '20120653', compNome: 'Premier League' },
+    'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
+    'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
+};
 
 // ── Hash / ID ────────────────────────────────────────────────
 function _hash(str) {
@@ -64,7 +71,6 @@ function _hash(str) {
     }
     return h;
 }
-
 function gerarId(liga, timeCasa, timeFora, horario) {
     const h = _hash(`${liga}|${timeCasa}|${timeFora}|${horario}`);
     return Number(BigInt(h) & BigInt('0x7FFFFFFFFFFFFFFF'));
@@ -80,7 +86,6 @@ const DB_CFG = {
     options:  { encrypt: false, trustServerCertificate: true },
     pool:     { max: 3, min: 0, idleTimeoutMillis: 30000 },
 };
-
 let pool = null;
 async function getPool() {
     if (pool && pool.connected) return pool;
@@ -103,21 +108,19 @@ async function conectarEdge() {
         req.on('error', reject);
         req.setTimeout(5000, () => { req.destroy(); reject(new Error(`timeout porta ${DEBUG_PORT}`)); });
     });
-
     const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null });
     const pages   = await browser.pages();
     const pg      = pages.find(p => { try { return p.url().includes('bet365'); } catch(_) { return false; } });
-
     if (!pg) throw new Error('Aba bet365 não encontrada na porta ' + DEBUG_PORT);
-    console.log(`   ✅ [Odds] Conectado ao Edge (porta ${DEBUG_PORT}) | URL: ${pg.url().substring(0, 60)}`);
+    console.log(`   ✅ [Odds] Conectado (porta ${DEBUG_PORT}) | ${pg.url().substring(0, 60)}`);
     return { browser, pg };
 }
 
-// ── Extrai odds do mercado Fulltime Result ───────────────────
-async function extrairOddsPreJogo(pg) {
+// ── Lê odds pré-jogo da página principal ────────────────────
+async function lerOddsPreJogo(pg) {
     return await pg.evaluate(() => {
-        const timeBtn  = document.querySelector('.vr-EventTimesNavBarButton-selected .vr-EventTimesNavBarButton_Text');
-        const horario  = timeBtn ? timeBtn.textContent.trim() : null;
+        const timeBtn = document.querySelector('.vr-EventTimesNavBarButton-selected .vr-EventTimesNavBarButton_Text');
+        const horario = timeBtn ? timeBtn.textContent.trim() : null;
 
         const ftPod = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
             .find(p => {
@@ -155,21 +158,95 @@ async function extrairOddsPreJogo(pg) {
         if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0)
             return { motivo: 'odds_zeradas' };
 
-        return { horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
+        return { ok: true, horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
     });
 }
 
-// ── Salva evento com odds no banco ───────────────────────────
-async function salvarOdds(liga, info) {
-    const db       = await getPool();
-    const tcNorm   = normalizarNomeTime(info.timeCasa);
-    const tfNorm   = normalizarNomeTime(info.timeFora);
-    const eventoId = gerarId(liga, tcNorm, tfNorm, info.horario || '');
+// ── Busca próximos fixtures via URL externa ──────────────────
+async function buscarProximosFixtures(pg, ligaNorm) {
+    const ligaInfo = LIGA_RESULTADOS_URL[ligaNorm];
+    if (!ligaInfo) return [];
 
-    // Converte horario "HH:MM" → próxima ocorrência desse horário
+    const nowBST  = new Date(Date.now() + 3600000);
+    const yyyy    = nowBST.getUTCFullYear();
+    const mm      = nowBST.getUTCMonth();
+    const dd      = nowBST.getUTCDate();
+    const dateStr = `${yyyy}-${String(mm+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+    const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
+                      'Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const displayDate = `${dd}-${dd}%20${MESES_PT[mm]}%20${yyyy}`;
+
+    const b64 = s => Buffer.from(s).toString('base64');
+    const qParams = [
+        b64('2'), b64('146'), b64('Futebol%20Virtual'),
+        b64(dateStr), b64(dateStr), b64('0'), b64('0'),
+        b64(displayDate), b64('0'),
+        b64(encodeURIComponent(ligaInfo.compNome)),
+        b64(ligaInfo.compId), b64('0'), '',
+        b64('fixture'),
+        b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
+        '', b64('0'), b64('0'),
+    ].join('|');
+    const url = `https://extra.bet365.bet.br/results/br?q=${qParams}`;
+
+    const horaAtualBST = nowBST.getUTCHours();
+    const minAtualBST  = nowBST.getUTCMinutes();
+
+    let novaPg = null;
+    try {
+        novaPg = await pg.browser().newPage();
+        await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 }); } catch(_) {}
+        await new Promise(r => setTimeout(r, 1000));
+
+        const { futuros, total } = await novaPg.evaluate((h, m, maxN) => {
+            const buttons = document.querySelectorAll('button.point-result__fixture');
+            const futuros = [];
+            for (const btn of buttons) {
+                const parts = btn.querySelectorAll('.point-result__fixture-participant');
+                if (parts.length < 2) continue;
+                const p1    = parts[0].textContent.trim();
+                const match = p1.match(/^(\d{1,2})\.(\d{2})\s+(.+)$/);
+                if (!match) continue;
+                const jH = parseInt(match[1]);
+                const jM = parseInt(match[2]);
+                const nowMins = h * 60 + m;
+                const jMins   = jH * 60 + jM;
+                if (jMins > nowMins && jMins <= nowMins + 6) {
+                    futuros.push({
+                        horario:  `${jH}:${String(jM).padStart(2,'0')}`,
+                        timeCasa: match[3].trim(),
+                        timeFora: parts[1].textContent.trim(),
+                    });
+                    if (futuros.length >= maxN) break;
+                }
+            }
+            return { futuros, total: buttons.length };
+        }, horaAtualBST, minAtualBST, MAX_PROXIMOS);
+
+        console.log(`   📅 [${ligaNorm}] Fixtures: ${total} encontrados | ${futuros.length} próximos`);
+        if (futuros.length > 0)
+            console.log(`      → ${futuros.map(f => `${f.horario} ${f.timeCasa} x ${f.timeFora}`).join(' | ')}`);
+
+        return futuros;
+    } catch(err) {
+        console.warn(`   ⚠️  [${ligaNorm}] Erro fixtures: ${err.message}`);
+        return [];
+    } finally {
+        if (novaPg) await novaPg.close().catch(() => {});
+    }
+}
+
+// ── Salva evento no banco (MERGE) ────────────────────────────
+async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpate, oddFora) {
+    const db       = await getPool();
+    const tcNorm   = normalizarNomeTime(timeCasa);
+    const tfNorm   = normalizarNomeTime(timeFora);
+    const eventoId = gerarId(liga, tcNorm, tfNorm, horario || '');
+
     let startDt = new Date();
-    if (info.horario && /^\d{1,2}:\d{2}$/.test(info.horario)) {
-        const [hh, mm] = info.horario.split(':').map(Number);
+    if (horario && /^\d{1,2}:\d{2}$/.test(horario)) {
+        const [hh, mm] = horario.split(':').map(Number);
         const now = new Date();
         startDt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hh, mm, 0));
         if (startDt < now) startDt.setUTCDate(startDt.getUTCDate() + 1);
@@ -181,16 +258,18 @@ async function salvarOdds(liga, info) {
         .input('timeCasa', sql.NVarChar(100), tcNorm)
         .input('timeFora', sql.NVarChar(100), tfNorm)
         .input('startDt',  sql.DateTime2,     startDt)
-        .input('oddCasa',  sql.Decimal(10,2), info.oddCasa)
-        .input('oddEmp',   sql.Decimal(10,2), info.oddEmpate)
-        .input('oddFora',  sql.Decimal(10,2), info.oddFora)
+        .input('oddCasa',  sql.Decimal(10,2), oddCasa)
+        .input('oddEmp',   sql.Decimal(10,2), oddEmpate)
+        .input('oddFora',  sql.Decimal(10,2), oddFora)
         .input('agora',    sql.DateTime2,     new Date())
         .query(`
             MERGE bet365_eventos AS t
             USING (SELECT @id AS id) AS s ON t.id = s.id
-            WHEN MATCHED THEN UPDATE SET
+            WHEN MATCHED AND (@oddCasa > 0 OR @oddEmp > 0 OR @oddFora > 0) THEN UPDATE SET
                 t.odd_casa=@oddCasa, t.odd_empate=@oddEmp, t.odd_fora=@oddFora,
-                t.data_atualizacao=@agora
+                t.start_time_datetime=@startDt, t.data_atualizacao=@agora, t.ativo=1
+            WHEN MATCHED THEN UPDATE SET
+                t.start_time_datetime=@startDt, t.data_atualizacao=@agora, t.ativo=1
             WHEN NOT MATCHED THEN INSERT
                 (id, url, league_name, time_casa, time_fora, status,
                  start_time_datetime, odd_casa, odd_empate, odd_fora,
@@ -199,13 +278,11 @@ async function salvarOdds(liga, info) {
                     @startDt, @oddCasa, @oddEmp, @oddFora,
                     @agora, @agora, 1);
         `);
-
-    console.log(`   💰 [${liga}] ${tcNorm} × ${tfNorm} | C:${info.oddCasa} E:${info.oddEmpate} F:${info.oddFora}`);
 }
 
 // ── Ciclo principal ──────────────────────────────────────────
 async function ciclo(pg) {
-    // Hard refresh no início de cada ciclo — garante mercados atualizados
+    // Reload para garantir mercados atualizados
     try {
         await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
         await new Promise(r => setTimeout(r, 4000));
@@ -215,64 +292,68 @@ async function ciclo(pg) {
     }
 
     const ligas = await pg.evaluate(() =>
-        [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].map(el => {
-            const t = el.querySelector('.vrl-MeetingsHeaderButton_Title');
-            return t ? t.textContent.trim() : '';
-        }).filter(Boolean)
+        [...document.querySelectorAll('.vrl-MeetingsHeaderButton')]
+            .map(el => el.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '')
+            .filter(Boolean)
     );
-
-    const ligasFiltradas = ligas.filter(l =>
-        !LIGAS_IGNORAR.some(ig => l.toLowerCase().includes(ig))
-    );
-
+    const ligasFiltradas = ligas.filter(l => !LIGAS_IGNORAR.some(ig => l.toLowerCase().includes(ig)));
     console.log(`   📋 [Odds] ${ligasFiltradas.length} liga(s): ${ligasFiltradas.join(' | ')}`);
 
-    let capturadas = 0;
+    const MOTIVO_MSG = {
+        sem_mercado:               'mercado não encontrado',
+        em_andamento:              'jogo em andamento',
+        participantes_insuficientes: 'poucos participantes',
+        odds_zeradas:              'odds zeradas',
+    };
+
+    let oddsOk = 0, proximosOk = 0;
+
     for (const nomeLiga of ligasFiltradas) {
+        const ligaNorm = normalizarNomeLiga(nomeLiga);
         try {
+            // ── 1. Clica na aba e lê odds pré-jogo ──────────────
             const clicou = await pg.evaluate((nome) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
                 for (const tab of tabs) {
-                    const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
-                    if (txt === nome) { tab.click(); return true; }
+                    if (tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome) {
+                        tab.click(); return true;
+                    }
                 }
                 return false;
             }, nomeLiga);
 
-            if (!clicou) continue;
-
+            if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
             await new Promise(r => setTimeout(r, 3500));
 
-            const info = await extrairOddsPreJogo(pg);
-
-            if (!info || info.motivo) {
-                const msgs = {
-                    sem_mercado:              'mercado não encontrado na página',
-                    em_andamento:             'jogo em andamento (race off)',
-                    participantes_insuficientes: `poucos participantes (${info?.qtd ?? 0})`,
-                    odds_zeradas:             'odds zeradas',
-                };
-                console.log(`   ⏭️  [${normalizarNomeLiga(nomeLiga)}] ${msgs[info?.motivo] || 'sem odds'}`);
-                continue;
+            const odds = await lerOddsPreJogo(pg);
+            if (odds.ok) {
+                await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora, odds.horario,
+                                   odds.oddCasa, odds.oddEmpate, odds.oddFora);
+                console.log(`   💰 [${ligaNorm}] ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                oddsOk++;
+            } else {
+                console.log(`   ⏭️  [${ligaNorm}] Odds: ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
             }
 
-            await salvarOdds(normalizarNomeLiga(nomeLiga), info);
-            capturadas++;
+            // ── 2. Busca próximos fixtures via URL ───────────────
+            const futuros = await buscarProximosFixtures(pg, ligaNorm);
+            for (const f of futuros) {
+                await salvarEvento(ligaNorm, f.timeCasa, f.timeFora, f.horario, 0, 0, 0);
+                proximosOk++;
+            }
+
         } catch(err) {
-            console.warn(`   ⚠️  [${nomeLiga}] Erro: ${err.message}`);
+            console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
     }
 
-    return capturadas;
+    console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk} | próximos: ${proximosOk}`);
+    return { oddsOk, proximosOk };
 }
 
 // ── Entry point ──────────────────────────────────────────────
 async function run() {
-    let browser = null;
-    let pg      = null;
-    let cicloNum = 0;
-
-    const INTERVALO_MS = parseInt(process.env.BET365_ODDS_INTERVALO_MS) || 90000; // 90s default
+    let browser = null, pg = null, cicloNum = 0;
 
     while (true) {
         cicloNum++;
@@ -287,19 +368,14 @@ async function run() {
                 browser = conn.browser;
                 pg      = conn.pg;
             }
-
-            const cap = await ciclo(pg);
-            console.log(`   ✅ [Odds] ${cap} odds capturada(s) neste ciclo`);
+            await ciclo(pg);
         } catch(err) {
             console.error(`   ❌ [Odds] Erro no ciclo: ${err.message}`);
-            pg = null; // força reconexão no próximo ciclo
+            pg = null;
         }
 
         await new Promise(r => setTimeout(r, INTERVALO_MS));
     }
 }
 
-run().catch(e => {
-    console.error('❌ [Odds] Fatal:', e.message);
-    process.exit(1);
-});
+run().catch(e => { console.error('❌ [Odds] Fatal:', e.message); process.exit(1); });
