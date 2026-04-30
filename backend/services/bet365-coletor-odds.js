@@ -334,11 +334,15 @@ async function ciclo(pg) {
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
 
-            // Pausa para o SPA navegar para a nova liga (2s — sem hard refresh entre ligas)
-            await new Promise(r => setTimeout(r, 2000));
+            // Aguarda URL atualizar com o hash da liga (SPA routing)
+            await new Promise(r => setTimeout(r, 600));
+
+            // Recarrega a página no contexto da liga atual (equivalente ao F5 manual)
+            // O clique na aba muda a URL/hash; reload força o SPA a carregar o conteúdo da liga
+            await pg.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
+            await new Promise(r => setTimeout(r, 1500));
 
             // Verificação rápida: se não há botões de horário, a liga está inativa agora
-            // (timeBtns=0 = sem jogos agendados — não precisa esperar mais)
             const estadoApos = await pg.evaluate(() => {
                 const ligaBtns = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')];
                 const ligaAtiva = ligaBtns.find(b => [...b.classList].some(c =>
@@ -348,6 +352,7 @@ async function ciclo(pg) {
                     timeBtns: document.querySelectorAll('.vr-EventTimesNavBarButton').length,
                     pods: document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length,
                     ligaAtiva,
+                    url: location.href.slice(-40),
                 };
             });
             if (estadoApos.timeBtns === 0) {
