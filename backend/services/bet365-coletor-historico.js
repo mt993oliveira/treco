@@ -173,89 +173,121 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
         try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
         await delay(1000);
 
-        // Diagnóstico — classes presentes na página
-        const diag = await novaPg.evaluate(() => {
-            const classes = [...new Set(
-                [...document.querySelectorAll('[class]')]
-                    .flatMap(e => [...e.classList])
-                    .filter(c => /fixture|result|score|point|participant|team/i.test(c))
-            )].slice(0, 30);
-            return { title: document.title, classes, bodyLen: document.body?.textContent?.length || 0 };
-        });
-        console.log(`   🔎 [${ligaNorm}] "${diag.title}" | body=${diag.bodyLen}chars`);
-        if (diag.classes.length > 0) console.log(`   🔎 [${ligaNorm}] classes: ${diag.classes.join(', ')}`);
-
-        const raw = await novaPg.evaluate(() => {
-            const jogos = [];
+        // Identifica os botões dentro do filtro de hora (sem clicar ainda)
+        const jogosParaClicar = await novaPg.evaluate((horaIni, horaFim) => {
+            function dentroFiltro(horario) {
+                const [h, m] = horario.split(':').map(Number);
+                const mins = h * 60 + m;
+                const ini = horaIni ? (() => { const [a,b] = horaIni.split(':').map(Number); return a*60+b; })() : 0;
+                const fim = horaFim ? (() => { const [a,b] = horaFim.split(':').map(Number); return a*60+b; })() : 1440;
+                return mins >= ini && mins <= fim;
+            }
             const buttons = [...document.querySelectorAll('button.point-result__fixture')];
-            for (const btn of buttons) {
+            const resultado = [];
+            for (let i = 0; i < buttons.length; i++) {
+                const btn = buttons[i];
                 const parts = btn.querySelectorAll('.point-result__fixture-participant');
                 if (parts.length < 2) continue;
                 const p0 = parts[0].textContent.trim();
                 const p1 = parts[1].textContent.trim();
-                // Formato p0: "HH.MM NomeTime"
                 const match = p0.match(/^(\d{1,2})[.:](\d{2})\s+(.+)$/);
                 if (!match) continue;
-                const horario  = `${match[1]}:${match[2]}`;
-                const timeCasa = match[3].trim();
-                // p1 pode ter prefixo de hora também (em fixtures) ou só o nome
-                const timeFora = p1.replace(/^\d{1,2}[.:]\d{2}\s+/, '').trim();
-                // Score — tenta vários seletores
-                const scoreEl = btn.querySelector(
-                    '[class*="score"],[class*="Score"],[class*="result__score"],[class*="Result_Score"]'
-                );
-                let golCasa = null, golFora = null, placar = null;
-                if (scoreEl) {
-                    placar = scoreEl.textContent.trim().replace(/\s+/g, '');
-                    const sp = placar.split(/[-–:]/);
-                    if (sp.length >= 2) {
-                        golCasa = parseInt(sp[0]);
-                        golFora = parseInt(sp[1]);
-                    }
+                const horario = `${match[1]}:${match[2]}`;
+                if (!dentroFiltro(horario)) continue;
+                resultado.push({
+                    idx:      i,
+                    horario,
+                    timeCasa: match[3].trim(),
+                    timeFora: p1.replace(/^\d{1,2}[.:]\d{2}\s+/, '').trim(),
+                });
+            }
+            return resultado;
+        }, HORA_INI, HORA_FIM);
+
+        console.log(`   📊 [${ligaNorm}] ${jogosParaClicar.length} jogo(s) no filtro — abrindo modal de cada um`);
+        if (jogosParaClicar.length === 0) return 0;
+
+        const resultados = [];
+        let primeiroModalLogado = false;
+
+        for (const jogo of jogosParaClicar) {
+            try {
+                // Clica no botão
+                await novaPg.evaluate((idx) => {
+                    document.querySelectorAll('button.point-result__fixture')[idx]?.click();
+                }, jogo.idx);
+                await delay(700);
+
+                // Lê o modal aberto
+                const modal = await novaPg.evaluate(() => {
+                    // Busca o modal visível (sem --hidden)
+                    const m = [...document.querySelectorAll('[class*="results-modal"]')]
+                        .find(el => !el.className.includes('--hidden') && !el.className.includes('__mask'));
+                    if (!m) return { found: false, html: '', text: '' };
+                    return {
+                        found: true,
+                        html:  m.innerHTML.replace(/\s+/g,' ').substring(0, 800),
+                        text:  m.textContent.replace(/\s+/g,' ').trim().substring(0, 300),
+                    };
+                });
+
+                // Log do primeiro modal para diagnóstico
+                if (!primeiroModalLogado) {
+                    console.log(`   🔬 [${ligaNorm}] Modal HTML: ${modal.html}`);
+                    console.log(`   🔬 [${ligaNorm}] Modal TEXT: ${modal.text}`);
+                    primeiroModalLogado = true;
                 }
-                // Fallback: texto do botão pode conter "X - Y"
-                if (golCasa === null) {
-                    const btnText = btn.textContent.replace(/\s+/g, ' ').trim();
-                    const sm = btnText.match(/(\d+)\s*[-–]\s*(\d+)/);
+
+                let golCasa = null, golFora = null, placar = null;
+                if (modal.found) {
+                    // Remove nomes dos times e procura padrão de placar X-Y
+                    const scoreText = modal.text
+                        .replace(new RegExp(jogo.timeCasa.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'), '')
+                        .replace(new RegExp(jogo.timeFora.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'), '')
+                        .replace(/\s+/g,' ').trim();
+                    const sm = scoreText.match(/\b(\d{1,2})\s*[-–—]\s*(\d{1,2})\b/);
                     if (sm) { golCasa = parseInt(sm[1]); golFora = parseInt(sm[2]); placar = `${golCasa}-${golFora}`; }
                 }
-                jogos.push({ horario, timeCasa, timeFora, placar, golCasa, golFora });
-            }
-            return { jogos, total: buttons.length };
-        });
 
-        console.log(`   📊 [${ligaNorm}] ${raw.total} botões | ${raw.jogos.length} jogos extraídos`);
-        if (raw.jogos.length > 0) {
-            const ex = raw.jogos.slice(0, 3).map(j => `${j.horario} ${j.timeCasa}×${j.timeFora} (${j.placar || '?'})`);
-            console.log(`      ex: ${ex.join(' | ')}`);
+                resultados.push({ ...jogo, golCasa, golFora, placar });
+
+                // Fecha modal
+                await novaPg.evaluate(() => {
+                    const btn = document.querySelector('.results-modal__close,[class*="modal__close"]');
+                    if (btn) btn.click();
+                    else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
+                });
+                await delay(300);
+
+            } catch(err) {
+                console.warn(`   ⚠️  [${ligaNorm}] ${jogo.horario} ${jogo.timeCasa}: ${err.message}`);
+                resultados.push({ ...jogo, golCasa: null, golFora: null, placar: null });
+            }
         }
 
-        if (raw.jogos.length === 0) { console.log(`   ⚠️  [${ligaNorm}] Nenhum jogo — verifique seletores`); return 0; }
+        const comPlacar = resultados.filter(j => j.placar).length;
+        const ex = resultados.slice(0,3).map(j=>`${j.horario} ${j.timeCasa}×${j.timeFora} (${j.placar||'?'})`);
+        console.log(`   → ${resultados.length} jogos | ${comPlacar} com placar | ex: ${ex.join(' | ')}`);
 
-        const resultados = raw.jogos
-            .filter(j => dentroDoFiltroHora(j.horario))
-            .map(j => {
-                const placarOculto = j.golCasa === null || j.golFora === null || isNaN(j.golCasa) || isNaN(j.golFora);
-                return {
-                    liga: ligaNorm,
-                    horario:   j.horario,
-                    timeCasa:  normalizarNomeTime(j.timeCasa),
-                    timeFora:  normalizarNomeTime(j.timeFora),
-                    placar:    placarOculto ? 'OCULTO' : `${j.golCasa}-${j.golFora}`,
-                    golCasa:   placarOculto ? 0 : j.golCasa,
-                    golFora:   placarOculto ? 0 : j.golFora,
-                    resultado: placarOculto ? 'OCULTO'
-                        : j.golCasa > j.golFora ? 'CASA'
-                        : j.golFora > j.golCasa ? 'FORA' : 'EMPATE',
-                    mercados: [],
-                    placarOculto,
-                };
-            });
+        const jogosFormatados = resultados.map(j => {
+            const placarOculto = j.golCasa === null || j.golFora === null || isNaN(j.golCasa) || isNaN(j.golFora);
+            return {
+                liga:      ligaNorm,
+                horario:   j.horario,
+                timeCasa:  normalizarNomeTime(j.timeCasa),
+                timeFora:  normalizarNomeTime(j.timeFora),
+                placar:    placarOculto ? 'OCULTO' : `${j.golCasa}-${j.golFora}`,
+                golCasa:   placarOculto ? 0 : j.golCasa,
+                golFora:   placarOculto ? 0 : j.golFora,
+                resultado: placarOculto ? 'OCULTO'
+                    : j.golCasa > j.golFora ? 'CASA'
+                    : j.golFora > j.golCasa ? 'FORA' : 'EMPATE',
+                mercados: [],
+                placarOculto,
+            };
+        });
 
-        console.log(`   → ${raw.jogos.length} total | ${resultados.length} no filtro de hora`);
-        if (resultados.length === 0) return 0;
-
-        const salvos = await salvarResultados(ligaNorm, resultados, dataAlvo);
+        const salvos = await salvarResultados(ligaNorm, jogosFormatados, dataAlvo);
         console.log(`   💾 [${ligaNorm}] ${salvos} resultado(s) salvos`);
         return salvos;
 
