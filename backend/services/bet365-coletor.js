@@ -1,18 +1,18 @@
 /**
  * ============================================================
- * COLETOR BET365 - FUTEBOL VIRTUAL
- * URL: https://www.bet365.bet.br/#/AVR/B146/R%5E1/
+ * COLETOR 1 — RESULTADOS
  * ============================================================
+ * Responsabilidade: coletar resultados de jogos finalizados
+ * (mercados pagos) e salvar em bet365_resultados_mercados.
  *
- * Conecta no Edge já aberto pelo usuário via remote debugging.
- * SEM login, SEM bot detection — usa o browser real do usuário.
+ * Roda continuamente em ciclos automáticos (intervalo configurável).
+ * Porta Edge: 9222 | Processo: npm start (via server.js)
  *
- * PRÉ-REQUISITO:
- *   Edge aberto via abrir-edge-debug.bat (porta 9222)
- *   com a página de futebol virtual carregada.
+ * Fluxo por ciclo:
+ *   Para cada liga → clica na aba → coleta resultados →
+ *   expande mercados → salva no banco → hard refresh → próxima liga
  *
  * Ligas: World Cup | Euro Cup | Premiership | Express Cup | Super Liga Sul-Americana
- * (Super League ignorada)
  * ============================================================
  */
 

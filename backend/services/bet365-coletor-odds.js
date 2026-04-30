@@ -1,14 +1,22 @@
 /**
  * ============================================================
- * COLETOR BET365 - ODDS + PRÓXIMOS JOGOS (EXPERIMENTAL)
+ * COLETOR 2 — ODDS PRÉ-JOGO + PRÓXIMOS JOGOS
  * ============================================================
- * Roda em segundo Edge (porta 9223) — independente do principal.
- * Por ciclo, para cada liga:
- *   1. Lê odds pré-jogo do Fulltime Result (página principal)
- *   2. Busca próximos fixtures via URL de resultados
- *   3. Salva tudo em bet365_eventos (MERGE)
+ * Responsabilidade: capturar odds 1X2 (casa/empate/fora) do
+ * mercado Fulltime Result ANTES do jogo começar e salvar em
+ * bet365_eventos (campos odd_casa, odd_empate, odd_fora).
  *
- * Não navega para Resultados — não interfere com coletor principal.
+ * Roda continuamente em ciclos automáticos (padrão: 90s).
+ * Porta Edge: 9223 (conta separada do Coletor 1)
+ *
+ * Fluxo por ciclo:
+ *   Hard refresh → para cada liga → clica na aba →
+ *   lê odds do Fulltime Result → salva em bet365_eventos
+ *
+ * Não navega para Resultados — não interfere com o Coletor 1.
+ *
+ * PRÓXIMOS JOGOS: implementação futura via extra.bet365.bet.br
+ * (código de referência documentado no bet365-coletor-historico.js)
  * ============================================================
  */
 

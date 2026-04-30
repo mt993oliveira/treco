@@ -1,11 +1,17 @@
 /**
  * ============================================================
- * COLETOR BET365 - BACKFILL HISTÓRICO (USO MANUAL)
+ * COLETOR 3 — JOGOS ANTIGOS (BACKFILL MANUAL)
  * ============================================================
- * Percorre as ligas configuradas e, dentro de cada liga,
- * clica em cada botão de hora disponível na view de Resultados,
- * coleta todos os mercados daquele horário e faz hard refresh
- * antes de passar para a próxima hora/liga.
+ * Responsabilidade: recuperar resultados de jogos já realizados
+ * em um dia/hora específico, para preencher lacunas no banco
+ * causadas por queda do sistema.
+ *
+ * Uso manual — NÃO roda em ciclo automático.
+ * Pode usar a mesma porta do Coletor 2 (9223) quando este estiver parado.
+ *
+ * Fluxo por execução:
+ *   Para cada liga → clica na aba → abre view Resultados →
+ *   clica em cada botão de hora → coleta → salva → hard refresh → próxima hora/liga
  *
  * Uso:
  *   node -r dotenv/config backend/services/bet365-coletor-historico.js
