@@ -203,16 +203,33 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
         `);
 }
 
+// ── Hard refresh e aguarda ligas ────────────────────────────
+async function hardRefresh(pg) {
+    try {
+        await pg.setCacheEnabled(false);
+        await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+        await pg.setCacheEnabled(true);
+        await new Promise(r => setTimeout(r, 3500));
+        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 15000 });
+        return true;
+    } catch(err) {
+        await pg.setCacheEnabled(true).catch(() => {});
+        console.warn(`   ⚠️  [Odds] Refresh falhou: ${err.message}`);
+        return false;
+    }
+}
+
 // ── Ciclo principal ──────────────────────────────────────────
 async function ciclo(pg) {
-    // Reload para garantir mercados atualizados
-    try {
-        await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 4000));
-        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 15000 });
-    } catch(err) {
-        console.warn(`   ⚠️  [Odds] Reload falhou: ${err.message}`);
-    }
+    const MOTIVO_MSG = {
+        sem_mercado:                 'sem mercado',
+        em_andamento:                'em andamento',
+        participantes_insuficientes: 'poucos participantes',
+        odds_zeradas:                'odds zeradas',
+    };
+
+    // Hard refresh inicial — garante página limpa antes do ciclo
+    await hardRefresh(pg);
 
     const ligas = await pg.evaluate(() =>
         [...document.querySelectorAll('.vrl-MeetingsHeaderButton')]
@@ -222,19 +239,13 @@ async function ciclo(pg) {
     const ligasFiltradas = ligas.filter(l => !LIGAS_IGNORAR.some(ig => l.toLowerCase().includes(ig)));
     console.log(`   📋 [Odds] ${ligasFiltradas.length} liga(s): ${ligasFiltradas.join(' | ')}`);
 
-    const MOTIVO_MSG = {
-        sem_mercado:               'mercado não encontrado',
-        em_andamento:              'jogo em andamento',
-        participantes_insuficientes: 'poucos participantes',
-        odds_zeradas:              'odds zeradas',
-    };
-
     let oddsOk = 0;
 
-    for (const nomeLiga of ligasFiltradas) {
+    for (let i = 0; i < ligasFiltradas.length; i++) {
+        const nomeLiga = ligasFiltradas[i];
         const ligaNorm = normalizarNomeLiga(nomeLiga);
         try {
-            // ── 1. Clica na aba e lê odds pré-jogo ──────────────
+            // Clica na aba da liga
             const clicou = await pg.evaluate((nome) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
                 for (const tab of tabs) {
@@ -246,20 +257,53 @@ async function ciclo(pg) {
             }, nomeLiga);
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
-            await new Promise(r => setTimeout(r, 3500));
+            await new Promise(r => setTimeout(r, 2500));
 
-            const odds = await lerOddsPreJogo(pg);
-            if (odds.ok) {
-                await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora, odds.horario,
-                                   odds.oddCasa, odds.oddEmpate, odds.oddFora);
-                console.log(`   💰 [${ligaNorm}] ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
-                oddsOk++;
+            // Lê todos os botões de horário disponíveis na liga
+            const horarios = await pg.evaluate(() =>
+                [...document.querySelectorAll('.vr-EventTimesNavBarButton')]
+                    .map((btn, idx) => ({
+                        idx,
+                        texto: btn.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim()
+                               || btn.textContent.trim(),
+                    }))
+                    .filter(h => h.texto)
+            );
+
+            if (horarios.length === 0) {
+                console.log(`   ⏭️  [${ligaNorm}] Nenhum horário disponível`);
             } else {
-                console.log(`   ⏭️  [${ligaNorm}] Odds: ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
+                console.log(`   🕐 [${ligaNorm}] ${horarios.length} horário(s): ${horarios.map(h => h.texto).join(' | ')}`);
+
+                // Percorre cada horário — clica, aguarda 1s, lê odds
+                for (const h of horarios) {
+                    await pg.evaluate((idx) => {
+                        const btns = document.querySelectorAll('.vr-EventTimesNavBarButton');
+                        if (btns[idx]) btns[idx].click();
+                    }, h.idx);
+                    await new Promise(r => setTimeout(r, 1000));
+
+                    const odds = await lerOddsPreJogo(pg);
+                    if (odds.ok) {
+                        await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
+                                           odds.horario || h.texto,
+                                           odds.oddCasa, odds.oddEmpate, odds.oddFora);
+                        console.log(`   💰 [${ligaNorm}] ${h.texto} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                        oddsOk++;
+                    } else {
+                        console.log(`   ⏭️  [${ligaNorm}] ${h.texto} — ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
+                    }
+                }
             }
 
         } catch(err) {
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
+        }
+
+        // Hard refresh após cada liga (exceto a última — o próximo ciclo já faz no início)
+        if (i < ligasFiltradas.length - 1) {
+            console.log(`   🔄 Hard refresh antes da próxima liga...`);
+            await hardRefresh(pg);
         }
     }
 
