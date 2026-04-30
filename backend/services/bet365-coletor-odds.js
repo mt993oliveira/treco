@@ -118,29 +118,25 @@ async function conectarEdge() {
 }
 
 
-// ── Diagnóstico DOM (chamado uma vez por liga quando sem mercado) ─
-async function diagnosticarPagina(pg, ligaNorm, horario) {
+// ── Diagnóstico DOM ───────────────────────────────────────────
+async function diagnosticarPagina(pg, ligaNorm, label) {
     const info = await pg.evaluate(() => {
-        // Conta elementos chave para entender o estado da página
+        const ligaBtns = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')];
+        const ligaAtiva = ligaBtns.find(b => [...b.classList].some(c =>
+            c.toLowerCase().includes('select') || c.toLowerCase().includes('active') || c.toLowerCase().includes('current')
+        ))?.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '?';
         return {
-            pods:         document.querySelectorAll('.gl-MarketGroupPod').length,
-            marketGroups: document.querySelectorAll('.gl-MarketGroup').length,
-            glMarkets:    document.querySelectorAll('[class*="gl-Market"]').length,
-            vrMarkets:    document.querySelectorAll('[class*="vr-Market"]').length,
-            svcMarkets:   document.querySelectorAll('[class*="svc-Market"]').length,
-            raceOff:      !!document.querySelector('.svc-MarketGroup_RaceOff'),
-            // Primeiros textos de botões de mercado visíveis
-            btnTextos:    [...document.querySelectorAll('[class*="MarketGroupButton_Text"],[class*="MarketGroup_Title"]')]
-                              .slice(0, 6).map(e => e.textContent.trim()),
-            // Classes dos containers principais
-            containers:   [...new Set([...document.querySelectorAll('[class*="MarketGroup"]')]
-                              .map(e => e.className.split(' ').find(c => c.includes('MarketGroup')) || ''))
-                          ].slice(0, 10),
+            pods:      document.querySelectorAll('.gl-MarketGroupPod').length,
+            glMarkets: document.querySelectorAll('[class*="gl-Market"]').length,
+            raceOff:   !!document.querySelector('.svc-MarketGroup_RaceOff'),
+            timeBtns:  document.querySelectorAll('.vr-EventTimesNavBarButton').length,
+            ligaAtiva,
+            btnTextos: [...document.querySelectorAll('[class*="MarketGroupButton_Text"]')]
+                           .slice(0, 4).map(e => e.textContent.trim()).filter(Boolean),
         };
     });
-    console.log(`   🔬 [${ligaNorm}] ${horario} DOM: pods=${info.pods} groups=${info.marketGroups} gl=${info.glMarkets} vr=${info.vrMarkets} svc=${info.svcMarkets} raceOff=${info.raceOff}`);
-    if (info.btnTextos.length) console.log(`      Botões mercado: ${info.btnTextos.join(' | ')}`);
-    if (info.containers.length) console.log(`      Classes: ${info.containers.join(', ')}`);
+    console.log(`   🔬 [${ligaNorm}]${label} pods=${info.pods} gl=${info.glMarkets} timeBtns=${info.timeBtns} ligaAtiva="${info.ligaAtiva}" raceOff=${info.raceOff}`);
+    if (info.btnTextos.length) console.log(`      Mercados: ${info.btnTextos.join(' | ')}`);
 }
 
 // ── Lê odds pré-jogo ─────────────────────────────────────────
@@ -338,17 +334,18 @@ async function ciclo(pg) {
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
 
-            // Pausa para o re-render da nova liga iniciar antes de aguardar pods
+            // Pausa para o re-render iniciar após o clique na aba
             await new Promise(r => setTimeout(r, 800));
 
-            // Aguarda pods ou indicador de race-off (se não aparecer em 6s = sem jogo no momento)
+            // Aguarda pods ou race-off — timeout 15s (SPA pode demorar após hard refresh)
             try {
                 await pg.waitForSelector(
                     '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff, .svc-MarketGroup-eventstarted',
-                    { timeout: 6000 }
+                    { timeout: 15000 }
                 );
             } catch(_) {
-                console.log(`   ⏭️  [${ligaNorm}] Sem jogo no momento`);
+                // Diagnóstico: mostra se o tab ficou ativo e quantos timeBtns existem
+                await diagnosticarPagina(pg, ligaNorm, ' sem jogo/timeout:');
                 continue;
             }
 
