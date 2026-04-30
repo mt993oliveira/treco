@@ -319,6 +319,13 @@ async function ciclo(pg) {
         const nomeLiga = ligasFiltradas[i];
         const ligaNorm = normalizarNomeLiga(nomeLiga);
         try {
+            // Captura identidade do conteúdo atual antes de navegar
+            // (usado para detectar quando o re-render da nova liga completou)
+            const conteudoAntes = await pg.evaluate(() => {
+                const names = [...document.querySelectorAll('.srb-ParticipantStackedBorderless_Name')];
+                return names.slice(0, 2).map(n => n.textContent.trim()).join('|');
+            });
+
             // Clica na aba da liga
             const clicou = await pg.evaluate((nome) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
@@ -332,8 +339,24 @@ async function ciclo(pg) {
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
 
-            // Aguarda conteúdo da liga carregar (pods OU indicador de race-off)
-            // em vez de delay fixo — mais confiável para páginas com re-render assíncrono
+            // Se havia conteúdo anterior, aguarda ele mudar (indica re-render da nova liga)
+            // Timeout curto: se não mudar em 3s, pode ser mesmo jogo em todas as ligas
+            if (conteudoAntes.length > 0) {
+                const mudou = await pg.waitForFunction(
+                    (antes) => {
+                        const names = [...document.querySelectorAll('.srb-ParticipantStackedBorderless_Name')];
+                        const agora = names.slice(0, 2).map(n => n.textContent.trim()).join('|');
+                        return agora.length > 0 && agora !== antes;
+                    },
+                    { timeout: 3000 },
+                    conteudoAntes
+                ).then(() => true).catch(() => false);
+                if (!mudou) {
+                    console.log(`   🔁 [${ligaNorm}] Conteúdo igual à liga anterior (mesmo jogo ou timeout)`);
+                }
+            }
+
+            // Aguarda pods ou indicador de race-off estarem na página
             try {
                 await pg.waitForSelector(
                     '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff, .svc-MarketGroup-eventstarted',
