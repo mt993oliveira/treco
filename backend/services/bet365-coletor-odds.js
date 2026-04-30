@@ -163,24 +163,49 @@ async function diagnosticarPagina(pg, ligaNorm, horario) {
 }
 
 // ── Lê odds pré-jogo da página principal ────────────────────
+// Busca o pod "Fulltime Result" que NÃO está dentro do bloco race-off
+// (jogo em andamento). O próximo jogo aparece na mesma página,
+// num container separado, sem o elemento .svc-MarketGroup_RaceOff.
 async function lerOddsPreJogo(pg) {
     return await pg.evaluate(() => {
-        const timeBtn = document.querySelector('.vr-EventTimesNavBarButton-selected .vr-EventTimesNavBarButton_Text');
-        const horario = timeBtn ? timeBtn.textContent.trim() : null;
+        // Horário: pega o PRÓXIMO botão de hora (o que vem após o selecionado)
+        const todosHorarios = [...document.querySelectorAll('.vr-EventTimesNavBarButton')];
+        const selIdx = todosHorarios.findIndex(b => b.classList.contains('vr-EventTimesNavBarButton-selected')
+            || b.querySelector('.vr-EventTimesNavBarButton_Text--selected')
+            || b.classList.contains('selected'));
+        const proximoBtn = todosHorarios[selIdx + 1] || todosHorarios[0];
+        const horario = proximoBtn
+            ? proximoBtn.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || proximoBtn.textContent.trim()
+            : null;
 
-        const ftPod = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
-            .find(p => {
+        // Encontra TODOS os pods "Fulltime Result"
+        const allPods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
+            .filter(p => {
                 const txt = p.querySelector('.gl-MarketGroupButton_Text')?.textContent.trim();
                 return txt === 'Fulltime Result' || txt === 'Resultado Final';
             });
 
-        if (!ftPod) {
+        if (allPods.length === 0) {
             const nomes = _lerNomesEquipes();
             return { motivo: 'sem_mercado', ...nomes };
         }
 
-        const raceOff = document.querySelector('.svc-MarketGroup_RaceOff');
-        if (raceOff) {
+        // Escolhe o pod que NÃO está dentro de um bloco com race-off
+        // (race-off pertence ao jogo atual; o próximo jogo fica num bloco separado)
+        let ftPod = null;
+        for (const pod of allPods) {
+            let el = pod.parentElement;
+            let dentroRaceOff = false;
+            for (let i = 0; i < 8; i++) {
+                if (!el) break;
+                if (el.querySelector(':scope > .svc-MarketGroup_RaceOff')) { dentroRaceOff = true; break; }
+                el = el.parentElement;
+            }
+            if (!dentroRaceOff) { ftPod = pod; break; }
+        }
+
+        // Se todos os pods têm race-off → jogo em andamento sem próximo visível ainda
+        if (!ftPod) {
             const nomes = _lerNomesEquipes();
             return { motivo: 'em_andamento', ...nomes };
         }
@@ -327,47 +352,21 @@ async function ciclo(pg) {
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
             await new Promise(r => setTimeout(r, DELAY_LIGA_MS));
 
-            // Lê todos os botões de horário disponíveis na liga
-            const horarios = await pg.evaluate(() =>
-                [...document.querySelectorAll('.vr-EventTimesNavBarButton')]
-                    .map((btn, idx) => ({
-                        idx,
-                        texto: btn.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim()
-                               || btn.textContent.trim(),
-                    }))
-                    .filter(h => h.texto)
-            );
-
-            if (horarios.length === 0) {
-                console.log(`   ⏭️  [${ligaNorm}] Nenhum horário disponível`);
+            // Lê página padrão — NÃO clica em botões de horário
+            // (botões futuros retornam página vazia; o próximo jogo já aparece na página padrão)
+            const odds = await lerOddsPreJogo(pg);
+            const clubes = (odds.timeCasa && odds.timeFora)
+                ? ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`
+                : '';
+            if (odds.ok) {
+                await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
+                                   odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
+                console.log(`   💰 [${ligaNorm}] ${odds.horario}${clubes} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                oddsOk++;
             } else {
-                console.log(`   🕐 [${ligaNorm}] ${horarios.length} horário(s): ${horarios.map(h => h.texto).join(' | ')}`);
-
-                // Percorre cada horário — clica, aguarda 1s, lê odds
-                for (const h of horarios) {
-                    await pg.evaluate((idx) => {
-                        const btns = document.querySelectorAll('.vr-EventTimesNavBarButton');
-                        if (btns[idx]) btns[idx].click();
-                    }, h.idx);
-                    await new Promise(r => setTimeout(r, DELAY_HORARIO_MS));
-
-                    const odds = await lerOddsPreJogo(pg);
-                    const clubes = (odds.timeCasa && odds.timeFora)
-                        ? ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`
-                        : '';
-                    if (odds.ok) {
-                        await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
-                                           odds.horario || h.texto,
-                                           odds.oddCasa, odds.oddEmpate, odds.oddFora);
-                        console.log(`   💰 [${ligaNorm}] ${h.texto}${clubes} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
-                        oddsOk++;
-                    } else {
-                        console.log(`   ⏭️  [${ligaNorm}] ${h.texto}${clubes} — ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
-                        // Diagnóstico apenas no primeiro "sem mercado" de cada liga (2º horário = próximo jogo)
-                        if (odds.motivo === 'sem_mercado' && h.idx === horarios[1]?.idx) {
-                            await diagnosticarPagina(pg, ligaNorm, h.texto);
-                        }
-                    }
+                console.log(`   ⏭️  [${ligaNorm}]${clubes} — ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
+                if (odds.motivo === 'sem_mercado') {
+                    await diagnosticarPagina(pg, ligaNorm, '(default)');
                 }
             }
 
