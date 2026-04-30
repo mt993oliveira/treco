@@ -339,11 +339,20 @@ async function ciclo(pg) {
 
             // Verificação rápida: se não há botões de horário, a liga está inativa agora
             // (timeBtns=0 = sem jogos agendados — não precisa esperar mais)
-            const timeBtns = await pg.evaluate(() =>
-                document.querySelectorAll('.vr-EventTimesNavBarButton').length
-            );
-            if (timeBtns === 0) {
-                console.log(`   ⏭️  [${ligaNorm}] Liga inativa`);
+            const estadoApos = await pg.evaluate(() => {
+                const ligaBtns = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')];
+                const ligaAtiva = ligaBtns.find(b => [...b.classList].some(c =>
+                    c.toLowerCase().includes('select') || c.toLowerCase().includes('active') || c.toLowerCase().includes('current')
+                ))?.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '?';
+                return {
+                    timeBtns: document.querySelectorAll('.vr-EventTimesNavBarButton').length,
+                    pods: document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length,
+                    ligaAtiva,
+                };
+            });
+            if (estadoApos.timeBtns === 0) {
+                const navOk = estadoApos.ligaAtiva === nomeLiga ? '✅nav' : `❌nav(=${estadoApos.ligaAtiva})`;
+                console.log(`   ⏭️  [${ligaNorm}] Liga inativa | ${navOk} pods=${estadoApos.pods}`);
                 continue;
             }
 
