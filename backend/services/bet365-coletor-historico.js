@@ -10,24 +10,22 @@
  * Pode usar a mesma porta do Coletor 2 (9223) quando este estiver parado.
  *
  * Fluxo por execução:
- *   Para cada liga → clica na aba → abre view Resultados →
- *   clica em cada botão de hora → coleta → salva → hard refresh → próxima hora/liga
+ *   Para cada liga → constrói URL extra.bet365.bet.br (modo=result) →
+ *   abre nova aba → extrai jogos + placar → filtra por hora → salva no banco
  *
  * Uso:
  *   node -r dotenv/config backend/services/bet365-coletor-historico.js
  *
  * Parâmetros (via .env ou variáveis de ambiente):
- *   BET365_HIST_DEBUG_PORT=9223     (porta do Edge — padrão: 9223)
- *   BET365_HIST_DATA=2026-04-28     (data alvo — padrão: ontem)
- *   BET365_HIST_HORA_INI=12:00      (filtra horas a partir de — opcional)
- *   BET365_HIST_HORA_FIM=18:00      (filtra horas até — opcional)
- *   BET365_HIST_LIGAS=World Cup,Euro Cup  (filtra ligas — padrão: todas)
- *   BET365_HIST_DELAY_HORA_MS=2500  (aguarda após clicar botão de hora)
- *   BET365_HIST_DELAY_REFRESH_MS=4000 (aguarda após hard refresh)
+ *   BET365_HIST_DEBUG_PORT=9223          (porta do Edge — padrão: 9223)
+ *   BET365_HIST_DATA=2026-04-30          (data alvo — padrão: ontem)
+ *   BET365_HIST_HORA_INI=21:00           (filtra horas a partir de — opcional)
+ *   BET365_HIST_HORA_FIM=23:59           (filtra horas até — opcional)
+ *   BET365_HIST_LIGAS=World Cup,Euro Cup (filtra ligas — padrão: todas)
  *
  * PRÉ-REQUISITO:
- *   Edge aberto na porta indicada com a conta Bet365 logada e
- *   a página de Futebol Virtual carregada.
+ *   Edge aberto na porta indicada com a conta Bet365 logada
+ *   (a sessão é usada para autenticar em extra.bet365.bet.br).
  * ============================================================
  */
 
@@ -42,10 +40,7 @@ dotenv.config();
 
 // ── Parâmetros ───────────────────────────────────────────────
 const DEBUG_PORT      = parseInt(process.env.BET365_HIST_DEBUG_PORT)    || 9223;
-const DELAY_HORA_MS   = parseInt(process.env.BET365_HIST_DELAY_HORA_MS) || 2500;
-const DELAY_REFRESH_MS= parseInt(process.env.BET365_HIST_DELAY_REFRESH_MS) || 4000;
-const DELAY_LIGA_MS   = parseInt(process.env.BET365_HIST_DELAY_LIGA_MS) || 3000;
-const MAX_SHOW_MORE   = 20;
+const DELAY_LIGA_MS   = parseInt(process.env.BET365_HIST_DELAY_LIGA_MS) || 2000;
 
 function _ontemStr() {
     const d = new Date();
@@ -58,9 +53,6 @@ const HORA_FIM     = process.env.BET365_HIST_HORA_FIM || null;
 const LIGAS_FILTRO = process.env.BET365_HIST_LIGAS
     ? process.env.BET365_HIST_LIGAS.split(',').map(l => l.trim())
     : null;
-
-const URL_SOCCER    = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
-const LIGAS_IGNORAR = ['super league'];
 
 // ── Normalização (igual ao coletor principal) ────────────────
 const LIGA_NORMALIZAR = {
@@ -139,133 +131,141 @@ function gerarMercadoId(eventoId, mercado, selecao) {
     return Number(BigInt(h) & BigInt('0x7FFFFFFFFFFFFFFF'));
 }
 
-// ============================================================
-// PRÓXIMOS JOGOS VIA extra.bet365.bet.br — IMPLEMENTAÇÃO FUTURA
-// ============================================================
-// Esta função foi desenvolvida e testada no coletor de odds
-// (bet365-coletor-odds.js, commit f8a2f80) e depois removida
-// para ser integrada aqui quando a abordagem for validada.
-//
-// O que faz: abre uma nova aba na URL abaixo, raspa os botões
-// de fixture e retorna os jogos que começam nos próximos N min.
-//
-// URL base: https://extra.bet365.bet.br/results/br?q=<params_b64>
-//
-// Seletores identificados na página (a confirmar se ainda válidos):
-//   button.point-result__fixture         → cada jogo
-//   .point-result__fixture-participant   → participantes (>=2 por jogo)
-//   Texto do participante[0]: "HH.MM NomeTime" (ex: "21.07 Portugal")
-//   Texto do participante[1]: "NomeTime" (ex: "Brasil")
-//
-// IDs das competições (descobertos em 2026-04-26):
-//   World Cup:                compId='20120650', compNome='Copa do Mundo'
-//   Euro Cup:                 compId='20700663', compNome='Euro Cup'
-//   Premiership:              compId='20120653', compNome='Premier League'
-//   Express Cup:              compId='20940364', compNome='Express Cup'
-//   Super Liga Sul-Americana: compId='20849528', compNome='Super Liga Sul-Americana'
-//
-// Parâmetros da querystring (cada item encodado em base64, separados por "|"):
-//   [0]  '2'
-//   [1]  '146'
-//   [2]  'Futebol%20Virtual'
-//   [3]  dateStr     (ex: '2026-04-29')
-//   [4]  dateStr     (mesmo — início e fim do range)
-//   [5]  '0'
-//   [6]  '0'
-//   [7]  displayDate (ex: '29-29 Abril 2026' — formato PT-BR)
-//   [8]  '0'
-//   [9]  compNome    (encodeURIComponent — ex: 'Copa%20do%20Mundo')
-//   [10] compId      (ex: '20120650')
-//   [11] '0'
-//   [12] ''          (vazio — sem b64)
-//   [13] 'fixture'   (ou 'result' para buscar resultados passados)
-//   [14..18] '0','0','0','0','0'
-//   [19] ''          (vazio — sem b64)
-//   [20] '0'
-//   [21] '0'
-//
-// Código da função (pronto para descomentar e adaptar):
-//
-// async function buscarProximosFixtures(pg, ligaNorm, maxProximos = 4) {
-//     const LIGA_COMP = {
-//         'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
-//         'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
-//         'Premiership':              { compId: '20120653', compNome: 'Premier League' },
-//         'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
-//         'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
-//     };
-//     const ligaInfo = LIGA_COMP[ligaNorm];
-//     if (!ligaInfo) return [];
-//
-//     const nowBST  = new Date(Date.now() + 3600000); // UTC+1 (referência Bet365)
-//     const yyyy    = nowBST.getUTCFullYear();
-//     const mm      = nowBST.getUTCMonth();
-//     const dd      = nowBST.getUTCDate();
-//     const dateStr = `${yyyy}-${String(mm+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-//     const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
-//                       'Agosto','Setembro','Outubro','Novembro','Dezembro'];
-//     const displayDate = `${dd}-${dd}%20${MESES_PT[mm]}%20${yyyy}`;
-//
-//     const b64 = s => Buffer.from(s).toString('base64');
-//     const qParams = [
-//         b64('2'), b64('146'), b64('Futebol%20Virtual'),
-//         b64(dateStr), b64(dateStr), b64('0'), b64('0'),
-//         b64(displayDate), b64('0'),
-//         b64(encodeURIComponent(ligaInfo.compNome)),
-//         b64(ligaInfo.compId), b64('0'), '',
-//         b64('fixture'),
-//         b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
-//         '', b64('0'), b64('0'),
-//     ].join('|');
-//     const url = `https://extra.bet365.bet.br/results/br?q=${qParams}`;
-//
-//     const horaAtualBST = nowBST.getUTCHours();
-//     const minAtualBST  = nowBST.getUTCMinutes();
-//
-//     let novaPg = null;
-//     try {
-//         novaPg = await pg.browser().newPage();
-//         await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-//         try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 }); } catch(_) {}
-//         await new Promise(r => setTimeout(r, 1000));
-//
-//         const { futuros, total } = await novaPg.evaluate((h, m, maxN) => {
-//             const buttons = document.querySelectorAll('button.point-result__fixture');
-//             const futuros = [];
-//             for (const btn of buttons) {
-//                 const parts = btn.querySelectorAll('.point-result__fixture-participant');
-//                 if (parts.length < 2) continue;
-//                 const p1    = parts[0].textContent.trim();
-//                 const match = p1.match(/^(\d{1,2})\.(\d{2})\s+(.+)$/);
-//                 if (!match) continue;
-//                 const jH = parseInt(match[1]);
-//                 const jM = parseInt(match[2]);
-//                 const nowMins = h * 60 + m;
-//                 const jMins   = jH * 60 + jM;
-//                 if (jMins > nowMins && jMins <= nowMins + 6) {
-//                     futuros.push({
-//                         horario:  `${jH}:${String(jM).padStart(2,'0')}`,
-//                         timeCasa: match[3].trim(),
-//                         timeFora: parts[1].textContent.trim(),
-//                     });
-//                     if (futuros.length >= maxN) break;
-//                 }
-//             }
-//             return { futuros, total: buttons.length };
-//         }, horaAtualBST, minAtualBST, maxProximos);
-//
-//         console.log(`   📅 [${ligaNorm}] Fixtures: ${total} encontrados | ${futuros.length} próximos`);
-//         if (futuros.length > 0)
-//             console.log(`      → ${futuros.map(f => `${f.horario} ${f.timeCasa} x ${f.timeFora}`).join(' | ')}`);
-//         return futuros;
-//     } catch(err) {
-//         console.warn(`   ⚠️  [${ligaNorm}] Erro fixtures: ${err.message}`);
-//         return [];
-//     } finally {
-//         if (novaPg) await novaPg.close().catch(() => {});
-//     }
-// }
-// ============================================================
+// ── Competições para extra.bet365.bet.br ─────────────────────
+const LIGA_COMP_EXTRA = {
+    'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
+    'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
+    'Premiership':              { compId: '20120653', compNome: 'Premier League' },
+    'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
+    'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
+};
+
+function construirUrlExtra(ligaNorm, dataAlvo, modo) {
+    const ligaInfo = LIGA_COMP_EXTRA[ligaNorm];
+    if (!ligaInfo) return null;
+    const [yyyy, mmN, dd] = dataAlvo.split('-').map(Number);
+    const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                      'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const displayDate = `${dd}-${dd} ${MESES_PT[mmN-1]} ${yyyy}`;
+    const b64 = s => Buffer.from(s).toString('base64');
+    const qParams = [
+        b64('2'), b64('146'), b64('Futebol%20Virtual'),
+        b64(dataAlvo), b64(dataAlvo), b64('0'), b64('0'),
+        b64(displayDate), b64('0'),
+        b64(encodeURIComponent(ligaInfo.compNome)),
+        b64(ligaInfo.compId), b64('0'), '',
+        b64(modo || 'result'),
+        b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
+        '', b64('0'), b64('0'),
+    ].join('|');
+    return `https://extra.bet365.bet.br/results/br?q=${qParams}`;
+}
+
+async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
+    const url = construirUrlExtra(ligaNorm, dataAlvo, 'result');
+    if (!url) { console.warn(`   ⚠️  [${ligaNorm}] Sem compId`); return 0; }
+    console.log(`   🌐 [${ligaNorm}] ${url}`);
+
+    let novaPg = null;
+    try {
+        novaPg = await browser.newPage();
+        await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
+        await delay(1000);
+
+        // Diagnóstico — classes presentes na página
+        const diag = await novaPg.evaluate(() => {
+            const classes = [...new Set(
+                [...document.querySelectorAll('[class]')]
+                    .flatMap(e => [...e.classList])
+                    .filter(c => /fixture|result|score|point|participant|team/i.test(c))
+            )].slice(0, 30);
+            return { title: document.title, classes, bodyLen: document.body?.textContent?.length || 0 };
+        });
+        console.log(`   🔎 [${ligaNorm}] "${diag.title}" | body=${diag.bodyLen}chars`);
+        if (diag.classes.length > 0) console.log(`   🔎 [${ligaNorm}] classes: ${diag.classes.join(', ')}`);
+
+        const raw = await novaPg.evaluate(() => {
+            const jogos = [];
+            const buttons = [...document.querySelectorAll('button.point-result__fixture')];
+            for (const btn of buttons) {
+                const parts = btn.querySelectorAll('.point-result__fixture-participant');
+                if (parts.length < 2) continue;
+                const p0 = parts[0].textContent.trim();
+                const p1 = parts[1].textContent.trim();
+                // Formato p0: "HH.MM NomeTime"
+                const match = p0.match(/^(\d{1,2})[.:](\d{2})\s+(.+)$/);
+                if (!match) continue;
+                const horario  = `${match[1]}:${match[2]}`;
+                const timeCasa = match[3].trim();
+                // p1 pode ter prefixo de hora também (em fixtures) ou só o nome
+                const timeFora = p1.replace(/^\d{1,2}[.:]\d{2}\s+/, '').trim();
+                // Score — tenta vários seletores
+                const scoreEl = btn.querySelector(
+                    '[class*="score"],[class*="Score"],[class*="result__score"],[class*="Result_Score"]'
+                );
+                let golCasa = null, golFora = null, placar = null;
+                if (scoreEl) {
+                    placar = scoreEl.textContent.trim().replace(/\s+/g, '');
+                    const sp = placar.split(/[-–:]/);
+                    if (sp.length >= 2) {
+                        golCasa = parseInt(sp[0]);
+                        golFora = parseInt(sp[1]);
+                    }
+                }
+                // Fallback: texto do botão pode conter "X - Y"
+                if (golCasa === null) {
+                    const btnText = btn.textContent.replace(/\s+/g, ' ').trim();
+                    const sm = btnText.match(/(\d+)\s*[-–]\s*(\d+)/);
+                    if (sm) { golCasa = parseInt(sm[1]); golFora = parseInt(sm[2]); placar = `${golCasa}-${golFora}`; }
+                }
+                jogos.push({ horario, timeCasa, timeFora, placar, golCasa, golFora });
+            }
+            return { jogos, total: buttons.length };
+        });
+
+        console.log(`   📊 [${ligaNorm}] ${raw.total} botões | ${raw.jogos.length} jogos extraídos`);
+        if (raw.jogos.length > 0) {
+            const ex = raw.jogos.slice(0, 3).map(j => `${j.horario} ${j.timeCasa}×${j.timeFora} (${j.placar || '?'})`);
+            console.log(`      ex: ${ex.join(' | ')}`);
+        }
+
+        if (raw.jogos.length === 0) { console.log(`   ⚠️  [${ligaNorm}] Nenhum jogo — verifique seletores`); return 0; }
+
+        const resultados = raw.jogos
+            .filter(j => dentroDoFiltroHora(j.horario))
+            .map(j => {
+                const placarOculto = j.golCasa === null || j.golFora === null || isNaN(j.golCasa) || isNaN(j.golFora);
+                return {
+                    liga: ligaNorm,
+                    horario:   j.horario,
+                    timeCasa:  normalizarNomeTime(j.timeCasa),
+                    timeFora:  normalizarNomeTime(j.timeFora),
+                    placar:    placarOculto ? 'OCULTO' : `${j.golCasa}-${j.golFora}`,
+                    golCasa:   placarOculto ? 0 : j.golCasa,
+                    golFora:   placarOculto ? 0 : j.golFora,
+                    resultado: placarOculto ? 'OCULTO'
+                        : j.golCasa > j.golFora ? 'CASA'
+                        : j.golFora > j.golCasa ? 'FORA' : 'EMPATE',
+                    mercados: [],
+                    placarOculto,
+                };
+            });
+
+        console.log(`   → ${raw.jogos.length} total | ${resultados.length} no filtro de hora`);
+        if (resultados.length === 0) return 0;
+
+        const salvos = await salvarResultados(ligaNorm, resultados, dataAlvo);
+        console.log(`   💾 [${ligaNorm}] ${salvos} resultado(s) salvos`);
+        return salvos;
+
+    } catch(err) {
+        console.error(`   ❌ [${ligaNorm}] Erro coletarViaExtra: ${err.message}`);
+        return 0;
+    } finally {
+        if (novaPg) await novaPg.close().catch(() => {});
+    }
+}
 
 // ── Filtro de hora ───────────────────────────────────────────
 function dentroDoFiltroHora(horario) {
@@ -316,74 +316,6 @@ async function conectarEdge() {
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// ── Hard refresh (Ctrl+F5) ───────────────────────────────────
-async function hardRefresh(pg) {
-    for (let r = 1; r <= 3; r++) {
-        try {
-            await pg.setCacheEnabled(false);
-            await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
-            await pg.setCacheEnabled(true);
-            await delay(DELAY_REFRESH_MS);
-            await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 15000 });
-            return true;
-        } catch(e) {
-            await pg.setCacheEnabled(true).catch(() => {});
-            console.log(`   ⚠️  [Hist] Refresh ${r}/3 falhou: ${e.message}`);
-        }
-    }
-    return false;
-}
-
-// ── Extrai resultados da página atual (igual ao coletor principal) ──
-async function extrairResultados(pg, ligaNorm) {
-    const raw = await pg.evaluate((liga) => {
-        const resultados = [];
-        for (const grupo of document.querySelectorAll('.vrr-HeadToHeadMarketGroup')) {
-            const eventLabel  = grupo.querySelector('.vrr-FixtureDetails_Event');
-            const textoLabel  = eventLabel?.textContent.trim() || '';
-            // Pula jogos em andamento (label com minuto: "65'")
-            if (/\d{1,3}[´']\s*$/.test(textoLabel)) continue;
-            const horarioMatch = textoLabel.match(/(\d{1,2}[.:]\d{2})$/);
-            const horario      = horarioMatch ? horarioMatch[1] : null;
-            const t1El = grupo.querySelector('.vrr-HTHTeamDetails_TeamOne');
-            const t2El = grupo.querySelector('.vrr-HTHTeamDetails_TeamTwo');
-            const scEl = grupo.querySelector('.vrr-HTHTeamDetails_Score');
-            if (!t1El || !t2El || !scEl) continue;
-            const timeCasa = t1El.textContent.trim();
-            const timeFora = t2El.textContent.trim();
-            const placar   = scEl.textContent.trim().replace(/\s+/g, '');
-            const parts    = placar.split(/[-–]/);
-            const gcParse  = parseInt(parts[0]);
-            const gfParse  = parseInt(parts[1]);
-            const placarOculto = isNaN(gcParse) || isNaN(gfParse);
-            const golCasa  = placarOculto ? 5 : (gcParse || 0);
-            const golFora  = placarOculto ? 0 : (gfParse || 0);
-            const resultado = placarOculto ? 'OCULTO'
-                : golCasa > golFora ? 'CASA' : golFora > golCasa ? 'FORA' : 'EMPATE';
-            const mercados = [];
-            for (const p of grupo.querySelectorAll('.vrr-HeadToHeadParticipant')) {
-                const mkt = p.querySelector('.vrr-HeadToHeadParticipant_Market');
-                const win = p.querySelector('.vrr-HeadToHeadParticipant_Winner');
-                const prc = p.querySelector('.vrr-HeadToHeadParticipant_Price');
-                if (mkt && win) mercados.push({ mercado: mkt.textContent.trim(), selecao: win.textContent.trim(), odd: prc ? parseFloat(prc.textContent.trim()) || 0 : 0 });
-            }
-            resultados.push({ liga, horario, timeCasa, timeFora, placar, golCasa, golFora, resultado, mercados, placarOculto });
-        }
-        return resultados;
-    }, ligaNorm);
-
-    return raw.map(r => ({
-        ...r,
-        timeCasa: normalizarNomeTime(r.timeCasa),
-        timeFora: normalizarNomeTime(r.timeFora),
-        mercados: (r.mercados || []).map(m => ({
-            mercado: normalizarNomeMercado(m.mercado),
-            selecao: normalizarNomeSelecao(m.selecao),
-            odd:     m.odd,
-        })),
-    }));
-}
 
 // ── Salva resultados no banco ────────────────────────────────
 async function salvarResultados(ligaNorm, resultados, dataAlvo) {
@@ -478,157 +410,10 @@ async function salvarResultados(ligaNorm, resultados, dataAlvo) {
     return salvos;
 }
 
-// ── Clica no botão "Resultados" e expande com "Show More" ────
-async function abrirResultados(pg) {
-    const temBtn = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
-    if (!temBtn) return false;
-    await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
-    await delay(2000);
-    // Expande "Show More" para carregar mais resultados
-    for (let i = 0; i < MAX_SHOW_MORE; i++) {
-        const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
-        if (!temMore) break;
-        await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
-        await delay(600);
-    }
-    // Expande cards individuais
-    await pg.evaluate(() => { [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup .vrr-ShowMoreButton_Link')].forEach(b => b.click()); });
-    await delay(1000);
-    return true;
-}
-
-// ── Lê botões de hora disponíveis na view de resultados ──────
-async function lerBotoesHora(pg) {
-    return await pg.evaluate(() => {
-        // Tenta os seletores prováveis para navegação de hora nos resultados
-        const seletores = [
-            '.vr-EventTimesNavBarButton',
-            '.vrr-TimeNavBarButton',
-            '.vr-ResultsNavBar .vr-NavBarButton',
-            '.vrl-TimeNavBarButton',
-        ];
-        for (const sel of seletores) {
-            const btns = [...document.querySelectorAll(sel)];
-            if (btns.length > 0) {
-                return {
-                    seletor: sel,
-                    horas: btns.map((b, idx) => ({
-                        idx,
-                        texto: b.querySelector('[class*="Text"]')?.textContent.trim()
-                               || b.textContent.trim(),
-                    })),
-                };
-            }
-        }
-        return { seletor: null, horas: [] };
-    });
-}
-
-// ── Processa uma liga completa ───────────────────────────────
-async function processarLiga(pg, nomeLiga) {
-    const ligaNorm = normalizarNomeLiga(nomeLiga);
-    console.log(`\n🏆 [${ligaNorm}] Iniciando...`);
-
-    // Clica na aba da liga
-    const clicou = await pg.evaluate((nome) => {
-        const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-        for (const tab of tabs) {
-            if (tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome) {
-                tab.click(); return true;
-            }
-        }
-        return false;
-    }, nomeLiga);
-
-    if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); return 0; }
-    await delay(DELAY_LIGA_MS);
-
-    // Abre view de Resultados
-    const abriu = await abrirResultados(pg);
-    if (!abriu) { console.warn(`   ⚠️  [${ligaNorm}] Botão Resultados não encontrado`); return 0; }
-
-    // Verifica se há navegação por hora
-    const { seletor, horas } = await lerBotoesHora(pg);
-
-    let totalSalvos = 0;
-
-    if (horas.length === 0) {
-        // Sem botões de hora — coleta tudo que está visível de uma vez
-        console.log(`   ℹ️  [${ligaNorm}] Sem navegação por hora — coletando resultados visíveis`);
-        const resultados = await extrairResultados(pg, ligaNorm);
-        const filtrados  = resultados.filter(r => dentroDoFiltroHora(r.horario));
-        console.log(`   → ${resultados.length} resultado(s) | ${filtrados.length} no filtro de hora`);
-        if (filtrados.length > 0) {
-            totalSalvos = await salvarResultados(ligaNorm, filtrados, DATA_ALVO);
-            console.log(`   💾 [${ligaNorm}] ${totalSalvos} resultado(s) salvos`);
-        }
-    } else {
-        // Navega hora a hora
-        console.log(`   🕐 [${ligaNorm}] ${horas.length} botão(ões) de hora encontrados via "${seletor}"`);
-        console.log(`      Horas: ${horas.map(h => h.texto).join(' | ')}`);
-
-        for (let i = 0; i < horas.length; i++) {
-            const hora = horas[i];
-
-            // Aplica filtro de hora se configurado
-            if (!dentroDoFiltroHora(hora.texto)) {
-                console.log(`   ⏭️  [${ligaNorm}] Hora ${hora.texto} fora do filtro`);
-                continue;
-            }
-
-            console.log(`   🕐 [${ligaNorm}] Hora ${hora.texto} (${i+1}/${horas.length})`);
-
-            // Clica no botão de hora pelo índice (mais confiável que texto)
-            await pg.evaluate((sel, idx) => {
-                const btns = document.querySelectorAll(sel);
-                if (btns[idx]) btns[idx].click();
-            }, seletor, i);
-            await delay(DELAY_HORA_MS);
-
-            // Expande cards
-            await pg.evaluate(() => {
-                [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup .vrr-ShowMoreButton_Link')]
-                    .forEach(b => b.click());
-            });
-            await delay(800);
-
-            // Coleta resultados desta hora
-            const resultados = await extrairResultados(pg, ligaNorm);
-            console.log(`      → ${resultados.length} resultado(s)`);
-
-            if (resultados.length > 0) {
-                const salvos = await salvarResultados(ligaNorm, resultados, DATA_ALVO);
-                totalSalvos += salvos;
-                console.log(`      💾 ${salvos} salvos`);
-            }
-
-            // Hard refresh antes da próxima hora (exceto na última)
-            if (i < horas.length - 1) {
-                console.log(`   🔄 [${ligaNorm}] Hard refresh antes da próxima hora...`);
-                const ok = await hardRefresh(pg);
-                if (!ok) { console.warn(`   ⚠️  [${ligaNorm}] Refresh falhou — tentando continuar`); }
-
-                // Reclica na liga após o refresh
-                await pg.evaluate((nome) => {
-                    const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
-                    for (const tab of tabs) {
-                        if (tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome)
-                            { tab.click(); return; }
-                    }
-                }, nomeLiga);
-                await delay(DELAY_LIGA_MS);
-                await abrirResultados(pg);
-            }
-        }
-    }
-
-    return totalSalvos;
-}
-
 // ── Main ─────────────────────────────────────────────────────
 async function run() {
     console.log('\n============================================');
-    console.log('⏮️  COLETOR HISTÓRICO BET365 (BACKFILL)');
+    console.log('⏮️  COLETOR HISTÓRICO BET365 — extra.bet365.bet.br');
     console.log('============================================');
     console.log(`   📅 Data alvo:  ${DATA_ALVO}`);
     console.log(`   🕐 Hora ini:   ${HORA_INI || '(sem filtro)'}`);
@@ -638,42 +423,25 @@ async function run() {
     console.log('============================================\n');
 
     await getPool();
+    const { browser } = await conectarEdge();
 
-    const { browser, pg } = await conectarEdge();
+    // Ligas a processar (direto da constante LIGA_COMP_EXTRA)
+    const todasLigas = Object.keys(LIGA_COMP_EXTRA);
+    const ligasFiltradas = LIGAS_FILTRO
+        ? todasLigas.filter(l => LIGAS_FILTRO.some(f => l.toLowerCase() === f.toLowerCase()))
+        : todasLigas;
 
-    // Lê ligas disponíveis na página
-    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
-    const ligas = await pg.evaluate(() =>
-        [...document.querySelectorAll('.vrl-MeetingsHeaderButton')]
-            .map(el => el.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '')
-            .filter(Boolean)
-    );
-
-    // Filtra: ignora ligas indesejadas + aplica filtro manual
-    const ligasFiltradas = ligas.filter(l => {
-        if (LIGAS_IGNORAR.some(ig => l.toLowerCase().includes(ig))) return false;
-        if (LIGAS_FILTRO) return LIGAS_FILTRO.some(f => normalizarNomeLiga(l).toLowerCase() === f.toLowerCase());
-        return true;
-    });
-
-    console.log(`📋 ${ligasFiltradas.length} liga(s) para processar: ${ligasFiltradas.join(' | ')}\n`);
+    console.log(`📋 ${ligasFiltradas.length} liga(s): ${ligasFiltradas.join(' | ')}\n`);
 
     let totalGeral = 0;
-
-    for (let i = 0; i < ligasFiltradas.length; i++) {
-        const nomeLiga = ligasFiltradas[i];
+    for (const ligaNorm of ligasFiltradas) {
         try {
-            const salvos = await processarLiga(pg, nomeLiga);
+            const salvos = await coletarViaExtra(browser, ligaNorm, DATA_ALVO);
             totalGeral += salvos;
         } catch(e) {
-            console.error(`   ❌ [${nomeLiga}] Erro: ${e.message}`);
+            console.error(`   ❌ [${ligaNorm}] Erro: ${e.message}`);
         }
-
-        // Hard refresh entre ligas (exceto após a última)
-        if (i < ligasFiltradas.length - 1) {
-            console.log(`\n   🔄 Hard refresh antes da próxima liga...`);
-            await hardRefresh(pg);
-        }
+        await delay(2000);
     }
 
     console.log('\n============================================');
