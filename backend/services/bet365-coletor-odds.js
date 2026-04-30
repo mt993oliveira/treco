@@ -334,8 +334,8 @@ async function ciclo(pg) {
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
 
-            // Pausa para o re-render iniciar após o clique na aba
-            await new Promise(r => setTimeout(r, 800));
+            // Pausa para o SPA navegar para a nova liga (2s — sem hard refresh entre ligas)
+            await new Promise(r => setTimeout(r, 2000));
 
             // Verificação rápida: se não há botões de horário, a liga está inativa agora
             // (timeBtns=0 = sem jogos agendados — não precisa esperar mais)
@@ -381,11 +381,9 @@ async function ciclo(pg) {
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
 
-        // Hard refresh após cada liga (exceto a última) — reseta o estado do SPA
-        // para garantir que a próxima liga carregue corretamente ao clicar na aba
-        if (i < ligasFiltradas.length - 1) {
-            await hardRefresh(pg);
-        }
+        // Sem hard refresh entre ligas — o hard refresh causa estado inválido no SPA
+        // impedindo que abas como Copa do Mundo carreguem seu conteúdo.
+        // Navegação via click direto funciona como o usuário faz manualmente.
     }
 
     console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
