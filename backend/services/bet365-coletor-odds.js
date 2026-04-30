@@ -153,7 +153,8 @@ async function diagnosticarPagina(pg, ligaNorm, horario) {
 // NOTA: .svc-MarketGroup_RaceOff é IRMÃO dos pods, não ancestral.
 // Indicador correto de jogo em andamento: _Suspended em TODOS os participantes.
 async function lerOddsPreJogo(pg) {
-    // Função DOM pura: encontra pod Resultado Final com odds NÃO suspensas
+    // Função DOM pura: lê pod "Resultado Final"
+    // Prefere pod NÃO suspenso; se só tiver suspenso, usa mesmo assim (odds são válidas)
     const lerOddsDOM = () => {
         const allPods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
             .filter(p => {
@@ -162,23 +163,20 @@ async function lerOddsPreJogo(pg) {
             });
         if (allPods.length === 0) return { motivo: 'sem_mercado' };
 
-        let ftPod = null;
+        // Prefere pod não suspenso; cai no primeiro disponível se todos suspensos
+        let ftPod = null, suspended = false;
         for (const pod of allPods) {
             const parts = [...pod.querySelectorAll('.srb-ParticipantStackedBorderless')];
-            // Se TODOS estão suspensos = jogo em race-off, pula
-            const allSusp = parts.length > 0 &&
-                parts.every(p => p.classList.contains('srb-ParticipantStackedBorderless_Suspended'));
-            if (!allSusp) { ftPod = pod; break; }
+            const allSusp = parts.length > 0 && parts.every(p => p.classList.contains('srb-ParticipantStackedBorderless_Suspended'));
+            if (!allSusp) { ftPod = pod; suspended = false; break; }
+            if (!ftPod)   { ftPod = pod; suspended = true; }
         }
 
-        if (!ftPod) {
-            const sels = [['.vr-HeadToHeadParticipantName_Name',2],['.vr-ParticipantName_Name',2],['.vr-EventDetails_Participant',2]];
-            for (const [s,m] of sels) {
-                const els = [...document.querySelectorAll(s)].map(e => e.textContent.trim()).filter(Boolean);
-                if (els.length >= m) return { motivo: 'em_andamento', timeCasa: els[0], timeFora: els[1] };
-            }
-            return { motivo: 'em_andamento' };
-        }
+        // Horário: botão selecionado
+        const selBtn = document.querySelector('.vr-EventTimesNavBarButton-selected');
+        const horario = selBtn
+            ? selBtn.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || selBtn.textContent.trim()
+            : null;
 
         const participantes = [...ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')].map(el => ({
             nome: el.querySelector('.srb-ParticipantStackedBorderless_Name')?.textContent.trim() || '',
@@ -196,9 +194,9 @@ async function lerOddsPreJogo(pg) {
         const timeFora  = times[1]?.nome || null;
 
         if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0)
-            return { motivo: 'odds_zeradas' };
+            return { motivo: 'odds_zeradas', suspended };
 
-        return { ok: true, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
+        return { ok: true, suspended, horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
     };
 
     // 1ª tentativa: página atual
@@ -262,11 +260,13 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
         .query(`
             MERGE bet365_eventos AS t
             USING (SELECT @id AS id) AS s ON t.id = s.id
-            WHEN MATCHED AND (@oddCasa > 0 OR @oddEmp > 0 OR @oddFora > 0) THEN UPDATE SET
-                t.odd_casa=@oddCasa, t.odd_empate=@oddEmp, t.odd_fora=@oddFora,
-                t.start_time_datetime=@startDt, t.data_atualizacao=@agora, t.ativo=1
             WHEN MATCHED THEN UPDATE SET
-                t.start_time_datetime=@startDt, t.data_atualizacao=@agora, t.ativo=1
+                t.odd_casa   = CASE WHEN @oddCasa > 0 THEN @oddCasa   ELSE t.odd_casa   END,
+                t.odd_empate = CASE WHEN @oddEmp  > 0 THEN @oddEmp    ELSE t.odd_empate END,
+                t.odd_fora   = CASE WHEN @oddFora > 0 THEN @oddFora   ELSE t.odd_fora   END,
+                t.start_time_datetime = @startDt,
+                t.data_atualizacao    = @agora,
+                t.ativo               = 1
             WHEN NOT MATCHED THEN INSERT
                 (id, url, league_name, time_casa, time_fora, status,
                  start_time_datetime, odd_casa, odd_empate, odd_fora,
@@ -331,10 +331,20 @@ async function ciclo(pg) {
             }, nomeLiga);
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
-            await new Promise(r => setTimeout(r, DELAY_LIGA_MS));
 
-            // Lê página padrão — NÃO clica em botões de horário
-            // (botões futuros retornam página vazia; o próximo jogo já aparece na página padrão)
+            // Aguarda conteúdo da liga carregar (pods OU indicador de race-off)
+            // em vez de delay fixo — mais confiável para páginas com re-render assíncrono
+            try {
+                await pg.waitForSelector(
+                    '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff, .svc-MarketGroup-eventstarted',
+                    { timeout: 8000 }
+                );
+            } catch(_) {
+                console.log(`   ⏳ [${ligaNorm}] Conteúdo não carregou em 8s`);
+                await diagnosticarPagina(pg, ligaNorm, '(timeout)');
+                continue;
+            }
+
             const odds = await lerOddsPreJogo(pg);
             const clubes = (odds.timeCasa && odds.timeFora)
                 ? ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`
@@ -342,7 +352,10 @@ async function ciclo(pg) {
             if (odds.ok) {
                 await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
                                    odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
-                console.log(`   💰 [${ligaNorm}] ${odds.horario}${clubes} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                // 💰 = odds frescas (próximo jogo) | 📌 = race-off (jogo já iniciado, odds salvas como referência)
+                const icon = odds.suspended ? '📌' : '💰';
+                const label = odds.suspended ? ' [race-off]' : ' [próximo]';
+                console.log(`   ${icon} [${ligaNorm}] ${odds.horario}${clubes}${label} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
                 oddsOk++;
             } else {
                 console.log(`   ⏭️  [${ligaNorm}]${clubes} — ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
@@ -354,12 +367,8 @@ async function ciclo(pg) {
         } catch(err) {
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
-
-        // Hard refresh após cada liga (exceto a última — o próximo ciclo já faz no início)
-        if (i < ligasFiltradas.length - 1) {
-            console.log(`   🔄 Hard refresh antes da próxima liga...`);
-            await hardRefresh(pg);
-        }
+        // Sem hard refresh entre ligas — o reload inicial já garante estado limpo
+        // e evitar refresh por liga reduz o ciclo de ~5min para ~30s
     }
 
     console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
