@@ -125,7 +125,10 @@ async function extrairOddsPreJogo(pg) {
                 return txt === 'Fulltime Result' || txt === 'Resultado Final';
             });
 
-        if (!ftPod) return null;
+        if (!ftPod) return { motivo: 'sem_mercado' };
+
+        const raceOff = document.querySelector('.svc-MarketGroup_RaceOff');
+        if (raceOff) return { motivo: 'em_andamento' };
 
         const participantes = [];
         for (const el of ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')) {
@@ -137,10 +140,7 @@ async function extrairOddsPreJogo(pg) {
             });
         }
 
-        if (participantes.length < 3) return null;
-
-        const raceOff  = document.querySelector('.svc-MarketGroup_RaceOff');
-        if (raceOff) return null; // jogo já começou
+        if (participantes.length < 3) return { motivo: 'participantes_insuficientes', qtd: participantes.length };
 
         const isEmpate = n => n === 'Draw' || n === 'Empate';
         const empIdx   = participantes.findIndex(p => isEmpate(p.nome));
@@ -152,7 +152,8 @@ async function extrairOddsPreJogo(pg) {
         const timeCasa  = times[0]?.nome || null;
         const timeFora  = times[1]?.nome || null;
 
-        if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0) return null;
+        if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0)
+            return { motivo: 'odds_zeradas' };
 
         return { horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
     });
@@ -204,6 +205,15 @@ async function salvarOdds(liga, info) {
 
 // ── Ciclo principal ──────────────────────────────────────────
 async function ciclo(pg) {
+    // Hard refresh no início de cada ciclo — garante mercados atualizados
+    try {
+        await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+        await new Promise(r => setTimeout(r, 4000));
+        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 15000 });
+    } catch(err) {
+        console.warn(`   ⚠️  [Odds] Reload falhou: ${err.message}`);
+    }
+
     const ligas = await pg.evaluate(() =>
         [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].map(el => {
             const t = el.querySelector('.vrl-MeetingsHeaderButton_Title');
@@ -220,7 +230,6 @@ async function ciclo(pg) {
     let capturadas = 0;
     for (const nomeLiga of ligasFiltradas) {
         try {
-            // Clica na aba da liga
             const clicou = await pg.evaluate((nome) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
                 for (const tab of tabs) {
@@ -232,12 +241,18 @@ async function ciclo(pg) {
 
             if (!clicou) continue;
 
-            // Espera o mercado carregar (sem F5, sem navigate)
-            await new Promise(r => setTimeout(r, 2500));
+            await new Promise(r => setTimeout(r, 3500));
 
             const info = await extrairOddsPreJogo(pg);
-            if (!info) {
-                console.log(`   ⏭️  [${normalizarNomeLiga(nomeLiga)}] Jogo em andamento ou sem odds`);
+
+            if (!info || info.motivo) {
+                const msgs = {
+                    sem_mercado:              'mercado não encontrado na página',
+                    em_andamento:             'jogo em andamento (race off)',
+                    participantes_insuficientes: `poucos participantes (${info?.qtd ?? 0})`,
+                    odds_zeradas:             'odds zeradas',
+                };
+                console.log(`   ⏭️  [${normalizarNomeLiga(nomeLiga)}] ${msgs[info?.motivo] || 'sem odds'}`);
                 continue;
             }
 
