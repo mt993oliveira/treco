@@ -30,9 +30,12 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const DEBUG_PORT   = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9223;
-const URL_SOCCER   = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
-const LIGAS_IGNORAR = ['super league'];
-const INTERVALO_MS  = parseInt(process.env.BET365_ODDS_INTERVALO_MS) || 90000;
+const URL_SOCCER        = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
+const LIGAS_IGNORAR     = ['super league'];
+const INTERVALO_MS      = parseInt(process.env.BET365_ODDS_INTERVALO_MS)      || 90000;
+const DELAY_HORARIO_MS  = parseInt(process.env.BET365_ODDS_DELAY_HORARIO_MS)  || 2000;
+const DELAY_LIGA_MS     = parseInt(process.env.BET365_ODDS_DELAY_LIGA_MS)     || 2500;
+const DELAY_REFRESH_MS  = parseInt(process.env.BET365_ODDS_DELAY_REFRESH_MS)  || 3500;
 
 // ── Normalização ─────────────────────────────────────────────
 const LIGA_NORMALIZAR = {
@@ -250,7 +253,7 @@ async function hardRefresh(pg) {
         await pg.setCacheEnabled(false);
         await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
         await pg.setCacheEnabled(true);
-        await new Promise(r => setTimeout(r, 3500));
+        await new Promise(r => setTimeout(r, DELAY_REFRESH_MS));
         await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 15000 });
         return true;
     } catch(err) {
@@ -298,7 +301,7 @@ async function ciclo(pg) {
             }, nomeLiga);
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
-            await new Promise(r => setTimeout(r, 2500));
+            await new Promise(r => setTimeout(r, DELAY_LIGA_MS));
 
             // Lê todos os botões de horário disponíveis na liga
             const horarios = await pg.evaluate(() =>
@@ -322,7 +325,7 @@ async function ciclo(pg) {
                         const btns = document.querySelectorAll('.vr-EventTimesNavBarButton');
                         if (btns[idx]) btns[idx].click();
                     }, h.idx);
-                    await new Promise(r => setTimeout(r, 1000));
+                    await new Promise(r => setTimeout(r, DELAY_HORARIO_MS));
 
                     const odds = await lerOddsPreJogo(pg);
                     const clubes = (odds.timeCasa && odds.timeFora)
