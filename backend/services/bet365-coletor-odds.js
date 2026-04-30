@@ -114,6 +114,26 @@ async function conectarEdge() {
     return { browser, pg };
 }
 
+// ── Tenta ler nomes dos clubes da página (fallback sem mercado) ──
+function _lerNomesEquipes() {
+    // Tenta vários seletores onde os nomes podem aparecer na pré-visualização
+    const seletores = [
+        // Cabeçalho do evento / H2H
+        ['.vr-HeadToHeadParticipantName_Name', 2],
+        // Botões de participante no topo
+        ['.vr-ParticipantName_Name', 2],
+        // Área de detalhes do evento
+        ['.vr-EventDetails_Participant', 2],
+        // Qualquer texto de participante visível
+        ['.vr-Participant_Name', 2],
+    ];
+    for (const [sel, min] of seletores) {
+        const els = [...document.querySelectorAll(sel)].map(e => e.textContent.trim()).filter(Boolean);
+        if (els.length >= min) return { timeCasa: els[0], timeFora: els[1] };
+    }
+    return { timeCasa: null, timeFora: null };
+}
+
 // ── Lê odds pré-jogo da página principal ────────────────────
 async function lerOddsPreJogo(pg) {
     return await pg.evaluate(() => {
@@ -126,10 +146,17 @@ async function lerOddsPreJogo(pg) {
                 return txt === 'Fulltime Result' || txt === 'Resultado Final';
             });
 
-        if (!ftPod) return { motivo: 'sem_mercado' };
+        if (!ftPod) {
+            // Sem mercado — tenta pegar nomes dos clubes de outra forma
+            const nomes = _lerNomesEquipes();
+            return { motivo: 'sem_mercado', ...nomes };
+        }
 
         const raceOff = document.querySelector('.svc-MarketGroup_RaceOff');
-        if (raceOff) return { motivo: 'em_andamento' };
+        if (raceOff) {
+            const nomes = _lerNomesEquipes();
+            return { motivo: 'em_andamento', ...nomes };
+        }
 
         const participantes = [];
         for (const el of ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')) {
@@ -157,6 +184,20 @@ async function lerOddsPreJogo(pg) {
             return { motivo: 'odds_zeradas' };
 
         return { ok: true, horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
+
+        function _lerNomesEquipes() {
+            const seletores = [
+                ['.vr-HeadToHeadParticipantName_Name', 2],
+                ['.vr-ParticipantName_Name', 2],
+                ['.vr-EventDetails_Participant', 2],
+                ['.vr-Participant_Name', 2],
+            ];
+            for (const [sel, min] of seletores) {
+                const els = [...document.querySelectorAll(sel)].map(e => e.textContent.trim()).filter(Boolean);
+                if (els.length >= min) return { timeCasa: els[0], timeFora: els[1] };
+            }
+            return { timeCasa: null, timeFora: null };
+        }
     });
 }
 
@@ -284,14 +325,17 @@ async function ciclo(pg) {
                     await new Promise(r => setTimeout(r, 1000));
 
                     const odds = await lerOddsPreJogo(pg);
+                    const clubes = (odds.timeCasa && odds.timeFora)
+                        ? ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`
+                        : '';
                     if (odds.ok) {
                         await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
                                            odds.horario || h.texto,
                                            odds.oddCasa, odds.oddEmpate, odds.oddFora);
-                        console.log(`   💰 [${ligaNorm}] ${h.texto} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                        console.log(`   💰 [${ligaNorm}] ${h.texto}${clubes} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
                         oddsOk++;
                     } else {
-                        console.log(`   ⏭️  [${ligaNorm}] ${h.texto} — ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
+                        console.log(`   ⏭️  [${ligaNorm}] ${h.texto}${clubes} — ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
                     }
                 }
             }
