@@ -24,7 +24,6 @@ dotenv.config();
 const DEBUG_PORT   = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9223;
 const URL_SOCCER   = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR = ['super league'];
-const MAX_PROXIMOS  = parseInt(process.env.BET365_ODDS_MAX_PROXIMOS) || 4;
 const INTERVALO_MS  = parseInt(process.env.BET365_ODDS_INTERVALO_MS) || 90000;
 
 // ── Normalização ─────────────────────────────────────────────
@@ -52,15 +51,6 @@ function normalizarNomeTime(nome) {
     if (!nome) return nome;
     return TIME_NORMALIZAR[nome.toLowerCase().trim()] || nome;
 }
-
-// URLs para coleta de fixtures por liga
-const LIGA_RESULTADOS_URL = {
-    'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
-    'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
-    'Premiership':              { compId: '20120653', compNome: 'Premier League' },
-    'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
-    'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
-};
 
 // ── Hash / ID ────────────────────────────────────────────────
 function _hash(str) {
@@ -162,81 +152,6 @@ async function lerOddsPreJogo(pg) {
     });
 }
 
-// ── Busca próximos fixtures via URL externa ──────────────────
-async function buscarProximosFixtures(pg, ligaNorm) {
-    const ligaInfo = LIGA_RESULTADOS_URL[ligaNorm];
-    if (!ligaInfo) return [];
-
-    const nowBST  = new Date(Date.now() + 3600000);
-    const yyyy    = nowBST.getUTCFullYear();
-    const mm      = nowBST.getUTCMonth();
-    const dd      = nowBST.getUTCDate();
-    const dateStr = `${yyyy}-${String(mm+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-    const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
-                      'Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    const displayDate = `${dd}-${dd}%20${MESES_PT[mm]}%20${yyyy}`;
-
-    const b64 = s => Buffer.from(s).toString('base64');
-    const qParams = [
-        b64('2'), b64('146'), b64('Futebol%20Virtual'),
-        b64(dateStr), b64(dateStr), b64('0'), b64('0'),
-        b64(displayDate), b64('0'),
-        b64(encodeURIComponent(ligaInfo.compNome)),
-        b64(ligaInfo.compId), b64('0'), '',
-        b64('fixture'),
-        b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
-        '', b64('0'), b64('0'),
-    ].join('|');
-    const url = `https://extra.bet365.bet.br/results/br?q=${qParams}`;
-
-    const horaAtualBST = nowBST.getUTCHours();
-    const minAtualBST  = nowBST.getUTCMinutes();
-
-    let novaPg = null;
-    try {
-        novaPg = await pg.browser().newPage();
-        await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-        try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 }); } catch(_) {}
-        await new Promise(r => setTimeout(r, 1000));
-
-        const { futuros, total } = await novaPg.evaluate((h, m, maxN) => {
-            const buttons = document.querySelectorAll('button.point-result__fixture');
-            const futuros = [];
-            for (const btn of buttons) {
-                const parts = btn.querySelectorAll('.point-result__fixture-participant');
-                if (parts.length < 2) continue;
-                const p1    = parts[0].textContent.trim();
-                const match = p1.match(/^(\d{1,2})\.(\d{2})\s+(.+)$/);
-                if (!match) continue;
-                const jH = parseInt(match[1]);
-                const jM = parseInt(match[2]);
-                const nowMins = h * 60 + m;
-                const jMins   = jH * 60 + jM;
-                if (jMins > nowMins && jMins <= nowMins + 6) {
-                    futuros.push({
-                        horario:  `${jH}:${String(jM).padStart(2,'0')}`,
-                        timeCasa: match[3].trim(),
-                        timeFora: parts[1].textContent.trim(),
-                    });
-                    if (futuros.length >= maxN) break;
-                }
-            }
-            return { futuros, total: buttons.length };
-        }, horaAtualBST, minAtualBST, MAX_PROXIMOS);
-
-        console.log(`   📅 [${ligaNorm}] Fixtures: ${total} encontrados | ${futuros.length} próximos`);
-        if (futuros.length > 0)
-            console.log(`      → ${futuros.map(f => `${f.horario} ${f.timeCasa} x ${f.timeFora}`).join(' | ')}`);
-
-        return futuros;
-    } catch(err) {
-        console.warn(`   ⚠️  [${ligaNorm}] Erro fixtures: ${err.message}`);
-        return [];
-    } finally {
-        if (novaPg) await novaPg.close().catch(() => {});
-    }
-}
-
 // ── Salva evento no banco (MERGE) ────────────────────────────
 async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpate, oddFora) {
     const db       = await getPool();
@@ -306,7 +221,7 @@ async function ciclo(pg) {
         odds_zeradas:              'odds zeradas',
     };
 
-    let oddsOk = 0, proximosOk = 0;
+    let oddsOk = 0;
 
     for (const nomeLiga of ligasFiltradas) {
         const ligaNorm = normalizarNomeLiga(nomeLiga);
@@ -335,19 +250,12 @@ async function ciclo(pg) {
                 console.log(`   ⏭️  [${ligaNorm}] Odds: ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
             }
 
-            // ── 2. Busca próximos fixtures via URL ───────────────
-            const futuros = await buscarProximosFixtures(pg, ligaNorm);
-            for (const f of futuros) {
-                await salvarEvento(ligaNorm, f.timeCasa, f.timeFora, f.horario, 0, 0, 0);
-                proximosOk++;
-            }
-
         } catch(err) {
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
     }
 
-    console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk} | próximos: ${proximosOk}`);
+    console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
     return { oddsOk, proximosOk };
 }
 
