@@ -1228,6 +1228,83 @@
     </div>
 
 
+    <!-- BACKFILL HISTÓRICO -->
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:10px">
+        <div style="padding:6px 12px;background:#0c1220;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">📥 BACKFILL — PREENCHER SLOTS VAZIOS</span>
+            <span style="font-size:9px;color:#334155">Gera o comando para coletar jogos históricos por data e hora</span>
+        </div>
+        <div style="padding:10px 14px">
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px">
+                <div>
+                    <div style="font-size:8px;color:#475569;margin-bottom:3px;font-weight:700">DATA</div>
+                    <input type="date" id="bf-data" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:4px 8px;font-size:11px;outline:none;color-scheme:dark"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div>
+                    <div style="font-size:8px;color:#475569;margin-bottom:3px;font-weight:700">HORA INI</div>
+                    <input type="time" id="bf-hora-ini" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:4px 8px;font-size:11px;outline:none;color-scheme:dark"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div>
+                    <div style="font-size:8px;color:#475569;margin-bottom:3px;font-weight:700">HORA FIM</div>
+                    <input type="time" id="bf-hora-fim" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:4px 8px;font-size:11px;outline:none;color-scheme:dark"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div>
+                    <div style="font-size:8px;color:#475569;margin-bottom:3px;font-weight:700">LIGA</div>
+                    <select id="bf-liga" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:4px 8px;font-size:11px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                        <option value="">Todas as ligas</option>
+                        <option value="World Cup">World Cup</option>
+                        <option value="Euro Cup">Euro Cup</option>
+                        <option value="Premiership">Premiership</option>
+                        <option value="Express Cup">Express Cup</option>
+                        <option value="Super Liga Sul-Americana">Super Liga Sul-Americana</option>
+                    </select>
+                </div>
+                <div>
+                    <div style="font-size:8px;color:#475569;margin-bottom:3px;font-weight:700">PORTA EDGE</div>
+                    <input type="number" id="bf-porta" value="9222" min="1" max="65535"
+                        style="width:64px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:4px 8px;font-size:11px;outline:none;text-align:center"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:6px">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:10px;color:#94a3b8;padding-bottom:5px">
+                        <input type="checkbox" id="bf-limpar" style="accent-color:#f87171;width:12px;height:12px">
+                        Limpar antes
+                    </label>
+                    <button onclick="_bfGerarComando()"
+                        style="background:#1fcc59;border:none;color:#000;border-radius:5px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer">
+                        Gerar ▶
+                    </button>
+                </div>
+            </div>
+
+            <div id="bf-output" style="display:none">
+                <div id="bf-bloco-limpar" style="display:none;margin-bottom:8px">
+                    <div style="font-size:9px;font-weight:700;color:#f87171;margin-bottom:4px">1. LIMPAR — rodar primeiro:</div>
+                    <div style="display:flex;gap:6px;align-items:stretch">
+                        <code id="bf-cmd-limpar" style="flex:1;background:#0a0f1e;border:1px solid #3b1a1a;border-radius:5px;padding:8px 10px;font-size:10px;color:#fca5a5;font-family:monospace;word-break:break-all;line-height:1.6;white-space:pre-wrap"></code>
+                        <button onclick="_bfCopiar('bf-cmd-limpar',this)"
+                            style="background:#3b1a1a;border:1px solid #7f1d1d;color:#f87171;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;flex-shrink:0">Copiar</button>
+                    </div>
+                </div>
+                <div>
+                    <div id="bf-label-coletar" style="font-size:9px;font-weight:700;color:#1fcc59;margin-bottom:4px">COLETAR:</div>
+                    <div style="display:flex;gap:6px;align-items:stretch">
+                        <code id="bf-cmd-coletar" style="flex:1;background:#0a0f1e;border:1px solid #1e3a2a;border-radius:5px;padding:8px 10px;font-size:10px;color:#6ee7a0;font-family:monospace;word-break:break-all;line-height:1.6;white-space:pre-wrap"></code>
+                        <button onclick="_bfCopiar('bf-cmd-coletar',this)"
+                            style="background:#0f3a1e;border:1px solid #1fcc59;color:#1fcc59;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;flex-shrink:0">Copiar</button>
+                    </div>
+                </div>
+                <div style="margin-top:7px;font-size:9px;color:#475569">
+                    ⚠️ Cole e execute no terminal Windows com o Edge aberto na porta indicada (conta Bet365 logada).
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Corpo: 2 colunas — Jogos por Liga | Últimos Registros -->
     <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;flex-wrap:wrap">
 
@@ -2281,7 +2358,7 @@ function setView(v) {
     if (v === 'historico')   { carregarHistorico(); }
     if (v === 'analise')     { renderAnalise(); carregarMercados(); }
     if (v === 'clubes')      { renderClubes(); }
-    if (v === 'diagnostico') { carregarDiagnostico(); }
+    if (v === 'diagnostico') { carregarDiagnostico(); _bfInit(); }
 }
 
 const _ANALISE_SECOES_MAP = {
@@ -4816,6 +4893,62 @@ async function renderDetalheClube(nomeTime) {
             </table>
         </div>
     </div>`;
+}
+
+// ============================================================
+// BACKFILL — GERADOR DE COMANDO
+// ============================================================
+
+function _bfInit() {
+    const hoje = new Date();
+    const yyyy = hoje.getFullYear();
+    const mm   = String(hoje.getMonth()+1).padStart(2,'0');
+    const dd   = String(hoje.getDate()).padStart(2,'0');
+    const el = document.getElementById('bf-data');
+    if (el && !el.value) el.value = `${yyyy}-${mm}-${dd}`;
+}
+
+function _bfGerarComando() {
+    const data    = document.getElementById('bf-data').value;
+    const horaIni = document.getElementById('bf-hora-ini').value;
+    const horaFim = document.getElementById('bf-hora-fim').value;
+    const liga    = document.getElementById('bf-liga').value;
+    const porta   = document.getElementById('bf-porta').value || '9222';
+    const limpar  = document.getElementById('bf-limpar').checked;
+
+    if (!data) { alert('Informe a data.'); return; }
+
+    function montarCmd(comLimpar) {
+        const parts = ['cd C:\\PRODUCAO', `set BET365_HIST_DATA=${data}`];
+        if (horaIni) parts.push(`set BET365_HIST_HORA_INI=${horaIni}`);
+        if (horaFim) parts.push(`set BET365_HIST_HORA_FIM=${horaFim}`);
+        parts.push(`set BET365_HIST_DEBUG_PORT=${porta}`);
+        if (liga) parts.push(`set BET365_HIST_LIGAS=${liga}`);
+        if (comLimpar) parts.push('set BET365_HIST_LIMPAR=1');
+        parts.push('node -r dotenv/config backend/services/bet365-coletor-historico.js');
+        return parts.join(' && ');
+    }
+
+    document.getElementById('bf-cmd-coletar').textContent = montarCmd(false);
+    document.getElementById('bf-cmd-limpar').textContent  = montarCmd(true);
+    document.getElementById('bf-bloco-limpar').style.display    = limpar ? 'block' : 'none';
+    document.getElementById('bf-label-coletar').textContent     = limpar ? '2. COLETAR — rodar depois:' : 'COLETAR:';
+    document.getElementById('bf-output').style.display = 'block';
+}
+
+function _bfCopiar(id, btn) {
+    const txt = document.getElementById(id).textContent;
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject())
+        .catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = txt; document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+        })
+        .finally(() => {
+            const orig = btn.textContent;
+            btn.textContent = '✓ Copiado';
+            setTimeout(() => btn.textContent = orig, 1500);
+        });
 }
 
 // ============================================================
