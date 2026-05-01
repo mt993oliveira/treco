@@ -233,23 +233,24 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
 
         for (const jogo of jogosParaClicar) {
             try {
-                // Clica no botão da partida
+                // Clica no botão da partida (scroll para garantir visibilidade)
                 await novaPg.evaluate((idx) => {
-                    document.querySelectorAll('button.point-result__fixture')[idx]?.click();
+                    const btn = document.querySelectorAll('button.point-result__fixture')[idx];
+                    if (btn) { btn.scrollIntoView({ block: 'center' }); btn.click(); }
                 }, jogo.idx);
+                await delay(300);
 
                 // Aguarda fixture-page__inner ficar visível
                 await novaPg.waitForFunction(() => {
                     const inner = document.querySelector('.fixture-page__inner');
                     return inner && !inner.classList.contains('fixture-page__inner--hidden');
-                }, { timeout: 10000 });
+                }, { timeout: 15000 });
 
-                // Aguarda mercados carregarem
+                // Aguarda pelo menos 1 mercado (não-bloqueante — jogos recentes podem não ter dados ainda)
                 await novaPg.waitForFunction(() => {
-                    return document.querySelectorAll('.market-search__link-variables-row').length > 3;
-                }, { timeout: 10000 });
-
-                await delay(400);
+                    return document.querySelectorAll('.market-search__link-variables-row').length > 0;
+                }, { timeout: 12000 }).catch(() => {});
+                await delay(800);
 
                 // Extrai placar e seleções vencedoras
                 const dadosJogo = await novaPg.evaluate((timeCasaArg) => {
@@ -292,7 +293,8 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                     return { mercadosGanhadores, golCasa, golFora, placar };
                 }, jogo.timeCasa);
 
-                console.log(`   ✓ ${jogo.horario} ${jogo.timeCasa}×${jogo.timeFora} → ${dadosJogo.placar || '?'} | ${dadosJogo.mercadosGanhadores.length} mercados`);
+                const avisoMkt = dadosJogo.mercadosGanhadores.length === 0 ? ' ⚠️  sem mercados (página pode estar carregando)' : '';
+                console.log(`   ✓ ${jogo.horario} ${jogo.timeCasa}×${jogo.timeFora} → ${dadosJogo.placar || '?'} | ${dadosJogo.mercadosGanhadores.length} mercados${avisoMkt}`);
 
                 resultados.push({
                     ...jogo,
