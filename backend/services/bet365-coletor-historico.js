@@ -255,7 +255,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                         const btn = document.querySelectorAll('button.point-result__fixture')[idx];
                         if (btn) { btn.scrollIntoView({ block: 'center' }); btn.click(); }
                     }, jogo.idx);
-                    await delay(500);
+                    await delay(1000);
                     const abriu = await novaPg.evaluate(() => {
                         const inner = document.querySelector('.fixture-page__inner');
                         return inner && !inner.classList.contains('fixture-page__inner--hidden');
