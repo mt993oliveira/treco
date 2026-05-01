@@ -145,6 +145,15 @@ const LIGA_COMP_EXTRA = {
     'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
 };
 
+// Mapeamento liga → chave em bet365_config (igual ao coletor live)
+const LIGA_CONFIG_KEY = {
+    'World Cup':                'liga_world_cup',
+    'Euro Cup':                 'liga_euro_cup',
+    'Premiership':              'liga_premiership',
+    'Express Cup':              'liga_express_cup',
+    'Super Liga Sul-Americana': 'liga_super_liga',
+};
+
 function construirUrlExtra(ligaNorm, dataAlvo, modo) {
     const ligaInfo = LIGA_COMP_EXTRA[ligaNorm];
     if (!ligaInfo) return null;
@@ -577,9 +586,27 @@ async function run() {
 
     // Ligas a processar (direto da constante LIGA_COMP_EXTRA)
     const todasLigas = Object.keys(LIGA_COMP_EXTRA);
-    const ligasFiltradas = LIGAS_FILTRO
+    let ligasFiltradas = LIGAS_FILTRO
         ? todasLigas.filter(l => LIGAS_FILTRO.some(f => l.toLowerCase() === f.toLowerCase()))
         : todasLigas;
+
+    // Respeita ligas habilitadas em ⚙️ Configurações do Sistema (bet365_config)
+    try {
+        const db = await getPool();
+        const cfgR = await db.request().query(`SELECT chave, valor FROM bet365_config`);
+        const cfg = {};
+        cfgR.recordset.forEach(row => { if (row.chave) cfg[row.chave] = row.valor; });
+        const antes = ligasFiltradas.length;
+        ligasFiltradas = ligasFiltradas.filter(l => {
+            const key = LIGA_CONFIG_KEY[l];
+            if (!key) return true;
+            return cfg[key] !== 'false';
+        });
+        const puladas = antes - ligasFiltradas.length;
+        if (puladas > 0) console.log(`   ⚙️  ${puladas} liga(s) desabilitada(s) no Sistema — ignoradas`);
+    } catch(e) {
+        console.warn(`   ⚠️  Não foi possível carregar config do banco: ${e.message}`);
+    }
 
     console.log(`📋 ${ligasFiltradas.length} liga(s): ${ligasFiltradas.join(' | ')}\n`);
 
