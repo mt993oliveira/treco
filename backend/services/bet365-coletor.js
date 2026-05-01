@@ -967,19 +967,16 @@ class Bet365Coletor {
                 console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
             }
 
-            // Ctrl+F5 (hard refresh) após cada liga — limpa cache e garante estado limpo
-            console.log(`   🔄 [${liga.nome}] Ctrl+F5 — hard refresh...`);
+            // F5 (soft refresh) após cada liga — mantém cache, só recarrega dados
+            console.log(`   🔄 [${liga.nome}] F5 — recarregando...`);
             for (let r = 1; r <= 3; r++) {
                 try {
-                    await pg.setCacheEnabled(false);                          // desativa cache (= Ctrl+F5)
                     await pg.reload({ waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_navegacao_ms', 30000) });
-                    await pg.setCacheEnabled(true);
                     await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
                     await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
                     break; // ligas apareceram, continua para próxima liga
                 } catch(e) {
-                    await pg.setCacheEnabled(true).catch(() => {});           // garante que cache não fica desativado
-                    console.log(`   ⚠️  Ligas não apareceram após Ctrl+F5 (${r}/3), tentando novamente...`);
+                    console.log(`   ⚠️  Ligas não apareceram após F5 (${r}/3), tentando novamente...`);
                     if (r === 3) console.log('   ❌ Não foi possível recarregar. Próxima liga pode falhar.');
                 }
             }
@@ -1433,14 +1430,11 @@ class Bet365Coletor {
                     ligasOk = true;
                     break;
                 } catch(e) {
-                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — Ctrl+F5...`);
+                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — F5...`);
                     try {
-                        await this.page.setCacheEnabled(false);
                         await this.page.reload({ waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_navegacao_ms', 30000) });
-                        await this.page.setCacheEnabled(true);
                         await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
                     } catch(reloadErr) {
-                        await this.page.setCacheEnabled(true).catch(() => {});
                         console.log(`   ⚠️  Reload falhou: ${reloadErr.message}`);
                     }
                 }
