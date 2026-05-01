@@ -249,14 +249,22 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
 
         for (const jogo of jogosParaClicar) {
             try {
-                // Clica no botão da partida (scroll para garantir visibilidade)
-                await novaPg.evaluate((idx) => {
-                    const btn = document.querySelectorAll('button.point-result__fixture')[idx];
-                    if (btn) { btn.scrollIntoView({ block: 'center' }); btn.click(); }
-                }, jogo.idx);
-                await delay(300);
+                // Clica no botão da partida (com retry — às vezes precisa de 2 cliques)
+                for (let tentClique = 1; tentClique <= 2; tentClique++) {
+                    await novaPg.evaluate((idx) => {
+                        const btn = document.querySelectorAll('button.point-result__fixture')[idx];
+                        if (btn) { btn.scrollIntoView({ block: 'center' }); btn.click(); }
+                    }, jogo.idx);
+                    await delay(500);
+                    const abriu = await novaPg.evaluate(() => {
+                        const inner = document.querySelector('.fixture-page__inner');
+                        return inner && !inner.classList.contains('fixture-page__inner--hidden');
+                    }).catch(() => false);
+                    if (abriu) break;
+                    if (tentClique < 2) console.log(`   🔄 [${ligaNorm}] ${jogo.horario} ${jogo.timeCasa}: clique não registrou, repetindo...`);
+                }
 
-                // Aguarda fixture-page__inner ficar visível
+                // Aguarda fixture-page__inner ficar visível (caso ainda esteja carregando)
                 await novaPg.waitForFunction(() => {
                     const inner = document.querySelector('.fixture-page__inner');
                     return inner && !inner.classList.contains('fixture-page__inner--hidden');
