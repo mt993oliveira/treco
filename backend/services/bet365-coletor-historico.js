@@ -59,8 +59,9 @@ const LIMPAR_BACKFILL = process.env.BET365_HIST_LIMPAR === '1';
 // Jogos antes deste horário pertencem ao próximo dia do calendário.
 const HORA_VIRADA_DIA = 6;
 
-// Delay após cada clique em jogo — sobrescrito pelo valor em bet365_config
+// Delay e máx. tentativas de clique — sobrescritos pelo valor em bet365_config
 let DELAY_CLIQUE_MS = 1000;
+let MAX_CLIQUES     = 3;
 
 // ── Normalização (igual ao coletor principal) ────────────────
 const LIGA_NORMALIZAR = {
@@ -253,7 +254,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
         for (const jogo of jogosParaClicar) {
             try {
                 // Clica no botão da partida (com retry — às vezes precisa de 2 cliques)
-                for (let tentClique = 1; tentClique <= 3; tentClique++) {
+                for (let tentClique = 1; tentClique <= MAX_CLIQUES; tentClique++) {
                     await novaPg.evaluate((idx) => {
                         const btn = document.querySelectorAll('button.point-result__fixture')[idx];
                         if (btn) { btn.scrollIntoView({ block: 'center' }); btn.click(); }
@@ -264,7 +265,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                         return inner && !inner.classList.contains('fixture-page__inner--hidden');
                     }).catch(() => false);
                     if (abriu) break;
-                    if (tentClique < 3) console.log(`   🔄 [${ligaNorm}] ${jogo.horario} ${jogo.timeCasa}: clique não registrou (${tentClique}/3), repetindo...`);
+                    if (tentClique < MAX_CLIQUES) console.log(`   🔄 [${ligaNorm}] ${jogo.horario} ${jogo.timeCasa}: clique não registrou (${tentClique}/${MAX_CLIQUES}), repetindo...`);
                 }
 
                 // Aguarda fixture-page__inner ficar visível (caso ainda esteja carregando)
@@ -615,10 +616,9 @@ async function run() {
         });
         const puladas = antes - ligasFiltradas.length;
         if (puladas > 0) console.log(`   ⚙️  ${puladas} liga(s) desabilitada(s) no Sistema — ignoradas`);
-        if (cfg['hist_delay_clique_ms']) {
-            DELAY_CLIQUE_MS = parseInt(cfg['hist_delay_clique_ms']) || 1000;
-            console.log(`   ⚙️  Delay por clique: ${DELAY_CLIQUE_MS}ms`);
-        }
+        if (cfg['hist_delay_clique_ms']) DELAY_CLIQUE_MS = parseInt(cfg['hist_delay_clique_ms']) || 1000;
+        if (cfg['hist_max_cliques'])     MAX_CLIQUES     = parseInt(cfg['hist_max_cliques'])     || 3;
+        console.log(`   ⚙️  Clique: até ${MAX_CLIQUES}x com ${DELAY_CLIQUE_MS}ms de delay`);
     } catch(e) {
         console.warn(`   ⚠️  Não foi possível carregar config do banco: ${e.message}`);
     }
