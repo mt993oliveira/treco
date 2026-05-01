@@ -177,7 +177,13 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
         await novaPg.setCacheEnabled(false);
         await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
         try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
-        await delay(2500);
+        await delay(1500);
+
+        // Rola até o final para forçar carregamento lazy de todos os jogos
+        await novaPg.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await delay(1500);
+        await novaPg.evaluate(() => window.scrollTo(0, 0));
+        await delay(500);
 
         // Se a página abriu direto num detalhe de jogo, volta para a lista
         const naLista = await novaPg.evaluate(() => {
