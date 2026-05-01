@@ -53,6 +53,7 @@ const HORA_FIM     = process.env.BET365_HIST_HORA_FIM || null;
 const LIGAS_FILTRO = process.env.BET365_HIST_LIGAS
     ? process.env.BET365_HIST_LIGAS.split(',').map(l => l.trim())
     : null;
+const LIMPAR_BACKFILL = process.env.BET365_HIST_LIMPAR === '1';
 
 // ── Normalização (igual ao coletor principal) ────────────────
 const LIGA_NORMALIZAR = {
@@ -173,6 +174,23 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
         try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
         await delay(1000);
 
+        // Se a página abriu direto num detalhe de jogo, volta para a lista
+        const naLista = await novaPg.evaluate(() => {
+            const inner = document.querySelector('.result-page__inner');
+            return inner && !inner.classList.contains('result-page__inner--hidden');
+        });
+        if (!naLista) {
+            await novaPg.evaluate(() => {
+                const btn = document.querySelector('.fixture-page-header__back-button');
+                if (btn) btn.click();
+            });
+            await novaPg.waitForFunction(() => {
+                const inner = document.querySelector('.result-page__inner');
+                return inner && !inner.classList.contains('result-page__inner--hidden');
+            }, { timeout: 8000 }).catch(() => {});
+            await delay(500);
+        }
+
         // Identifica os botões dentro do filtro de hora (sem clicar ainda)
         const jogosParaClicar = await novaPg.evaluate((horaIni, horaFim) => {
             function dentroFiltro(horario) {
@@ -204,64 +222,103 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
             return resultado;
         }, HORA_INI, HORA_FIM);
 
-        console.log(`   📊 [${ligaNorm}] ${jogosParaClicar.length} jogo(s) no filtro — abrindo modal de cada um`);
+        console.log(`   📊 [${ligaNorm}] ${jogosParaClicar.length} jogo(s) no filtro — abrindo detalhe de cada um`);
         if (jogosParaClicar.length === 0) return 0;
 
         const resultados = [];
-        let primeiroModalLogado = false;
 
         for (const jogo of jogosParaClicar) {
             try {
-                // Clica no botão
+                // Clica no botão da partida
                 await novaPg.evaluate((idx) => {
                     document.querySelectorAll('button.point-result__fixture')[idx]?.click();
                 }, jogo.idx);
-                await delay(700);
 
-                // Lê o modal aberto
-                const modal = await novaPg.evaluate(() => {
-                    // Busca o modal visível (sem --hidden)
-                    const m = [...document.querySelectorAll('[class*="results-modal"]')]
-                        .find(el => !el.className.includes('--hidden') && !el.className.includes('__mask'));
-                    if (!m) return { found: false, html: '', text: '' };
-                    return {
-                        found: true,
-                        html:  m.innerHTML.replace(/\s+/g,' ').substring(0, 800),
-                        text:  m.textContent.replace(/\s+/g,' ').trim().substring(0, 300),
-                    };
+                // Aguarda fixture-page__inner ficar visível
+                await novaPg.waitForFunction(() => {
+                    const inner = document.querySelector('.fixture-page__inner');
+                    return inner && !inner.classList.contains('fixture-page__inner--hidden');
+                }, { timeout: 10000 });
+
+                // Aguarda mercados carregarem
+                await novaPg.waitForFunction(() => {
+                    return document.querySelectorAll('.market-search__link-variables-row').length > 3;
+                }, { timeout: 10000 });
+
+                await delay(400);
+
+                // Extrai placar e seleções vencedoras
+                const dadosJogo = await novaPg.evaluate((timeCasaArg) => {
+                    const mercadosGanhadores = [];
+                    let golCasa = null, golFora = null, placar = null;
+
+                    const links = document.querySelectorAll('.market-search__link');
+                    for (const link of links) {
+                        const nameEl = link.querySelector('.market-search__link-name');
+                        if (!nameEl) continue;
+                        const nomeMercado = nameEl.textContent.trim();
+
+                        const rows = link.querySelectorAll('.market-search__link-variables-row');
+                        for (const row of rows) {
+                            const selNome  = row.querySelector('.market-search__link-variables-name')?.textContent.trim();
+                            const selValor = row.querySelector('.market-search__link-variables-value')?.textContent.trim();
+                            if (!selNome || selValor !== 'Won') continue;
+
+                            mercadosGanhadores.push({ mercado: nomeMercado, selecao: selNome, odd: 0 });
+
+                            // Extrai placar de "Resultado Correto" (ex: "Bélgica 3-1", "Empate 1-1")
+                            if (nomeMercado === 'Resultado Correto') {
+                                const sm = selNome.match(/(\d+)-(\d+)/);
+                                if (sm) {
+                                    const g1 = parseInt(sm[1]);
+                                    const g2 = parseInt(sm[2]);
+                                    if (selNome.startsWith('Empate') || selNome.startsWith('Draw')) {
+                                        golCasa = g1; golFora = g2;
+                                    } else {
+                                        // g1 = gols do vencedor, g2 = gols do perdedor
+                                        const homeWon = selNome.toLowerCase().startsWith(timeCasaArg.toLowerCase());
+                                        if (homeWon) { golCasa = g1; golFora = g2; }
+                                        else         { golCasa = g2; golFora = g1; }
+                                    }
+                                    placar = `${golCasa}-${golFora}`;
+                                }
+                            }
+                        }
+                    }
+                    return { mercadosGanhadores, golCasa, golFora, placar };
+                }, jogo.timeCasa);
+
+                console.log(`   ✓ ${jogo.horario} ${jogo.timeCasa}×${jogo.timeFora} → ${dadosJogo.placar || '?'} | ${dadosJogo.mercadosGanhadores.length} mercados`);
+
+                resultados.push({
+                    ...jogo,
+                    golCasa:  dadosJogo.golCasa,
+                    golFora:  dadosJogo.golFora,
+                    placar:   dadosJogo.placar,
+                    mercados: dadosJogo.mercadosGanhadores,
                 });
 
-                // Log do primeiro modal para diagnóstico
-                if (!primeiroModalLogado) {
-                    console.log(`   🔬 [${ligaNorm}] Modal HTML: ${modal.html}`);
-                    console.log(`   🔬 [${ligaNorm}] Modal TEXT: ${modal.text}`);
-                    primeiroModalLogado = true;
-                }
-
-                let golCasa = null, golFora = null, placar = null;
-                if (modal.found) {
-                    // Remove nomes dos times e procura padrão de placar X-Y
-                    const scoreText = modal.text
-                        .replace(new RegExp(jogo.timeCasa.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'), '')
-                        .replace(new RegExp(jogo.timeFora.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'), '')
-                        .replace(/\s+/g,' ').trim();
-                    const sm = scoreText.match(/\b(\d{1,2})\s*[-–—]\s*(\d{1,2})\b/);
-                    if (sm) { golCasa = parseInt(sm[1]); golFora = parseInt(sm[2]); placar = `${golCasa}-${golFora}`; }
-                }
-
-                resultados.push({ ...jogo, golCasa, golFora, placar });
-
-                // Fecha modal
+                // Volta para a lista de partidas
                 await novaPg.evaluate(() => {
-                    const btn = document.querySelector('.results-modal__close,[class*="modal__close"]');
+                    const btn = document.querySelector('.fixture-page-header__back-button');
                     if (btn) btn.click();
-                    else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
                 });
+                await novaPg.waitForFunction(() => {
+                    const inner = document.querySelector('.result-page__inner');
+                    return inner && !inner.classList.contains('result-page__inner--hidden');
+                }, { timeout: 10000 });
                 await delay(300);
 
             } catch(err) {
                 console.warn(`   ⚠️  [${ligaNorm}] ${jogo.horario} ${jogo.timeCasa}: ${err.message}`);
-                resultados.push({ ...jogo, golCasa: null, golFora: null, placar: null });
+                resultados.push({ ...jogo, golCasa: null, golFora: null, placar: null, mercados: [] });
+                try {
+                    await novaPg.evaluate(() => {
+                        const btn = document.querySelector('.fixture-page-header__back-button');
+                        if (btn) btn.click();
+                    });
+                    await delay(600);
+                } catch(_) {}
             }
         }
 
@@ -282,7 +339,11 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                 resultado: placarOculto ? 'OCULTO'
                     : j.golCasa > j.golFora ? 'CASA'
                     : j.golFora > j.golCasa ? 'FORA' : 'EMPATE',
-                mercados: [],
+                mercados: (j.mercados || []).map(m => ({
+                    mercado: normalizarNomeMercado(m.mercado),
+                    selecao: normalizarNomeSelecao(m.selecao),
+                    odd:     0,
+                })),
                 placarOculto,
             };
         });
@@ -455,6 +516,31 @@ async function run() {
     console.log('============================================\n');
 
     await getPool();
+
+    // Modo limpeza: deleta jogos do backfill (odd=0, ativo=0) no período indicado
+    if (LIMPAR_BACKFILL) {
+        const [yyyy, mm, dd] = DATA_ALVO.split('-').map(Number);
+        const [hIni, mIni] = (HORA_INI || '00:00').split(':').map(Number);
+        const [hFim, mFim] = (HORA_FIM || '23:59').split(':').map(Number);
+        const dtIni = new Date(Date.UTC(yyyy, mm-1, dd, hIni, mIni, 0));
+        const dtFim = new Date(Date.UTC(yyyy, mm-1, dd, hFim, mFim, 59));
+        const db = await getPool();
+        const r = await db.request()
+            .input('dtIni', sql.DateTime2, dtIni)
+            .input('dtFim', sql.DateTime2, dtFim)
+            .query(`
+                DELETE FROM bet365_eventos
+                WHERE start_time_datetime >= @dtIni
+                  AND start_time_datetime <= @dtFim
+                  AND ativo = 0
+                  AND odd_casa = 0
+                  AND odd_empate = 0
+                  AND odd_fora = 0
+            `);
+        console.log(`🗑️  Deletados: ${r.rowsAffected[0]} evento(s) backfill (${DATA_ALVO} ${HORA_INI||'00:00'}–${HORA_FIM||'23:59'})`);
+        process.exit(0);
+    }
+
     const { browser } = await conectarEdge();
 
     // Ligas a processar (direto da constante LIGA_COMP_EXTRA)
