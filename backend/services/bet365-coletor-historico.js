@@ -177,7 +177,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
         await novaPg.setCacheEnabled(false);
         await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
         try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
-        await delay(1000);
+        await delay(2500);
 
         // Se a página abriu direto num detalhe de jogo, volta para a lista
         const naLista = await novaPg.evaluate(() => {
