@@ -59,6 +59,9 @@ const LIMPAR_BACKFILL = process.env.BET365_HIST_LIMPAR === '1';
 // Jogos antes deste horário pertencem ao próximo dia do calendário.
 const HORA_VIRADA_DIA = 6;
 
+// Delay após cada clique em jogo — sobrescrito pelo valor em bet365_config
+let DELAY_CLIQUE_MS = 1000;
+
 // ── Normalização (igual ao coletor principal) ────────────────
 const LIGA_NORMALIZAR = {
     'copa do mundo':               'World Cup',
@@ -255,7 +258,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                         const btn = document.querySelectorAll('button.point-result__fixture')[idx];
                         if (btn) { btn.scrollIntoView({ block: 'center' }); btn.click(); }
                     }, jogo.idx);
-                    await delay(1000);
+                    await delay(DELAY_CLIQUE_MS);
                     const abriu = await novaPg.evaluate(() => {
                         const inner = document.querySelector('.fixture-page__inner');
                         return inner && !inner.classList.contains('fixture-page__inner--hidden');
@@ -612,6 +615,10 @@ async function run() {
         });
         const puladas = antes - ligasFiltradas.length;
         if (puladas > 0) console.log(`   ⚙️  ${puladas} liga(s) desabilitada(s) no Sistema — ignoradas`);
+        if (cfg['hist_delay_clique_ms']) {
+            DELAY_CLIQUE_MS = parseInt(cfg['hist_delay_clique_ms']) || 1000;
+            console.log(`   ⚙️  Delay por clique: ${DELAY_CLIQUE_MS}ms`);
+        }
     } catch(e) {
         console.warn(`   ⚠️  Não foi possível carregar config do banco: ${e.message}`);
     }

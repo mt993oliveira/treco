@@ -1449,6 +1449,8 @@ const CONFIG_DEFAULTS = [
     // ── Auto-login (sessão expirada) ──
     { chave:'delay_modal_login_ms',         valor:'2500',  tipo:'number',  grupo:'coleta', descricao:'Delay aguardando modal de login aparecer após clicar "Faça Login para Assistir" (ms)' },
     { chave:'delay_pos_login_ms',           valor:'4000',  tipo:'number',  grupo:'coleta', descricao:'Delay após clicar em Login para aguardar restauração da sessão (ms)' },
+    // ── Backfill (coletor histórico) ──
+    { chave:'hist_delay_clique_ms',         valor:'1000',  tipo:'number',  grupo:'coleta', descricao:'Backfill: delay após cada clique em jogo no coletor histórico (ms)' },
     // ── Ordem de coleta ──
     { chave:'proximos_antes_resultados',    valor:'false', tipo:'boolean', grupo:'ordem',  descricao:'Coletar próximos jogos ANTES dos resultados' },
     // ── Ligas ──
