@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Radardabet — Análise de Futebol Virtual</title>
-    <link rel="icon" type="image/jpeg" href="/img/RadarX.jpeg">
+    <title>Radar da Bet — Análise de Futebol Virtual</title>
+    <link rel="icon" type="image/svg+xml" href="/img/radardabet-icon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -260,6 +260,147 @@
             font-size: 13px;
             color: var(--muted);
             line-height: 1.6;
+        }
+
+        /* ── PLANS ─────────────────────────────────── */
+        #planos { background: var(--surface); }
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 860px;
+            margin: 0 auto;
+        }
+        .plan-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px;
+            position: relative;
+            transition: border-color .15s, transform .15s;
+        }
+        .plan-card:hover { transform: translateY(-2px); }
+        .plan-card.destaque {
+            border-color: var(--accent);
+            box-shadow: 0 0 28px rgba(31,204,89,.12);
+        }
+        .plan-badge-top {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: #000;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .06em;
+            padding: 3px 14px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        .plan-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .plan-price {
+            font-size: 2.6rem;
+            font-weight: 900;
+            color: var(--accent);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .plan-price sub {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--muted);
+            vertical-align: baseline;
+        }
+        .plan-period {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 18px;
+        }
+        .plan-features {
+            list-style: none;
+            margin-bottom: 22px;
+        }
+        .plan-features li {
+            font-size: 13px;
+            color: #94a3b8;
+            padding: 5px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            line-height: 1.4;
+        }
+        .plan-features li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .plan-alert {
+            background: rgba(14,165,233,.08);
+            border: 1px solid rgba(14,165,233,.2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 11px;
+            color: #7dd3fc;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .plan-cta {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .btn-plan-primary {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: opacity .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+        .btn-plan-primary:hover { opacity: .88; }
+        .btn-plan-secondary {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 11px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+        .btn-plan-secondary:hover { border-color: var(--muted); color: var(--text); }
+        .plan-note {
+            font-size: 10px;
+            color: var(--dim);
+            text-align: center;
+            margin-top: 10px;
+            line-height: 1.5;
         }
 
         /* ── HOW IT WORKS ──────────────────────────── */
@@ -595,11 +736,11 @@
 <nav>
     <div class="nav-inner">
         <a class="nav-logo" href="#">
-            <img src="/img/RadarX.jpeg" alt="Radardabet">
-            <span>Radardabet</span>
+            <img src="/img/radardabet-logo.svg" alt="Radar da Bet" style="height:38px;border-radius:0">
         </a>
         <div class="nav-links">
             <a href="#features">Recursos</a>
+            <a href="#planos">Planos</a>
             <a href="#como-funciona">Como Funciona</a>
             <a href="#contato">Contato</a>
         </div>
@@ -611,6 +752,7 @@
 </nav>
 <div class="mobile-menu" id="mobile-menu">
     <a href="#features" onclick="closeMobileMenu()">Recursos</a>
+    <a href="#planos" onclick="closeMobileMenu()">Planos</a>
     <a href="#como-funciona" onclick="closeMobileMenu()">Como Funciona</a>
     <a href="#contato" onclick="closeMobileMenu()">Contato</a>
     <button class="btn-login-mob" onclick="closeMobileMenu();abrirLogin()"><i class="fas fa-sign-in-alt"></i> Entrar na Plataforma</button>
@@ -620,7 +762,7 @@
 <section class="hero" id="inicio">
     <div class="hero-badge">⚡ Futebol Virtual em Tempo Real</div>
     <h1>Análise inteligente para <span class="hl">apostas virtuais</span> que realmente funcionam</h1>
-    <p>O Radardabet coleta, processa e analisa partidas de futebol virtual da Bet365 em tempo real — odds, histórico, tendências e sugestões na palma da mão.</p>
+    <p>O Radar da Bet coleta, processa e analisa partidas de futebol virtual da Bet365 em tempo real — odds, histórico, tendências e sugestões na palma da mão.</p>
     <div class="hero-actions">
         <button class="btn-primary" onclick="abrirLogin()"><i class="fas fa-sign-in-alt"></i>&nbsp; Acessar Plataforma</button>
         <a class="btn-outline" href="#features">Ver Recursos</a>
@@ -639,8 +781,8 @@
             <div class="label">INTERVALO DE COLETA</div>
         </div>
         <div class="stat-item">
-            <div class="value">Over/Under</div>
-            <div class="label">MERCADOS ANALISADOS</div>
+            <div class="value">10+</div>
+            <div class="label">TIPOS DE MERCADO</div>
         </div>
         <div class="stat-item">
             <div class="value">24/7</div>
@@ -653,38 +795,117 @@
 <section id="features">
     <div class="section-tag">Recursos</div>
     <div class="section-title">Tudo que você precisa para analisar</div>
-    <p class="section-sub">Dados em tempo real, análise histórica e sugestões automáticas para você tomar decisões mais informadas.</p>
+    <p class="section-sub">Dados em tempo real, análise histórica completa, gráficos avançados e sugestões automáticas para decisões mais informadas.</p>
 
     <div class="features-grid">
         <div class="feature-card">
-            <div class="feature-icon">📊</div>
+            <div class="feature-icon">📋</div>
             <h3>Grid Histórico</h3>
-            <p>Visualize partidas das últimas 6h, 12h, 24h, 48h ou 72h numa grid interativa com filtros de Over/Under, Ambas Marcam e Resultado.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">🔥</div>
-            <h3>Heatmap de Tendências</h3>
-            <p>Mapa de calor por horário e liga para identificar padrões de gols, resultados e séries de forma visual e rápida.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <h3>Sugestões Automáticas</h3>
-            <p>O sistema analisa taxas de acerto históricas por liga e sugere os melhores mercados com base nos dados mais recentes.</p>
+            <p>Visualize partidas das últimas 1h a 72h numa grid interativa. Filtre por liga, placar, Over/Under, Ambas Marcam, Resultado e muito mais — tudo em tempo real.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">📈</div>
+            <h3>Gráfico de Mercados</h3>
+            <p>Evolução temporal de cada mercado com média móvel curta e longa (MM), destaque de topos e fundos, zonas de congestão e % acumulado exibido ao final de cada linha.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">⬛</div>
+            <h3>Menu Mosaico</h3>
+            <p>Visualização compacta de todos os mercados de uma liga num único olhar. Identifique padrões rapidamente sem precisar aplicar filtros manuais.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🤖</div>
+            <h3>IA — Sugestões para Próximos Jogos</h3>
+            <p>Sugestões automáticas para partidas futuras baseadas em mercados pagos historicamente. O sistema pontua confiança por liga com base no volume de dados coletados.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">💰</div>
+            <h3>Value Bets & Tendências</h3>
+            <p>Detecte mercados com Valor Esperado positivo (VE ≥ 0) — onde a odd paga mais do que a frequência histórica sugere. Identifique também mercados em tendência de alta ou queda vs. janela recente.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>Análise de Frequência</h3>
+            <p>Veja quais mercados ocorreram mais vezes por liga, com filtros de período (1D a 30D), frequência mínima, número mínimo de amostras e tipo de mercado.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">⚽</div>
             <h3>Análise por Clube</h3>
-            <p>Perfil completo de cada time: aproveitamento em casa e fora, forma recente, médias de gols e próximos confrontos com odds.</p>
+            <p>Perfil completo de cada time: aproveitamento em casa e fora, forma recente, médias de gols, histórico H2H e próximos confrontos com odds em tempo real.</p>
         </div>
         <div class="feature-card">
-            <div class="feature-icon">🏆</div>
-            <h3>Ranking de Times</h3>
-            <p>Classifique times por aproveitamento, gols marcados, sofridos ou saldo — filtrando por liga e período.</p>
+            <div class="feature-icon">⚙️</div>
+            <h3>Configurações Avançadas</h3>
+            <p>Controle total da plataforma: intervalo de coleta, ligas ativas, padrões visuais, ordem de análise, alertas sonoros e paleta de cores do gráfico — tudo ajustável sem reiniciar o servidor.</p>
         </div>
-        <div class="feature-card">
-            <div class="feature-icon">🎯</div>
-            <h3>Odds em Tempo Real</h3>
-            <p>Acompanhe as odds de cada partida futura com análise de desempenho histórico daquele mercado de odds.</p>
+    </div>
+</section>
+
+<!-- PLANS -->
+<section id="planos">
+    <div class="section-tag">Planos</div>
+    <div class="section-title">Acesso simples, preço justo</div>
+    <p class="section-sub">Estamos em fase de projeto piloto — aproveite o valor especial de lançamento e faça parte dos primeiros usuários da plataforma.</p>
+
+    <div class="plans-grid">
+        <!-- Plano Piloto -->
+        <div class="plan-card destaque">
+            <div class="plan-badge-top">⭐ PROJETO PILOTO</div>
+            <div class="plan-name">Acesso Completo</div>
+            <div class="plan-price">R$ 19<sub>,90/mês</sub></div>
+            <div class="plan-period">Disponível até 30 de junho de 2026</div>
+
+            <div class="plan-alert">
+                🚀 Você está entrando no projeto piloto do Radar da Bet. Seja um dos primeiros a testar a plataforma e aproveitar o preço especial de lançamento. Após 30/06/2026, os valores serão reajustados.
+            </div>
+
+            <ul class="plan-features">
+                <li>Grid histórico completo (1h a 72h)</li>
+                <li>Gráfico de mercados com médias móveis</li>
+                <li>Menu mosaico — visão geral rápida</li>
+                <li>Sugestões IA para próximos jogos</li>
+                <li>Value Bets e análise de tendências</li>
+                <li>Análise de frequência por liga e mercado</li>
+                <li>Análise por clube + ranking de times</li>
+                <li>5 ligas monitoradas 24/7</li>
+                <li>Acesso via celular e computador</li>
+            </ul>
+
+            <div class="plan-cta">
+                <a href="https://api.whatsapp.com/send/?phone=5548999359690&text=Ol%C3%A1%21+Quero+assinar+o+Radar+da+Bet." class="btn-plan-primary" target="_blank" rel="noopener">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Falar no WhatsApp
+                </a>
+                <button class="btn-plan-secondary" onclick="abrirLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Já tenho acesso — Entrar
+                </button>
+            </div>
+            <p class="plan-note">Pagamento mensal · Cancele quando quiser · Sem contrato</p>
+        </div>
+
+        <!-- Plano Pós-piloto -->
+        <div class="plan-card">
+            <div class="plan-name">Após 30/06/2026</div>
+            <div class="plan-price" style="color:var(--muted)">A definir</div>
+            <div class="plan-period">Valores serão anunciados em breve</div>
+
+            <ul class="plan-features" style="margin-bottom:18px">
+                <li>Todos os recursos atuais</li>
+                <li>Novos recursos em desenvolvimento</li>
+                <li>Preço baseado na evolução da plataforma</li>
+                <li>Usuários do piloto terão condições especiais</li>
+            </ul>
+
+            <div class="plan-alert" style="background:rgba(31,204,89,.06);border-color:rgba(31,204,89,.15);color:#6ee7a0">
+                💡 Quem entrar agora no projeto piloto terá prioridade e condições especiais na transição para os novos planos.
+            </div>
+
+            <div class="plan-cta">
+                <a href="https://api.whatsapp.com/send/?phone=5548999359690&text=Ol%C3%A1%21+Tenho+interesse+no+Radar+da+Bet." class="btn-plan-secondary" target="_blank" rel="noopener">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Avisar quando lançar
+                </a>
+            </div>
         </div>
     </div>
 </section>
@@ -728,7 +949,7 @@
     <div class="contact-wrapper">
         <div class="contact-info">
             <h3>Fale conosco</h3>
-            <p>Se tiver interesse na plataforma Radardabet ou quiser mais informações sobre como funciona, preencha o formulário ao lado. Respondemos em breve.</p>
+            <p>Se tiver interesse na plataforma Radar da Bet ou quiser mais informações sobre como funciona, preencha o formulário ao lado. Respondemos em breve.</p>
             <div class="contact-item">
                 <i class="fab fa-whatsapp"></i>
                 <span>Disponível via WhatsApp</span>
@@ -776,18 +997,16 @@
 <!-- FOOTER -->
 <footer>
     <div class="logo-footer">
-        <img src="/img/RadarX.jpeg" alt="Radardabet">
-        <span>Radardabet</span>
+        <img src="/img/radardabet-logo.svg" alt="Radar da Bet" style="height:30px;border-radius:0">
     </div>
-    <p>Análise de Futebol Virtual · &copy; 2025 Radardabet. Todos os direitos reservados.</p>
+    <p>Análise de Futebol Virtual · &copy; 2026 Radar da Bet. Todos os direitos reservados.</p>
 </footer>
 
 <!-- LOGIN MODAL -->
 <div class="modal-overlay" id="login-modal">
     <div class="modal-box">
         <div class="modal-logo">
-            <img src="/img/RadarX.jpeg" alt="Radardabet">
-            <span>Radardabet</span>
+            <img src="/img/radardabet-logo.svg" alt="Radar da Bet" style="height:44px;border-radius:0">
         </div>
         <h2>Acesso à Plataforma</h2>
         <p class="modal-sub">Entre com suas credenciais para acessar</p>
