@@ -174,6 +174,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
     let novaPg = null;
     try {
         novaPg = await browser.newPage();
+        await novaPg.setCacheEnabled(false);
         await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
         try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
         await delay(1000);
