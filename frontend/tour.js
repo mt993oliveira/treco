@@ -19,7 +19,7 @@
             {
                 sel: '#liga-tabs',
                 title: 'Selecione a Liga',
-                desc: 'Clique na aba da liga que deseja analisar. Os dados são atualizados automaticamente a cada 2 minutos.',
+                desc: 'Clique na aba da liga que deseja analisar. Cada aba carrega o histórico e os mercados daquela competição.',
                 pos: 'bottom'
             },
             {
@@ -31,19 +31,59 @@
             {
                 sel: '#analise-cards',
                 title: 'Cards de Liga',
-                desc: 'Resumo rápido com percentual de ocorrência Over, tendência e dados dos últimos jogos. Clique em um card para ver detalhes.',
+                desc: 'Resumo rápido com percentual de ocorrência de cada mercado, tendência e dados dos últimos jogos. Clique em um card para ver os detalhes e as sugestões.',
                 pos: 'bottom'
             },
             {
                 sel: '#heatmap-ia-section',
                 title: 'Heatmap + Sugestões IA',
-                desc: '<span style="color:#4ade80">Verde = vitória</span>, <span style="color:#f87171">vermelho = derrota</span>, <span style="color:#a5b4fc">roxo = empate</span>. O algoritmo aponta os melhores momentos para entrar.',
+                desc: '<span style="color:#4ade80">Verde = vitória</span>, <span style="color:#f87171">vermelho = derrota</span>, <span style="color:#a5b4fc">roxo = empate</span>. O algoritmo aponta os melhores momentos para entrar no mercado.',
                 pos: 'top'
             },
             {
+                sel: '#view-historico',
+                title: 'Tabela Histórica',
+                desc: 'Acesse a visão de dados históricos. Aqui você encontra o <b style="color:#f1f5f9">Gráfico de Mercados</b>, <b style="color:#f1f5f9">Gráfico de Gols</b>, <b style="color:#f1f5f9">Gráfico de Par e Ímpar</b> e o <b style="color:#f1f5f9">Menu Mosaico</b>.',
+                pos: 'bottom'
+            },
+            {
+                sel: null,
+                title: 'PERÍODO — Filtro de Tempo',
+                desc: 'Use o seletor <b style="color:#f1f5f9">PERÍODO</b> (1H a 24H) para ajustar o intervalo de dados exibido nos gráficos. Cada gráfico pode ter seu próprio período independente.',
+                pos: 'center',
+                info: true
+            },
+            {
+                sel: null,
+                title: '🎯 Mercados — Filtros do Gráfico',
+                desc: 'Clique em <b style="color:#f1f5f9">🎯 Mercados</b> para abrir o painel de seleção de linhas. Ative os mercados que deseja ver no gráfico. Passe o mouse sobre um mercado para destacá-lo no gráfico.',
+                pos: 'center',
+                info: true
+            },
+            {
+                sel: null,
+                title: '📋 Padrões de Gráfico',
+                desc: 'Clique em <b style="color:#f1f5f9">📋 Padrões</b> para salvar ou carregar combinações de mercados. Crie um padrão para cada estratégia e aplique com um clique.',
+                pos: 'center',
+                info: true
+            },
+            {
+                sel: null,
+                title: '⚽ Gráfico de Gols e 🔢 Par/Ímpar',
+                desc: 'Além do gráfico de mercados, você pode visualizar o <b style="color:#f1f5f9">total de gols por jogo</b> e a evolução de <b style="color:#f1f5f9">Par e Ímpar</b>. Use os botões de sub-view no topo para alternar.',
+                pos: 'center',
+                info: true
+            },
+            {
+                sel: '#view-clubes',
+                title: '🏆 Ranking de Times',
+                desc: 'Na aba <b style="color:#f1f5f9">Clubes</b> veja o ranking de desempenho e selecione clubes (★) para monitorá-los automaticamente no Mosaico.',
+                pos: 'bottom'
+            },
+            {
                 sel: '#user-menu-wrap',
-                title: 'Seu Perfil',
-                desc: 'Clique aqui para acessar suas configurações, alterar sua senha e, se for administrador, gerenciar os usuários da plataforma.',
+                title: 'Seu Perfil e Configurações',
+                desc: 'Clique aqui para acessar suas configurações, alterar sua senha e gerenciar usuários. Em <b style="color:#f1f5f9">⚙️ Config</b> (dentro da Tabela Histórica) você personaliza cores, fontes e os gráficos.',
                 pos: 'bottom-left'
             }
         ];
@@ -53,7 +93,7 @@
                 {
                     sel: '#view-diagnostico',
                     title: 'Diagnóstico do Sistema',
-                    desc: 'Monitor exclusivo para Master: veja o status dos coletores, logs em tempo real e force atualizações manualmente.',
+                    desc: 'Monitor exclusivo para Master: veja o status dos coletores, informações de coleta em tempo real e force atualizações manualmente.',
                     pos: 'bottom'
                 },
                 {

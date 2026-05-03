@@ -1666,6 +1666,31 @@ router.post('/admin/normalizar-dados', async (req, res) => {
             [`UPDATE bet365_resultados_mercados SET selecao='Menos de 1.5' WHERE selecao='Under 1.5'`, 'selecao Under 1.5'],
             [`UPDATE bet365_resultados_mercados SET selecao='Menos de 2.5' WHERE selecao='Under 2.5'`, 'selecao Under 2.5'],
             [`UPDATE bet365_resultados_mercados SET selecao='Menos de 3.5' WHERE selecao='Under 3.5'`, 'selecao Under 3.5'],
+            // Mercados adicionais inglês → português
+            [`UPDATE bet365_resultados_mercados SET mercado='Total de Gols' WHERE mercado IN ('Total Goals','Goals Over/Under','Over/Under')`, 'mercado Total de Gols'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Handicap Asiático' WHERE mercado IN ('Asian Handicap','Asian Handicap FT')`, 'mercado Handicap Asiático'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Handicap Europeu' WHERE mercado IN ('European Handicap','Handicap')`, 'mercado Handicap Europeu'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Próximo Gol' WHERE mercado IN ('Next Goal','Next Goal Scorer')`, 'mercado Próximo Gol'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Sem Sofrer Gol' WHERE mercado IN ('Clean Sheet','To Keep a Clean Sheet')`, 'mercado Sem Sofrer Gol'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Sem Empate' WHERE mercado IN ('Draw No Bet')`, 'mercado Resultado Sem Empate'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Vencer Sem Sofrer Gol' WHERE mercado IN ('Win to Nil','To Win to Nil')`, 'mercado Vencer Sem Sofrer Gol'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Ambos Marcam e Resultado' WHERE mercado IN ('Both Teams to Score & Win','BTTS & Win','BTTS and Win')`, 'mercado BTTS e Resultado'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Escanteios' WHERE mercado IN ('Match Corners','Total Corners','Corners Over/Under')`, 'mercado Escanteios'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Cartões' WHERE mercado IN ('Booking Points','Cards','Match Cards')`, 'mercado Cartões'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo/Final' WHERE mercado IN ('1st Half/Full Time','First Half/Full Time')`, 'mercado HT/FT alt'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Marcador do Primeiro Gol' WHERE mercado IN ('First Goal Scorer','First Goalscorer')`, 'mercado Primeiro Gol Marcador'],
+            [`UPDATE bet365_resultados_mercados SET mercado='Marcador a Qualquer Hora' WHERE mercado IN ('Anytime Scorer','Anytime Goalscorer','To Score Anytime')`, 'mercado Marcador a Qualquer Hora'],
+            // Seleções de resultado em inglês → português (fora do mercado Resultado Final)
+            [`UPDATE bet365_resultados_mercados SET selecao='Casa' WHERE selecao IN ('Home','Home Win','1')`, 'selecao Casa'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Fora' WHERE selecao IN ('Away','Away Win','2')`, 'selecao Fora'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Empate' WHERE selecao IN ('Draw','The Draw','X') AND mercado<>'Resultado Final'`, 'selecao Empate geral'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Sim' WHERE selecao IN ('Yes') AND mercado<>'Ambos Marcam'`, 'selecao Sim geral'],
+            [`UPDATE bet365_resultados_mercados SET selecao='Não' WHERE selecao IN ('No') AND mercado<>'Ambos Marcam'`, 'selecao Não geral'],
+            // Over/Under como mercados
+            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,'Over ','Mais de ') WHERE selecao LIKE 'Over [0-9]%'`, 'selecao Over→Mais de'],
+            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,'Under ','Menos de ') WHERE selecao LIKE 'Under [0-9]%'`, 'selecao Under→Menos de'],
+            // Qualquer outro resultado
+            [`UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE selecao IN ('Any Other Score','Any Unquoted','Any Other') AND mercado<>'Resultado Correto - Intervalo'`, 'selecao Qualquer Outro alt'],
         ];
         let totalAffected = 0;
         const detalhes = [];

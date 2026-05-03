@@ -1759,6 +1759,24 @@
                 </div>
             </div>
 
+            <!-- ── Cores dos Gráficos (per-user) ── -->
+            <div style="background:#060d1a;border:1px solid #1e293b;border-radius:7px;overflow:hidden">
+                <div onclick="_toggleCfgSection(this);_atualizarCfgCoresGrafico()" style="cursor:pointer;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;user-select:none">
+                    <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em">🎨 Cores dos Gráficos</span>
+                    <span style="color:#475569;font-size:11px">▸</span>
+                </div>
+                <div style="display:none;padding:4px 12px 10px">
+                    <div style="font-size:9px;color:#475569;margin-bottom:8px;line-height:1.5">
+                        Suas cores pessoais para cada mercado no gráfico. Salvas localmente neste navegador.
+                        O padrão é definido pelo Master em ⚙️ Configurações do Sistema.
+                    </div>
+                    <div id="cfg-cores-grafico-fields" style="max-height:260px;overflow-y:auto;padding-right:2px">
+                        <div style="color:#475569;font-size:10px;padding:8px;text-align:center">Clique para expandir</div>
+                    </div>
+                    <button onclick="_resetCoresGrafico()" style="margin-top:8px;background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;padding:5px 10px;font-size:10px;cursor:pointer;width:100%">↺ Reset para padrão do sistema</button>
+                </div>
+            </div>
+
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
             <button onclick="restaurarCoresGrid()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:11px;cursor:pointer" title="Restaurar configurações originais">↺ Padrão</button>
@@ -1790,28 +1808,6 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="modal-padroes">
-    <div class="modal-box" style="max-width:480px;width:96%">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <h2 style="font-size:14px;font-weight:700">📋 Padrões de Gráfico</h2>
-            <button onclick="fecharModal('modal-padroes')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
-        </div>
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:14px">
-            <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Salvar configuração atual</div>
-            <div style="display:flex;gap:8px">
-                <input id="padroes-nome-input" type="text" placeholder="Nome do padrão..." maxlength="50"
-                    style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:6px;
-                    padding:7px 10px;color:#e2e8f0;font-size:12px;outline:none">
-                <button onclick="salvarPadraoAtual()"
-                    style="padding:7px 14px;border-radius:6px;background:#1fcc59;border:none;
-                    color:#000;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
-                    Salvar
-                </button>
-            </div>
-        </div>
-        <div id="padroes-lista" style="min-height:60px"></div>
-    </div>
-</div>
 
 <div id="tt"></div>
 
@@ -2048,7 +2044,7 @@ async function carregarConfigLigas() {
           ds.textContent = `.tabela-hist td { min-width:${S._mosaicoCelulaLarg}px !important; max-width:${maxW}px !important; font-size:${S._mosaicoCelulaFonte}px !important; }`;
         }
 
-        // Cores personalizadas do gráfico
+        // Cores personalizadas do gráfico — base: config do sistema (master)
         S._chartCores = {};
         TODOS_FILTROS.forEach(f => {
             const chave = 'chart_cor_' + f.id.replace(/[^a-zA-Z0-9]/g, '_');
@@ -2059,6 +2055,8 @@ async function carregarConfigLigas() {
         if (cfg.grafico_gols_mm)    S._chartCores['_gols_mm']    = cfg.grafico_gols_mm;
         if (cfg.grafico_par_cor)    S._chartCores['_par']        = cfg.grafico_par_cor;
         if (cfg.grafico_impar_cor)  S._chartCores['_impar']      = cfg.grafico_impar_cor;
+        // Cores personalizadas do usuário (localStorage) sobrescrevem defaults do sistema
+        { const _u = _getUser(); if (_u) { try { const uc = JSON.parse(localStorage.getItem('chartCores_' + _u.Id) || '{}'); Object.assign(S._chartCores, uc); } catch(e) {} } }
         // Altura do painel do gráfico
         S._grafAltura = parseInt(cfg.grafico_altura) || 300;
         { const gw = document.getElementById('grafico')?.parentElement;
@@ -2288,6 +2286,9 @@ const S = {
     showGrafico:   true,   // toggle independente
     showMosaico:   true,   // toggle independente
     showMercados:  false,  // toggle painel de filtros/mercados
+    showPadroes:   false,  // toggle painel inline de padrões
+    clubesSel:     new Set(), // clubes monitorados via Ranking (multi-seleção)
+    _hoverFiltro:  null,   // filtro em hover para highlight no gráfico
     showNomes:     true,    // exibe nome dos clubes dentro das células do grid
     showOdds:      false,   // exibe odds pré-jogo nas células do grid
     showProximos:  false,   // exibe próximos jogos agendados na grade
@@ -3167,11 +3168,33 @@ function renderFiltros() {
     ctrl.innerHTML = `
         <button style="${_bs(false)}" onclick="abrirModalCores()" title="Configurar cores e fontes da grid">⚙️${isMob ? '' : ' Config'}</button>
         <button style="${_bs(S.showLegendas)}" id="btn-legendas" onclick="toggleLegendas()" title="Legendas">💬${isMob ? '' : ' Legendas'}</button>
-        <button style="${_bs(false)}" onclick="abrirModalPadroes()" title="Padrões de gráfico">📋${isMob ? '' : ' Padrões'}</button>
+        <button style="${_bs(S.showPadroes)}" id="btn-padroes" onclick="togglePadroes()" title="Padrões de gráfico">📋${isMob ? '' : ' Padrões'}</button>
         <button style="${_bs(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Mercados / filtros">🎯${isMob ? '' : ' Mercados'}</button>
     `;
     c.appendChild(ctrl);
 
+    if (S.showPadroes) {
+        const _padNome = document.getElementById('padroes-nome-input')?.value || '';
+        const padPanel = document.createElement('div');
+        padPanel.style.cssText = 'width:100%;margin-top:8px;padding:10px 12px;background:#080e18;border:1px solid #1e293b;border-radius:8px';
+        padPanel.innerHTML = `
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:7px">SALVAR CONFIGURAÇÃO ATUAL</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+                <input id="padroes-nome-input" type="text" placeholder="Nome do padrão..." maxlength="50"
+                    style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:5px;
+                    padding:6px 8px;color:#e2e8f0;font-size:11px;outline:none"
+                    onkeydown="if(event.key==='Enter')salvarPadraoAtual()"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                <button onclick="salvarPadraoAtual()"
+                    style="padding:6px 12px;border-radius:5px;background:#1fcc59;border:none;
+                    color:#000;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Salvar</button>
+            </div>
+            <div id="padroes-lista"><div style="color:#64748b;font-size:11px;text-align:center;padding:8px">Carregando...</div></div>
+        `;
+        c.appendChild(padPanel);
+        if (_padNome) { const _inp = document.getElementById('padroes-nome-input'); if (_inp) _inp.value = _padNome; }
+        return;
+    }
     if (!S.showMercados) return;
 
     // ── Quebra de linha forçada antes dos blocos de filtros ────
@@ -3255,6 +3278,8 @@ function renderFiltros() {
                 <span style="font-size:9px;font-weight:${ativo ? '700' : '400'};
                     color:${ativo ? '#cbd5e1' : '#3d5166'};white-space:nowrap">${primario ? '▶ ' : ''}${fi.label}</span>
             `;
+            pill.onmouseenter = () => _hoverFiltroChart(id);
+            pill.onmouseleave = () => _hoverFiltroChart(null);
             pill.onclick = () => {
                 if (id === 'equilibrio') {
                     S.linhas[id] = !S.linhas[id];
@@ -3326,10 +3351,14 @@ function _aplicarHighlightGrid() {
     if (!tbody) return;
     tbody.querySelectorAll('td[data-tt]').forEach(td => {
         td.classList.remove('cell-match-score', 'cell-match-club');
-        if (!S.selScore && !S.selClub) return;
+        if (!S.selScore && !S.selClub && !S.clubesSel?.size) return;
         const tt = td.dataset.tt || '';
         if (S.selScore && tt.includes(S.selScore)) td.classList.add('cell-match-score');
         if (S.selClub  && tt.toLowerCase().includes(S.selClub.toLowerCase())) td.classList.add('cell-match-club');
+        if (S.clubesSel?.size) {
+            const ttL = tt.toLowerCase();
+            if ([...S.clubesSel].some(c => ttL.includes(c.toLowerCase()))) td.classList.add('cell-match-club');
+        }
     });
 }
 
@@ -3587,6 +3616,33 @@ function _gToggle(key, btnId) {
 }
 
 // ============================================================
+// PLUGIN COMPARTILHADO — linhas verticais tracejadas a cada 10 jogos
+// ============================================================
+const verticalLinesPlugin = {
+    id: 'verticalLines',
+    afterDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales.x) return;
+        const n = chart.data.labels?.length || 0;
+        if (n < 2) return;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(100,116,139,0.22)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        for (let i = 10; i < n; i += 10) {
+            const x = scales.x.getPixelForIndex(i);
+            if (!x || isNaN(x)) continue;
+            ctx.beginPath();
+            ctx.moveTo(x, chartArea.top);
+            ctx.lineTo(x, chartArea.bottom);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+};
+
+// ============================================================
 // GRÁFICO SUPERIOR — estilo Caramelo: pontos por jogo + média móvel
 // ============================================================
 function renderGrafico() {
@@ -3809,7 +3865,7 @@ function renderGrafico() {
                 }
             }
         },
-        plugins: [grafPlugin]
+        plugins: [grafPlugin, verticalLinesPlugin]
     };
 
     if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
@@ -3903,7 +3959,8 @@ function renderGraficoGols() {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
                 y: { min:0, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback: v => v+'⚽'} }
             }
-        }
+        },
+        plugins: [verticalLinesPlugin]
     });
 }
 
@@ -4010,7 +4067,8 @@ function renderGraficoPar() {
                     ? { min:0, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback:v=>v+'⚽'} }
                     : { min:0, max:100, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
             }
-        }
+        },
+        plugins: [verticalLinesPlugin]
     });
 }
 
@@ -4526,7 +4584,47 @@ function hideTT()  { ttEl.style.display = 'none'; }
 
 function toggleMercados() {
     S.showMercados = !S.showMercados;
+    if (S.showMercados) S.showPadroes = false;
     renderFiltros();
+}
+
+function togglePadroes() {
+    S.showPadroes = !S.showPadroes;
+    if (S.showPadroes) S.showMercados = false;
+    renderFiltros();
+    if (S.showPadroes) _carregarPadroes();
+}
+
+function _hoverFiltroChart(filtroId) {
+    if (!S.grafico) return;
+    S.grafico.data.datasets.forEach(ds => {
+        if (ds._isEquilibrio || ds._isMA) return;
+        const fi = TODOS_FILTROS.find(f => f.id === ds._filtroId);
+        const corBase = (S._chartCores?.[ds._filtroId] || fi?.cor || '#64748b');
+        if (!filtroId || ds._filtroId === filtroId) {
+            ds.borderColor = corBase;
+            ds.borderWidth = S.filtro === ds._filtroId ? 3 : 2;
+        } else {
+            ds.borderColor = corBase + '28';
+            ds.borderWidth = 1;
+        }
+    });
+    S.grafico.update('none');
+}
+
+function _toggleClubeSel(nome) {
+    if (S.clubesSel.has(nome)) S.clubesSel.delete(nome);
+    else S.clubesSel.add(nome);
+    _aplicarHighlightGrid();
+    const tab = ['casa','fora','geral'].find(t => document.getElementById(`rt-${t}`)?.classList.contains('ativo'));
+    if (document.getElementById('rank-times-body')) renderRankTimes(tab || 'casa');
+}
+
+function limparClubeSel() {
+    S.clubesSel.clear();
+    _aplicarHighlightGrid();
+    const tab = ['casa','fora','geral'].find(t => document.getElementById(`rt-${t}`)?.classList.contains('ativo'));
+    if (document.getElementById('rank-times-body')) renderRankTimes(tab || 'casa');
 }
 
 function toggleLegendas() {
@@ -4585,11 +4683,26 @@ function renderRankTimes(tipo) {
     const c = document.getElementById('rank-times-body');
     if (!arr.length) { c.innerHTML = '<p style="color:#334155;text-align:center;padding:24px">Dados insuficientes</p>'; return; }
 
-    c.innerHTML = `<table class="modal-table">
-        <thead><tr><th>#</th><th>Time</th><th style="text-align:center">J</th>
+    const selCount = S.clubesSel?.size || 0;
+    c.innerHTML = `
+    ${selCount ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;background:rgba(31,204,89,.08);border:1px solid rgba(31,204,89,.2);border-radius:6px">
+        <span style="font-size:11px;color:#1fcc59;flex:1">${selCount} clube(s) monitorado(s) no Mosaico</span>
+        <button onclick="limparClubeSel()" style="background:none;border:1px solid #475569;color:#94a3b8;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✕ Limpar</button>
+    </div>` : ''}
+    <table class="modal-table">
+        <thead><tr>
+            <th style="text-align:center;width:28px" title="Monitorar no Mosaico">★</th>
+            <th>#</th><th>Time</th><th style="text-align:center">J</th>
             <th style="text-align:center">V%</th><th style="text-align:center">E%</th><th style="text-align:center">D%</th>
             <th style="text-align:center">GM/J</th><th style="text-align:center">O1.5%</th></tr></thead>
-        <tbody>${arr.slice(0,40).map((t,i) => `<tr>
+        <tbody>${arr.slice(0,40).map((t,i) => {
+            const isSel = S.clubesSel?.has(t.n);
+            return `<tr>
+            <td style="text-align:center;padding:4px">
+                <button onclick="_toggleClubeSel('${t.n.replace(/'/g,"\\'")}')" title="${isSel ? 'Remover monitoramento' : 'Monitorar no Mosaico'}"
+                    style="background:${isSel ? 'rgba(31,204,89,.15)' : 'none'};border:1px solid ${isSel ? '#1fcc59' : '#334155'};
+                    color:${isSel ? '#1fcc59' : '#475569'};border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:11px;padding:0;line-height:1">${isSel ? '★' : '☆'}</button>
+            </td>
             <td style="color:#334155;text-align:center">${i+1}</td>
             <td style="font-weight:600">${t.n}</td>
             <td style="text-align:center;color:#64748b">${t.j}</td>
@@ -4598,7 +4711,7 @@ function renderRankTimes(tipo) {
             <td style="text-align:center;color:#f87171">${t.pd.toFixed(0)}%</td>
             <td style="text-align:center;color:#60a5fa">${t.mg.toFixed(2)}</td>
             <td style="text-align:center;color:#10b981">${t.po.toFixed(0)}%</td>
-        </tr>`).join('')}</tbody>
+        </tr>`;}).join('')}</tbody>
     </table>`;
 }
 
@@ -4751,6 +4864,55 @@ function abrirModalCores() {
     _syncFsDisplays(cores);
     _atualizarPreviewCores(cores);
     document.getElementById('modal-cores').classList.add('aberto');
+}
+
+function _atualizarCfgCoresGrafico() {
+    const c = document.getElementById('cfg-cores-grafico-fields');
+    if (!c) return;
+    const u = _getUser();
+    let userCores = {};
+    if (u) { try { userCores = JSON.parse(localStorage.getItem('chartCores_' + u.Id) || '{}'); } catch(e) {} }
+    c.innerHTML = GRUPOS_LEGENDA.map(grupo => {
+        const items = grupo.ids.map(id => {
+            const f = TODOS_FILTROS.find(x => x.id === id);
+            if (!f) return '';
+            const idKey = 'gc-chart-' + id.replace(/[^a-zA-Z0-9]/g, '_');
+            const val = userCores[id] || S._chartCores[id] || f.cor;
+            return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #080e18">
+                <input type="color" id="${idKey}" value="${val}"
+                    oninput="_saveCoresGraficoLocal()"
+                    style="width:26px;height:20px;border:1px solid #334155;border-radius:3px;background:none;cursor:pointer;padding:0;flex-shrink:0">
+                <div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${val}"></div>
+                <span style="font-size:10px;color:#e2e8f0;flex:1">${f.label}</span>
+            </div>`;
+        }).join('');
+        return `<div style="margin-bottom:10px">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid #1e293b">${grupo.label.toUpperCase()}</div>
+            ${items}
+        </div>`;
+    }).join('');
+}
+
+function _saveCoresGraficoLocal() {
+    const u = _getUser();
+    if (!u) return;
+    const cores = {};
+    TODOS_FILTROS.forEach(f => {
+        const inp = document.getElementById('gc-chart-' + f.id.replace(/[^a-zA-Z0-9]/g, '_'));
+        if (inp) cores[f.id] = inp.value;
+    });
+    localStorage.setItem('chartCores_' + u.Id, JSON.stringify(cores));
+    Object.assign(S._chartCores, cores);
+    _renderAllCharts();
+}
+
+function _resetCoresGrafico() {
+    const u = _getUser();
+    if (u) localStorage.removeItem('chartCores_' + u.Id);
+    // Recarrega cores do servidor
+    const idEl = document.getElementById('cfg-cores-grafico-fields');
+    if (idEl) idEl.innerHTML = '<div style="color:#64748b;font-size:10px;text-align:center;padding:8px">Recarregando...</div>';
+    _loadConfigSistema().then(() => _atualizarCfgCoresGrafico());
 }
 
 function _coresDoForm() {
@@ -6543,7 +6705,7 @@ async function _loadConfigSistema() {
 
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = err;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = err;
     }
 }
 
@@ -7205,8 +7367,8 @@ let _padroesCache = [];
 let _editandoPadraoId = null;
 
 async function abrirModalPadroes() {
-    document.getElementById('modal-padroes').classList.add('aberto');
-    document.getElementById('padroes-nome-input').value = '';
+    // mantido por compatibilidade — redireciona para togglePadroes
+    if (!S.showPadroes) { S.showPadroes = true; S.showMercados = false; renderFiltros(); }
     await _carregarPadroes();
 }
 
@@ -7214,6 +7376,7 @@ async function _carregarPadroes() {
     const u = _getUser();
     if (!u) return;
     const listEl = document.getElementById('padroes-lista');
+    if (!listEl) return;
     listEl.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:12px">Carregando...</div>';
     try {
         const r = await fetch(`/api/usuario/padroes?usuarioId=${u.Id}`);
@@ -7329,7 +7492,6 @@ function aplicarPadrao(id) {
             Object.assign(S.linhas, f.linhas);
         }
         if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
-        fecharModal('modal-padroes');
         renderFiltros(); renderTabela(); _renderAllCharts();
     } catch(e) { console.error('Erro ao aplicar padrão', e); }
 }
