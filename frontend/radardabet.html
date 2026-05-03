@@ -234,7 +234,7 @@
         </div>
         <div id="liga-tabs" style="display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:0"></div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <span style="font-size:10px;color:#475569;white-space:nowrap" id="tabela-info"></span>
+            <span class="master-only" style="font-size:10px;color:#475569;white-space:nowrap" id="tabela-info"></span>
             <div class="master-only" style="display:flex;align-items:center;gap:8px">
                 <span class="sdot idle" id="sdot"></span>
                 <span style="font-size:10px;color:#475569" id="s-txt">Carregando...</span>
@@ -527,11 +527,6 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 📊 Seções
             </button>
-            <button id="cfg-tab-ordem" onclick="_cfgSetTab('ordem')"
-                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
-                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
-                🔀 Ordem
-            </button>
             <button id="cfg-tab-sistema" onclick="_cfgSetTab('sistema')"
                 style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
@@ -584,16 +579,6 @@
                 Seções desabilitadas não são exibidas na aba Análise & Sugestões (para todos os usuários).
             </div>
             <div id="cfg-secoes-fields">
-                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
-            </div>
-        </div>
-
-        <!-- Seção Ordem de Coleta -->
-        <div id="cfg-section-ordem" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
-            <div style="font-size:10px;color:#475569;margin-bottom:12px">
-                Define a sequência em que o coletor processa cada liga a cada ciclo.
-            </div>
-            <div id="cfg-ordem-fields">
                 <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
@@ -862,10 +847,17 @@
             <option value="1">1H</option>
             <option value="2">2H</option>
             <option value="3">3H</option>
+            <option value="4">4H</option>
+            <option value="5">5H</option>
             <option value="6" selected>6H</option>
+            <option value="7">7H</option>
+            <option value="8">8H</option>
+            <option value="9">9H</option>
+            <option value="10">10H</option>
+            <option value="11">11H</option>
             <option value="12">12H</option>
             <option value="24">24H</option>
-            <option value="custom">Nº H...</option>
+            <option value="custom" class="master-only-option">Nº H...</option>
         </select>
         <input type="number" id="periodo-custom" min="1" max="720" placeholder="Nº"
             style="display:none;width:46px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;text-align:center;padding:3px 4px;height:26px;outline:none"
@@ -1142,7 +1134,7 @@
             <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
             <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
             <button class="acao-btn" id="btn-exibir-clubes" onclick="S.showNomes=!S.showNomes;document.getElementById('btn-exibir-clubes').classList.toggle('ativo',S.showNomes);renderTabela()" title="Mostrar nomes dos clubes na grade">🏷️ Exibir Clubes</button>
-            <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds</button>
+            <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds Pagas</button>
             <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
         </div>
     </div>
@@ -1193,6 +1185,11 @@
 
 <!-- ========== VIEW: DIAGNÓSTICO ========== -->
 <div id="view-diagnostico-content" style="display:none;padding:10px 14px">
+
+    <!-- Info resumo (período + partidas) — duplicado do header, só master vê aqui -->
+    <div style="background:#0a0f1e;border:1px solid #1e3a5f;border-radius:6px;padding:6px 14px;margin-bottom:8px;font-size:10px;color:#60a5fa" id="diag-tabela-info-box">
+        <span id="diag-tabela-info">—</span>
+    </div>
 
     <!-- Topo compacto: tudo numa faixa -->
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:7px 14px;margin-bottom:10px;font-size:10px">
@@ -1745,9 +1742,13 @@
     const u = (() => { try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e){ return null; } })();
     const isMaster = u && u.TipoUsuario === 'master';
     if (!isMaster) {
-        // Hide master-only elements as soon as DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.master-only').forEach(el => { el.style.display = 'none'; });
+            // Remove opção "Nº H" do PERÍODO para não-master
+            const customOpt = document.querySelector('#periodo-select option.master-only-option');
+            if (customOpt) customOpt.remove();
+            const customInput = document.getElementById('periodo-custom');
+            if (customInput) { customInput.style.display = 'none'; customInput.parentNode?.querySelector('#periodo-custom-h')?.style && (document.getElementById('periodo-custom-h').style.display = 'none'); }
         });
     }
 })();
@@ -1773,9 +1774,9 @@ const TODOS_FILTROS = [
     // Gols exatos FT
     { id:'gols-5p',    label:'5+',         cor:'#f472b6' },
     // FT Resultado
-    { id:'ft-casa',    label:'FTC',        cor:'#84cc16' },
-    { id:'ft-fora',    label:'FTV',        cor:'#fb923c' },
-    { id:'ft-empate',  label:'Empate',     cor:'#a78bfa' },
+    { id:'ft-casa',    label:'Casa FT',    cor:'#84cc16' },
+    { id:'ft-fora',    label:'Fora FT',    cor:'#fb923c' },
+    { id:'ft-empate',  label:'Empate FT',  cor:'#a78bfa' },
     // Marca
     { id:'casa-marca', label:'CM',         cor:'#4ade80' },
     { id:'fora-marca', label:'FM',         cor:'#fbbf24' },
@@ -3838,7 +3839,9 @@ function renderTabela() {
             <div style="font-size:10px;margin-top:4px;color:#334155">A coleta precisa capturar resultados finais. Verifique o agendador.</div>
         </td></tr>`;
         tfoot.innerHTML = '';
-        document.getElementById('tabela-info').textContent = `0 partidas • ${S.horas}h`;
+        const _itxt0 = `0 partidas • ${S.horas}h`;
+        document.getElementById('tabela-info').textContent = _itxt0;
+        const _di0 = document.getElementById('diag-tabela-info'); if (_di0) _di0.textContent = _itxt0;
         return;
     }
 
@@ -4152,8 +4155,10 @@ function renderTabela() {
 
     const totalPartidas = gs.reduce((s, g) => s + g.jogos.length, 0);
     const horasCom      = gs.filter(g => g.jogos.length > 0).length;
-    document.getElementById('tabela-info').textContent =
-        `${S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
+    const _infoTxt = `${S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
+    document.getElementById('tabela-info').textContent = _infoTxt;
+    const _diagInfo = document.getElementById('diag-tabela-info');
+    if (_diagInfo) _diagInfo.textContent = _infoTxt;
 }
 
 // ============================================================
@@ -5796,7 +5801,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'ordem', 'sistema', 'alertas', 'grafico', 'cores'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -5830,7 +5835,7 @@ const _CFG_LABELS = {
     hist_max_cliques:           '📂 Backfill: máximo de tentativas de clique por jogo',
     default_proximos_jogos:     '🕐 Próximos Jogos ativado por padrão',
     default_exibir_clubes:      '🏷️ Exibir Clubes ativado por padrão',
-    default_exibir_odds:        '💹 Exibir Odds ativado por padrão',
+    default_exibir_odds:        '💹 Exibir Odds Pagas ativado por padrão',
     default_exibir_ht:          '🔍 Exibir HT ativado por padrão',
     auto_refresh_segundos:      'Atualização automática da grade (segundos; 0 = desativar)',
     proximos_antes_resultados:  'Coletar próximos jogos ANTES dos resultados',
@@ -5891,13 +5896,12 @@ async function _loadConfigSistema() {
     const fLigas   = document.getElementById('cfg-ligas-fields');
     const fFrontend= document.getElementById('cfg-frontend-fields');
     const fSecoes  = document.getElementById('cfg-secoes-fields');
-    const fOrdem   = document.getElementById('cfg-ordem-fields');
     const fSistema = document.getElementById('cfg-sistema-fields');
     const fAlertas = document.getElementById('cfg-alertas-fields');
     const fGrafico = document.getElementById('cfg-grafico-fields');
     const fCores   = document.getElementById('cfg-cores-fields');
     const loadHtml = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fOrdem.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = loadHtml;
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = loadHtml;
 
     // Opções para selects de tipo_mercado
     const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
@@ -5985,10 +5989,6 @@ async function _loadConfigSistema() {
         fSecoes.innerHTML = `<div style="font-size:10px;color:#475569;margin-bottom:14px">
             Seções desabilitadas não aparecem na aba Análise & Sugestões para nenhum usuário.</div>` +
             (byGroup.secoes || []).map(d => _toggleHtml(d)).join('');
-
-        fOrdem.innerHTML = `<div style="font-size:10px;color:#475569;margin-bottom:14px">
-            Controla a sequência de coleta dentro de cada liga a cada ciclo.</div>` +
-            (byGroup.ordem || []).map(d => _toggleHtml(d)).join('');
 
         fSistema.innerHTML = (byGroup.sistema || []).map(d => {
             const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
