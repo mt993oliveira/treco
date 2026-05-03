@@ -1495,6 +1495,10 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_mm2_espessura', valor:'2',   tipo:'number', grupo:'grafico', descricao:'📈 MM longa: espessura da linha (px)' },
     { chave:'grafico_mm1_dash',    valor:'4,4',   tipo:'text',  grupo:'grafico', descricao:'📈 MM curta: padrão tracejado (ex: "4,4" ou "8,4,2,4")' },
     { chave:'grafico_mm2_dash',    valor:'8,4',   tipo:'text',  grupo:'grafico', descricao:'📈 MM longa: padrão tracejado (ex: "8,4" ou "0" = sólido)' },
+    { chave:'grafico_gols_barra',  valor:'#22c55e', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor das barras' },
+    { chave:'grafico_gols_mm',     valor:'#60a5fa', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor da MM' },
+    { chave:'grafico_par_cor',     valor:'#22c55e', tipo:'text', grupo:'grafico', descricao:'🔢 Gráfico Par/Ímpar: cor do Par' },
+    { chave:'grafico_impar_cor',   valor:'#f97316', tipo:'text', grupo:'grafico', descricao:'🔢 Gráfico Par/Ímpar: cor do Ímpar' },
     // ── Coletores ──
     { chave:'coletor2_ativo', valor:'true',  tipo:'boolean', grupo:'sistema', descricao:'⚡ Coletor 2 (Odds pré-jogo) — ativar/pausar coleta automática de odds' },
     { chave:'coletor3_ativo', valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📚 Coletor 3 (Histórico) — ativar/pausar backfill de dados históricos' },
