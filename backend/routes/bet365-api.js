@@ -1489,6 +1489,12 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_medias',      valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir médias móveis por padrão' },
     { chave:'grafico_mm1',         valor:'9',     tipo:'number',  grupo:'grafico', descricao:'Gráfico: período da MM curta (padrão 9 jogos)' },
     { chave:'grafico_mm2',         valor:'21',    tipo:'number',  grupo:'grafico', descricao:'Gráfico: período da MM longa (padrão 21 jogos)' },
+    { chave:'grafico_mm1_cor',     valor:'#ffffff', tipo:'text',  grupo:'grafico', descricao:'📈 MM curta: cor da linha (hex)' },
+    { chave:'grafico_mm2_cor',     valor:'#fbbf24', tipo:'text',  grupo:'grafico', descricao:'📈 MM longa: cor da linha (hex)' },
+    { chave:'grafico_mm1_espessura', valor:'1.5', tipo:'number', grupo:'grafico', descricao:'📈 MM curta: espessura da linha (px)' },
+    { chave:'grafico_mm2_espessura', valor:'2',   tipo:'number', grupo:'grafico', descricao:'📈 MM longa: espessura da linha (px)' },
+    { chave:'grafico_mm1_dash',    valor:'4,4',   tipo:'text',  grupo:'grafico', descricao:'📈 MM curta: padrão tracejado (ex: "4,4" ou "8,4,2,4")' },
+    { chave:'grafico_mm2_dash',    valor:'8,4',   tipo:'text',  grupo:'grafico', descricao:'📈 MM longa: padrão tracejado (ex: "8,4" ou "0" = sólido)' },
     // ── Coletores ──
     { chave:'coletor2_ativo', valor:'true',  tipo:'boolean', grupo:'sistema', descricao:'⚡ Coletor 2 (Odds pré-jogo) — ativar/pausar coleta automática de odds' },
     { chave:'coletor3_ativo', valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📚 Coletor 3 (Histórico) — ativar/pausar backfill de dados históricos' },

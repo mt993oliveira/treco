@@ -1925,6 +1925,12 @@ async function carregarConfigLigas() {
         S.grafMedias    = cfg.grafico_medias     === 'true';
         if (cfg.grafico_mm1) { S.grafMM1 = parseInt(cfg.grafico_mm1) || 9;  const el = document.getElementById('inp-mm1'); if (el) el.value = S.grafMM1; }
         if (cfg.grafico_mm2) { S.grafMM2 = parseInt(cfg.grafico_mm2) || 21; const el = document.getElementById('inp-mm2'); if (el) el.value = S.grafMM2; }
+        if (cfg.grafico_mm1_cor)       S.grafMM1Cor       = cfg.grafico_mm1_cor;
+        if (cfg.grafico_mm2_cor)       S.grafMM2Cor       = cfg.grafico_mm2_cor;
+        if (cfg.grafico_mm1_espessura) S.grafMM1Esp       = parseFloat(cfg.grafico_mm1_espessura) || 1.5;
+        if (cfg.grafico_mm2_espessura) S.grafMM2Esp       = parseFloat(cfg.grafico_mm2_espessura) || 2;
+        if (cfg.grafico_mm1_dash)      S.grafMM1Dash      = cfg.grafico_mm1_dash;
+        if (cfg.grafico_mm2_dash)      S.grafMM2Dash      = cfg.grafico_mm2_dash;
         // Sincroniza classes dos botões com o estado carregado
         [['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
          ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med']].forEach(([k,id]) => {
@@ -2158,6 +2164,12 @@ const S = {
     grafMedias:    false,
     grafMM1:       9,
     grafMM2:       21,
+    grafMM1Cor:    '#ffffff',
+    grafMM2Cor:    '#fbbf24',
+    grafMM1Esp:    1.5,
+    grafMM2Esp:    2,
+    grafMM1Dash:   '4,4',
+    grafMM2Dash:   '8,4',
     _grafAltura:   300,
     _chartCores:   {},
     view:          'historico',
@@ -3526,17 +3538,32 @@ function renderGrafico() {
             _filtroId: f.id,
         });
 
-        // MM longa — tendência de prazo mais longo (visível quando 📈 MM ativo)
+        // MM curta — sobreposição opcional da MM1 (visível quando 📈 MM ativo)
         if (S.grafMedias) {
+            const _parseDash = s => String(s||'').split(',').map(Number).filter(n=>!isNaN(n)&&n>=0);
+            const n1d = S.grafMM1 || 9;
+            datasets.push({
+                type: 'line',
+                label: `${f.label} MM${n1d}`,
+                data: rollingPct(pts, n1d),
+                borderColor: S.grafMM1Cor || '#ffffff',
+                backgroundColor: 'transparent',
+                borderWidth: S.grafMM1Esp || 1.5,
+                borderDash: _parseDash(S.grafMM1Dash || '4,4'),
+                pointRadius: 0,
+                tension: 0.3,
+                _isMA: true,
+            });
+            // MM longa
             const n2 = S.grafMM2 || 21;
             datasets.push({
                 type: 'line',
                 label: `${f.label} MM${n2}`,
                 data: rollingPct(pts, n2),
-                borderColor: _rgba(corHex, 0.45),
+                borderColor: S.grafMM2Cor || '#fbbf24',
                 backgroundColor: 'transparent',
-                borderWidth: 1.5,
-                borderDash: [2, 5],
+                borderWidth: S.grafMM2Esp || 2,
+                borderDash: _parseDash(S.grafMM2Dash || '8,4'),
                 pointRadius: 0,
                 tension: 0.4,
                 _isMA: true,
@@ -3633,7 +3660,8 @@ function renderGrafico() {
                             if (!p) return '';
                             const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
                             const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                            return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}`;
+                            const placar = (p.gol_casa != null && p.gol_fora != null) ? `  ${p.gol_casa}-${p.gol_fora}` : '';
+                            return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}${placar}`;
                         },
                         label: ctx => {
                             if (ctx.dataset._isMA) return null;
@@ -5858,8 +5886,14 @@ const _CFG_LABELS = {
     grafico_topo_fundo:  '⛰ Marcar topo (🟡) e fundo (🔴) de cada linha',
     grafico_congest:     '〰 Destacar zonas de congestão (mercado lateral)',
     grafico_medias:      '📈 Exibir médias móveis por padrão',
-    grafico_mm1:         '📈 Período da MM curta (padrão 9 jogos)',
-    grafico_mm2:         '📈 Período da MM longa (padrão 21 jogos)',
+    grafico_mm1:             '📈 Período da MM curta (padrão 9 jogos)',
+    grafico_mm2:             '📈 Período da MM longa (padrão 21 jogos)',
+    grafico_mm1_cor:         '📈 MM curta: cor da linha',
+    grafico_mm2_cor:         '📈 MM longa: cor da linha',
+    grafico_mm1_espessura:   '📈 MM curta: espessura (px)',
+    grafico_mm2_espessura:   '📈 MM longa: espessura (px)',
+    grafico_mm1_dash:        '📈 MM curta: tracejado (ex: "4,4" ou "0"=sólido)',
+    grafico_mm2_dash:        '📈 MM longa: tracejado (ex: "8,4" ou "0"=sólido)',
     // Mosaico
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
     mosaico_hora_fonte_hh:      '📐 Mosaico: tamanho da fonte HH:00 (px)',
