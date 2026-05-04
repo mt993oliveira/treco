@@ -2316,8 +2316,8 @@ function setSubView(v) {
         if (btn) { btn.style.borderColor = on ? '#1fcc59' : '#1e293b'; btn.style.color = on ? '#e2e8f0' : '#64748b'; }
     });
     if (v === 'grafico'  && S.showGrafico)  renderGrafico();
-    if (v === 'gols'     && S.showGols)     renderGraficoGols();
-    if (v === 'parimpar' && S.showParImpar) renderGraficoPar();
+    if (v === 'gols'     && S.showGols)     requestAnimationFrame(() => renderGraficoGols());
+    if (v === 'parimpar' && S.showParImpar) requestAnimationFrame(() => renderGraficoPar());
     if (v === 'mosaico'  && S.showMosaico)  renderTabela();
 }
 
