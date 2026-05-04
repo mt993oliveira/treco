@@ -7,8 +7,6 @@
     <link rel="icon" type="image/svg+xml" href="/img/radardabet-icon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { background: #060810; color: #f1f5f9; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; }
@@ -3874,10 +3872,6 @@ function renderGrafico() {
                         }
                     }
                 },
-                zoom: {
-                    pan: { enabled: false },
-                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: false }, mode: 'x' }
-                }
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
@@ -3977,10 +3971,6 @@ function renderGraficoGols() {
                         label: ctx => ` ${ctx.dataset.label}: ${ctx.raw ?? '?'}⚽`
                     }
                 },
-                zoom: {
-                    pan: { enabled: false },
-                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: false }, mode: 'x' }
-                }
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
@@ -4087,10 +4077,6 @@ function renderGraficoPar() {
                         }
                     }
                 },
-                zoom: {
-                    pan: { enabled: false },
-                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: false }, mode: 'x' }
-                }
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
