@@ -219,8 +219,6 @@
     @media (max-width: 480px) {
         body { font-size: 12px; }
         .liga-tab { font-size: 9px; padding: 2px 6px; }
-        /* Status do coletor some em telas muito pequenas */
-        #sdot, #s-txt, .master-only > button[title="Atualizar"] { display: none !important; }
     }
     </style>
 </head>
@@ -235,16 +233,6 @@
             <span id="header-subtitle" style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
         </div>
         <div id="liga-tabs" style="display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:0"></div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <span class="master-only" style="font-size:10px;color:#475569;white-space:nowrap" id="tabela-info"></span>
-            <div class="master-only" style="display:flex;align-items:center;gap:8px">
-                <span class="sdot idle" id="sdot"></span>
-                <span style="font-size:10px;color:#475569" id="s-txt">Carregando...</span>
-            </div>
-            <button onclick="carregarTudo()" title="Atualizar"
-                style="background:none;border:none;color:#475569;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0"
-                onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#475569'">↻</button>
-        </div>
 
         <!-- WhatsApp Admin -->
         <a class="wa-header-btn"
@@ -867,7 +855,6 @@
             onblur="if(this.value)setPeriodoCustom(this.value)">
         <span id="periodo-custom-h" style="display:none;font-size:9px;color:#475569">H</span>
     </div>
-    <div style="margin-left:auto;font-size:10px;color:#334155" id="ultimo-update"></div>
 </div>
 
 <!-- ========== CONTEÚDO PRINCIPAL ========== -->
@@ -2623,10 +2610,6 @@ async function buscarResultados() {
 }
 
 async function carregarHistorico() {
-    const dot = document.getElementById('sdot');
-    const txt = document.getElementById('s-txt');
-    dot.className = 'sdot idle';
-
     try {
         const r = await fetch(`/api/bet365/historico-mercados?horas=${S.horas}${S.showProximos ? '&incluirFuturos=true' : ''}`);
         const d = await r.json();
@@ -2672,13 +2655,8 @@ async function carregarHistorico() {
         renderLigas();
         if (S.view === 'historico') { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); _verificarAlertas(); }
 
-        dot.className = 'sdot ok';
-        txt.textContent = `${S.todasPartidas.length} partidas (${S.horas}h)`;
-        document.getElementById('ultimo-update').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
-
     } catch (e) {
-        dot.className = 'sdot err';
-        txt.textContent = 'Erro: ' + e.message;
+        console.error('carregarHistorico:', e.message);
     }
 }
 
@@ -3156,7 +3134,6 @@ function renderLigas() {
             document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
             b.classList.add('ativo');
             renderTabela(); _renderAllCharts();
-            document.getElementById('s-txt').textContent = `${S.partidas.length} partidas`;
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
             if (S.view === 'analise') { _faAtualizarStatus(); carregarSugestoes(true); carregarMercados(); }
         };
@@ -4310,7 +4287,6 @@ function renderTabela() {
         </td></tr>`;
         tfoot.innerHTML = '';
         const _itxt0 = `0 partidas • ${S.horas}h`;
-        document.getElementById('tabela-info').textContent = _itxt0;
         const _di0 = document.getElementById('diag-tabela-info'); if (_di0) _di0.textContent = _itxt0;
         return;
     }
@@ -4626,7 +4602,6 @@ function renderTabela() {
     const totalPartidas = gs.reduce((s, g) => s + g.jogos.length, 0);
     const horasCom      = gs.filter(g => g.jogos.length > 0).length;
     const _infoTxt = `${S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
-    document.getElementById('tabela-info').textContent = _infoTxt;
     const _diagInfo = document.getElementById('diag-tabela-info');
     if (_diagInfo) _diagInfo.textContent = _infoTxt;
 }
@@ -5944,8 +5919,6 @@ function conectarWS() {
         const ws = new WebSocket(`${prot}//${location.host}/ws`);
         ws.onopen = () => {
             _wsConectado = true;
-            const dot = document.getElementById('sdot');
-            if (dot) { dot.className = 'sdot ok'; document.getElementById('s-txt').textContent = 'Conectado (WS)'; }
             if (S.view === 'diagnostico') _diagAtualizarWS();
         };
         ws.onmessage = e => {
