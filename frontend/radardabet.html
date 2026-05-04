@@ -3620,53 +3620,47 @@ function renderGrafico() {
     const canvas = document.getElementById('grafico');
     if (!canvas) return;
 
-    if (S.grafico) {
-        S.grafico.data.labels   = labels;
-        S.grafico.data.datasets = datasets;
-        S.grafico.options.plugins.tooltip.enabled = !S.showLegendas;
-        S.grafico.update('none');
-    } else {
-        S.grafico = new Chart(canvas.getContext('2d'), {
-            type: 'line', data: { labels, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: !S.showLegendas,
-                        filter: item => !item.dataset._isMA,
-                        backgroundColor: 'rgba(15,23,42,0.65)', borderColor: '#334155', borderWidth: 1,
-                        titleColor: '#94a3b8', bodyColor: '#cbd5e1',
-                        callbacks: {
-                            title: ctxArr => {
-                                const p = _GRAF_DATA.serie[ctxArr[0].dataIndex];
-                                if (!p) return '';
-                                const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-                                const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                                const placar = (p.gol_casa != null && p.gol_fora != null) ? `  ${p.gol_casa}-${p.gol_fora}` : '';
-                                return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}${placar}`;
-                            },
-                            label: ctx => {
-                                if (ctx.dataset._isMA) return null;
-                                const i = ctx.dataIndex;
-                                const { serie: s, ativos: a, hitsMap: h } = _GRAF_DATA;
-                                const f = a.find(f => f.id !== 'equilibrio' &&
-                                    ctx.dataset.label === `${f.label} ${Math.round((h[f.id]?.filter(v=>v).length||0)/s.length*100)}%`);
-                                const marcador = f ? (h[f.id]?.[i] ? ' ✓' : ' ✗') : '';
-                                return ` ${ctx.dataset.label}: ${ctx.raw}%${marcador}`;
-                            }
+    if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
+    S.grafico = new Chart(canvas.getContext('2d'), {
+        type: 'line', data: { labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    enabled: !S.showLegendas,
+                    filter: item => !item.dataset._isMA,
+                    backgroundColor: 'rgba(15,23,42,0.65)', borderColor: '#334155', borderWidth: 1,
+                    titleColor: '#94a3b8', bodyColor: '#cbd5e1',
+                    callbacks: {
+                        title: ctxArr => {
+                            const p = _GRAF_DATA.serie[ctxArr[0].dataIndex];
+                            if (!p) return '';
+                            const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
+                            const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
+                            const placar = (p.gol_casa != null && p.gol_fora != null) ? `  ${p.gol_casa}-${p.gol_fora}` : '';
+                            return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}${placar}`;
+                        },
+                        label: ctx => {
+                            if (ctx.dataset._isMA) return null;
+                            const i = ctx.dataIndex;
+                            const { serie: s, ativos: a, hitsMap: h } = _GRAF_DATA;
+                            const f = a.find(f => f.id !== 'equilibrio' &&
+                                ctx.dataset.label === `${f.label} ${Math.round((h[f.id]?.filter(v=>v).length||0)/s.length*100)}%`);
+                            const marcador = f ? (h[f.id]?.[i] ? ' ✓' : ' ✗') : '';
+                            return ` ${ctx.dataset.label}: ${ctx.raw}%${marcador}`;
                         }
-                    },
+                    }
                 },
-                scales: {
-                    x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                    y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
-                }
             },
-            plugins: [grafPlugin, verticalLinesPlugin]
-        });
-    }
+            scales: {
+                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
+            }
+        },
+        plugins: [grafPlugin, verticalLinesPlugin]
+    });
 
     const tituloEl = document.getElementById('g-titulo');
     if (tituloEl) {
