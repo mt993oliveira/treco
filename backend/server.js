@@ -995,12 +995,18 @@ async function _ensurePadroesTable() {
             id               INT IDENTITY(1,1) PRIMARY KEY,
             user_id          INT            NOT NULL,
             nome             NVARCHAR(100)  NOT NULL,
-            filtros          NVARCHAR(2000) NOT NULL DEFAULT '{}',
+            filtros          NVARCHAR(MAX)  NOT NULL DEFAULT '{}',
             is_principal     BIT            NOT NULL DEFAULT 0,
             data_criacao     DATETIME2      DEFAULT GETUTCDATE(),
             data_atualizacao DATETIME2      DEFAULT GETUTCDATE()
         )
     `;
+    // Expande coluna filtros de NVARCHAR(2000) para NVARCHAR(MAX) se necessário
+    await sql.query`
+        IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+                   WHERE TABLE_NAME='user_padroes_grafico' AND COLUMN_NAME='filtros'
+                   AND CHARACTER_MAXIMUM_LENGTH=2000)
+        ALTER TABLE user_padroes_grafico ALTER COLUMN filtros NVARCHAR(MAX) NOT NULL`;
     _padroesMigrated = true;
 }
 async function _getMaxPadroes() {

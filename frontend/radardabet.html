@@ -7,6 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="/img/radardabet-icon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { background: #060810; color: #f1f5f9; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; }
@@ -1128,6 +1130,7 @@
                                font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <div style="width:1px;height:14px;background:#1e293b"></div>
+                    <button class="acao-btn" onclick="resetZoomGrafico()" title="Resetar zoom do gráfico (Ctrl+Roda para zoom)">↺ Zoom</button>
                     <button id="btn-caneta" class="acao-btn" onclick="toggleCaneta()" title="Ativar/desativar desenho na grade e gráfico">✏️ Caneta</button>
                     <select id="draw-tool" onchange="DRAW.ferramenta=this.value" title="Ferramenta de desenho"
                         style="display:none;background:#0f172a;border:1px solid #1fcc59;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 7px;cursor:pointer;height:26px">
@@ -1173,6 +1176,7 @@
                 <div style="display:flex;gap:6px;align-items:center">
                     <button id="btn-gols-mm" class="acao-btn" onclick="_gToggle('grafGolsMM','btn-gols-mm')" title="Exibe média móvel de gols">📈 MM</button>
                     <button id="btn-gols-gols" class="acao-btn ativo" onclick="_gToggle('grafGolsShowGols','btn-gols-gols')" title="Exibe quantidade de gols no lugar de %">⚽ Gols</button>
+                    <button class="acao-btn" onclick="resetZoomGols()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
                 </div>
             </div>
             <div style="position:relative;height:260px"><canvas id="grafico-gols"></canvas></div>
@@ -1201,6 +1205,7 @@
                 <div style="display:flex;gap:6px;align-items:center">
                     <button id="btn-par-mm" class="acao-btn" onclick="_gToggle('grafParMM','btn-par-mm')" title="Exibe média móvel">📈 MM</button>
                     <button id="btn-par-gols" class="acao-btn ativo" onclick="_gToggle('grafParShowGols','btn-par-gols')" title="Exibe quantidade de gols no lugar de %">⚽ Gols</button>
+                    <button class="acao-btn" onclick="resetZoomPar()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
                 </div>
             </div>
             <div style="position:relative;height:260px"><canvas id="grafico-parimpar"></canvas></div>
@@ -1805,6 +1810,43 @@
             <button onclick="fecharModal('modal-liga-resultados')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
         </div>
         <div id="modal-liga-res-body" style="max-height:440px;overflow-y:auto;scrollbar-width:thin"></div>
+    </div>
+</div>
+
+<!-- ========== MODAL: CONFIGURAR ALERTA DE PADRÃO ========== -->
+<div class="modal-overlay" id="modal-alerta">
+    <div class="modal-box" style="max-width:500px;width:96%;max-height:80vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="font-size:14px;font-weight:700;margin:0">⚠️ Alerta — <span id="alerta-padrao-nome" style="color:#f59e0b"></span></h2>
+            <button onclick="fecharModal('modal-alerta')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <!-- Ativar + Janela -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px 12px;background:#1e293b;border-radius:8px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#e2e8f0">
+                <input type="checkbox" id="alerta-ativo" style="accent-color:#f59e0b;width:14px;height:14px">
+                Alerta ativo
+            </label>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+                <span style="font-size:12px;color:#94a3b8">Janela:</span>
+                <select id="alerta-janela" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:12px;padding:3px 8px;cursor:pointer">
+                    <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
+                    <option value="4">4H</option><option value="6">6H</option><option value="12" selected>12H</option>
+                    <option value="24">24H</option>
+                </select>
+            </div>
+        </div>
+        <!-- Condições -->
+        <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Condições (todas devem ser atendidas)</div>
+        <div id="alerta-condicoes-lista" style="margin-bottom:8px"></div>
+        <button onclick="_addCondicaoAlerta()"
+            style="width:100%;padding:7px;border-radius:6px;background:#1e293b;border:1px dashed #334155;color:#94a3b8;font-size:12px;cursor:pointer;margin-bottom:16px">
+            + Adicionar Condição
+        </button>
+        <!-- Rodapé -->
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button onclick="fecharModal('modal-alerta')" style="padding:8px 16px;border-radius:6px;background:#1e293b;border:1px solid #334155;color:#94a3b8;font-size:12px;cursor:pointer">Cancelar</button>
+            <button onclick="salvarAlertaPadrao()" style="padding:8px 16px;border-radius:6px;background:rgba(245,158,11,.15);border:1px solid #f59e0b;color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer">💾 Salvar</button>
+        </div>
     </div>
 </div>
 
@@ -2628,7 +2670,7 @@ async function carregarHistorico() {
         }
 
         renderLigas();
-        if (S.view === 'historico') { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); }
+        if (S.view === 'historico') { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); _verificarAlertas(); }
 
         dot.className = 'sdot ok';
         txt.textContent = `${S.todasPartidas.length} partidas (${S.horas}h)`;
@@ -3854,6 +3896,10 @@ function renderGrafico() {
                             return ` ${ctx.dataset.label}: ${ctx.raw}%${marcador}`;
                         }
                     }
+                },
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: true }, mode: 'x' }
                 }
             },
             scales: {
@@ -3953,6 +3999,10 @@ function renderGraficoGols() {
                         },
                         label: ctx => ` ${ctx.dataset.label}: ${ctx.raw ?? '?'}⚽`
                     }
+                },
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: true }, mode: 'x' }
                 }
             },
             scales: {
@@ -4059,6 +4109,10 @@ function renderGraficoPar() {
                             return `${hora}  ${p.time_casa||''}  ×  ${p.time_fora||''}${placar}${paridade}`;
                         }
                     }
+                },
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: true }, mode: 'x' }
                 }
             },
             scales: {
@@ -4071,6 +4125,11 @@ function renderGraficoPar() {
         plugins: [verticalLinesPlugin]
     });
 }
+
+// ── Zoom reset ──────────────────────────────────────────────
+function resetZoomGrafico() { if (S.grafico) S.grafico.resetZoom(); }
+function resetZoomGols()    { if (S._graficoGols) S._graficoGols.resetZoom(); }
+function resetZoomPar()     { if (S._graficoPar) S._graficoPar.resetZoom(); }
 
 // ============================================================
 // ÚLTIMOS RESULTADOS — lista simples com nomes + placar
@@ -7422,6 +7481,7 @@ function _renderListaPadroes(padroes) {
                 ${p.is_principal?'<span style="color:#1fcc59;font-size:10px;font-weight:700;margin-right:4px">★</span>':''}${esc(p.nome)}
             </div>
             <div style="font-size:10px;color:#64748b;margin-top:2px">${desc(p.filtros)}</div>`;
+        const _alertaAtivo = (() => { try { const f = typeof p.filtros==='string'?JSON.parse(p.filtros||'{}'):(p.filtros||{}); return !!(f.alerta&&f.alerta.ativo); } catch(e){return false;} })();
         const acoes = editando ? '' : `
             <button onclick="aplicarPadrao(${p.id})" title="Aplicar este padrão"
                 style="padding:5px 10px;border-radius:5px;background:#1e293b;border:1px solid #334155;
@@ -7429,6 +7489,10 @@ function _renderListaPadroes(padroes) {
             <button onclick="editarNomePadrao(${p.id})" title="Renomear padrão"
                 style="padding:5px 8px;border-radius:5px;background:#1e293b;border:1px solid #334155;
                 color:#94a3b8;font-size:11px;cursor:pointer">✏️</button>
+            <button onclick="abrirAlertaEditor(${p.id})" title="${_alertaAtivo?'Alerta ativo — clique para editar':'Configurar alerta'}"
+                style="padding:5px 8px;border-radius:5px;background:${_alertaAtivo?'rgba(245,158,11,.12)':'#1e293b'};
+                border:1px solid ${_alertaAtivo?'#f59e0b':'#334155'};
+                color:${_alertaAtivo?'#f59e0b':'#64748b'};font-size:11px;cursor:pointer">⚠️</button>
             <button onclick="setPrincipalPadrao(${p.id})" title="${p.is_principal?'Já é principal':'Definir como principal'}"
                 style="padding:5px 8px;border-radius:5px;background:${p.is_principal?'rgba(31,204,89,.15)':'#1e293b'};
                 border:1px solid ${p.is_principal?'#1fcc59':'#334155'};
@@ -7561,6 +7625,164 @@ async function setPadraoLogin() {
 }
 
 // ============================================================
+// SISTEMA DE ALERTAS DE PADRÕES
+// ============================================================
+let _alertaEditandoId = null;
+let _alertaCondicoes  = [];
+
+function abrirAlertaEditor(id) {
+    const p = _padroesCache.find(x => x.id === id);
+    if (!p) return;
+    _alertaEditandoId = id;
+    let f = {};
+    try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) {}
+    const al = f.alerta || { ativo: false, condicoes: [], janela: 12 };
+    _alertaCondicoes = al.condicoes ? JSON.parse(JSON.stringify(al.condicoes)) : [];
+
+    const nomeEl = document.getElementById('alerta-padrao-nome');
+    if (nomeEl) nomeEl.textContent = p.nome;
+    const ativoEl = document.getElementById('alerta-ativo');
+    if (ativoEl) ativoEl.checked = !!al.ativo;
+    const janelaEl = document.getElementById('alerta-janela');
+    if (janelaEl) janelaEl.value = al.janela || 12;
+
+    _renderCondicoesAlerta();
+    document.getElementById('modal-alerta').classList.add('aberto');
+}
+
+function _renderCondicoesAlerta() {
+    const el = document.getElementById('alerta-condicoes-lista');
+    if (!el) return;
+    if (!_alertaCondicoes.length) {
+        el.innerHTML = '<div style="text-align:center;color:#475569;font-size:12px;padding:10px;margin-bottom:4px">Nenhuma condição. Clique em + para adicionar.</div>';
+        return;
+    }
+    el.innerHTML = _alertaCondicoes.map((c, i) => `
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;background:#1e293b;border-radius:6px;padding:8px 10px">
+            <select onchange="_alertaCondicoes[${i}].mercado=this.value" style="flex:2;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;cursor:pointer">
+                ${TODOS_FILTROS.filter(f=>f.id!=='equilibrio').map(f=>`<option value="${f.id}"${c.mercado===f.id?' selected':''}>${f.label}</option>`).join('')}
+            </select>
+            <select onchange="_alertaCondicoes[${i}].operador=this.value" style="flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;cursor:pointer">
+                <option value=">"${c.operador==='>'?' selected':''}>≥</option>
+                <option value="<"${c.operador==='<'?' selected':''}>≤</option>
+            </select>
+            <input type="number" min="0" max="100" step="1" value="${c.valor??50}" onchange="_alertaCondicoes[${i}].valor=parseFloat(this.value)||50"
+                style="width:52px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;text-align:center;outline:none">
+            <span style="font-size:11px;color:#64748b;flex-shrink:0">%</span>
+            <button onclick="_removeCondicaoAlerta(${i})" style="padding:4px 8px;border-radius:4px;background:#0f172a;border:1px solid #334155;color:#f87171;font-size:11px;cursor:pointer;flex-shrink:0">✕</button>
+        </div>`).join('');
+}
+
+function _addCondicaoAlerta() {
+    _alertaCondicoes.push({ mercado: (TODOS_FILTROS.find(f=>f.id!=='equilibrio')?.id || 'over2.5'), operador: '>', valor: 50 });
+    _renderCondicoesAlerta();
+}
+
+function _removeCondicaoAlerta(idx) {
+    _alertaCondicoes.splice(idx, 1);
+    _renderCondicoesAlerta();
+}
+
+async function salvarAlertaPadrao() {
+    if (!_alertaEditandoId) return;
+    const u = _getUser();
+    if (!u) return;
+    const p = _padroesCache.find(x => x.id === _alertaEditandoId);
+    if (!p) return;
+    let f = {};
+    try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) {}
+    f.alerta = {
+        ativo:    !!(document.getElementById('alerta-ativo')?.checked),
+        janela:   parseInt(document.getElementById('alerta-janela')?.value) || 12,
+        condicoes: _alertaCondicoes
+    };
+    const fs = JSON.stringify(f);
+    try {
+        const r = await fetch(`/api/usuario/padroes/${_alertaEditandoId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id, nome: p.nome, filtros: fs })
+        });
+        const d = await r.json();
+        if (d.success) {
+            _padroesCache = _padroesCache.map(x => x.id === _alertaEditandoId ? { ...x, filtros: fs } : x);
+            fecharModal('modal-alerta');
+            if (S.showPadroes) _renderListaPadroes(_padroesCache);
+        } else { alert(d.message || 'Erro ao salvar alerta.'); }
+    } catch(e) { alert('Erro de conexão ao salvar alerta.'); }
+}
+
+async function _carregarPadroesParaAlertas() {
+    const u = _getUser();
+    if (!u) return;
+    try {
+        const r = await fetch(`/api/usuario/padroes?usuarioId=${u.Id}`);
+        const data = await r.json();
+        _padroesCache = data.padroes || [];
+    } catch(e) { /* silencioso */ }
+}
+
+function _verificarAlertas() {
+    if (!_padroesCache.length) return;
+    const agora = new Date();
+    const disparados = [];
+    for (const p of _padroesCache) {
+        try {
+            let f = {};
+            try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) { continue; }
+            const al = f.alerta;
+            if (!al || !al.ativo || !al.condicoes?.length) continue;
+            const horas = parseInt(al.janela) || 12;
+            const corte = new Date(agora.getTime() - horas * 3600000);
+            const todosJogos = serieFlat();
+            const jogos = todosJogos.filter(j => {
+                if (!j.data_partida) return false;
+                const dt = new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
+                return dt >= corte && dt <= agora;
+            });
+            if (!jogos.length) continue;
+            const todasOk = al.condicoes.every(c => {
+                if (!TODOS_FILTROS.find(x => x.id === c.mercado)) return false;
+                const hits = jogos.filter(j => checa(j, c.mercado));
+                const pct  = Math.round(hits.length / jogos.length * 100);
+                return c.operador === '>' ? pct >= c.valor : pct <= c.valor;
+            });
+            if (todasOk) disparados.push({ id: p.id, nome: p.nome });
+        } catch(e) {}
+    }
+    if (disparados.length) _mostrarNotificacaoAlerta(disparados);
+}
+
+function _mostrarNotificacaoAlerta(alertas) {
+    let el = document.getElementById('alerta-notif');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'alerta-notif';
+        el.style.cssText = 'position:fixed;top:54px;right:14px;z-index:9999;background:#0f172a;border:1.5px solid #f59e0b;border-radius:10px;padding:14px 16px;min-width:260px;max-width:340px;box-shadow:0 4px 24px rgba(0,0,0,.7)';
+        document.body.appendChild(el);
+    }
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    el.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span style="font-size:13px;font-weight:700;color:#f59e0b">⚠️ Alerta Disparado</span>
+            <button onclick="_fecharNotificacaoAlerta()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;line-height:1">×</button>
+        </div>
+        ${alertas.map(a => `
+            <div style="background:#1e293b;border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+                <span style="flex:1;font-size:12px;color:#e2e8f0;font-weight:600">${esc(a.nome)}</span>
+                <button onclick="aplicarPadrao(${a.id});_fecharNotificacaoAlerta()"
+                    style="padding:4px 10px;border-radius:5px;background:rgba(31,204,89,.15);border:1px solid #1fcc59;color:#1fcc59;font-size:11px;font-weight:700;cursor:pointer">Aplicar</button>
+            </div>`).join('')}
+        <div style="font-size:10px;color:#475569;margin-top:6px;text-align:right">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`;
+    el.style.display = 'block';
+}
+
+function _fecharNotificacaoAlerta() {
+    const el = document.getElementById('alerta-notif');
+    if (el) el.style.display = 'none';
+}
+
+// ============================================================
 // MODO MANUTENÇÃO
 // ============================================================
 function _verificarManutencao() {
@@ -7601,6 +7823,7 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarConfigLigas().then(async () => {
         _faInit();
         await setPadraoLogin();
+        _carregarPadroesParaAlertas();
         carregarTudo();
         const seg = S._autoRefreshSeg ?? 120;
         if (seg > 0) setInterval(carregarTudo, seg * 1000);
