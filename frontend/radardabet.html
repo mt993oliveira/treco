@@ -3729,44 +3729,38 @@ function renderGraficoGols() {
     const tituloEl = document.getElementById('g-gols-titulo');
     if (tituloEl) tituloEl.textContent = `⚽ Gols por Jogo — ${serie.length} jogos | Média: ${media}`;
 
-    if (S._graficoGols) {
-        S._graficoGols.data.labels   = labels;
-        S._graficoGols.data.datasets = datasets;
-        S._graficoGols.options.scales.y.max = yMax;
-        S._graficoGols.update('none');
-    } else {
-        S._graficoGols = new Chart(canvasEl.getContext('2d'), {
-            type: 'bar',
-            data: { labels, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(15,23,42,0.85)', borderColor: '#334155', borderWidth: 1,
-                        titleColor: '#94a3b8', bodyColor: '#cbd5e1',
-                        callbacks: {
-                            title: ctxArr => {
-                                const p = _GOLS_SERIE[ctxArr[0].dataIndex];
-                                if (!p) return '';
-                                const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-                                const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                                const placar = (p.gol_casa != null && p.gol_fora != null) ? `  ${p.gol_casa}-${p.gol_fora}` : '';
-                                return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}${placar}`;
-                            },
-                            label: ctx => ` ${ctx.dataset.label}: ${ctx.raw ?? '?'}⚽`
-                        }
-                    },
+    if (S._graficoGols) { S._graficoGols.destroy(); S._graficoGols = null; }
+    S._graficoGols = new Chart(canvasEl.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15,23,42,0.85)', borderColor: '#334155', borderWidth: 1,
+                    titleColor: '#94a3b8', bodyColor: '#cbd5e1',
+                    callbacks: {
+                        title: ctxArr => {
+                            const p = _GOLS_SERIE[ctxArr[0].dataIndex];
+                            if (!p) return '';
+                            const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
+                            const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
+                            const placar = (p.gol_casa != null && p.gol_fora != null) ? `  ${p.gol_casa}-${p.gol_fora}` : '';
+                            return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}${placar}`;
+                        },
+                        label: ctx => ` ${ctx.dataset.label}: ${ctx.raw ?? '?'}⚽`
+                    }
                 },
-                scales: {
-                    x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                    y: { min:0, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback: v => v+'⚽'} }
-                }
             },
-            plugins: [verticalLinesPlugin]
-        });
-    }
+            scales: {
+                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                y: { min:0, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback: v => v+'⚽'} }
+            }
+        },
+        plugins: [verticalLinesPlugin]
+    });
 }
 
 // ============================================================
@@ -3838,18 +3832,8 @@ function renderGraficoPar() {
     const tituloEl = document.getElementById('g-par-titulo');
     if (tituloEl) tituloEl.textContent = `🔢 Par e Ímpar — ${validos.length} jogos | Par: ${pctPar}% · Ímpar: ${100-pctPar}%`;
 
-    // Destroy+recreate only when chart type changes (bar ↔ line)
-    if (S._graficoPar && S._graficoPar.config.type !== chartType) {
-        S._graficoPar.destroy();
-        S._graficoPar = null;
-    }
-
-    if (S._graficoPar) {
-        S._graficoPar.data.labels   = labels;
-        S._graficoPar.data.datasets = datasets;
-        S._graficoPar.update('none');
-    } else {
-        S._graficoPar = new Chart(canvasEl.getContext('2d'), {
+    if (S._graficoPar) { S._graficoPar.destroy(); S._graficoPar = null; }
+    S._graficoPar = new Chart(canvasEl.getContext('2d'), {
             type: chartType,
             data: { labels, datasets },
             options: {
@@ -3882,7 +3866,6 @@ function renderGraficoPar() {
             },
             plugins: [verticalLinesPlugin]
         });
-    }
 }
 
 // ── Zoom reset ──────────────────────────────────────────────
