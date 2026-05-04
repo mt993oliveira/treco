@@ -1001,12 +1001,14 @@ async function _ensurePadroesTable() {
             data_atualizacao DATETIME2      DEFAULT GETUTCDATE()
         )
     `;
-    // Expande coluna filtros de NVARCHAR(2000) para NVARCHAR(MAX) se necessário
-    await sql.query`
-        IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-                   WHERE TABLE_NAME='user_padroes_grafico' AND COLUMN_NAME='filtros'
-                   AND CHARACTER_MAXIMUM_LENGTH=2000)
-        ALTER TABLE user_padroes_grafico ALTER COLUMN filtros NVARCHAR(MAX) NOT NULL`;
+    // Expande coluna filtros de NVARCHAR(2000) → NVARCHAR(MAX) — ignorado se já for MAX
+    try {
+        await sql.query`
+            IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+                       WHERE TABLE_NAME='user_padroes_grafico' AND COLUMN_NAME='filtros'
+                       AND CHARACTER_MAXIMUM_LENGTH=2000)
+            ALTER TABLE user_padroes_grafico ALTER COLUMN filtros NVARCHAR(MAX) NOT NULL`;
+    } catch(_) {}
     _padroesMigrated = true;
 }
 async function _getMaxPadroes() {

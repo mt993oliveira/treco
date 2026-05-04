@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { background: #060810; color: #f1f5f9; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; }
@@ -3898,8 +3898,8 @@ function renderGrafico() {
                     }
                 },
                 zoom: {
-                    pan: { enabled: true, mode: 'x' },
-                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: true }, mode: 'x' }
+                    pan: { enabled: false },
+                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: false }, mode: 'x' }
                 }
             },
             scales: {
@@ -4001,8 +4001,8 @@ function renderGraficoGols() {
                     }
                 },
                 zoom: {
-                    pan: { enabled: true, mode: 'x' },
-                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: true }, mode: 'x' }
+                    pan: { enabled: false },
+                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: false }, mode: 'x' }
                 }
             },
             scales: {
@@ -4111,8 +4111,8 @@ function renderGraficoPar() {
                     }
                 },
                 zoom: {
-                    pan: { enabled: true, mode: 'x' },
-                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: true }, mode: 'x' }
+                    pan: { enabled: false },
+                    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: false }, mode: 'x' }
                 }
             },
             scales: {
@@ -4127,9 +4127,9 @@ function renderGraficoPar() {
 }
 
 // ── Zoom reset ──────────────────────────────────────────────
-function resetZoomGrafico() { if (S.grafico) S.grafico.resetZoom(); }
-function resetZoomGols()    { if (S._graficoGols) S._graficoGols.resetZoom(); }
-function resetZoomPar()     { if (S._graficoPar) S._graficoPar.resetZoom(); }
+function resetZoomGrafico() { try { if (S.grafico?.resetZoom) S.grafico.resetZoom(); } catch(_){} }
+function resetZoomGols()    { try { if (S._graficoGols?.resetZoom) S._graficoGols.resetZoom(); } catch(_){} }
+function resetZoomPar()     { try { if (S._graficoPar?.resetZoom) S._graficoPar.resetZoom(); } catch(_){} }
 
 // ============================================================
 // ÚLTIMOS RESULTADOS — lista simples com nomes + placar
@@ -7449,6 +7449,7 @@ async function _carregarPadroes() {
 
 function _renderListaPadroes(padroes) {
     const listEl = document.getElementById('padroes-lista');
+    if (!listEl) return;
     if (!padroes.length) {
         listEl.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:16px">Nenhum padrão salvo.<br><span style="font-size:11px;opacity:.7">Salve a configuração atual de filtros acima.</span></div>';
         return;
