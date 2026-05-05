@@ -3073,7 +3073,9 @@ function renderFiltros() {
                     const gbtn = document.getElementById('sub-btn-grafico');
                     if (gbtn) { gbtn.style.borderColor = '#1fcc59'; gbtn.style.color = '#e2e8f0'; }
                 }
-                renderFiltros(); renderTabela(); _renderAllCharts();
+                renderFiltros(); renderTabela();
+                // rAF: garante que o browser recalcule o layout (canvas com dimensões reais) antes do Chart.js
+                requestAnimationFrame(() => _renderAllCharts());
             };
             pills.appendChild(pill);
         });
@@ -3088,11 +3090,18 @@ function renderFiltros() {
 function _lgTodos() {
     TODOS_FILTROS.forEach(f => { S.linhas[f.id] = true; });
     S.filtro = 'over1.5';
-    renderFiltros(); renderTabela(); _renderAllCharts();
+    S.showGrafico = true;
+    const _secT = document.getElementById('historico-chart-section');
+    if (_secT) _secT.style.display = 'flex';
+    const _gbtnT = document.getElementById('sub-btn-grafico');
+    if (_gbtnT) { _gbtnT.style.borderColor = '#1fcc59'; _gbtnT.style.color = '#e2e8f0'; }
+    renderFiltros(); renderTabela();
+    requestAnimationFrame(() => _renderAllCharts());
 }
 function _lgLimpar() {
     TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
-    renderFiltros(); renderTabela(); _renderAllCharts();
+    renderFiltros(); renderTabela();
+    requestAnimationFrame(() => _renderAllCharts());
 }
 
 function trocarSecao(s) {
@@ -3566,8 +3575,15 @@ function renderGrafico() {
     const canvas = document.getElementById('grafico');
     if (!canvas) return;
 
-    if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
-    S.grafico = new Chart(canvas.getContext('2d'), {
+    // Atualiza o título ANTES de criar o chart — assim sempre reflete o estado atual
+    const tituloEl = document.getElementById('g-titulo');
+    if (tituloEl) {
+        if (ativos.length === 0) tituloEl.textContent = 'Nenhum filtro ativo';
+        else tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos`;
+    }
+
+    if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
+    try { S.grafico = new Chart(canvas.getContext('2d'), {
         type: 'line', data: { labels, datasets },
         options: {
             responsive: true, maintainAspectRatio: false, animation: false,
@@ -3606,13 +3622,7 @@ function renderGrafico() {
             }
         },
         plugins: [grafPlugin, verticalLinesPlugin]
-    });
-
-    const tituloEl = document.getElementById('g-titulo');
-    if (tituloEl) {
-        if (ativos.length === 0) tituloEl.textContent = 'Nenhum filtro ativo';
-        else tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos`;
-    }
+    }); } catch(e) { console.error('renderGrafico chart error:', e); }
 }
 
 // ============================================================
