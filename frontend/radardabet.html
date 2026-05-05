@@ -4008,6 +4008,14 @@ function minutosParaLiga(liga) {
 // ============================================================
 // TABELA HISTÓRICA — 1 linha = 1 hora, 20 colunas = jogos daquela hora
 function _renderAllCharts() {
+    // Se há filtros ativos, garante que o gráfico de mercados está visível
+    if (S.view === 'historico' && TODOS_FILTROS.some(f => S.linhas[f.id]) && !S.showGrafico) {
+        S.showGrafico = true;
+        const sec = document.getElementById('historico-chart-section');
+        if (sec) sec.style.display = 'flex';
+        const btn = document.getElementById('sub-btn-grafico');
+        if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
+    }
     renderGrafico();
     if (S.showGols)     renderGraficoGols();
     if (S.showParImpar) renderGraficoPar();
@@ -7413,6 +7421,10 @@ function aplicarPadrao(id) {
             Object.assign(S.linhas, f.linhas);
         }
         if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
+        // Fecha padrões e abre mercados para mostrar quais filtros estão ativos
+        S.showPadroes  = false;
+        S.showMercados = true;
+        S.showConfig   = false;
         renderFiltros(); renderTabela(); _renderAllCharts();
     } catch(e) { console.error('Erro ao aplicar padrão', e); }
 }
