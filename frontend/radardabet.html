@@ -3465,107 +3465,125 @@ const grafPlugin = {
 };
 
 // ============================================================
-// GRÁFICO SUPERIOR — estilo Caramelo: pontos por jogo + média móvel
+// GRÁFICO DE MERCADOS — linha por jogo com soma rolante (igual ao Gols/Par)
 // ============================================================
+let _MKTGRAF_SERIE = [];
+let _MKTGRAF_HITS  = {};
+let _MKTGRAF_N1    = 9;
+
+const mktLabelPlugin = {
+    id: 'mktLabels',
+    afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((ds, di) => {
+            if (ds._isRef || ds._isMA) return;
+            const meta = chart.getDatasetMeta(di);
+            if (!meta.data || !meta.data.length) return;
+            const total = meta.data.length;
+            const step  = total > 60 ? 3 : total > 30 ? 2 : 1;
+            ctx.save();
+            ctx.font        = 'bold 8px sans-serif';
+            ctx.fillStyle   = ds.borderColor;
+            ctx.textAlign   = 'center';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur  = 2;
+            meta.data.forEach((pt, i) => {
+                if (i % step !== 0) return;
+                if (!pt || ds.data[i] == null) return;
+                ctx.fillText(ds.data[i], pt.x, pt.y - 6);
+            });
+            ctx.restore();
+        });
+    }
+};
+
 function renderGrafico() {
-    const serie = serieFlat(S.horasGrafico);
+    const canvas = document.getElementById('grafico');
+    if (!canvas) return;
+
+    // Apenas jogos com placar — igual ao Gráfico de Gols e Par/Ímpar
+    const serie = serieFlat(S.horasGrafico)
+        .filter(j => j.gol_casa != null && j.gol_fora != null);
+
+    const tituloEl = document.getElementById('g-titulo');
+    const ativos   = TODOS_FILTROS.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
+
     if (!serie.length) {
-        if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
-        const t = document.getElementById('g-titulo');
-        if (t) t.textContent = 'Sem dados para o período';
+        if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
+        if (tituloEl) tituloEl.textContent = 'Sem dados com placar para o período';
+        return;
+    }
+    if (!ativos.length) {
+        if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
+        if (tituloEl) tituloEl.textContent = 'Selecione filtros em 🎯 Mercados';
         return;
     }
 
-    const opcoes  = TODOS_FILTROS;
-    const datasets = [];
-    const ativos  = opcoes.filter(f => S.linhas[f.id]);
-    const n1      = S.grafMM1 || 9;
-
-    // Soma rolante — igual ao Gols/Par-Ímpar
-    const rollingCount = (hits, n) => hits.map((_, i) => {
+    const n1 = S.grafMM1 || 9;
+    const rolSoma = (hits, n) => hits.map((_, i) => {
         const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
         return sl.reduce((a, b) => a + b, 0);
     });
 
+    // Monta hits e soma rolante por filtro
     const hitsMap = {};
+    const somaMap = {};
     ativos.forEach(f => {
-        if (f.id !== 'equilibrio') hitsMap[f.id] = serie.map(j => checa(j, f.id) ? 1 : 0);
+        hitsMap[f.id] = serie.map(j => checa(j, f.id) ? 1 : 0);
+        somaMap[f.id] = rolSoma(hitsMap[f.id], n1);
     });
 
-    _GRAF_DATA.serie   = serie;
-    _GRAF_DATA.ativos  = ativos;
-    _GRAF_DATA.hitsMap = hitsMap;
-    _GRAF_DATA.n1      = n1;
+    // Cache para tooltips
+    _MKTGRAF_SERIE = serie;
+    _MKTGRAF_HITS  = hitsMap;
+    _MKTGRAF_N1    = n1;
 
     // Escala Y global
     let yMaxVal = 1;
-    ativos.forEach(f => {
-        if (f.id === 'equilibrio') return;
-        const rc = rollingCount(hitsMap[f.id], n1);
-        yMaxVal = Math.max(yMaxVal, ...rc);
-    });
+    ativos.forEach(f => { yMaxVal = Math.max(yMaxVal, ...somaMap[f.id]); });
     const yMax = Math.ceil(yMaxVal / 2) * 2 + 1;
 
+    const datasets = [];
+
+    // Linha de equilíbrio central
+    if (S.linhas['equilibrio']) {
+        datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => Math.round(n1 / 2)),
+            borderColor:'#64748b', backgroundColor:'transparent',
+            borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true });
+    }
+
     ativos.forEach(f => {
-        if (f.id === 'equilibrio') {
-            datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => Math.round(n1 / 2)),
-                borderColor:'#64748b', backgroundColor:'transparent',
-                borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true });
-            return;
-        }
+        const pts  = hitsMap[f.id];
+        const soma = somaMap[f.id];
+        const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
+        const pct  = Math.round(pts.reduce((a,b)=>a+b,0) / serie.length * 100);
+        const ref  = +(soma.reduce((a,b)=>a+b,0) / soma.length).toFixed(1);
 
-        const pts     = hitsMap[f.id];
-        const data    = rollingCount(pts, n1);
-        const totalAc = pts.reduce((a, b) => a + b, 0);
-        const pct     = Math.round(totalAc / serie.length * 100);
-        const cor     = (S._chartCores && S._chartCores[f.id]) || f.cor;
-        const mediaRef = +(data.reduce((a, b) => a + b, 0) / data.length).toFixed(1);
-
-        // Linha de referência tracejada (média da soma rolante)
+        // Referência tracejada
         datasets.push({ type:'line', label:`Ref ${f.label}`,
-            data: serie.map(() => mediaRef),
+            data: serie.map(() => ref),
             borderColor: cor, backgroundColor:'transparent',
             borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true });
 
         // Cor por ponto: verde = passou, vermelho = não passou
-        let pointRadius  = 3;
-        let pointBgColor = pts.map(v => v ? cor : '#dc2626');
+        const ptBg = pts.map(v => v ? cor : '#dc2626');
 
-        if (S.grafTopoFundo && data.length > 1) {
-            const warmup = Math.min(n1 - 1, data.length - 1);
-            const maxIdx = data.reduce((b, v, i) => i >= warmup && v > data[b] ? i : b, warmup);
-            const minIdx = data.reduce((b, v, i) => i >= warmup && v < data[b] ? i : b, warmup);
-            const base   = pts.map(v => v ? cor : '#dc2626');
-            pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : 3);
-            pointBgColor = base.map((c, i) => i === maxIdx ? '#fbbf24' : i === minIdx ? '#f87171' : c);
-        }
-
-        datasets.push({
-            type: 'line',
-            label: `${f.label} ${pct}%`,
-            data,
-            borderColor: cor,
-            backgroundColor: 'transparent',
-            borderWidth: 2,
-            borderDash: f.dashed ? [6,4] : [],
-            pointRadius,
-            pointHoverRadius: 5,
-            pointBackgroundColor: pointBgColor,
-            tension: 0.2,
-            _filtroId: f.id,
-        });
+        datasets.push({ type:'line', label:`${f.label} ${pct}%`,
+            data: soma, borderColor: cor, backgroundColor:'transparent',
+            borderWidth:2, pointRadius:3, pointHoverRadius:6,
+            pointBackgroundColor: ptBg, tension:0.2,
+            _filtroId: f.id });
 
         if (S.grafMedias) {
-            const _parseDash = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
-            const rollingAvg = (arr, w) => arr.map((_, i) => {
-                const sl = arr.slice(Math.max(0, i - w + 1), i + 1);
-                return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
-            });
             const n2 = S.grafMM2 || 21;
+            const avg = soma.map((_, i) => {
+                const sl = soma.slice(Math.max(0, i - n2 + 1), i + 1);
+                return +(sl.reduce((a,b)=>a+b,0) / sl.length).toFixed(1);
+            });
             datasets.push({ type:'line', label:`${f.label} MM${n2}`,
-                data: rollingAvg(data, n2),
-                borderColor: S.grafMM2Cor || '#fbbf24', backgroundColor:'transparent',
-                borderWidth: S.grafMM2Esp || 2, borderDash: _parseDash(S.grafMM2Dash || '8,4'),
+                data: avg, borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
+                borderWidth: S.grafMM2Esp||2,
+                borderDash: String(S.grafMM2Dash||'8,4').split(',').map(Number),
                 pointRadius:0, tension:0.4, _isMA:true });
         }
     });
@@ -3576,55 +3594,50 @@ function renderGrafico() {
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
 
-    const canvas = document.getElementById('grafico');
-    if (!canvas) return;
-
-    const tituloEl = document.getElementById('g-titulo');
-    if (tituloEl) {
-        if (ativos.length === 0) tituloEl.textContent = 'Nenhum filtro ativo';
-        else tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos · janela ${n1}j`;
-    }
+    if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos · janela ${n1}j`;
 
     if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
-    try { S.grafico = new Chart(canvas.getContext('2d'), {
-        type: 'line', data: { labels, datasets },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: false,
-            interaction: { intersect: false, mode: 'index' },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    enabled: !S.showLegendas,
-                    filter: item => !item.dataset._isRef && !item.dataset._isMA,
-                    backgroundColor: 'rgba(15,23,42,0.65)', borderColor: '#334155', borderWidth: 1,
-                    titleColor: '#94a3b8', bodyColor: '#cbd5e1',
-                    callbacks: {
-                        title: ctxArr => {
-                            const p = _GRAF_DATA.serie[ctxArr[0].dataIndex];
-                            if (!p) return '';
-                            const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-                            const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                            const placar = (p.gol_casa != null && p.gol_fora != null) ? `  ${p.gol_casa}-${p.gol_fora}` : '';
-                            return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}${placar}`;
-                        },
-                        label: ctx => {
-                            if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
-                            const i   = ctx.dataIndex;
-                            const { hitsMap: h, n1: wn } = _GRAF_DATA;
-                            const fid = ctx.dataset._filtroId;
-                            const marcador = fid && h[fid] ? (h[fid][i] ? ' ✓' : ' ✗') : '';
-                            return ` ${ctx.dataset.label}: ${ctx.raw}/${wn}${marcador}`;
+    try {
+        S.grafico = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        filter: item => !item.dataset._isRef && !item.dataset._isMA,
+                        backgroundColor: 'rgba(15,23,42,0.85)', borderColor:'#334155', borderWidth:1,
+                        titleColor:'#94a3b8', bodyColor:'#cbd5e1',
+                        callbacks: {
+                            title: ctxArr => {
+                                const j = _MKTGRAF_SERIE[ctxArr[0].dataIndex];
+                                if (!j) return '';
+                                const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
+                                const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
+                                const pl = `${j.gol_casa}-${j.gol_fora}`;
+                                return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}  (FT: ${pl})`;
+                            },
+                            label: ctx => {
+                                if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
+                                const i   = ctx.dataIndex;
+                                const fid = ctx.dataset._filtroId;
+                                const hit = _MKTGRAF_HITS[fid]?.[i];
+                                const marca = hit ? ' ✓' : ' ✗';
+                                return ` ${ctx.dataset.label}: ${ctx.raw}/${_MKTGRAF_N1}${marca}`;
+                            }
                         }
                     }
                 },
+                scales: {
+                    x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                    y: { min:0, max:yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
+                }
             },
-            scales: {
-                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min:0, max:yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
-            }
-        },
-        plugins: [golsLabelPlugin, grafPlugin, verticalLinesPlugin]
-    }); } catch(e) { console.error('renderGrafico chart error:', e); }
+            plugins: [mktLabelPlugin, verticalLinesPlugin]
+        });
+    } catch(e) { console.error('renderGrafico error:', e); }
 }
 
 // ============================================================
