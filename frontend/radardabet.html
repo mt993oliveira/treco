@@ -3510,12 +3510,13 @@ function renderGrafico() {
         const cor      = (S._chartCores && S._chartCores[f.id]) || f.cor;
 
         let pointRadius = isPrimario ? 5 : 3;
-        let pointBgColor = isPrimario ? pts.map(v => v ? cor : '#dc2626') : cor;
+        // Todos os filtros mostram verde (acerto) / vermelho (falha) em cada jogo
+        let pointBgColor = pts.map(v => v ? cor : '#dc2626');
         if (S.grafTopoFundo && data.length > 1) {
             const warmup = Math.min(n1 - 1, data.length - 1);
             const maxIdx = data.reduce((b, v, i) => i >= warmup && v > data[b] ? i : b, warmup);
             const minIdx = data.reduce((b, v, i) => i >= warmup && v < data[b] ? i : b, warmup);
-            const base   = isPrimario ? pts.map(v => v ? cor : '#dc2626') : data.map(() => cor);
+            const base   = pts.map(v => v ? cor : '#dc2626');
             pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : (isPrimario ? 5 : 3));
             pointBgColor = base.map((c, i) => i === maxIdx ? '#fbbf24' : i === minIdx ? '#f87171' : c);
         }
@@ -3626,62 +3627,111 @@ function renderGrafico() {
 }
 
 // ============================================================
-// GRÁFICO DE GOLS — total de gols por linha (hora)
+// PLUGIN GRÁFICO DE GOLS — rótulos numéricos acima de cada ponto
 // ============================================================
-let _GOLS_GRUPOS = [];
+const golsLabelPlugin = {
+    id: 'golsLabels',
+    afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((ds, di) => {
+            if (ds._isRef || ds._isMA) return;
+            const meta = chart.getDatasetMeta(di);
+            if (!meta.data || !meta.data.length) return;
+            const total = meta.data.length;
+            // Espaçamento automático: evita sobreposição em séries longas
+            const step = total > 60 ? 3 : total > 30 ? 2 : 1;
+            ctx.save();
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillStyle = ds.borderColor;
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 2;
+            meta.data.forEach((pt, i) => {
+                if (i % step !== 0) return;
+                if (!pt || ds.data[i] == null) return;
+                ctx.fillText(ds.data[i], pt.x, pt.y - 6);
+            });
+            ctx.restore();
+        });
+    }
+};
+
+// ============================================================
+// GRÁFICO DE GOLS — linha por jogo com soma acumulada (janela MM1)
+// ============================================================
+let _GOLS_SERIE = [];
 function renderGraficoGols() {
     const canvasEl = document.getElementById('grafico-gols');
     if (!canvasEl) return;
-    // Agrupa por hora (cronológico: mais antigo → mais recente)
-    const gs = grupos(S.horasGols).filter(g => g.jogos.length > 0).reverse();
-    if (!gs.length) {
-        if (S._graficoGols) { S._graficoGols.destroy(); S._graficoGols = null; }
+
+    // Série flat de jogos individuais com placar registrado
+    const serie = serieFlat(S.horasGols).filter(j => j.gol_casa != null && j.gol_fora != null);
+
+    if (!serie.length) {
+        if (S._graficoGols) { try { S._graficoGols.destroy(); } catch(_){} S._graficoGols = null; }
         const t = document.getElementById('g-gols-titulo');
         if (t) t.textContent = '⚽ Sem dados para o período';
         return;
     }
-    _GOLS_GRUPOS = gs;
+    _GOLS_SERIE = serie;
 
-    const corBarras = (S._chartCores && S._chartCores['_gols_barra']) || '#22c55e';
-    const rollingAvg = (arr, n) => arr.map((_, i) => {
-        const sl = arr.slice(Math.max(0, i - n + 1), i + 1);
-        return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
+    const n      = S.grafMM1 || 9;
+    const golsJ  = serie.map(j => j.gol_casa + j.gol_fora);
+    const totalG = golsJ.reduce((a, b) => a + b, 0);
+
+    // Soma rolante (janela de n jogos) — sem divisão
+    const rollingSum = golsJ.map((_, i) => {
+        const sl = golsJ.slice(Math.max(0, i - n + 1), i + 1);
+        return sl.reduce((a, b) => a + b, 0);
     });
 
-    const labels     = gs.map(g => `${pad2(g.hora.getUTCHours())}:00`);
-    const totais     = gs.map(g => {
-        const v = g.jogos.filter(j => j.gol_casa != null && j.gol_fora != null);
-        return v.reduce((s, j) => s + j.gol_casa + j.gol_fora, 0);
-    });
-    const numJogos   = gs.map(g => g.jogos.filter(j => j.gol_casa != null && j.gol_fora != null).length);
-    const totalGeral = totais.reduce((a, b) => a + b, 0);
-    const mediaHora  = gs.length ? (totalGeral / gs.length).toFixed(1) : 0;
-    const yMax       = Math.ceil(Math.max(...totais, 10) / 10) * 10;
+    const mediaRef = +(rollingSum.reduce((a, b) => a + b, 0) / rollingSum.length).toFixed(1);
+    const yMin = Math.max(0, Math.floor(Math.min(...rollingSum) / 5) * 5 - 5);
+    const yMax = Math.ceil(Math.max(...rollingSum) / 5) * 5 + 5;
 
-    const datasets = [{
-        type: 'bar', label: '⚽ Total/hora', data: totais,
-        backgroundColor: corBarras + 'aa', borderColor: corBarras, borderWidth: 1, borderRadius: 3,
-    }];
+    const cor   = (S._chartCores && S._chartCores['_gols_linha']) || '#e2e8f0';
+    const corRef = '#1fcc59';
+
+    const labels = serie.map(p => {
+        if (!p.data_partida) return '';
+        const d = new Date((p.data_partida + '').replace(' ', 'T').replace(/Z?$/, 'Z'));
+        return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+    });
+
+    const datasets = [
+        // Linha de referência (média da soma rolante)
+        { type: 'line', label: `Ref ${mediaRef}`,
+          data: serie.map(() => mediaRef),
+          borderColor: corRef, backgroundColor: 'transparent',
+          borderWidth: 1, borderDash: [6, 4], pointRadius: 0, tension: 0, _isRef: true },
+        // Linha principal: soma rolante de gols
+        { type: 'line', label: `⚽ Soma ${n}j`,
+          data: rollingSum,
+          borderColor: cor, backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 3, pointHoverRadius: 6,
+          pointBackgroundColor: cor, tension: 0.2 }
+    ];
+
     if (S.grafGolsMM) {
-        const n1 = S.grafMM1 || 9;
-        const _pd = s => String(s||'').split(',').map(Number).filter(n=>!isNaN(n)&&n>=0);
-        datasets.push({ type:'line', label:`MM${n1}`, data: rollingAvg(totais, n1),
-            borderColor: S.grafMM1Cor||'#ffffff', backgroundColor:'transparent',
-            borderWidth: S.grafMM1Esp||1.5, borderDash: _pd(S.grafMM1Dash||'4,4'),
-            pointRadius: 0, tension: 0.3 });
+        const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
+        const rollingAvg = (arr, w) => arr.map((_, i) => {
+            const sl = arr.slice(Math.max(0, i - w + 1), i + 1);
+            return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
+        });
         const n2 = S.grafMM2 || 21;
-        datasets.push({ type:'line', label:`MM${n2}`, data: rollingAvg(totais, n2),
+        datasets.push({ type:'line', label:`MM${n2}`,
+            data: rollingAvg(rollingSum, n2),
             borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
             borderWidth: S.grafMM2Esp||2, borderDash: _pd(S.grafMM2Dash||'8,4'),
-            pointRadius: 0, tension: 0.4 });
+            pointRadius: 0, tension: 0.4, _isMA: true });
     }
 
     const tituloEl = document.getElementById('g-gols-titulo');
-    if (tituloEl) tituloEl.textContent = `⚽ Gols por Linha — ${gs.length} horas · ${totalGeral} gols total`;
+    if (tituloEl) tituloEl.textContent = `⚽ ${serie.length} jogos · ${totalG} gols · soma ${n}j: ref ${mediaRef}`;
 
-    if (S._graficoGols) { S._graficoGols.destroy(); S._graficoGols = null; }
-    S._graficoGols = new Chart(canvasEl.getContext('2d'), {
-        type: 'bar',
+    if (S._graficoGols) { try { S._graficoGols.destroy(); } catch(_){} S._graficoGols = null; }
+    try { S._graficoGols = new Chart(canvasEl.getContext('2d'), {
+        type: 'line',
         data: { labels, datasets },
         options: {
             responsive: true, maintainAspectRatio: false, animation: false,
@@ -3691,37 +3741,31 @@ function renderGraficoGols() {
                 tooltip: {
                     backgroundColor: 'rgba(15,23,42,0.85)', borderColor: '#334155', borderWidth: 1,
                     titleColor: '#94a3b8', bodyColor: '#cbd5e1',
+                    filter: item => !item.dataset._isRef,
                     callbacks: {
                         title: ctxArr => {
-                            const g = _GOLS_GRUPOS[ctxArr[0].dataIndex];
-                            if (!g) return '';
-                            return `${pad2(g.hora.getUTCHours())}:00 · ${pad2(g.hora.getUTCDate())}/${pad2(g.hora.getUTCMonth()+1)}`;
+                            const j = _GOLS_SERIE[ctxArr[0].dataIndex];
+                            if (!j) return '';
+                            const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
+                            const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
+                            return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}  (FT: ${j.gol_casa}-${j.gol_fora})`;
                         },
                         label: ctx => {
-                            if (ctx.dataset.label === '⚽ Total/hora') {
-                                const n = numJogos[ctx.dataIndex];
-                                return ` Total: ${ctx.raw}⚽  (${n} jogo${n!==1?'s':''})`;
-                            }
-                            return ` ${ctx.dataset.label}: ${ctx.raw}⚽`;
+                            if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
+                            const j = _GOLS_SERIE[ctx.dataIndex];
+                            const ft = j ? j.gol_casa + j.gol_fora : '?';
+                            return [` FT: ${ft}⚽`, ` TOTAL GOLS (FT): ${ctx.raw}`, ` Total Gols (FT): ${ctx.raw}`];
                         }
                     }
                 },
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: {
-                    min: 0, max: yMax,
-                    grid: {color:'#1e293b'},
-                    ticks: {
-                        color:'#94a3b8', font:{size:9},
-                        stepSize: 10,
-                        callback: v => v+'⚽'
-                    }
-                }
+                y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
             }
         },
-        plugins: [verticalLinesPlugin]
-    });
+        plugins: [golsLabelPlugin, verticalLinesPlugin]
+    }); } catch(e) { console.error('renderGraficoGols error:', e); }
 }
 
 // ============================================================
