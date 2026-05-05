@@ -1051,8 +1051,8 @@
     <!-- Toggle: Gráfico de Mercados | Gráfico de Gols | Gráfico de Par e Ímpar | Menu Mosaico -->
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <button id="sub-btn-grafico" onclick="setSubView('grafico')"
-            style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
-            border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;
+            style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
+            border-radius:8px;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;
             display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Gráfico de Mercados
@@ -2078,7 +2078,7 @@ const S = {
     _chartCores:   {},
     view:          'historico',
     _analiseSecoes: { ia:true, desempenho:true, detalhe:true, valuebets:true, tendencias:true, frequencia:true },
-    showGrafico:   true,   // toggle independente
+    showGrafico:   false,  // toggle independente
     showMosaico:   true,   // toggle independente
     showMercados:  false,  // toggle painel de filtros/mercados
     showPadroes:   false,  // toggle painel inline de padrões
@@ -2108,10 +2108,8 @@ const S = {
     },
 };
 
-// Por padrão todos desligados — usuário liga o que quer ver
+// Por padrão todos desligados — usuário seleciona em Mercados ou aplica um Padrão
 TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
-// Liga O1.5 e BTTS como defaults iniciais
-['over1.5', 'over2.5', 'ambas-sim', 'ft-casa', 'ft-empate', 'ft-fora'].forEach(id => { S.linhas[id] = true; });
 S.filtro = 'over1.5';
 
 // ============================================================
@@ -2979,6 +2977,11 @@ function renderFiltros() {
         `;
         c.appendChild(padPanel);
         if (_padNome) { const _inp = document.getElementById('padroes-nome-input'); if (_inp) _inp.value = _padNome; }
+        if (_padroesCache.length > 0) {
+            _renderListaPadroes(_padroesCache);
+        } else {
+            _carregarPadroes();
+        }
         return;
     }
 
@@ -3180,15 +3183,23 @@ function setPeriodoSelect(val) {
     if (custH) custH.style.display = 'none';
     setHoras(parseInt(val));
 }
+function _resetSubPeriodos() {
+    S.horasGrafico = null; S.horasGols = null; S.horasParImpar = null;
+    ['periodo-grafico','periodo-gols','periodo-parimpar'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+    });
+}
 function setPeriodoCustom(v) {
     const n = parseInt(v);
     if (!n || n < 1 || n > 720) return;
     S.horas = n;
+    _resetSubPeriodos();
     _syncPeriodoSelect(n);
     carregarHistorico();
 }
 function setHoras(n) {
     S.horas = n;
+    _resetSubPeriodos();
     _syncPeriodoSelect(n);
     carregarHistorico();
 }
@@ -3670,58 +3681,58 @@ function renderGrafico() {
 }
 
 // ============================================================
-// GRÁFICO DE GOLS — total de gols por jogo
+// GRÁFICO DE GOLS — total de gols por linha (hora)
 // ============================================================
-let _GOLS_SERIE = [];
+let _GOLS_GRUPOS = [];
 function renderGraficoGols() {
     const canvasEl = document.getElementById('grafico-gols');
     if (!canvasEl) return;
-    const serie = serieFlat(S.horasGols);
-    if (!serie.length) {
+    // Agrupa por hora (cronológico: mais antigo → mais recente)
+    const gs = grupos(S.horasGols).filter(g => g.jogos.length > 0).reverse();
+    if (!gs.length) {
         if (S._graficoGols) { S._graficoGols.destroy(); S._graficoGols = null; }
         const t = document.getElementById('g-gols-titulo');
         if (t) t.textContent = '⚽ Sem dados para o período';
         return;
     }
-    _GOLS_SERIE = serie;
+    _GOLS_GRUPOS = gs;
 
     const corBarras = (S._chartCores && S._chartCores['_gols_barra']) || '#22c55e';
     const rollingAvg = (arr, n) => arr.map((_, i) => {
         const sl = arr.slice(Math.max(0, i - n + 1), i + 1);
-        return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(2);
+        return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
     });
 
-    const gols    = serie.map(j => (j.gol_casa != null && j.gol_fora != null) ? j.gol_casa + j.gol_fora : null);
-    const validos = gols.filter(v => v != null);
-    const media   = validos.length ? (validos.reduce((a, b) => a + b, 0) / validos.length).toFixed(2) : 0;
-    const labels  = serie.map(p => {
-        if (!p.data_partida) return '';
-        const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
-        return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+    const labels     = gs.map(g => `${pad2(g.hora.getUTCHours())}:00`);
+    const totais     = gs.map(g => {
+        const v = g.jogos.filter(j => j.gol_casa != null && j.gol_fora != null);
+        return v.reduce((s, j) => s + j.gol_casa + j.gol_fora, 0);
     });
+    const numJogos   = gs.map(g => g.jogos.filter(j => j.gol_casa != null && j.gol_fora != null).length);
+    const totalGeral = totais.reduce((a, b) => a + b, 0);
+    const mediaHora  = gs.length ? (totalGeral / gs.length).toFixed(1) : 0;
+    const yMax       = Math.ceil(Math.max(...totais, 10) / 10) * 10;
 
     const datasets = [{
-        type: 'bar', label: '⚽ Gols', data: gols,
-        backgroundColor: corBarras + 'aa', borderColor: corBarras, borderWidth: 1,
-        borderRadius: 3,
+        type: 'bar', label: '⚽ Total/hora', data: totais,
+        backgroundColor: corBarras + 'aa', borderColor: corBarras, borderWidth: 1, borderRadius: 3,
     }];
     if (S.grafGolsMM) {
         const n1 = S.grafMM1 || 9;
         const _pd = s => String(s||'').split(',').map(Number).filter(n=>!isNaN(n)&&n>=0);
-        datasets.push({ type:'line', label:`MM${n1}`, data: rollingAvg(gols.map(v => v ?? 0), n1),
+        datasets.push({ type:'line', label:`MM${n1}`, data: rollingAvg(totais, n1),
             borderColor: S.grafMM1Cor||'#ffffff', backgroundColor:'transparent',
             borderWidth: S.grafMM1Esp||1.5, borderDash: _pd(S.grafMM1Dash||'4,4'),
             pointRadius: 0, tension: 0.3 });
         const n2 = S.grafMM2 || 21;
-        datasets.push({ type:'line', label:`MM${n2}`, data: rollingAvg(gols.map(v => v ?? 0), n2),
+        datasets.push({ type:'line', label:`MM${n2}`, data: rollingAvg(totais, n2),
             borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
             borderWidth: S.grafMM2Esp||2, borderDash: _pd(S.grafMM2Dash||'8,4'),
             pointRadius: 0, tension: 0.4 });
     }
 
-    const yMax = Math.max(...validos, 1) + 1;
     const tituloEl = document.getElementById('g-gols-titulo');
-    if (tituloEl) tituloEl.textContent = `⚽ Gols por Jogo — ${serie.length} jogos | Média: ${media}`;
+    if (tituloEl) tituloEl.textContent = `⚽ Gols por Linha — ${gs.length} horas · ${totalGeral} gols total · Média ${mediaHora}/h`;
 
     if (S._graficoGols) { S._graficoGols.destroy(); S._graficoGols = null; }
     S._graficoGols = new Chart(canvasEl.getContext('2d'), {
@@ -3737,20 +3748,31 @@ function renderGraficoGols() {
                     titleColor: '#94a3b8', bodyColor: '#cbd5e1',
                     callbacks: {
                         title: ctxArr => {
-                            const p = _GOLS_SERIE[ctxArr[0].dataIndex];
-                            if (!p) return '';
-                            const d = p.data_partida ? new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-                            const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                            const placar = (p.gol_casa != null && p.gol_fora != null) ? `  ${p.gol_casa}-${p.gol_fora}` : '';
-                            return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}${placar}`;
+                            const g = _GOLS_GRUPOS[ctxArr[0].dataIndex];
+                            if (!g) return '';
+                            return `${pad2(g.hora.getUTCHours())}:00 · ${pad2(g.hora.getUTCDate())}/${pad2(g.hora.getUTCMonth()+1)}`;
                         },
-                        label: ctx => ` ${ctx.dataset.label}: ${ctx.raw ?? '?'}⚽`
+                        label: ctx => {
+                            if (ctx.dataset.label === '⚽ Total/hora') {
+                                const n = numJogos[ctx.dataIndex];
+                                return ` Total: ${ctx.raw}⚽  (${n} jogo${n!==1?'s':''})`;
+                            }
+                            return ` ${ctx.dataset.label}: ${ctx.raw}⚽`;
+                        }
                     }
                 },
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min:0, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback: v => v+'⚽'} }
+                y: {
+                    min: 0, max: yMax,
+                    grid: {color:'#1e293b'},
+                    ticks: {
+                        color:'#94a3b8', font:{size:9},
+                        stepSize: 10,
+                        callback: v => v+'⚽'
+                    }
+                }
             }
         },
         plugins: [verticalLinesPlugin]
@@ -3775,10 +3797,6 @@ function renderGraficoPar() {
 
     const corPar   = (S._chartCores && S._chartCores['_par'])   || '#22c55e';
     const corImpar = (S._chartCores && S._chartCores['_impar']) || '#f97316';
-    const rollingPct = (hits, n) => hits.map((_, i) => {
-        const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
-        return +(sl.reduce((a, b) => a + b, 0) / sl.length * 100).toFixed(1);
-    });
 
     const validos  = serie.filter(j => j.gol_casa != null && j.gol_fora != null);
     const parHits  = serie.map(j => (j.gol_casa != null && j.gol_fora != null) ? ((j.gol_casa + j.gol_fora) % 2 === 0 ? 1 : 0) : null);
@@ -3789,12 +3807,11 @@ function renderGraficoPar() {
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
 
-    const n1 = S.grafMM1 || 9;
     const showGols = S.grafParShowGols;
-    const chartType = showGols ? 'bar' : 'line';
     const datasets = [];
 
     if (showGols) {
+        // Modo barras: par=verde, ímpar=laranja
         datasets.push({
             type: 'bar', label: 'Par', data: serie.map(j => (j.gol_casa!=null&&j.gol_fora!=null&&(j.gol_casa+j.gol_fora)%2===0) ? j.gol_casa+j.gol_fora : null),
             backgroundColor: corPar + 'cc', borderColor: corPar, borderWidth: 1, borderRadius: 3,
@@ -3804,23 +3821,36 @@ function renderGraficoPar() {
             backgroundColor: corImpar + 'cc', borderColor: corImpar, borderWidth: 1, borderRadius: 3,
         });
     } else {
+        // Modo linha: percentual acumulado — sobe para par, desce para ímpar (sempre)
+        let parCount = 0;
+        const cumPar = parHits.map((h, i) => {
+            if (h !== null && h !== undefined) parCount += h;
+            const total = parHits.slice(0, i + 1).filter(v => v !== null).length;
+            return total > 0 ? +(parCount / total * 100).toFixed(1) : null;
+        });
+        // Colore ponto: verde se par, laranja se ímpar
+        const ptColors = parHits.map(h => h === 1 ? corPar : h === 0 ? corImpar : '#475569');
         datasets.push({
-            type: 'line', label: `Par% (${pctPar}%)`, data: rollingPct(parHits.map(v => v ?? 0), n1),
-            borderColor: corPar, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.2,
-            pointBackgroundColor: corPar,
+            type: 'line', label: `Par% acum. (${pctPar}%)`, data: cumPar,
+            borderColor: corPar, backgroundColor: corPar + '22', fill: true,
+            borderWidth: 2, pointRadius: 3, pointBackgroundColor: ptColors, tension: 0.2,
         });
         datasets.push({
             type: 'line', label: `Eq. 50%`, data: serie.map(() => 50),
             borderColor: '#475569', backgroundColor: 'transparent', borderWidth: 1, borderDash: [6,4], pointRadius: 0, tension: 0,
         });
-    }
-    if (S.grafParMM && !showGols) {
-        const _pd = s => String(s||'').split(',').map(Number).filter(n=>!isNaN(n)&&n>=0);
-        const n2 = S.grafMM2 || 21;
-        datasets.push({ type:'line', label:`MM${n2}`, data: rollingPct(parHits.map(v=>v??0), n2),
-            borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
-            borderWidth: S.grafMM2Esp||2, borderDash: _pd(S.grafMM2Dash||'8,4'),
-            pointRadius: 0, tension: 0.4 });
+        if (S.grafParMM) {
+            const _pd = s => String(s||'').split(',').map(Number).filter(n=>!isNaN(n)&&n>=0);
+            const n2 = S.grafMM2 || 21;
+            const rollingPct = (hits, n) => hits.map((_, i) => {
+                const sl = hits.slice(Math.max(0, i - n + 1), i + 1).filter(v => v !== null);
+                return sl.length ? +(sl.reduce((a, b) => a + b, 0) / sl.length * 100).toFixed(1) : null;
+            });
+            datasets.push({ type:'line', label:`MM${n2}`, data: rollingPct(parHits, n2),
+                borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
+                borderWidth: S.grafMM2Esp||2, borderDash: _pd(S.grafMM2Dash||'8,4'),
+                pointRadius: 0, tension: 0.4 });
+        }
     }
 
     const tituloEl = document.getElementById('g-par-titulo');
@@ -3828,7 +3858,7 @@ function renderGraficoPar() {
 
     if (S._graficoPar) { S._graficoPar.destroy(); S._graficoPar = null; }
     S._graficoPar = new Chart(canvasEl.getContext('2d'), {
-            type: chartType,
+            type: showGols ? 'bar' : 'line',
             data: { labels, datasets },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: false,
@@ -4263,15 +4293,15 @@ function renderTabela() {
             return `<td class="${cellClass}" data-tt="${tt}"${cellStyle}>${cellContent}</td>`;
         }).join('');
 
-        // Média de gols da linha (hora)
+        // Total de gols da linha (hora)
         const golsJogos = jogosComDados
             .map(j => j.gol_casa != null && j.gol_fora != null ? j.gol_casa + j.gol_fora
                      : j.total_gols != null ? j.total_gols : null)
             .filter(v => v != null);
-        const avgLinha = golsJogos.length ? (golsJogos.reduce((a,b) => a+b,0)/golsJogos.length).toFixed(1) : '–';
-        const golCor   = avgLinha === '–' ? '#334155'
-                       : parseFloat(avgLinha) >= 3.5 ? '#4ade80'
-                       : parseFloat(avgLinha) >= 2.5 ? '#fbbf24' : '#94a3b8';
+        const totalGolsLinha = golsJogos.length ? golsJogos.reduce((a,b) => a+b,0) : null;
+        const golCor   = totalGolsLinha == null ? '#334155'
+                       : totalGolsLinha >= 30 ? '#4ade80'
+                       : totalGolsLinha >= 15 ? '#fbbf24' : '#94a3b8';
 
         const rowIdx = gsDesc.indexOf(grupo);
         const rowSelCls = S.selRows.has(rowIdx) ? ' row-sel' : '';
@@ -4286,7 +4316,7 @@ function renderTabela() {
                 <span style="display:block;font-size:${S._mosaicoHoraFonteDD}px;color:#475569;font-weight:400;line-height:1.1">${_dd}${temJogo ? ` (${jogosComDados.length})` : ''}</span>
             </td>
             <td class="td-pct ${pctC}">${pct !== null ? pct+'%' : '—'}</td>
-            <td style="font-size:${S._mosaicoHoraFonteDD}px;font-weight:800;color:${golCor};text-align:center;min-width:${S._mosaicoGolsLarg}px">${avgLinha}</td>
+            <td style="font-size:${S._mosaicoHoraFonteDD}px;font-weight:800;color:${golCor};text-align:center;min-width:${S._mosaicoGolsLarg}px">${totalGolsLinha ?? '–'}</td>
             ${cells}
         `;
 
@@ -4322,12 +4352,12 @@ function renderTabela() {
         return `<td style="color:${c};font-weight:800;font-size:10px">${p}%</td>`;
     }).join('');
 
-    // Footer — média de gols por posição (coluna)
+    // Footer — total de gols por posição (coluna)
     const footGols = Array.from({length: N}, (_, ci) => {
         if (!colGolsCt[ci]) return `<td style="color:#1e293b">–</td>`;
-        const avg = (colGols[ci] / colGolsCt[ci]).toFixed(1);
-        const c = parseFloat(avg) >= 3.5 ? '#4ade80' : parseFloat(avg) >= 2.5 ? '#fbbf24' : '#94a3b8';
-        return `<td style="color:${c};font-weight:700;font-size:9px">${avg}</td>`;
+        const tot = colGols[ci];
+        const c = tot >= 20 ? '#4ade80' : tot >= 8 ? '#fbbf24' : '#94a3b8';
+        return `<td style="color:${c};font-weight:700;font-size:9px">${tot}</td>`;
     }).join('');
 
     // Footer com hora:minuto de cada slot
