@@ -3510,13 +3510,12 @@ function renderGrafico() {
         const cor      = (S._chartCores && S._chartCores[f.id]) || f.cor;
 
         let pointRadius = isPrimario ? 5 : 3;
-        // Todos os filtros mostram verde (acerto) / vermelho (falha) em cada jogo
-        let pointBgColor = pts.map(v => v ? cor : '#dc2626');
+        let pointBgColor = isPrimario ? pts.map(v => v ? cor : '#dc2626') : cor;
         if (S.grafTopoFundo && data.length > 1) {
             const warmup = Math.min(n1 - 1, data.length - 1);
             const maxIdx = data.reduce((b, v, i) => i >= warmup && v > data[b] ? i : b, warmup);
             const minIdx = data.reduce((b, v, i) => i >= warmup && v < data[b] ? i : b, warmup);
-            const base   = pts.map(v => v ? cor : '#dc2626');
+            const base   = isPrimario ? pts.map(v => v ? cor : '#dc2626') : data.map(() => cor);
             pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : (isPrimario ? 5 : 3));
             pointBgColor = base.map((c, i) => i === maxIdx ? '#fbbf24' : i === minIdx ? '#f87171' : c);
         }
