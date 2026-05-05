@@ -3768,79 +3768,119 @@ function renderGraficoGols() {
 }
 
 // ============================================================
-// GRÁFICO DE PAR E ÍMPAR — contagem por hora (sem divisão/%)
+// GRÁFICO DE PAR E ÍMPAR — linha por jogo com soma rolante
 // ============================================================
-let _PAR_GRUPOS = [];
+let _PAR_SERIE = [];
 function renderGraficoPar() {
     const canvasEl = document.getElementById('grafico-parimpar');
     if (!canvasEl) return;
 
-    // Agrupa por hora — cronológico (mais antigo → mais recente)
-    const gs = grupos(S.horasParImpar).filter(g => g.jogos.length > 0).reverse();
-    if (!gs.length) {
-        if (S._graficoPar) { S._graficoPar.destroy(); S._graficoPar = null; }
+    const serie = serieFlat(S.horasParImpar).filter(j => j.gol_casa != null && j.gol_fora != null);
+
+    if (!serie.length) {
+        if (S._graficoPar) { try { S._graficoPar.destroy(); } catch(_){} S._graficoPar = null; }
         const t = document.getElementById('g-par-titulo');
         if (t) t.textContent = '🔢 Sem dados para o período';
         return;
     }
-    _PAR_GRUPOS = gs;
+    _PAR_SERIE = serie;
+
+    const n      = S.grafMM1 || 9;
+    const parJ   = serie.map(j => (j.gol_casa + j.gol_fora) % 2 === 0 ? 1 : 0);
+    const imparJ = parJ.map(v => 1 - v);
+
+    const totalPar   = parJ.reduce((a, b) => a + b, 0);
+    const totalImpar = imparJ.reduce((a, b) => a + b, 0);
+
+    // Soma rolante (janela de n jogos) — sem divisão
+    const rollingPar = parJ.map((_, i) => {
+        const sl = parJ.slice(Math.max(0, i - n + 1), i + 1);
+        return sl.reduce((a, b) => a + b, 0);
+    });
+    const rollingImpar = imparJ.map((_, i) => {
+        const sl = imparJ.slice(Math.max(0, i - n + 1), i + 1);
+        return sl.reduce((a, b) => a + b, 0);
+    });
+
+    const mediaRefPar   = +(rollingPar.reduce((a, b) => a + b, 0) / rollingPar.length).toFixed(1);
+    const mediaRefImpar = +(rollingImpar.reduce((a, b) => a + b, 0) / rollingImpar.length).toFixed(1);
+
+    const allVals = [...rollingPar, ...rollingImpar];
+    const yMin = Math.max(0, Math.floor(Math.min(...allVals) / 2) * 2 - 1);
+    const yMax = Math.ceil(Math.max(...allVals) / 2) * 2 + 2;
 
     const corPar   = (S._chartCores && S._chartCores['_par'])   || '#22c55e';
     const corImpar = (S._chartCores && S._chartCores['_impar']) || '#f97316';
 
-    const labels   = gs.map(g => `${pad2(g.hora.getUTCHours())}:00`);
-
-    // Contagem bruta por hora — sem divisão
-    const cntPar   = gs.map(g => g.jogos.filter(j => j.gol_casa != null && j.gol_fora != null && (j.gol_casa + j.gol_fora) % 2 === 0).length);
-    const cntImpar = gs.map(g => g.jogos.filter(j => j.gol_casa != null && j.gol_fora != null && (j.gol_casa + j.gol_fora) % 2 !== 0).length);
-
-    const totalPar   = cntPar.reduce((a, b) => a + b, 0);
-    const totalImpar = cntImpar.reduce((a, b) => a + b, 0);
-    const yMax       = Math.ceil(Math.max(...cntPar, ...cntImpar, 5) / 5) * 5;
+    const labels = serie.map(p => {
+        if (!p.data_partida) return '';
+        const d = new Date((p.data_partida + '').replace(' ', 'T').replace(/Z?$/, 'Z'));
+        return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+    });
 
     const datasets = [
-        {
-            type: 'bar', label: `Par (${totalPar})`, data: cntPar,
-            backgroundColor: corPar + 'bb', borderColor: corPar, borderWidth: 1, borderRadius: 3,
-        },
-        {
-            type: 'bar', label: `Ímpar (${totalImpar})`, data: cntImpar,
-            backgroundColor: corImpar + 'bb', borderColor: corImpar, borderWidth: 1, borderRadius: 3,
-        },
+        { type:'line', label:`Ref Par ${mediaRefPar}`,
+          data: serie.map(() => mediaRefPar),
+          borderColor: corPar, backgroundColor:'transparent',
+          borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
+        { type:'line', label:`Ref Ímpar ${mediaRefImpar}`,
+          data: serie.map(() => mediaRefImpar),
+          borderColor: corImpar, backgroundColor:'transparent',
+          borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
+        { type:'line', label:`Par (${totalPar})`,
+          data: rollingPar,
+          borderColor: corPar, backgroundColor:'transparent',
+          borderWidth:2, pointRadius:3, pointHoverRadius:6,
+          pointBackgroundColor: corPar, tension:0.2 },
+        { type:'line', label:`Ímpar (${totalImpar})`,
+          data: rollingImpar,
+          borderColor: corImpar, backgroundColor:'transparent',
+          borderWidth:2, pointRadius:3, pointHoverRadius:6,
+          pointBackgroundColor: corImpar, tension:0.2 }
     ];
 
     const tituloEl = document.getElementById('g-par-titulo');
-    if (tituloEl) tituloEl.textContent = `🔢 Par e Ímpar — ${gs.length} horas · Par: ${totalPar} jogos · Ímpar: ${totalImpar} jogos`;
+    if (tituloEl) tituloEl.textContent = `🔢 ${serie.length} jogos · Par: ${totalPar} · Ímpar: ${totalImpar} · soma ${n}j`;
 
-    if (S._graficoPar) { S._graficoPar.destroy(); S._graficoPar = null; }
-    S._graficoPar = new Chart(canvasEl.getContext('2d'), {
-        type: 'bar',
+    if (S._graficoPar) { try { S._graficoPar.destroy(); } catch(_){} S._graficoPar = null; }
+    try { S._graficoPar = new Chart(canvasEl.getContext('2d'), {
+        type: 'line',
         data: { labels, datasets },
         options: {
             responsive: true, maintainAspectRatio: false, animation: false,
             interaction: { intersect: false, mode: 'index' },
             plugins: {
-                legend: { display: true, labels: { color:'#94a3b8', font:{size:9}, boxWidth:10 } },
+                legend: { display: false },
                 tooltip: {
                     backgroundColor: 'rgba(15,23,42,0.85)', borderColor: '#334155', borderWidth: 1,
                     titleColor: '#94a3b8', bodyColor: '#cbd5e1',
+                    filter: item => !item.dataset._isRef,
                     callbacks: {
                         title: ctxArr => {
-                            const g = _PAR_GRUPOS[ctxArr[0].dataIndex];
-                            if (!g) return '';
-                            return `${pad2(g.hora.getUTCHours())}:00 · ${pad2(g.hora.getUTCDate())}/${pad2(g.hora.getUTCMonth()+1)}`;
+                            const j = _PAR_SERIE[ctxArr[0].dataIndex];
+                            if (!j) return '';
+                            const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
+                            const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
+                            return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}  (FT: ${j.gol_casa}-${j.gol_fora})`;
                         },
-                        label: ctx => ` ${ctx.dataset.label.split(' ')[0]}: ${ctx.raw} jogos`,
+                        label: ctx => {
+                            if (ctx.dataset._isRef) return null;
+                            const j = _PAR_SERIE[ctx.dataIndex];
+                            const tot = j ? j.gol_casa + j.gol_fora : '?';
+                            const paridade = tot % 2 === 0 ? '🟢 PAR' : '🟠 ÍMPAR';
+                            const nomeLinha = ctx.datasetIndex === 2 ? 'Par' : 'Ímpar';
+                            return [` ${paridade} · ${tot} gols`, ` ${nomeLinha} (${n}j): ${ctx.raw}`];
+                        }
                     }
                 },
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min:0, max:yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},stepSize:1,callback:v=>v+' jogos'} }
+                y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
             }
         },
-        plugins: [verticalLinesPlugin]
-    });
+        plugins: [golsLabelPlugin, verticalLinesPlugin]
+    }); } catch(e) { console.error('renderGraficoPar error:', e); }
 }
 
 // ── Zoom reset ──────────────────────────────────────────────
