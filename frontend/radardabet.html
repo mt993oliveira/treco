@@ -3056,17 +3056,22 @@ function renderFiltros() {
                 if (id === 'equilibrio') {
                     S.linhas[id] = !S.linhas[id];
                 } else if (!S.linhas[id]) {
-                    // Inativo → ativa e vira primário
                     S.linhas[id] = true;
                     S.filtro = id;
                 } else if (S.filtro !== id) {
-                    // Ativo mas não-primário → vira primário (sem desativar)
                     S.filtro = id;
                 } else {
-                    // Ativo e primário → desativa
                     S.linhas[id] = false;
                     const resto = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
                     if (resto.length > 0) S.filtro = resto[0].id;
+                }
+                // Garante seção do gráfico visível ao ativar filtro
+                if (TODOS_FILTROS.some(f2 => S.linhas[f2.id])) {
+                    S.showGrafico = true;
+                    const sec = document.getElementById('historico-chart-section');
+                    if (sec) sec.style.display = 'flex';
+                    const gbtn = document.getElementById('sub-btn-grafico');
+                    if (gbtn) { gbtn.style.borderColor = '#1fcc59'; gbtn.style.color = '#e2e8f0'; }
                 }
                 renderFiltros(); renderTabela(); _renderAllCharts();
             };
@@ -3454,7 +3459,6 @@ const grafPlugin = {
 // GRÁFICO SUPERIOR — estilo Caramelo: pontos por jogo + média móvel
 // ============================================================
 function renderGrafico() {
-    if (S.view === 'historico' && !S.showGrafico) return;
     const serie = serieFlat(S.horasGrafico);
     if (!serie.length) {
         if (S.grafico) { S.grafico.destroy(); S.grafico = null; }
@@ -3895,18 +3899,7 @@ function minutosParaLiga(liga) {
 // ============================================================
 // TABELA HISTÓRICA — 1 linha = 1 hora, 20 colunas = jogos daquela hora
 function _renderAllCharts() {
-    // Se há filtros ativos e o gráfico está oculto, exibe-o antes de renderizar
-    if (S.view === 'historico' && TODOS_FILTROS.some(f => S.linhas[f.id]) && !S.showGrafico) {
-        S.showGrafico = true;
-        const sec = document.getElementById('historico-chart-section');
-        if (sec) sec.style.display = 'flex';
-        const btn = document.getElementById('sub-btn-grafico');
-        if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
-        // requestAnimationFrame garante que o browser reflui o canvas antes de criar o chart
-        requestAnimationFrame(() => { renderGrafico(); });
-    } else {
-        renderGrafico();
-    }
+    renderGrafico();
     if (S.showGols)     renderGraficoGols();
     if (S.showParImpar) renderGraficoPar();
 }
@@ -7302,7 +7295,7 @@ function cancelarEdicaoNome() {
 
 function aplicarPadrao(id) {
     const p = _padroesCache.find(x => x.id === id);
-    if (!p) return;
+    if (!p) { console.warn('aplicarPadrao: padrão não encontrado no cache', id); return; }
     try {
         const f = typeof p.filtros === 'string' ? JSON.parse(p.filtros) : p.filtros;
         if (f.linhas) {
@@ -7310,11 +7303,27 @@ function aplicarPadrao(id) {
             Object.assign(S.linhas, f.linhas);
         }
         if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
-        // Fecha padrões e abre mercados para mostrar quais filtros estão ativos
+
+        // Fecha padrões, abre mercados para mostrar filtros ativos
         S.showPadroes  = false;
         S.showMercados = true;
         S.showConfig   = false;
-        renderFiltros(); renderTabela(); _renderAllCharts();
+
+        // Garante que a seção do gráfico está visível
+        S.showGrafico = true;
+        const sec = document.getElementById('historico-chart-section');
+        if (sec) sec.style.display = 'flex';
+        const btn = document.getElementById('sub-btn-grafico');
+        if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
+
+        renderFiltros();
+        renderTabela();
+        // rAF: garante que o canvas tem dimensões corretas antes de criar o chart
+        requestAnimationFrame(() => {
+            renderGrafico();
+            if (S.showGols)     renderGraficoGols();
+            if (S.showParImpar) renderGraficoPar();
+        });
     } catch(e) { console.error('Erro ao aplicar padrão', e); }
 }
 
