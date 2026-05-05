@@ -3476,13 +3476,15 @@ function renderGrafico() {
         return;
     }
 
-    const opcoes = TODOS_FILTROS;
+    const opcoes  = TODOS_FILTROS;
     const datasets = [];
-    const ativos = opcoes.filter(f => S.linhas[f.id]);
+    const ativos  = opcoes.filter(f => S.linhas[f.id]);
+    const n1      = S.grafMM1 || 9;
 
-    const rollingPct = (hits, n) => hits.map((_, i) => {
+    // Soma rolante — igual ao Gols/Par-Ímpar
+    const rollingCount = (hits, n) => hits.map((_, i) => {
         const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
-        return +(sl.reduce((a, b) => a + b, 0) / sl.length * 100).toFixed(1);
+        return sl.reduce((a, b) => a + b, 0);
     });
 
     const hitsMap = {};
@@ -3493,30 +3495,48 @@ function renderGrafico() {
     _GRAF_DATA.serie   = serie;
     _GRAF_DATA.ativos  = ativos;
     _GRAF_DATA.hitsMap = hitsMap;
+    _GRAF_DATA.n1      = n1;
+
+    // Escala Y global
+    let yMaxVal = 1;
+    ativos.forEach(f => {
+        if (f.id === 'equilibrio') return;
+        const rc = rollingCount(hitsMap[f.id], n1);
+        yMaxVal = Math.max(yMaxVal, ...rc);
+    });
+    const yMax = Math.ceil(yMaxVal / 2) * 2 + 1;
 
     ativos.forEach(f => {
         if (f.id === 'equilibrio') {
-            datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => 50),
+            datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => Math.round(n1 / 2)),
                 borderColor:'#64748b', backgroundColor:'transparent',
-                borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0,
-                _isEquilibrio: true });
+                borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true });
             return;
         }
-        const pts      = hitsMap[f.id];
-        const pct      = Math.round(pts.filter(v => v).length / serie.length * 100);
-        const isPrimario = S.filtro === f.id;
-        const n1       = S.grafMM1 || 9;
-        const data     = rollingPct(pts, n1);
-        const cor      = (S._chartCores && S._chartCores[f.id]) || f.cor;
 
-        let pointRadius = isPrimario ? 5 : 3;
-        let pointBgColor = isPrimario ? pts.map(v => v ? cor : '#dc2626') : cor;
+        const pts     = hitsMap[f.id];
+        const data    = rollingCount(pts, n1);
+        const totalAc = pts.reduce((a, b) => a + b, 0);
+        const pct     = Math.round(totalAc / serie.length * 100);
+        const cor     = (S._chartCores && S._chartCores[f.id]) || f.cor;
+        const mediaRef = +(data.reduce((a, b) => a + b, 0) / data.length).toFixed(1);
+
+        // Linha de referência tracejada (média da soma rolante)
+        datasets.push({ type:'line', label:`Ref ${f.label}`,
+            data: serie.map(() => mediaRef),
+            borderColor: cor, backgroundColor:'transparent',
+            borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true });
+
+        // Cor por ponto: verde = passou, vermelho = não passou
+        let pointRadius  = 3;
+        let pointBgColor = pts.map(v => v ? cor : '#dc2626');
+
         if (S.grafTopoFundo && data.length > 1) {
             const warmup = Math.min(n1 - 1, data.length - 1);
             const maxIdx = data.reduce((b, v, i) => i >= warmup && v > data[b] ? i : b, warmup);
             const minIdx = data.reduce((b, v, i) => i >= warmup && v < data[b] ? i : b, warmup);
-            const base   = isPrimario ? pts.map(v => v ? cor : '#dc2626') : data.map(() => cor);
-            pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : (isPrimario ? 5 : 3));
+            const base   = pts.map(v => v ? cor : '#dc2626');
+            pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : 3);
             pointBgColor = base.map((c, i) => i === maxIdx ? '#fbbf24' : i === minIdx ? '#f87171' : c);
         }
 
@@ -3526,7 +3546,7 @@ function renderGrafico() {
             data,
             borderColor: cor,
             backgroundColor: 'transparent',
-            borderWidth: isPrimario ? 3 : 2,
+            borderWidth: 2,
             borderDash: f.dashed ? [6,4] : [],
             pointRadius,
             pointHoverRadius: 5,
@@ -3536,33 +3556,17 @@ function renderGrafico() {
         });
 
         if (S.grafMedias) {
-            const _parseDash = s => String(s||'').split(',').map(Number).filter(n=>!isNaN(n)&&n>=0);
-            const n1d = S.grafMM1 || 9;
-            datasets.push({
-                type: 'line',
-                label: `${f.label} MM${n1d}`,
-                data: rollingPct(pts, n1d),
-                borderColor: S.grafMM1Cor || '#ffffff',
-                backgroundColor: 'transparent',
-                borderWidth: S.grafMM1Esp || 1.5,
-                borderDash: _parseDash(S.grafMM1Dash || '4,4'),
-                pointRadius: 0,
-                tension: 0.3,
-                _isMA: true,
+            const _parseDash = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
+            const rollingAvg = (arr, w) => arr.map((_, i) => {
+                const sl = arr.slice(Math.max(0, i - w + 1), i + 1);
+                return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
             });
             const n2 = S.grafMM2 || 21;
-            datasets.push({
-                type: 'line',
-                label: `${f.label} MM${n2}`,
-                data: rollingPct(pts, n2),
-                borderColor: S.grafMM2Cor || '#fbbf24',
-                backgroundColor: 'transparent',
-                borderWidth: S.grafMM2Esp || 2,
-                borderDash: _parseDash(S.grafMM2Dash || '8,4'),
-                pointRadius: 0,
-                tension: 0.4,
-                _isMA: true,
-            });
+            datasets.push({ type:'line', label:`${f.label} MM${n2}`,
+                data: rollingAvg(data, n2),
+                borderColor: S.grafMM2Cor || '#fbbf24', backgroundColor:'transparent',
+                borderWidth: S.grafMM2Esp || 2, borderDash: _parseDash(S.grafMM2Dash || '8,4'),
+                pointRadius:0, tension:0.4, _isMA:true });
         }
     });
 
@@ -3575,11 +3579,10 @@ function renderGrafico() {
     const canvas = document.getElementById('grafico');
     if (!canvas) return;
 
-    // Atualiza o título ANTES de criar o chart — assim sempre reflete o estado atual
     const tituloEl = document.getElementById('g-titulo');
     if (tituloEl) {
         if (ativos.length === 0) tituloEl.textContent = 'Nenhum filtro ativo';
-        else tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos`;
+        else tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos · janela ${n1}j`;
     }
 
     if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
@@ -3592,7 +3595,7 @@ function renderGrafico() {
                 legend: { display: false },
                 tooltip: {
                     enabled: !S.showLegendas,
-                    filter: item => !item.dataset._isMA,
+                    filter: item => !item.dataset._isRef && !item.dataset._isMA,
                     backgroundColor: 'rgba(15,23,42,0.65)', borderColor: '#334155', borderWidth: 1,
                     titleColor: '#94a3b8', bodyColor: '#cbd5e1',
                     callbacks: {
@@ -3605,23 +3608,22 @@ function renderGrafico() {
                             return `${hora}  ${p.time_casa || ''}  ×  ${p.time_fora || ''}${placar}`;
                         },
                         label: ctx => {
-                            if (ctx.dataset._isMA) return null;
-                            const i = ctx.dataIndex;
-                            const { serie: s, ativos: a, hitsMap: h } = _GRAF_DATA;
-                            const f = a.find(f => f.id !== 'equilibrio' &&
-                                ctx.dataset.label === `${f.label} ${Math.round((h[f.id]?.filter(v=>v).length||0)/s.length*100)}%`);
-                            const marcador = f ? (h[f.id]?.[i] ? ' ✓' : ' ✗') : '';
-                            return ` ${ctx.dataset.label}: ${ctx.raw}%${marcador}`;
+                            if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
+                            const i   = ctx.dataIndex;
+                            const { hitsMap: h, n1: wn } = _GRAF_DATA;
+                            const fid = ctx.dataset._filtroId;
+                            const marcador = fid && h[fid] ? (h[fid][i] ? ' ✓' : ' ✗') : '';
+                            return ` ${ctx.dataset.label}: ${ctx.raw}/${wn}${marcador}`;
                         }
                     }
                 },
             },
             scales: {
                 x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
+                y: { min:0, max:yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
             }
         },
-        plugins: [grafPlugin, verticalLinesPlugin]
+        plugins: [golsLabelPlugin, grafPlugin, verticalLinesPlugin]
     }); } catch(e) { console.error('renderGrafico chart error:', e); }
 }
 
