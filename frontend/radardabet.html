@@ -5763,7 +5763,6 @@ function _faInit() {
     if (tipoSel) tipoSel.value = S.fa.tipoMercado || 'Todos';
     const vbChk = document.getElementById('fa-vb-chk');
     if (vbChk) vbChk.checked = !!S.fa.soValueBets;
-    _syncPeriodoSelect(S.horas);
     _faAtualizarStatus();
 }
 
@@ -7940,12 +7939,6 @@ function _filtrarTabelaMkt() {
     _renderTabelaRows(MKT.dados.mercados.data || {});
 }
 
-// ============================================================
-// PERÍODO CUSTOMIZADO
-// ============================================================
-function setHorasCustom(v) {
-    setPeriodoCustom(v);
-}
 
 // ============================================================
 // CANETA — desenho livre sobre o gráfico
