@@ -1051,8 +1051,8 @@
     <!-- Toggle: Gráfico de Mercados | Gráfico de Gols | Gráfico de Par e Ímpar | Menu Mosaico -->
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <button id="sub-btn-grafico" onclick="setSubView('grafico')"
-            style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
-            border-radius:8px;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;
+            style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
+            border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;
             display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Gráfico de Mercados
@@ -1083,7 +1083,7 @@
         <div style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;min-width:0">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
-                    <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Over 1.5 — Evolução</div>
+                    <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Selecione filtros em 🎯 Mercados</div>
                     <div style="display:flex;align-items:center;gap:4px">
                         <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
                         <select id="periodo-grafico" onchange="setSubViewPeriodo('grafico',this.value)"
@@ -2078,7 +2078,7 @@ const S = {
     _chartCores:   {},
     view:          'historico',
     _analiseSecoes: { ia:true, desempenho:true, detalhe:true, valuebets:true, tendencias:true, frequencia:true },
-    showGrafico:   false,  // toggle independente
+    showGrafico:   true,   // toggle independente
     showMosaico:   true,   // toggle independente
     showMercados:  false,  // toggle painel de filtros/mercados
     showPadroes:   false,  // toggle painel inline de padrões
@@ -2298,6 +2298,13 @@ function toggleAnaliseSecao(key) {
     if (btn) { btn.style.borderColor = ativo ? '#1fcc59' : '#1e293b'; btn.style.color = ativo ? '#e2e8f0' : '#64748b'; }
 }
 
+// display correto ao restaurar cada seção (evita colapso após display:none)
+const _SECAO_DISPLAY = {
+    'historico-chart-section':   'flex',
+    'historico-gols-section':    'block',
+    'historico-parimpar-section':'block',
+    'historico-table-section':   'block',
+};
 function setSubView(v) {
     if (v === 'grafico')   S.showGrafico   = !S.showGrafico;
     if (v === 'gols')      S.showGols      = !S.showGols;
@@ -2310,7 +2317,7 @@ function setSubView(v) {
         const sec = document.getElementById(_secs[k]);
         const btn = document.getElementById(_btns[k]);
         const on  = _show[k];
-        if (sec) sec.style.display = on ? '' : 'none';
+        if (sec) sec.style.display = on ? (_SECAO_DISPLAY[_secs[k]] || 'block') : 'none';
         if (btn) { btn.style.borderColor = on ? '#1fcc59' : '#1e293b'; btn.style.color = on ? '#e2e8f0' : '#64748b'; }
     });
     if (v === 'grafico'  && S.showGrafico)  renderGrafico();
@@ -7672,7 +7679,6 @@ document.addEventListener('DOMContentLoaded', () => {
     _syncPeriodoSelect(S.horas);
     carregarConfigLigas().then(async () => {
         _faInit();
-        await setPadraoLogin();
         _carregarPadroesParaAlertas();
         carregarTudo();
         const seg = S._autoRefreshSeg ?? 120;
