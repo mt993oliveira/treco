@@ -3468,20 +3468,20 @@ let _MKTGRAF_SERIE = [];
 let _MKTGRAF_HITS  = {};
 let _MKTGRAF_N1    = 9;
 
-// % Valor OFF → rótulos espaçados automaticamente | ON → rótulo em cada ponto
+// Rótulos de % — só exibe quando "% Valor" está ativo (S.grafPct = true)
 const mktLabelPlugin = {
     id: 'mktLabels',
     afterDatasetsDraw(chart) {
+        if (!S.grafPct) return;
         const { ctx } = chart;
         chart.data.datasets.forEach((ds, di) => {
             if (ds._isRef || ds._isMA || ds._isEquilibrio) return;
             const meta = chart.getDatasetMeta(di);
             if (!meta.data || !meta.data.length) return;
             const total = meta.data.length;
-            // grafPct ON → todos os pontos; OFF → espaçamento automático por densidade
-            const step  = S.grafPct ? 1 : (total > 60 ? 3 : total > 30 ? 2 : 1);
+            const step  = total > 60 ? 3 : total > 30 ? 2 : 1;
             ctx.save();
-            ctx.font        = S.grafPct ? 'bold 9px sans-serif' : 'bold 8px sans-serif';
+            ctx.font        = 'bold 8px sans-serif';
             ctx.fillStyle   = ds.borderColor;
             ctx.textAlign   = 'center';
             ctx.shadowColor = '#000';
