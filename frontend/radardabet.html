@@ -3666,6 +3666,9 @@ function renderGrafico() {
 const golsLabelPlugin = {
     id: 'golsLabels',
     afterDatasetsDraw(chart) {
+        const cid = chart.canvas?.id;
+        if (cid === 'grafico-gols'     && !S.grafGolsShowGols) return;
+        if (cid === 'grafico-parimpar' && !S.grafParShowGols)  return;
         const { ctx } = chart;
         chart.data.datasets.forEach((ds, di) => {
             if (ds._isRef || ds._isMA) return;
@@ -3788,20 +3791,18 @@ function renderGraficoGols() {
                             if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
                             const j = _GOLS_SERIE[ctx.dataIndex];
                             const ft = j ? j.gol_casa + j.gol_fora : '?';
-                            return [` FT: ${ft}⚽`, ` TOTAL GOLS (FT): ${ctx.raw}`, ` Total Gols (FT): ${ctx.raw}`];
+                            return [` FT: ${ft}⚽`, ` Soma ${n}j: ${ctx.raw}`];
                         }
                     }
                 },
-            },
-            scales: {
-                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
-            },
-            plugins: {
                 zoom: {
                     zoom: { wheel:{ enabled:true, modifierKey:'ctrl' }, pinch:{ enabled:true }, mode:'x' },
                     pan:  { enabled:true, modifierKey:'shift', mode:'x' }
                 }
+            },
+            scales: {
+                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
             }
         },
         plugins: [golsLabelPlugin, verticalLinesPlugin]
@@ -4388,7 +4389,8 @@ function renderTabela() {
         return `<td style="color:${c};font-weight:800;font-size:10px">${p}%</td>`;
     }).join('');
 
-    // Footer — total de gols por posição (coluna)
+    // Footer — total de gols por posição (coluna) + grand total
+    const grandTotalGols = colGols.reduce((a, b) => a + b, 0);
     const footGols = Array.from({length: N}, (_, ci) => {
         if (!colGolsCt[ci]) return `<td style="color:#1e293b">–</td>`;
         const tot = colGols[ci];
@@ -4414,7 +4416,7 @@ function renderTabela() {
         <tr>
             <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700">⚽ GOLS</td>
             <td class="td-pct"></td>
-            <td></td>
+            <td style="font-size:9px;font-weight:800;color:${grandTotalGols>=50?'#4ade80':grandTotalGols>=20?'#fbbf24':'#94a3b8'};text-align:center;min-width:${S._mosaicoGolsLarg}px">${grandTotalGols||'–'}</td>
             ${footGols}
         </tr>
         <tr>
