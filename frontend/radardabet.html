@@ -3100,8 +3100,10 @@ function _lgTodos() {
 }
 function _lgLimpar() {
     TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
-    // Destrói chart e mostra mensagem imediatamente, sem esperar rAF
+    // Destrói qualquer instância no canvas — S.grafico OU órfã
+    const _cv = document.getElementById('grafico');
     if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
+    if (_cv) { const _orp = Chart.getChart(_cv); if (_orp) { try { _orp.destroy(); } catch(_){} } }
     const t = document.getElementById('g-titulo');
     if (t) t.textContent = 'Selecione filtros em 🎯 Mercados';
     renderFiltros(); renderTabela();
@@ -3505,13 +3507,19 @@ function renderGrafico() {
     const tituloEl = document.getElementById('g-titulo');
     const ativos   = TODOS_FILTROS.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
 
-    if (!serie.length) {
+    const _destruirGrafico = () => {
         if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
+        const _orp = Chart.getChart(canvas);
+        if (_orp) { try { _orp.destroy(); } catch(_){} }
+    };
+
+    if (!serie.length) {
+        _destruirGrafico();
         if (tituloEl) tituloEl.textContent = 'Sem dados com placar para o período';
         return;
     }
     if (!ativos.length) {
-        if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
+        _destruirGrafico();
         if (tituloEl) tituloEl.textContent = 'Selecione filtros em 🎯 Mercados';
         return;
     }
@@ -3600,10 +3608,7 @@ function renderGrafico() {
 
     if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos`;
 
-    // Garante limpeza de qualquer instância órfã no canvas (evita "Canvas already in use")
-    if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
-    const _orphan = Chart.getChart(canvas);
-    if (_orphan) { try { _orphan.destroy(); } catch(_){} }
+    _destruirGrafico();
 
     try {
         S.grafico = new Chart(canvas.getContext('2d'), {
