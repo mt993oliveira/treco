@@ -7654,7 +7654,27 @@ function _verificarAlertas() {
                 const pct  = Math.round(hits.length / jogos.length * 100);
                 return c.operador === '>' ? pct >= c.valor : pct <= c.valor;
             });
-            if (todasOk) disparados.push({ id: p.id, nome: p.nome });
+            if (todasOk) {
+                // Detecta quais ligas individualmente atendem as condições
+                let ligas = [];
+                if (S.ligaAtiva) {
+                    ligas = [S.ligaAtiva];
+                } else {
+                    const todasLigas = [...new Set(jogos.map(j => j.liga).filter(Boolean))];
+                    ligas = todasLigas.filter(liga => {
+                        const jl = jogos.filter(j => j.liga === liga);
+                        if (!jl.length) return false;
+                        return al.condicoes.every(c => {
+                            if (!TODOS_FILTROS.find(x => x.id === c.mercado)) return false;
+                            const hits = jl.filter(j => checa(j, c.mercado));
+                            const pct  = Math.round(hits.length / jl.length * 100);
+                            return c.operador === '>' ? pct >= c.valor : pct <= c.valor;
+                        });
+                    });
+                    if (!ligas.length) ligas = ['Todas as ligas'];
+                }
+                disparados.push({ id: p.id, nome: p.nome, ligas });
+            }
         } catch(e) {}
     }
     if (disparados.length) _mostrarNotificacaoAlerta(disparados);
@@ -7674,12 +7694,21 @@ function _mostrarNotificacaoAlerta(alertas) {
             <span style="font-size:13px;font-weight:700;color:#f59e0b">⚠️ Alerta Disparado</span>
             <button onclick="_fecharNotificacaoAlerta()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;line-height:1">×</button>
         </div>
-        ${alertas.map(a => `
-            <div style="background:#1e293b;border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
-                <span style="flex:1;font-size:12px;color:#e2e8f0;font-weight:600">${esc(a.nome)}</span>
-                <button onclick="aplicarPadrao(${a.id});_fecharNotificacaoAlerta()"
-                    style="padding:4px 10px;border-radius:5px;background:rgba(31,204,89,.15);border:1px solid #1fcc59;color:#1fcc59;font-size:11px;font-weight:700;cursor:pointer">Aplicar</button>
-            </div>`).join('')}
+        ${alertas.map(a => {
+            const ligasExib = (a.ligas || []);
+            const ligasTxt  = ligasExib.length > 4
+                ? ligasExib.slice(0, 4).map(esc).join(' · ') + ` +${ligasExib.length - 4}`
+                : ligasExib.map(esc).join(' · ');
+            return `
+            <div style="background:#1e293b;border-radius:6px;padding:8px 10px;margin-bottom:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="flex:1;font-size:12px;color:#e2e8f0;font-weight:600">${esc(a.nome)}</span>
+                    <button onclick="aplicarPadrao(${a.id});_fecharNotificacaoAlerta()"
+                        style="padding:4px 10px;border-radius:5px;background:rgba(31,204,89,.15);border:1px solid #1fcc59;color:#1fcc59;font-size:11px;font-weight:700;cursor:pointer">Aplicar</button>
+                </div>
+                ${ligasTxt ? `<div style="font-size:10px;color:#60a5fa;margin-top:4px">🏆 ${ligasTxt}</div>` : ''}
+            </div>`;
+        }).join('')}
         <div style="font-size:10px;color:#475569;margin-top:6px;text-align:right">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`;
     el.style.display = 'block';
 }
