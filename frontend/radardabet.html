@@ -3850,8 +3850,8 @@ function renderGraficoPar() {
     const yMin = Math.max(0, Math.floor(Math.min(...allVals) / 2) * 2 - 1);
     const yMax = Math.ceil(Math.max(...allVals) / 2) * 2 + 2;
 
-    const corPar   = (S._chartCores && S._chartCores['_par'])   || '#22c55e';
-    const corImpar = (S._chartCores && S._chartCores['_impar']) || '#f97316';
+    const corPar   = '#4ade80';
+    const corImpar = '#fb923c';
 
     const labels = serie.map(p => {
         if (!p.data_partida) return '';
@@ -3914,16 +3914,14 @@ function renderGraficoPar() {
                         }
                     }
                 },
-            },
-            scales: {
-                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
-            },
-            plugins: {
                 zoom: {
                     zoom: { wheel:{ enabled:true, modifierKey:'ctrl' }, pinch:{ enabled:true }, mode:'x' },
                     pan:  { enabled:true, modifierKey:'shift', mode:'x' }
                 }
+            },
+            scales: {
+                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
             }
         },
         plugins: [golsLabelPlugin, verticalLinesPlugin]
