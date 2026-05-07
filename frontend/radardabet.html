@@ -3644,17 +3644,15 @@ function renderGrafico() {
                                 return ` ${ctx.dataset.label}: ${ctx.raw}%${hit}`;
                             }
                         }
+                    },
+                    zoom: {
+                        zoom: { wheel:{ enabled:true, modifierKey:'ctrl' }, pinch:{ enabled:true }, mode:'x' },
+                        pan:  { enabled:true, modifierKey:'shift', mode:'x' }
                     }
                 },
                 scales: {
                     x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
                     y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
-                },
-                plugins: {
-                    zoom: {
-                        zoom: { wheel:{ enabled:true, modifierKey:'ctrl' }, pinch:{ enabled:true }, mode:'x' },
-                        pan:  { enabled:true, modifierKey:'shift', mode:'x' }
-                    }
                 }
             },
             plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin]
