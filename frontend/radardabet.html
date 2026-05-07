@@ -3632,7 +3632,9 @@ function renderGrafico() {
                                 if (!j) return '';
                                 const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
                                 const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                                return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}  (FT: ${j.gol_casa}-${j.gol_fora})`;
+                                const ht = (j.gol_casa_ht != null && j.gol_fora_ht != null)
+                                    ? `  HT: ${j.gol_casa_ht}-${j.gol_fora_ht}` : j.ht_outro ? '  HT: OUT' : '';
+                                return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}${ht}  (FT: ${j.gol_casa}-${j.gol_fora})`;
                             },
                             label: ctx => {
                                 if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
@@ -3785,7 +3787,9 @@ function renderGraficoGols() {
                             if (!j) return '';
                             const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
                             const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                            return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}  (FT: ${j.gol_casa}-${j.gol_fora})`;
+                            const ht = (j.gol_casa_ht != null && j.gol_fora_ht != null)
+                                ? `  HT: ${j.gol_casa_ht}-${j.gol_fora_ht}` : j.ht_outro ? '  HT: OUT' : '';
+                            return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}${ht}  (FT: ${j.gol_casa}-${j.gol_fora})`;
                         },
                         label: ctx => {
                             if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
@@ -3903,7 +3907,9 @@ function renderGraficoPar() {
                             if (!j) return '';
                             const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
                             const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                            return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}  (FT: ${j.gol_casa}-${j.gol_fora})`;
+                            const ht = (j.gol_casa_ht != null && j.gol_fora_ht != null)
+                                ? `  HT: ${j.gol_casa_ht}-${j.gol_fora_ht}` : j.ht_outro ? '  HT: OUT' : '';
+                            return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}${ht}  (FT: ${j.gol_casa}-${j.gol_fora})`;
                         },
                         label: ctx => {
                             if (ctx.dataset._isRef) return null;
