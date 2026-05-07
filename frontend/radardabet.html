@@ -4201,6 +4201,21 @@ function renderTabela() {
         const pct  = temJogo ? Math.round(hits / jogosComDados.length * 100) : null;
         const pctC = pct === null ? '' : pct >= 65 ? 'pct-alta' : pct >= 45 ? 'pct-media' : 'pct-baixa';
 
+        // Acumula estatísticas por coluna (loop explícito — separado da renderização)
+        slotMap.forEach((j, ci) => {
+            if (!j) return;
+            const _isOculto   = j.placar_oculto === 1 || j.placar_oculto === true;
+            const _isEstimado = j.resultado_estimado === 1 || j.resultado_estimado === true;
+            if (!_isEstimado && !_isOculto) {
+                colHits[ci]  += (fi && checa(j, fi.id)) ? 1 : 0;
+                colTotal[ci] += 1;
+            }
+            const _gJogo = (j.gol_casa != null && j.gol_fora != null)
+                ? j.gol_casa + j.gol_fora
+                : j.total_gols != null ? j.total_gols : null;
+            if (_gJogo != null && !_isEstimado) { colGols[ci] += _gJogo; colGolsCt[ci]++; }
+        });
+
         const tr = document.createElement('tr');
 
         // Mapa de eventos agendados para a liga ativa → chave "YYYY-MM-DD HH:MM"
@@ -4287,16 +4302,6 @@ function renderTabela() {
             const ttHT       = scoreHT ? ` HT:${scoreHT}` : '';
             const tt = `${minStr} ${j.time_casa} ${scoreFT}${ttHT} ${j.time_fora} [${fi?.label||''}: ${hit?'✓':'✗'}]${ttSuffix}`;
 
-            // Células estimadas e ocultas não entram no footer de %
-            if (!isEstimado && !isOculto) {
-                colHits[ci]  += hit ? 1 : 0;
-                colTotal[ci] += 1;
-            }
-            // Acumula gols por coluna
-            const gJogo = (j.gol_casa != null && j.gol_fora != null)
-                ? j.gol_casa + j.gol_fora
-                : j.total_gols != null ? j.total_gols : null;
-            if (gJogo != null && !isEstimado) { colGols[ci] += gJogo; colGolsCt[ci]++; }
             const abbrev = n => n || '';
             // Destaque sempre pelo filtro/condição selecionado na seção
             // Over 4.5: células ocultas (5+) são verdes quando esse filtro está ativo
