@@ -4413,13 +4413,13 @@ function renderTabela() {
     if (!tfoot?.parentElement) return;
     tfoot.parentElement.innerHTML = `
         <tr>
-            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#475569;font-weight:700">% / POS</td>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#475569;font-weight:700;cursor:help" title="% de acerto do filtro ativo por posição de coluna. Cada coluna representa um slot de minuto do ciclo. Ex: 40% em :01 = 40% dos jogos que ocorreram no minuto :01 ativaram o filtro selecionado.">% / POS</td>
             <td class="td-pct"></td>
             <td></td>
             ${footPct}
         </tr>
         <tr>
-            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700">⚽ GOLS</td>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700;cursor:help" title="Total de gols por posição de coluna, somando todas as horas exibidas. O valor da 3ª célula é o grand total geral.">⚽ GOLS</td>
             <td class="td-pct"></td>
             <td style="font-size:9px;font-weight:800;color:${grandTotalGols>=50?'#4ade80':grandTotalGols>=20?'#fbbf24':'#94a3b8'};text-align:center;min-width:${S._mosaicoGolsLarg}px">${grandTotalGols||'–'}</td>
             ${footGols}
