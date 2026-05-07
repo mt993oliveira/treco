@@ -4039,8 +4039,8 @@ function minutosParaLiga(liga) {
 // TABELA HISTÓRICA — 1 linha = 1 hora, 20 colunas = jogos daquela hora
 function _renderAllCharts() {
     renderGrafico();
-    if (S.showGols)     renderGraficoGols();
-    if (S.showParImpar) renderGraficoPar();
+    renderGraficoGols();
+    renderGraficoPar();
 }
 
 // Estilo CarameloBet: score na célula, cor = filtro ativo
