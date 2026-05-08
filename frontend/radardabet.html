@@ -1509,10 +1509,10 @@
 </div>
 
 <div class="modal-overlay" id="modal-odds">
-    <div class="modal-box">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div class="modal-box" style="max-width:960px;width:97%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
             <h2 style="font-size:14px;font-weight:700">📊 Ranking de Odds</h2>
-            <button onclick="fecharModal('modal-odds')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">×</button>
+            <button onclick="fecharModal('modal-odds')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
         </div>
         <div id="rank-odds-body"></div>
     </div>
@@ -4651,100 +4651,279 @@ function renderRankTimes(tipo) {
 }
 
 // ============================================================
-// RANKING ODDS
+// RANKING ODDS — versão profissional
 // ============================================================
+let _oddsTab     = 'casa';
+let _oddsPeriodo = null; // null = período atual da view
+
 function abrirModalOdds() {
     document.getElementById('modal-odds').classList.add('aberto');
     renderRankOdds();
 }
+function _oddsSetTab(t)  { _oddsTab = t;               renderRankOdds(); }
+function _oddsSetPer(h)  { _oddsPeriodo = h || null;   renderRankOdds(); }
 
 function renderRankOdds() {
-    // Faixas reais do futebol virtual Bet365 (odd mínima ~1.70 para casa)
-    const faixasCasa = [
-        {l:'1.70 – 1.99', mn:1.70, mx:2.00},
-        {l:'2.00 – 2.49', mn:2.00, mx:2.50},
-        {l:'2.50 – 2.99', mn:2.50, mx:3.00},
-        {l:'3.00 – 3.99', mn:3.00, mx:4.00},
-        {l:'≥ 4.00',      mn:4.00, mx:9999},
-    ];
-    const faixasFora = [
-        {l:'1.70 – 1.99', mn:1.70, mx:2.00},
-        {l:'2.00 – 2.49', mn:2.00, mx:2.50},
-        {l:'2.50 – 2.99', mn:2.50, mx:3.00},
-        {l:'3.00 – 3.99', mn:3.00, mx:4.00},
-        {l:'4.00 – 5.99', mn:4.00, mx:6.00},
-        {l:'≥ 6.00',      mn:6.00, mx:9999},
-    ];
-    const faixasEmp = [
-        {l:'3.00 – 3.49', mn:3.00, mx:3.50},
-        {l:'3.50 – 3.99', mn:3.50, mx:4.00},
-        {l:'4.00 – 4.49', mn:4.00, mx:4.50},
-        {l:'4.50 – 4.99', mn:4.50, mx:5.00},
-        {l:'≥ 5.00',      mn:5.00, mx:9999},
-    ];
+    // ── Dados base ──────────────────────────────────────────
+    const serie = _oddsPeriodo ? serieFlat(_oddsPeriodo) : S.partidas;
+    const dados  = serie.filter(j => j.resultado);
+    const total  = dados.length;
 
-    // Helpers usando mercados (fonte primária) com fallback em gol_casa/gol_fora
-    const mO15  = j => j.mercados?.some(m => m.mercado.includes('1.5') && m.selecao.startsWith('Mais'))
-                     ?? (((j.gol_casa||0)+(j.gol_fora||0)) >= 2);
-    const mO25  = j => j.mercados?.some(m => m.mercado.includes('2.5') && m.selecao.startsWith('Mais'))
-                     ?? (((j.gol_casa||0)+(j.gol_fora||0)) >= 3);
-    const mBtts = j => j.mercados?.some(m => /ambos marcam/i.test(m.mercado) && m.selecao === 'Sim')
-                     ?? ((j.gol_casa||0)>0 && (j.gol_fora||0)>0);
+    // ── Faixas ──────────────────────────────────────────────
+    const FAIXAS = {
+        casa:   [
+            {l:'1.70–1.99', mn:1.70, mx:2.00},
+            {l:'2.00–2.49', mn:2.00, mx:2.50},
+            {l:'2.50–2.99', mn:2.50, mx:3.00},
+            {l:'3.00–3.99', mn:3.00, mx:4.00},
+            {l:'4.00–5.99', mn:4.00, mx:6.00},
+            {l:'≥ 6.00',    mn:6.00, mx:9999},
+        ],
+        fora:   [
+            {l:'1.70–1.99', mn:1.70, mx:2.00},
+            {l:'2.00–2.49', mn:2.00, mx:2.50},
+            {l:'2.50–2.99', mn:2.50, mx:3.00},
+            {l:'3.00–3.99', mn:3.00, mx:4.00},
+            {l:'4.00–5.99', mn:4.00, mx:6.00},
+            {l:'≥ 6.00',    mn:6.00, mx:9999},
+        ],
+        empate: [
+            {l:'2.50–2.99', mn:2.50, mx:3.00},
+            {l:'3.00–3.49', mn:3.00, mx:3.50},
+            {l:'3.50–3.99', mn:3.50, mx:4.00},
+            {l:'4.00–4.99', mn:4.00, mx:5.00},
+            {l:'5.00–6.99', mn:5.00, mx:7.00},
+            {l:'≥ 7.00',    mn:7.00, mx:9999},
+        ],
+    };
 
-    const calc = (faixas, campo, res) => faixas.map(f => {
-        const p = S.partidas.filter(j => {
+    // ── Helpers ──────────────────────────────────────────────
+    const gt  = (j, n) => j.mercados?.some(m => m.mercado.includes(`${n}.5`) && m.selecao.startsWith('Mais'))
+                       ?? (((j.gol_casa||0)+(j.gol_fora||0)) > n);
+    const lt  = (j, n) => j.mercados?.some(m => m.mercado.includes(`${n}.5`) && m.selecao.startsWith('Menos'))
+                       ?? (((j.gol_casa||0)+(j.gol_fora||0)) <= n);
+    const btts = j => j.mercados?.some(m => /ambos marcam/i.test(m.mercado) && m.selecao === 'Sim')
+                   ?? ((j.gol_casa||0)>0 && (j.gol_fora||0)>0);
+
+    // ── Calcula métricas por faixa ───────────────────────────
+    const calcFaixa = (faixas, campo, res) => faixas.map(f => {
+        const p = dados.filter(j => {
             const o = parseFloat(j[campo]) || 0;
             return o >= f.mn && o < f.mx;
         });
-        if (!p.length) return { l: f.l, j: 0 };
-        const total = p.length;
+        if (!p.length) return { l:f.l, j:0, mn:f.mn, mx:f.mx };
+        const n       = p.length;
+        const oddMed  = +(p.reduce((s,j) => s + (parseFloat(j[campo])||0), 0) / n).toFixed(2);
+        const pv      = +(p.filter(j => j.resultado === res).length / n * 100).toFixed(1);
+        const roi     = +((pv/100) * oddMed - 1).toFixed(3);
+        const avgGols = p.filter(j => j.gol_casa!=null&&j.gol_fora!=null).length
+            ? +(p.filter(j=>j.gol_casa!=null).reduce((s,j)=>s+(j.gol_casa+j.gol_fora),0) /
+               p.filter(j=>j.gol_casa!=null).length).toFixed(2)
+            : null;
         return {
-            l:    f.l,
-            j:    total,
-            pv:   +(p.filter(j => j.resultado === res).length / total * 100).toFixed(1),
-            po15: +(p.filter(j => mO15(j)).length  / total * 100).toFixed(1),
-            po25: +(p.filter(j => mO25(j)).length  / total * 100).toFixed(1),
-            btts: +(p.filter(j => mBtts(j)).length / total * 100).toFixed(1),
+            l: f.l, j: n, mn: f.mn, mx: f.mx,
+            oddMed,
+            pv,
+            roi,
+            o15:  +(p.filter(j=>gt(j,1)).length / n * 100).toFixed(1),
+            o25:  +(p.filter(j=>gt(j,2)).length / n * 100).toFixed(1),
+            o35:  +(p.filter(j=>gt(j,3)).length / n * 100).toFixed(1),
+            u25:  +(p.filter(j=>lt(j,2)).length / n * 100).toFixed(1),
+            btts: +(p.filter(j=>btts(j)).length / n * 100).toFixed(1),
+            avgGols,
         };
     });
 
-    const cor = (v, hi, mid) => v >= hi ? '#4ade80' : v >= mid ? '#fbbf24' : '#f87171';
-
-    const tbl = (titulo, faixas, campo, res) => {
-        const rows = calc(faixas, campo, res);
-        const temDados = rows.some(r => r.j > 0);
-        return `
-        <div style="font-size:10px;font-weight:700;color:#64748b;margin:10px 0 6px">${titulo}</div>
-        ${!temDados ? `<div style="font-size:10px;color:#334155;padding:8px">Nenhum jogo com odds nessas faixas no período selecionado.</div>` : `
-        <table class="modal-table" style="margin-bottom:10px;font-size:10px">
-            <thead><tr>
-                <th>Odd Paga</th>
-                <th style="text-align:center">Jogos</th>
-                <th style="text-align:center">%Venceu</th>
-                <th style="text-align:center">O1.5%</th>
-                <th style="text-align:center">O2.5%</th>
-                <th style="text-align:center">BTTS%</th>
-            </tr></thead>
-            <tbody>${rows.map(d => d.j === 0
-                ? `<tr><td style="color:#334155">${d.l}</td><td colspan="5" style="text-align:center;color:#1e293b">—</td></tr>`
-                : `<tr>
-                    <td style="color:#94a3b8">${d.l}</td>
-                    <td style="text-align:center;color:#64748b">${d.j}</td>
-                    <td style="text-align:center;color:${cor(d.pv,55,35)};font-weight:700">${d.pv}%</td>
-                    <td style="text-align:center;color:${cor(d.po15,65,45)}">${d.po15}%</td>
-                    <td style="text-align:center;color:${cor(d.po25,50,30)}">${d.po25}%</td>
-                    <td style="text-align:center;color:${cor(d.btts,55,35)}">${d.btts}%</td>
-                </tr>`
-            ).join('')}</tbody>
-        </table>`}`;
+    // ── Cores ────────────────────────────────────────────────
+    const cPct = (v, hi, mid) => v >= hi ? '#4ade80' : v >= mid ? '#fbbf24' : '#f87171';
+    const cRoi = v => v > 0.05 ? '#4ade80' : v > 0 ? '#a3e635' : v > -0.05 ? '#fbbf24' : '#f87171';
+    const roiLabel = v => {
+        const s = v >= 0 ? '+' : '';
+        return `${s}${(v*100).toFixed(1)}%`;
     };
 
-    const total = S.partidas.filter(j => j.resultado).length;
-    document.getElementById('rank-odds-body').innerHTML =
-        `<div style="font-size:9px;color:#475569;margin-bottom:12px">Base: ${total} jogo(s) com resultado no período atual. As faixas agrupam jogos pela odd pré-jogo — as colunas mostram o que aconteceu nesses jogos.</div>` +
-        tbl('🏠 Odd Casa — desempenho do time da casa por faixa de odd',  faixasCasa, 'odd_casa',    'CASA') +
-        tbl('✈️ Odd Visitante — desempenho do visitante por faixa de odd', faixasFora, 'odd_fora',    'FORA') +
-        tbl('🤝 Odd Empate — frequência de empate por faixa de odd',       faixasEmp,  'odd_empate',  'EMPATE');
+    // ── Barra visual ─────────────────────────────────────────
+    const bar = (v, cor) =>
+        `<div style="display:flex;align-items:center;gap:4px">
+            <div style="flex:1;height:4px;background:#1e293b;border-radius:2px;overflow:hidden">
+                <div style="width:${Math.min(v,100)}%;height:100%;background:${cor};border-radius:2px"></div>
+            </div>
+            <span style="min-width:34px;text-align:right;color:${cor};font-weight:700">${v}%</span>
+        </div>`;
+
+    // ── Tabela de uma aba (casa/fora/empate) ─────────────────
+    const tblAba = (campo, res, faixas) => {
+        const rows = calcFaixa(faixas, campo, res);
+        const temDados = rows.some(r => r.j > 0);
+        if (!temDados) return `<div style="padding:24px;text-align:center;color:#334155;font-size:11px">Nenhum jogo com odds registradas no período.</div>`;
+        return `
+        <div style="overflow-x:auto">
+        <table class="modal-table" style="font-size:10px;min-width:640px">
+            <thead><tr style="background:#060d1a">
+                <th style="text-align:left;min-width:80px">Faixa</th>
+                <th style="text-align:center">Jogos</th>
+                <th style="text-align:center">Odd Média</th>
+                <th style="text-align:left;min-width:120px">% Venceu</th>
+                <th style="text-align:center">ROI</th>
+                <th style="text-align:center">O1.5%</th>
+                <th style="text-align:center">O2.5%</th>
+                <th style="text-align:center">O3.5%</th>
+                <th style="text-align:center">U2.5%</th>
+                <th style="text-align:center">BTTS%</th>
+                <th style="text-align:center">⚽ Média</th>
+            </tr></thead>
+            <tbody>
+            ${rows.map(d => d.j === 0
+                ? `<tr><td style="color:#334155">${d.l}</td><td colspan="10" style="text-align:center;color:#1e293b;font-size:9px">sem dados</td></tr>`
+                : `<tr>
+                    <td style="color:#94a3b8;font-weight:700">${d.l}</td>
+                    <td style="text-align:center;color:#64748b">${d.j}</td>
+                    <td style="text-align:center;color:#60a5fa;font-weight:700">${d.oddMed}</td>
+                    <td>${bar(d.pv, cPct(d.pv,55,35))}</td>
+                    <td style="text-align:center;font-weight:800;color:${cRoi(d.roi)}">${roiLabel(d.roi)}</td>
+                    <td style="text-align:center;color:${cPct(d.o15,65,45)}">${d.o15}%</td>
+                    <td style="text-align:center;color:${cPct(d.o25,50,30)}">${d.o25}%</td>
+                    <td style="text-align:center;color:${cPct(d.o35,40,25)}">${d.o35}%</td>
+                    <td style="text-align:center;color:${cPct(d.u25,55,40)}">${d.u25}%</td>
+                    <td style="text-align:center;color:${cPct(d.btts,55,35)}">${d.btts}%</td>
+                    <td style="text-align:center;color:${d.avgGols!=null?(d.avgGols>=3?'#4ade80':d.avgGols>=2?'#fbbf24':'#94a3b8'):'#334155'}">${d.avgGols!=null?d.avgGols:'—'}</td>
+                </tr>`
+            ).join('')}
+            </tbody>
+        </table>
+        </div>`;
+    };
+
+    // ── Aba Análise Geral ────────────────────────────────────
+    const tblAnalise = () => {
+        const mkRank = (label, campo, res, faixas) => {
+            const rows = calcFaixa(faixas, campo, res).filter(r => r.j >= 3);
+            if (!rows.length) return null;
+            rows.sort((a,b) => b.roi - a.roi);
+            const best = rows[0];
+            const worst = rows[rows.length-1];
+            return { label, best, worst, rows };
+        };
+
+        const grupos = [
+            mkRank('🏠 Casa',   'odd_casa',   'CASA',   FAIXAS.casa),
+            mkRank('✈️ Fora',   'odd_fora',   'FORA',   FAIXAS.fora),
+            mkRank('🤝 Empate', 'odd_empate', 'EMPATE', FAIXAS.empate),
+        ].filter(Boolean);
+
+        // Cards de melhor e pior ROI
+        const cards = grupos.map(g => `
+            <div style="flex:1;min-width:220px;background:#060d1a;border:1px solid #1e293b;border-radius:8px;padding:12px">
+                <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:8px">${g.label}</div>
+                <div style="margin-bottom:6px">
+                    <div style="font-size:9px;color:#4ade80;font-weight:700;margin-bottom:2px">✅ Melhor ROI</div>
+                    <div style="font-size:11px;color:#e2e8f0;font-weight:800">${g.best.l}</div>
+                    <div style="font-size:9px;color:#94a3b8">${g.best.j} jogos · ${g.best.pv}% venceu · ROI <span style="color:${cRoi(g.best.roi)};font-weight:700">${roiLabel(g.best.roi)}</span></div>
+                </div>
+                <div>
+                    <div style="font-size:9px;color:#f87171;font-weight:700;margin-bottom:2px">❌ Pior ROI</div>
+                    <div style="font-size:11px;color:#e2e8f0;font-weight:800">${g.worst.l}</div>
+                    <div style="font-size:9px;color:#94a3b8">${g.worst.j} jogos · ${g.worst.pv}% venceu · ROI <span style="color:${cRoi(g.worst.roi)};font-weight:700">${roiLabel(g.worst.roi)}</span></div>
+                </div>
+            </div>`).join('');
+
+        // Tabela geral com todas as faixas ranqueadas por ROI
+        const todasFaixas = grupos.flatMap(g =>
+            g.rows.map(r => ({ ...r, mercado: g.label }))
+        ).sort((a,b) => b.roi - a.roi);
+
+        const roiRows = todasFaixas.map(r => `<tr>
+            <td style="color:#94a3b8">${r.mercado}</td>
+            <td style="color:#e2e8f0;font-weight:700">${r.l}</td>
+            <td style="text-align:center;color:#64748b">${r.j}</td>
+            <td style="text-align:center;color:#60a5fa;font-weight:700">${r.oddMed}</td>
+            <td>${bar(r.pv, cPct(r.pv,55,35))}</td>
+            <td style="text-align:center;font-weight:800;color:${cRoi(r.roi)}">${roiLabel(r.roi)}</td>
+        </tr>`).join('');
+
+        const valueBets = todasFaixas.filter(r => r.roi > 0.05);
+
+        return `
+        ${valueBets.length ? `
+        <div style="background:#052e16;border:1px solid #166534;border-radius:8px;padding:10px 14px;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:700;color:#4ade80;margin-bottom:6px">💰 VALUE BETS DETECTADAS (ROI > +5%)</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${valueBets.map(r=>`<div style="background:#0f2d1a;border:1px solid #166534;border-radius:5px;padding:5px 9px;font-size:9px">
+                    <span style="color:#94a3b8">${r.mercado}</span>
+                    <span style="color:#e2e8f0;font-weight:700;margin:0 4px">${r.l}</span>
+                    <span style="color:#4ade80;font-weight:800">${roiLabel(r.roi)}</span>
+                    <span style="color:#475569;margin-left:4px">${r.j}j · ${r.pv}%</span>
+                </div>`).join('')}
+            </div>
+        </div>` : ''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">${cards}</div>
+        <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.04em">RANKING COMPLETO POR ROI</div>
+        <div style="overflow-x:auto">
+        <table class="modal-table" style="font-size:10px;min-width:480px">
+            <thead><tr style="background:#060d1a">
+                <th style="text-align:left">Mercado</th>
+                <th style="text-align:left">Faixa</th>
+                <th style="text-align:center">Jogos</th>
+                <th style="text-align:center">Odd Média</th>
+                <th style="text-align:left;min-width:120px">% Venceu</th>
+                <th style="text-align:center">ROI</th>
+            </tr></thead>
+            <tbody>${roiRows}</tbody>
+        </table>
+        </div>
+        <div style="font-size:9px;color:#334155;margin-top:8px">ROI = (% venceu ÷ 100) × odd média − 1. Positivo = value bet. Negativo = mercado sobreavaliado.</div>`;
+    };
+
+    // ── Período atual selecionado ─────────────────────────────
+    const periodos = [
+        {l:'3H',v:3},{l:'6H',v:6},{l:'12H',v:12},{l:'24H',v:24},
+        {l:'48H',v:48},{l:'72H',v:72},{l:'Tudo',v:null},
+    ];
+    const perAtual = _oddsPeriodo;
+    const perBtns = periodos.map(p =>
+        `<button onclick="_oddsSetPer(${p.v})"
+            style="padding:3px 9px;font-size:9px;font-weight:700;border-radius:4px;cursor:pointer;
+            background:${perAtual===p.v?'#1fcc59':'#0f172a'};
+            color:${perAtual===p.v?'#000':'#64748b'};
+            border:1px solid ${perAtual===p.v?'#1fcc59':'#1e293b'}">${p.l}</button>`
+    ).join('');
+
+    // ── Tabs ─────────────────────────────────────────────────
+    const tabDef = [
+        {id:'casa',   l:'🏠 Casa'},
+        {id:'fora',   l:'✈️ Fora'},
+        {id:'empate', l:'🤝 Empate'},
+        {id:'analise',l:'📈 Análise'},
+    ];
+    const tabs = tabDef.map(t =>
+        `<button onclick="_oddsSetTab('${t.id}')"
+            style="padding:6px 14px;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;
+            background:${_oddsTab===t.id?'#1e3a5f':'transparent'};
+            color:${_oddsTab===t.id?'#60a5fa':'#475569'};
+            border:1px solid ${_oddsTab===t.id?'#1e40af':'transparent'}">${t.l}</button>`
+    ).join('');
+
+    // ── Conteúdo da aba ativa ─────────────────────────────────
+    let conteudo = '';
+    if (_oddsTab === 'casa')    conteudo = tblAba('odd_casa',   'CASA',   FAIXAS.casa);
+    if (_oddsTab === 'fora')    conteudo = tblAba('odd_fora',   'FORA',   FAIXAS.fora);
+    if (_oddsTab === 'empate')  conteudo = tblAba('odd_empate', 'EMPATE', FAIXAS.empate);
+    if (_oddsTab === 'analise') conteudo = tblAnalise();
+
+    // ── Render final ─────────────────────────────────────────
+    document.getElementById('rank-odds-body').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <div style="display:flex;gap:4px;flex-wrap:wrap">${tabs}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+                <span style="font-size:9px;color:#334155">Período:</span>${perBtns}
+            </div>
+        </div>
+        <div style="font-size:9px;color:#334155;margin-bottom:10px">
+            Base: <strong style="color:#475569">${total}</strong> jogo(s) com resultado
+            ${perAtual ? `· últimas <strong style="color:#475569">${perAtual}h</strong>` : '· período atual da view'}
+            ${S.ligaAtiva ? `· liga <strong style="color:#475569">${S.ligaAtiva}</strong>` : ''}
+        </div>
+        ${conteudo}`;
 }
 
 function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
