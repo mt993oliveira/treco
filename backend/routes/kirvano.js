@@ -9,7 +9,7 @@ const PLANO_DIAS     = 30;
 const PLANO_NOME     = 'Mensal';
 const PLANO_VALOR    = 19.90;
 
-// ── Cria tabela se não existir ───────────────────────────────────
+// ── Cria tabelas se não existirem ───────────────────────────────
 async function _ensureTable(pool) {
     await pool.request().query(`
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='kirvano_assinaturas' AND xtype='U')
@@ -28,6 +28,14 @@ async function _ensureTable(pool) {
             data_criacao          DATETIME2 DEFAULT GETUTCDATE(),
             data_expiracao        DATETIME2,
             payload_raw           NVARCHAR(MAX)
+        )
+    `);
+    await pool.request().query(`
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='kirvano_credenciais_temp' AND xtype='U')
+        CREATE TABLE kirvano_credenciais_temp (
+            usuario_id   INT PRIMARY KEY,
+            senha_plain  NVARCHAR(50),
+            criado_em    DATETIME2 DEFAULT GETUTCDATE()
         )
     `);
 }
@@ -75,12 +83,23 @@ async function _criarUsuario(pool, { nome, email, login, senha, dataExpiracao })
 
 // ── Webhook Kirvano ──────────────────────────────────────────────
 router.post('/webhook', async (req, res) => {
-    // Validar token (Kirvano envia no header Authorization: Bearer TOKEN ou campo token no body)
-    const authHeader = req.headers['authorization'] || '';
+    // Log completo para debug do token
+    const authHeader  = req.headers['authorization'] || '';
     const tokenHeader = authHeader.replace('Bearer ', '').trim();
     const tokenBody   = req.body?.token || '';
-    if (tokenHeader !== KIRVANO_TOKEN && tokenBody !== KIRVANO_TOKEN) {
-        console.warn('[Kirvano] Token inválido:', tokenHeader || tokenBody);
+    const tokenQuery  = req.query?.token || '';
+    console.log('[Kirvano] Headers recebidos:', JSON.stringify({
+        authorization: req.headers['authorization'],
+        'x-kirvano-token': req.headers['x-kirvano-token'],
+        'x-token': req.headers['x-token'],
+        token_body: tokenBody,
+        token_query: tokenQuery
+    }));
+
+    const tokenRecebido = tokenHeader || tokenBody || tokenQuery ||
+                          req.headers['x-kirvano-token'] || req.headers['x-token'] || '';
+    if (tokenRecebido !== KIRVANO_TOKEN) {
+        console.warn('[Kirvano] Token inválido. Recebido:', tokenRecebido);
         return res.status(401).json({ error: 'Token inválido' });
     }
 
@@ -159,15 +178,9 @@ router.post('/webhook', async (req, res) => {
                 .input('id',    sql.Int,      usuarioId)
                 .input('senha', sql.NVarChar, senha)
                 .query(`
-                    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='kirvano_credenciais_temp' AND xtype='U')
-                    CREATE TABLE kirvano_credenciais_temp (
-                        usuario_id   INT PRIMARY KEY,
-                        senha_plain  NVARCHAR(50),
-                        criado_em    DATETIME2 DEFAULT GETUTCDATE()
-                    );
                     MERGE kirvano_credenciais_temp AS t
                     USING (SELECT @id AS id, @senha AS s) AS src ON t.usuario_id = src.id
-                    WHEN MATCHED    THEN UPDATE SET senha_plain = src.s, criado_em = GETUTCDATE()
+                    WHEN MATCHED     THEN UPDATE SET senha_plain = src.s, criado_em = GETUTCDATE()
                     WHEN NOT MATCHED THEN INSERT (usuario_id, senha_plain) VALUES (src.id, src.s);
                 `);
             console.log(`[Kirvano] Usuário criado: ${usuarioLogin} / ${emailCliente}`);
