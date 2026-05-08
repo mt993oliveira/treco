@@ -4439,13 +4439,14 @@ function renderTabela() {
         return `<td style="color:${c};font-weight:800;font-size:10px">${p}%</td>`;
     }).join('');
 
-    // Footer — média de gols por jogo por coluna (tooltip mostra total)
+    // Footer — total de gols por coluna (tooltip mostra média)
     const grandTotalGols = colGols.reduce((a, b) => a + b, 0);
     const footGols = Array.from({length: N}, (_, ci) => {
         if (!colGolsCt[ci]) return `<td style="color:#1e293b;text-align:center">–</td>`;
-        const avg = (colGols[ci] / colGolsCt[ci]).toFixed(1);
+        const total = colGols[ci];
+        const avg   = (total / colGolsCt[ci]).toFixed(1);
         const c = parseFloat(avg) >= 3.5 ? '#4ade80' : parseFloat(avg) >= 2.5 ? '#fbbf24' : '#94a3b8';
-        return `<td style="color:${c};font-weight:700;font-size:9px;text-align:center" title="${colGolsCt[ci]}j · ${colGols[ci]} gols total">${avg}</td>`;
+        return `<td style="color:${c};font-weight:700;font-size:9px;text-align:center" title="${colGolsCt[ci]}j · média ${avg}/j">${total}</td>`;
     }).join('');
 
     // Footer com hora:minuto de cada slot
@@ -4455,16 +4456,17 @@ function renderTabela() {
     }).join('');
 
     // tfoot é o <tr> interno — reescreve o <tfoot> pai para suportar 3 linhas
+    // % / POS e ⚽ GOLS respeitam os botões "% Linha" e "⚽ Linha"
     if (!tfoot?.parentElement) return;
     tfoot.parentElement.innerHTML = `
-        <tr>
+        ${S._mosaicoShowPct ? `<tr>
             <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#475569;font-weight:700;cursor:help" title="% de acerto do filtro ativo por posição de coluna. Cada coluna representa um slot de minuto do ciclo. Ex: 40% em :01 = 40% dos jogos que ocorreram no minuto :01 ativaram o filtro selecionado.">% / POS</td>
             ${footPct}
-        </tr>
-        <tr>
-            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700;cursor:help;white-space:nowrap" title="Média de gols por jogo em cada posição de coluna. Passe o mouse sobre cada valor para ver total de jogos e gols.">⚽ GOLS <span style="color:${grandTotalGols>=150?'#4ade80':grandTotalGols>=60?'#fbbf24':'#94a3b8'}">${grandTotalGols}</span></td>
+        </tr>` : ''}
+        ${S._mosaicoShowGols ? `<tr>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700;cursor:help;white-space:nowrap" title="Total de gols por posição de coluna. Passe o mouse sobre cada valor para ver média/jogo.">⚽ GOLS <span style="color:${grandTotalGols>=150?'#4ade80':grandTotalGols>=60?'#fbbf24':'#94a3b8'}">${grandTotalGols}</span></td>
             ${footGols}
-        </tr>
+        </tr>` : ''}
         <tr>
             <td class="td-l" style="position:sticky;left:0;background:#060810;font-size:8px;color:#1e293b;font-weight:600">MINUTO</td>
             ${footSlotTimes}
