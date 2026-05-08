@@ -1494,15 +1494,10 @@
 
 <!-- ========== MODALS ========== -->
 <div class="modal-overlay" id="modal-times">
-    <div class="modal-box">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div class="modal-box" style="max-width:960px;width:97%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
             <h2 style="font-size:14px;font-weight:700">🏆 Ranking de Times</h2>
-            <button onclick="fecharModal('modal-times')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">×</button>
-        </div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-            <button class="secao-btn ativo" id="rt-casa"  onclick="renderRankTimes('casa')">Casa</button>
-            <button class="secao-btn"       id="rt-fora"  onclick="renderRankTimes('fora')">Fora</button>
-            <button class="secao-btn"       id="rt-geral" onclick="renderRankTimes('geral')">Geral</button>
+            <button onclick="fecharModal('modal-times')" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
         </div>
         <div id="rank-times-body"></div>
     </div>
@@ -4543,15 +4538,13 @@ function _toggleClubeSel(nome) {
     if (S.clubesSel.has(nome)) S.clubesSel.delete(nome);
     else S.clubesSel.add(nome);
     _aplicarHighlightGrid();
-    const tab = ['casa','fora','geral'].find(t => document.getElementById(`rt-${t}`)?.classList.contains('ativo'));
-    if (document.getElementById('rank-times-body')) renderRankTimes(tab || 'casa');
+    if (document.getElementById('rank-times-body')) renderRankTimes();
 }
 
 function limparClubeSel() {
     S.clubesSel.clear();
     _aplicarHighlightGrid();
-    const tab = ['casa','fora','geral'].find(t => document.getElementById(`rt-${t}`)?.classList.contains('ativo'));
-    if (document.getElementById('rank-times-body')) renderRankTimes(tab || 'casa');
+    if (document.getElementById('rank-times-body')) renderRankTimes();
 }
 
 function toggleLegendas() {
@@ -4564,7 +4557,7 @@ function toggleLegendas() {
 }
 
 // ============================================================
-// RANKING TIMES
+// RANKING TIMES — versão profissional
 // ============================================================
 function toggleProximosJogos() {
     S.showProximos = !S.showProximos;
@@ -4574,72 +4567,234 @@ function toggleProximosJogos() {
     renderFiltros();
 }
 
+let _timesTab     = 'casa';
+let _timesPeriodo = null;
+
 function abrirModalTimes() {
     document.getElementById('modal-times').classList.add('aberto');
-    renderRankTimes('casa');
+    renderRankTimes();
 }
+function _timesSetTab(t) { _timesTab = t;             renderRankTimes(); }
+function _timesSetPer(h) { _timesPeriodo = h || null; renderRankTimes(); }
 
-function renderRankTimes(tipo) {
-    ['casa','fora','geral'].forEach(t =>
-        document.getElementById(`rt-${t}`).className = 'secao-btn' + (t === tipo ? ' ativo' : ''));
+function renderRankTimes() {
+    const serie = _timesPeriodo ? serieFlat(_timesPeriodo) : S.partidas;
+    const dados = serie.filter(j => j.resultado);
+    const total = dados.length;
 
-    const mapa = new Map();
-    S.partidas.forEach(j => {
-        const add = (nome, vit, gm, gs) => {
-            if (!nome) return;
-            if (!mapa.has(nome)) mapa.set(nome, {n:nome,j:0,v:0,e:0,d:0,gm:0,gs:0,o15:0});
-            const s = mapa.get(nome);
-            s.j++; s.gm += gm; s.gs += gs;
-            if (vit === 1) s.v++;
-            else if (vit === 0) s.e++;
-            else s.d++;
-            s.o15 += (gm + gs) >= 2 ? 1 : 0;
-        };
-        const tc = j.gol_casa||0, tf = j.gol_fora||0;
-        const res = tc>tf ? 1 : tc<tf ? -1 : 0;
-        if (tipo === 'casa' || tipo === 'geral') add(j.time_casa, res, tc, tf);
-        if (tipo === 'fora' || tipo === 'geral') add(j.time_fora, -res, tf, tc);
-    });
+    // ── Helpers ──────────────────────────────────────────────
+    const gt   = (j, n) => (((j.gol_casa||0)+(j.gol_fora||0)) > n);
+    const bttsJ = j => ((j.gol_casa||0) > 0 && (j.gol_fora||0) > 0);
 
-    const arr = Array.from(mapa.values())
-        .filter(t => t.j >= 2)
-        .map(t => ({...t, pv:t.j?t.v/t.j*100:0, pe:t.j?t.e/t.j*100:0, pd:t.j?t.d/t.j*100:0,
-            mg:t.j?t.gm/t.j:0, po:t.j?t.o15/t.j*100:0}))
-        .sort((a,b) => b.pv - a.pv);
+    // ── Build mapa de stats por contexto ─────────────────────
+    const buildMapa = (tipo) => {
+        const mapa = new Map();
+        dados.forEach(j => {
+            const add = (nome, vitRes, gm, gs) => {
+                if (!nome) return;
+                if (!mapa.has(nome)) mapa.set(nome, {n:nome,j:0,v:0,e:0,d:0,gm:0,gs:0,o15:0,o25:0,btts:0,seq:[]});
+                const s = mapa.get(nome);
+                s.j++; s.gm += gm; s.gs += gs;
+                if (vitRes === 1)      { s.v++; s.seq.push('V'); }
+                else if (vitRes === 0) { s.e++; s.seq.push('E'); }
+                else                  { s.d++; s.seq.push('D'); }
+                s.o15  += (gm + gs) >= 2 ? 1 : 0;
+                s.o25  += (gm + gs) >= 3 ? 1 : 0;
+                s.btts += (gm > 0 && gs > 0) ? 1 : 0;
+            };
+            const tc = j.gol_casa||0, tf = j.gol_fora||0;
+            const res = tc > tf ? 1 : tc < tf ? -1 : 0;
+            if (tipo === 'casa'  || tipo === 'geral') add(j.time_casa, res,  tc, tf);
+            if (tipo === 'fora'  || tipo === 'geral') add(j.time_fora, -res, tf, tc);
+        });
+        return Array.from(mapa.values())
+            .filter(t => t.j >= 2)
+            .map(t => ({
+                ...t,
+                pv:    +(t.j ? t.v/t.j*100   : 0).toFixed(1),
+                pe:    +(t.j ? t.e/t.j*100   : 0).toFixed(1),
+                pd:    +(t.j ? t.d/t.j*100   : 0).toFixed(1),
+                mg:    +(t.j ? t.gm/t.j      : 0).toFixed(2),
+                ms:    +(t.j ? t.gs/t.j      : 0).toFixed(2),
+                saldo: t.gm - t.gs,
+                po15:  +(t.j ? t.o15/t.j*100 : 0).toFixed(1),
+                po25:  +(t.j ? t.o25/t.j*100 : 0).toFixed(1),
+                pbtts: +(t.j ? t.btts/t.j*100: 0).toFixed(1),
+                seq5:  t.seq.slice(-5),
+            }))
+            .sort((a,b) => b.pv - a.pv);
+    };
 
-    const c = document.getElementById('rank-times-body');
-    if (!arr.length) { c.innerHTML = '<p style="color:#334155;text-align:center;padding:24px">Dados insuficientes</p>'; return; }
+    const mapCasa  = buildMapa('casa');
+    const mapFora  = buildMapa('fora');
+    const mapGeral = buildMapa('geral');
+    const arr = _timesTab === 'fora' ? mapFora : _timesTab === 'geral' ? mapGeral : mapCasa;
 
-    const selCount = S.clubesSel?.size || 0;
-    c.innerHTML = `
-    ${selCount ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;background:rgba(31,204,89,.08);border:1px solid rgba(31,204,89,.2);border-radius:6px">
-        <span style="font-size:11px;color:#1fcc59;flex:1">${selCount} clube(s) monitorado(s) no Mosaico</span>
-        <button onclick="limparClubeSel()" style="background:none;border:1px solid #475569;color:#94a3b8;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✕ Limpar</button>
-    </div>` : ''}
-    <table class="modal-table">
-        <thead><tr>
-            <th style="text-align:center;width:28px" title="Monitorar no Mosaico">★</th>
-            <th>#</th><th>Time</th><th style="text-align:center">J</th>
-            <th style="text-align:center">V%</th><th style="text-align:center">E%</th><th style="text-align:center">D%</th>
-            <th style="text-align:center">GM/J</th><th style="text-align:center">O1.5%</th></tr></thead>
-        <tbody>${arr.slice(0,40).map((t,i) => {
-            const isSel = S.clubesSel?.has(t.n);
-            return `<tr>
+    // ── Cores ────────────────────────────────────────────────
+    const cPct   = (v, hi, mid) => v >= hi ? '#4ade80' : v >= mid ? '#fbbf24' : '#f87171';
+    const cMg    = v => v >= 2.5 ? '#4ade80' : v >= 1.5 ? '#fbbf24' : '#f87171';
+    const cMs    = v => v <= 1.5 ? '#4ade80' : v <= 2.5 ? '#fbbf24' : '#f87171';
+    const cSaldo = v => v > 0 ? '#4ade80' : v === 0 ? '#fbbf24' : '#f87171';
+
+    // ── Barra visual ─────────────────────────────────────────
+    const bar = (v, cor) =>
+        `<div style="display:flex;align-items:center;gap:4px">
+            <div style="flex:1;height:4px;background:#1e293b;border-radius:2px;overflow:hidden">
+                <div style="width:${Math.min(v,100)}%;height:100%;background:${cor};border-radius:2px"></div>
+            </div>
+            <span style="min-width:34px;text-align:right;color:${cor};font-weight:700">${v}%</span>
+        </div>`;
+
+    // ── Sequência últimos 5 ───────────────────────────────────
+    const seqHtml = seq5 => seq5.map(r => {
+        const c  = r==='V'?'#4ade80':r==='E'?'#fbbf24':'#f87171';
+        const bg = r==='V'?'rgba(74,222,128,.15)':r==='E'?'rgba(251,191,36,.15)':'rgba(248,113,113,.15)';
+        return `<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${bg};color:${c};font-size:7px;font-weight:800;text-align:center;line-height:14px">${r}</span>`;
+    }).join('');
+
+    // ── Linha de tabela ───────────────────────────────────────
+    const tRow = (t, i) => {
+        const isSel = S.clubesSel?.has(t.n);
+        return `<tr>
             <td style="text-align:center;padding:4px">
-                <button onclick="_toggleClubeSel('${t.n.replace(/'/g,"\\'")}')" title="${isSel ? 'Remover monitoramento' : 'Monitorar no Mosaico'}"
-                    style="background:${isSel ? 'rgba(31,204,89,.15)' : 'none'};border:1px solid ${isSel ? '#1fcc59' : '#334155'};
-                    color:${isSel ? '#1fcc59' : '#475569'};border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:11px;padding:0;line-height:1">${isSel ? '★' : '☆'}</button>
+                <button onclick="_toggleClubeSel('${t.n.replace(/'/g,"\\'")}')" title="${isSel?'Remover monitoramento':'Monitorar no Mosaico'}"
+                    style="background:${isSel?'rgba(31,204,89,.15)':'none'};border:1px solid ${isSel?'#1fcc59':'#334155'};
+                    color:${isSel?'#1fcc59':'#475569'};border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:11px;padding:0;line-height:1">${isSel?'★':'☆'}</button>
             </td>
             <td style="color:#334155;text-align:center">${i+1}</td>
             <td style="font-weight:600">${t.n}</td>
             <td style="text-align:center;color:#64748b">${t.j}</td>
-            <td style="text-align:center;color:#4ade80">${t.pv.toFixed(0)}%</td>
-            <td style="text-align:center;color:#a78bfa">${t.pe.toFixed(0)}%</td>
-            <td style="text-align:center;color:#f87171">${t.pd.toFixed(0)}%</td>
-            <td style="text-align:center;color:#60a5fa">${t.mg.toFixed(2)}</td>
-            <td style="text-align:center;color:#10b981">${t.po.toFixed(0)}%</td>
-        </tr>`;}).join('')}</tbody>
-    </table>`;
+            <td style="text-align:center">${seqHtml(t.seq5)}</td>
+            <td>${bar(parseFloat(t.pv), cPct(parseFloat(t.pv),60,40))}</td>
+            <td style="text-align:center;color:#a78bfa">${t.pe}%</td>
+            <td style="text-align:center;color:#f87171">${t.pd}%</td>
+            <td style="text-align:center;color:${cMg(parseFloat(t.mg))}">${t.mg}</td>
+            <td style="text-align:center;color:${cMs(parseFloat(t.ms))}">${t.ms}</td>
+            <td style="text-align:center;font-weight:700;color:${cSaldo(t.saldo)}">${t.saldo>0?'+':''}${t.saldo}</td>
+            <td style="text-align:center;color:${cPct(parseFloat(t.po25),60,40)}">${t.po25}%</td>
+            <td style="text-align:center;color:${cPct(parseFloat(t.pbtts),60,40)}">${t.pbtts}%</td>
+        </tr>`;
+    };
+
+    const tHead = `<thead><tr style="background:#060d1a">
+        <th style="text-align:center;width:28px" title="Monitorar no Mosaico">★</th>
+        <th style="text-align:center">#</th>
+        <th style="text-align:left">Time</th>
+        <th style="text-align:center">J</th>
+        <th style="text-align:center;min-width:72px">Seq</th>
+        <th style="text-align:left;min-width:110px">V%</th>
+        <th style="text-align:center">E%</th>
+        <th style="text-align:center">D%</th>
+        <th style="text-align:center">GM/J</th>
+        <th style="text-align:center">GS/J</th>
+        <th style="text-align:center">Saldo</th>
+        <th style="text-align:center">O2.5%</th>
+        <th style="text-align:center">BTTS%</th>
+    </tr></thead>`;
+
+    // ── Aba principal (Casa / Fora / Geral) ───────────────────
+    const tblPrincipal = () => {
+        const selCount = S.clubesSel?.size || 0;
+        if (!arr.length) return '<p style="color:#334155;text-align:center;padding:24px">Dados insuficientes</p>';
+        return `
+        ${selCount ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;background:rgba(31,204,89,.08);border:1px solid rgba(31,204,89,.2);border-radius:6px">
+            <span style="font-size:11px;color:#1fcc59;flex:1">${selCount} clube(s) monitorado(s) no Mosaico</span>
+            <button onclick="limparClubeSel()" style="background:none;border:1px solid #475569;color:#94a3b8;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✕ Limpar</button>
+        </div>` : ''}
+        <div style="overflow-x:auto">
+        <table class="modal-table" style="font-size:10px;min-width:700px">
+            ${tHead}
+            <tbody>${arr.slice(0,50).map(tRow).join('')}</tbody>
+        </table></div>`;
+    };
+
+    // ── Aba Análise ───────────────────────────────────────────
+    const tblAnalise = () => {
+        const topN = (list, key, asc, n) => [...list].filter(t=>t.j>=3).sort((a,b) => asc ? a[key]-b[key] : b[key]-a[key]).slice(0,5);
+
+        const cardList = (title, emoji, items, key, unit, colorFn, sub) => `
+            <div style="flex:1;min-width:190px;background:#060d1a;border:1px solid #1e293b;border-radius:8px;padding:12px">
+                <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:8px">${emoji} ${title}</div>
+                ${items.length ? items.map((t,i) => `
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <span style="font-size:9px;color:#334155;width:14px;text-align:right">${i+1}</span>
+                    <span style="flex:1;font-size:10px;color:#e2e8f0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.n}</span>
+                    <span style="font-size:10px;font-weight:800;color:${colorFn(parseFloat(t[key]))}">${t[key]}${unit}</span>
+                    <span style="font-size:8px;color:#334155">${t.j}j</span>
+                </div>`).join('') : `<div style="font-size:9px;color:#334155;text-align:center;padding:8px">Sem dados</div>`}
+                ${sub ? `<div style="font-size:8px;color:#334155;margin-top:6px">${sub}</div>` : ''}
+            </div>`;
+
+        const quentes = mapGeral.filter(t => t.j >= 3 && parseFloat(t.pv) >= 55 && t.seq5.filter(r=>r==='V').length >= 3);
+
+        return `
+        ${quentes.length ? `
+        <div style="background:#052e16;border:1px solid #166534;border-radius:8px;padding:10px 14px;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:700;color:#4ade80;margin-bottom:6px">🔥 TIMES EM FORMA (V% ≥ 55% + ≥ 3 vitórias nos últimos 5)</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${quentes.map(t=>`<div style="background:#0f2d1a;border:1px solid #166534;border-radius:5px;padding:5px 9px;font-size:9px;display:flex;align-items:center;gap:6px">
+                    <span style="color:#e2e8f0;font-weight:700">${t.n}</span>
+                    <span style="color:#4ade80;font-weight:800">${t.pv}%V</span>
+                    <span style="color:#475569">${t.j}j</span>
+                    <span style="display:flex;gap:2px">${seqHtml(t.seq5)}</span>
+                </div>`).join('')}
+            </div>
+        </div>` : ''}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            ${cardList('Top Atacantes Casa',   '⚽', topN(mapCasa, 'mg',  false,5), 'mg',   ' gols/j', cMg,  'Gols marcados/jogo em casa')}
+            ${cardList('Top Atacantes Fora',   '✈️', topN(mapFora, 'mg',  false,5), 'mg',   ' gols/j', cMg,  'Gols marcados/jogo fora de casa')}
+            ${cardList('Melhores Defesas Casa', '🛡️', topN(mapCasa, 'ms',  true, 5), 'ms',   ' GS/j',   cMs,  'Gols sofridos/jogo em casa (menor = melhor)')}
+            ${cardList('Melhores Defesas Fora', '🔒', topN(mapFora, 'ms',  true, 5), 'ms',   ' GS/j',   cMs,  'Gols sofridos/jogo fora (menor = melhor)')}
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            ${cardList('Maior V% em Casa',  '🏠', topN(mapCasa,  'pv',   false,5), 'pv',   '%', v=>cPct(v,60,45), 'Times mais vitoriosos em casa')}
+            ${cardList('Maior V% Fora',     '🚌', topN(mapFora,  'pv',   false,5), 'pv',   '%', v=>cPct(v,50,35), 'Times mais vitoriosos fora')}
+            ${cardList('Over 2.5 Líderes',  '📈', topN(mapGeral, 'po25', false,5), 'po25', '%', v=>cPct(v,65,45), 'Times com mais jogos com 3+ gols')}
+            ${cardList('BTTS Líderes',      '🎯', topN(mapGeral, 'pbtts',false,5), 'pbtts','%', v=>cPct(v,65,45), 'Times onde ambas marcam com mais frequência')}
+        </div>
+        <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.04em">RANKING GERAL COMPLETO (V%)</div>
+        <div style="overflow-x:auto">
+        <table class="modal-table" style="font-size:10px;min-width:700px">
+            ${tHead}
+            <tbody>${mapGeral.slice(0,40).map(tRow).join('')}</tbody>
+        </table></div>
+        <div style="font-size:9px;color:#334155;margin-top:8px">Seq = últimos 5 resultados (V/E/D). GM/J = gols marcados por jogo. GS/J = gols sofridos. Saldo = GM total − GS total.</div>`;
+    };
+
+    // ── Período buttons ───────────────────────────────────────
+    const periodos = [{l:'3H',v:3},{l:'6H',v:6},{l:'12H',v:12},{l:'24H',v:24},{l:'48H',v:48},{l:'72H',v:72},{l:'Tudo',v:null}];
+    const perBtns = periodos.map(p =>
+        `<button onclick="_timesSetPer(${p.v})"
+            style="padding:3px 9px;font-size:9px;font-weight:700;border-radius:4px;cursor:pointer;
+            background:${_timesPeriodo===p.v?'#1fcc59':'#0f172a'};
+            color:${_timesPeriodo===p.v?'#000':'#64748b'};
+            border:1px solid ${_timesPeriodo===p.v?'#1fcc59':'#1e293b'}">${p.l}</button>`
+    ).join('');
+
+    // ── Tab buttons ───────────────────────────────────────────
+    const tabDef = [{id:'casa',l:'🏠 Casa'},{id:'fora',l:'✈️ Fora'},{id:'geral',l:'🌐 Geral'},{id:'analise',l:'📈 Análise'}];
+    const tabs = tabDef.map(t =>
+        `<button onclick="_timesSetTab('${t.id}')"
+            style="padding:6px 14px;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;
+            background:${_timesTab===t.id?'#1e3a5f':'transparent'};
+            color:${_timesTab===t.id?'#60a5fa':'#475569'};
+            border:1px solid ${_timesTab===t.id?'#1e40af':'transparent'}">${t.l}</button>`
+    ).join('');
+
+    // ── Render final ─────────────────────────────────────────
+    document.getElementById('rank-times-body').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <div style="display:flex;gap:4px;flex-wrap:wrap">${tabs}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+                <span style="font-size:9px;color:#334155">Período:</span>${perBtns}
+            </div>
+        </div>
+        <div style="font-size:9px;color:#334155;margin-bottom:10px">
+            Base: <strong style="color:#475569">${total}</strong> jogo(s) com resultado
+            ${_timesPeriodo ? `· últimas <strong style="color:#475569">${_timesPeriodo}h</strong>` : '· período atual da view'}
+            ${S.ligaAtiva ? `· liga <strong style="color:#475569">${S.ligaAtiva}</strong>` : ''}
+        </div>
+        ${_timesTab === 'analise' ? tblAnalise() : tblPrincipal()}`;
 }
 
 // ============================================================
