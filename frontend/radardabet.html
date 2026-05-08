@@ -3097,8 +3097,8 @@ function renderFiltros() {
                     border:1.5px solid ${fi.cor};
                     background:${ativo ? fi.cor : 'transparent'};
                     ${fi.dashed ? 'border-style:dashed' : ''}"></span>
-                <span style="font-size:9px;font-weight:${ativo ? '700' : '400'};
-                    color:${ativo ? '#cbd5e1' : '#3d5166'};white-space:nowrap">${primario ? '▶ ' : ''}${fi.label}</span>
+                <span style="font-size:9px;font-weight:${ativo ? '700' : '600'};
+                    color:${primario ? '#f1f5f9' : ativo ? '#cbd5e1' : '#94a3b8'};white-space:nowrap">${primario ? '▶ ' : ''}${fi.label}</span>
             `;
             pill.onmouseenter = () => _hoverFiltroChart(id);
             pill.onmouseleave = () => _hoverFiltroChart(null);
