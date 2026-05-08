@@ -220,6 +220,10 @@ function requireAuth(req, res, next) {
 const bet365Routes = require('./routes/bet365-api');
 app.use('/api/bet365', bet365Routes);
 
+// Kirvano — webhook de pagamento + credenciais
+const kirvanRoutes = require('./routes/kirvano');
+app.use('/api/kirvano', kirvanRoutes);
+
 // ── Rotas bet365 declaradas diretamente (garante funcionamento no contexto do server.js) ──
 {
     const sqlB = require('mssql');
@@ -1324,6 +1328,12 @@ app.get('/', (req, res) => {
 app.get('/radardabet.html', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../frontend/radardabet.html'));
+});
+
+// Página de boas-vindas após pagamento Kirvano
+app.get('/bem-vindo', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../frontend/bem-vindo.html'));
 });
 
 // Rota para servir o index.html (painel de controle) após o login

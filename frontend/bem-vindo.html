@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bem-vindo ao Radar da Bet</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: linear-gradient(135deg, #020812 0%, #060d1a 50%, #020c14 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+    .card {
+        background: #0c1220;
+        border: 1px solid #1e293b;
+        border-radius: 16px;
+        padding: 40px 36px;
+        max-width: 460px;
+        width: 100%;
+        text-align: center;
+    }
+    .logo { font-size: 32px; margin-bottom: 8px; }
+    h1 { font-size: 20px; font-weight: 700; color: #e2e8f0; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: #64748b; margin-bottom: 28px; line-height: 1.5; }
+
+    /* Step 1 — email */
+    .form-group { text-align: left; margin-bottom: 16px; }
+    .form-group label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: .06em; display: block; margin-bottom: 6px; }
+    .form-group input {
+        width: 100%;
+        background: #060d1a;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        color: #e2e8f0;
+        font-size: 14px;
+        padding: 10px 14px;
+        outline: none;
+        transition: border-color .2s;
+    }
+    .form-group input:focus { border-color: #1fcc59; }
+    .btn-buscar {
+        width: 100%;
+        background: #1fcc59;
+        color: #000;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 12px;
+        cursor: pointer;
+        transition: opacity .2s;
+    }
+    .btn-buscar:hover { opacity: .88; }
+    .btn-buscar:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Mensagem de erro */
+    .msg { font-size: 12px; margin-top: 14px; padding: 10px 14px; border-radius: 8px; display: none; line-height: 1.5; }
+    .msg.erro  { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3); color: #f87171; }
+    .msg.info  { background: rgba(96,165,250,.1);  border: 1px solid rgba(96,165,250,.3);  color: #93c5fd; }
+
+    /* Step 2 — credenciais */
+    #resultado { display: none; }
+    .cred-box {
+        background: #060d1a;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: left;
+    }
+    .cred-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .cred-row:last-child { margin-bottom: 0; }
+    .cred-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: .05em; }
+    .cred-val {
+        font-size: 16px;
+        font-weight: 800;
+        color: #1fcc59;
+        font-family: monospace;
+        letter-spacing: .05em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .copy-icon { font-size: 12px; color: #475569; }
+    .cred-val:hover .copy-icon { color: #1fcc59; }
+
+    .expira-info { font-size: 11px; color: #475569; margin-bottom: 20px; }
+    .expira-info strong { color: #fbbf24; }
+
+    .btn-entrar {
+        width: 100%;
+        background: #1fcc59;
+        color: #000;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 12px;
+        cursor: pointer;
+        transition: opacity .2s;
+        text-decoration: none;
+        display: block;
+    }
+    .btn-entrar:hover { opacity: .88; }
+
+    .aviso {
+        font-size: 11px;
+        color: #475569;
+        margin-top: 16px;
+        line-height: 1.6;
+    }
+    .aviso strong { color: #fbbf24; }
+
+    .spinner { display: inline-block; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo">🎯</div>
+
+    <!-- STEP 1: busca por email -->
+    <div id="step1">
+        <h1>Bem-vindo ao Radar da Bet!</h1>
+        <p class="sub">Seu pagamento foi confirmado. Digite o email usado na compra para receber seu acesso.</p>
+
+        <div class="form-group">
+            <label>EMAIL USADO NA COMPRA</label>
+            <input type="email" id="inp-email" placeholder="seu@email.com" autocomplete="email">
+        </div>
+        <button class="btn-buscar" id="btn-buscar" onclick="buscarCredenciais()">
+            Buscar meu acesso
+        </button>
+        <div class="msg erro" id="msg-erro"></div>
+        <div class="msg info" id="msg-info"></div>
+    </div>
+
+    <!-- STEP 2: exibe credenciais -->
+    <div id="resultado">
+        <h1>✅ Acesso criado com sucesso!</h1>
+        <p class="sub">Anote seu usuário e senha. Você precisará deles para entrar na plataforma.</p>
+
+        <div class="cred-box">
+            <div class="cred-row">
+                <div>
+                    <div class="cred-label">USUÁRIO</div>
+                    <div class="cred-val" onclick="copiar('res-usuario', this)" title="Clique para copiar">
+                        <span id="res-usuario">—</span>
+                        <span class="copy-icon">📋</span>
+                    </div>
+                </div>
+            </div>
+            <div class="cred-row">
+                <div>
+                    <div class="cred-label">SENHA</div>
+                    <div class="cred-val" onclick="copiar('res-senha', this)" title="Clique para copiar">
+                        <span id="res-senha">—</span>
+                        <span class="copy-icon">📋</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="expira-info" id="res-expira"></div>
+
+        <a class="btn-entrar" href="/">Entrar na plataforma →</a>
+
+        <p class="aviso">
+            <strong>⚠️ Guarde sua senha agora.</strong> Por segurança, ela é exibida apenas uma vez nessa tela.<br>
+            Se perder o acesso, entre em contato com o suporte.
+        </p>
+    </div>
+</div>
+
+<script>
+async function buscarCredenciais() {
+    const email = document.getElementById('inp-email').value.trim();
+    if (!email) { mostrarErro('Digite seu email.'); return; }
+
+    const btn = document.getElementById('btn-buscar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner">⏳</span> Buscando...';
+    esconderMensagens();
+
+    try {
+        const r = await fetch('/api/kirvano/credenciais?email=' + encodeURIComponent(email));
+        const d = await r.json();
+
+        if (!d.success) {
+            mostrarErro(d.error || 'Não foi possível encontrar seu acesso.');
+            btn.disabled = false;
+            btn.textContent = 'Buscar meu acesso';
+            return;
+        }
+
+        // Exibe credenciais
+        document.getElementById('res-usuario').textContent = d.usuario;
+        document.getElementById('res-senha').textContent   = d.senha;
+
+        if (d.expira_em) {
+            const exp = new Date(d.expira_em);
+            const fmt = exp.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+            document.getElementById('res-expira').innerHTML =
+                `Seu acesso é válido até <strong>${fmt}</strong> (30 dias).`;
+        }
+
+        document.getElementById('step1').style.display    = 'none';
+        document.getElementById('resultado').style.display = 'block';
+
+    } catch(e) {
+        mostrarErro('Erro de conexão. Tente novamente em instantes.');
+        btn.disabled = false;
+        btn.textContent = 'Buscar meu acesso';
+    }
+}
+
+function copiar(id, el) {
+    const txt = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(txt).then(() => {
+        const icon = el.querySelector('.copy-icon');
+        const orig = icon.textContent;
+        icon.textContent = '✅';
+        setTimeout(() => icon.textContent = orig, 1500);
+    });
+}
+
+function mostrarErro(msg) {
+    const el = document.getElementById('msg-erro');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function esconderMensagens() {
+    document.getElementById('msg-erro').style.display = 'none';
+    document.getElementById('msg-info').style.display = 'none';
+}
+
+// Enter para buscar
+document.getElementById('inp-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') buscarCredenciais();
+});
+</script>
+
+</body>
+</html>
