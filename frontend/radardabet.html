@@ -4417,8 +4417,9 @@ function renderTabela() {
         // Aplica highlight de coluna após inserir células
         if (S.selCols.size > 0) {
             const tds = tr.querySelectorAll('td');
+            const _off = 1 + (S._mosaicoShowPct ? 1 : 0) + (S._mosaicoShowGols ? 1 : 0);
             S.selCols.forEach(ci => {
-                const td = tds[ci + 3]; // +3 para pular td-l, td-pct, td-g
+                const td = tds[ci + _off];
                 if (td) td.classList.add('col-sel');
             });
         }
@@ -4446,13 +4447,13 @@ function renderTabela() {
         return `<td style="color:${c};font-weight:800;font-size:10px">${p}%</td>`;
     }).join('');
 
-    // Footer — total de gols por posição (coluna) + grand total
+    // Footer — média de gols por jogo por coluna (tooltip mostra total)
     const grandTotalGols = colGols.reduce((a, b) => a + b, 0);
     const footGols = Array.from({length: N}, (_, ci) => {
-        if (!colGolsCt[ci]) return `<td style="color:#1e293b">–</td>`;
-        const tot = colGols[ci];
-        const c = tot >= 20 ? '#4ade80' : tot >= 8 ? '#fbbf24' : '#94a3b8';
-        return `<td style="color:${c};font-weight:700;font-size:9px">${tot}</td>`;
+        if (!colGolsCt[ci]) return `<td style="color:#1e293b;text-align:center">–</td>`;
+        const avg = (colGols[ci] / colGolsCt[ci]).toFixed(1);
+        const c = parseFloat(avg) >= 3.5 ? '#4ade80' : parseFloat(avg) >= 2.5 ? '#fbbf24' : '#94a3b8';
+        return `<td style="color:${c};font-weight:700;font-size:9px;text-align:center" title="${colGolsCt[ci]}j · ${colGols[ci]} gols total">${avg}</td>`;
     }).join('');
 
     // Footer com hora:minuto de cada slot
@@ -4471,9 +4472,9 @@ function renderTabela() {
             ${footPct}
         </tr>
         <tr>
-            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700;cursor:help" title="Total de gols por posição de coluna, somando todas as horas exibidas. O valor da 3ª célula é o grand total geral.">⚽ GOLS</td>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700;cursor:help;white-space:nowrap" title="Média de gols por jogo em cada posição de coluna. Passe o mouse sobre cada valor para ver total de jogos e gols.">⚽ GOLS <span style="color:${grandTotalGols>=150?'#4ade80':grandTotalGols>=60?'#fbbf24':'#94a3b8'}">${grandTotalGols}</span></td>
             ${S._mosaicoShowPct  ? '<td class="td-pct"></td>' : ''}
-            ${S._mosaicoShowGols ? `<td style="font-size:9px;font-weight:800;color:${grandTotalGols>=50?'#4ade80':grandTotalGols>=20?'#fbbf24':'#94a3b8'};text-align:center;min-width:${S._mosaicoGolsLarg}px">${grandTotalGols||'–'}</td>` : ''}
+            ${S._mosaicoShowGols ? `<td style="min-width:${S._mosaicoGolsLarg}px"></td>` : ''}
             ${footGols}
         </tr>
         <tr>
