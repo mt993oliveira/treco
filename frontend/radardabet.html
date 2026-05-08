@@ -1665,6 +1665,19 @@ const TODOS_FILTROS = [
     { id:'htft-fc',    label:'fora-casa',      cor:'#7f1d1d' },
     { id:'htft-fe',    label:'fora-empate',    cor:'#991b1b' },
     { id:'htft-ff',    label:'fora-fora',      cor:'#b91c1c' },
+    // 2T Resultado
+    { id:'st-casa',    label:'Casa 2T',   cor:'#4ade80' },
+    { id:'st-empate',  label:'Emp 2T',    cor:'#a78bfa' },
+    { id:'st-fora',    label:'Fora 2T',   cor:'#fb923c' },
+    // 2T Gols exatos
+    { id:'st-gols-0',  label:'0G 2T',     cor:'#475569' },
+    { id:'st-gols-1',  label:'1G 2T',     cor:'#94a3b8' },
+    { id:'st-gols-2',  label:'2G 2T',     cor:'#60a5fa' },
+    { id:'st-gols-3',  label:'3G 2T',     cor:'#818cf8' },
+    { id:'st-gols-4',  label:'4G 2T',     cor:'#c084fc' },
+    { id:'st-gols-5p', label:'5+ 2T',     cor:'#f472b6' },
+    // 2T Ambas marcam
+    { id:'st-ambas',   label:'Ambas 2T',  cor:'#06b6d4' },
     // Especial
     { id:'esp-btts-o25', label:'BTTS+O2.5', cor:'#2dd4bf' },
     { id:'esp-btts-u25', label:'BTTS+U2.5', cor:'#38bdf8' },
@@ -2222,6 +2235,34 @@ function checa(j, fid) {
         case 'esp-btts-u25': return btts && !hasMais(2);
         case 'esp-casa-o15': return rft === 'CASA' && hasMais(1);
         case 'esp-fora-o15': return rft === 'FORA' && hasMais(1);
+
+        // ── 2T (segundo tempo) — calculado por FT - HT ──
+        case 'st-casa':
+        case 'st-empate':
+        case 'st-fora':
+        case 'st-gols-0':
+        case 'st-gols-1':
+        case 'st-gols-2':
+        case 'st-gols-3':
+        case 'st-gols-4':
+        case 'st-gols-5p':
+        case 'st-ambas': {
+            if (!htOk || j.gol_casa == null || j.gol_fora == null) return false;
+            const c2 = j.gol_casa - ch;
+            const f2 = j.gol_fora - fh;
+            const t2 = c2 + f2;
+            if (fid === 'st-casa')    return c2 > f2;
+            if (fid === 'st-empate')  return c2 === f2;
+            if (fid === 'st-fora')    return c2 < f2;
+            if (fid === 'st-gols-0')  return t2 === 0;
+            if (fid === 'st-gols-1')  return t2 === 1;
+            if (fid === 'st-gols-2')  return t2 === 2;
+            if (fid === 'st-gols-3')  return t2 === 3;
+            if (fid === 'st-gols-4')  return t2 === 4;
+            if (fid === 'st-gols-5p') return t2 >= 5;
+            if (fid === 'st-ambas')   return c2 > 0 && f2 > 0;
+            return false;
+        }
 
         // ── Equilíbrio — linha de referência 50% ──
         case 'equilibrio':   return Math.random() < 0.5;
