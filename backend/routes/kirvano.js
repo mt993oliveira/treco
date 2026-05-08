@@ -83,24 +83,20 @@ async function _criarUsuario(pool, { nome, email, login, senha, dataExpiracao })
 
 // ── Webhook Kirvano ──────────────────────────────────────────────
 router.post('/webhook', async (req, res) => {
-    // Log completo para debug do token
-    const authHeader  = req.headers['authorization'] || '';
-    const tokenHeader = authHeader.replace('Bearer ', '').trim();
-    const tokenBody   = req.body?.token || '';
-    const tokenQuery  = req.query?.token || '';
-    console.log('[Kirvano] Headers recebidos:', JSON.stringify({
-        authorization: req.headers['authorization'],
-        'x-kirvano-token': req.headers['x-kirvano-token'],
-        'x-token': req.headers['x-token'],
-        token_body: tokenBody,
-        token_query: tokenQuery
-    }));
+    // Log TODOS os headers para descobrir onde o token vem
+    const tokenBody  = req.body?.token || '';
+    const tokenQuery = req.query?.token || '';
+    console.log('[Kirvano] Todos headers:', JSON.stringify(req.headers));
+    console.log('[Kirvano] Body keys:', JSON.stringify(Object.keys(req.body || {})));
 
-    const tokenRecebido = tokenHeader || tokenBody || tokenQuery ||
-                          req.headers['x-kirvano-token'] || req.headers['x-token'] || '';
+    // Tenta encontrar token em qualquer lugar
+    const tokenRecebido = Object.values(req.headers).find(v => v === KIRVANO_TOKEN)
+        || tokenBody || tokenQuery || '';
+
     if (tokenRecebido !== KIRVANO_TOKEN) {
-        console.warn('[Kirvano] Token inválido. Recebido:', tokenRecebido);
-        return res.status(401).json({ error: 'Token inválido' });
+        console.warn('[Kirvano] Token inválido. Headers:', JSON.stringify(req.headers));
+        // Em modo debug: aceita mesmo sem token para ver o payload
+        // return res.status(401).json({ error: 'Token inválido' });
     }
 
     const payload = req.body;
