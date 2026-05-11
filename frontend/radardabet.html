@@ -6541,13 +6541,18 @@ function _initUserMenu() {
     document.getElementById('dd-usuario').textContent  = '@' + (u.Usuario || '—');
     document.getElementById('dd-tipo').textContent     = u.TipoUsuario === 'master' ? '⭐ Master' : 'Usuário';
     // Exibe opções master-only
-    if (u.TipoUsuario === 'master') {
+    const _isMasterType = u.TipoUsuario === 'master';
+    const _isMasterUser = (u.Usuario || '').toUpperCase() === 'MASTER';
+    if (_isMasterType) {
         const btnUsr = document.getElementById('dd-btn-usuarios');
         if (btnUsr) btnUsr.style.display = 'flex';
-        const btnCfg = document.getElementById('dd-btn-config');
-        if (btnCfg) btnCfg.style.display = 'flex';
         const btnOnline = document.getElementById('dd-btn-online');
         if (btnOnline) btnOnline.style.display = 'flex';
+    }
+    // ⚙️ Configurações do Sistema — exclusivo para o login MASTER
+    if (_isMasterUser) {
+        const btnCfg = document.getElementById('dd-btn-config');
+        if (btnCfg) btnCfg.style.display = 'flex';
     }
 }
 
@@ -6736,7 +6741,7 @@ const _CFG_LABELS = {
 
 async function abrirConfigSistema() {
     const _u = _getUser();
-    if (!_u || _u.TipoUsuario !== 'master') return;
+    if (!_u || (_u.Usuario || '').toUpperCase() !== 'MASTER') return;
     document.getElementById('user-dropdown').style.display = 'none';
     const msg = document.getElementById('cfg-msg');
     if (msg) msg.style.display = 'none';
