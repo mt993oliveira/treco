@@ -1525,6 +1525,10 @@ const CONFIG_DEFAULTS = [
     { chave:'show_secao_tendencias',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Tendências' },
     { chave:'show_secao_frequencia',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Frequência dos Mercados' },
     { chave:'show_secao_desempenho',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Desempenho por Liga' },
+    { chave:'show_subview_gols',            valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: ⚽ Gráfico de Gols' },
+    { chave:'show_subview_grafico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 📈 Gráfico de Mercados' },
+    { chave:'show_subview_parimpar',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 🔢 Gráfico de Par e Ímpar' },
+    { chave:'show_subview_mosaico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 🏁 Menu Mosaico' },
 ];
 
 async function _ensureConfigTable(pool) {

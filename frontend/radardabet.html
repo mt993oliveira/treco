@@ -1024,20 +1024,20 @@
         </div>
     </div>
 
-    <!-- Toggle: Gráfico de Mercados | Gráfico de Gols | Gráfico de Par e Ímpar | Menu Mosaico -->
+    <!-- Toggle: Gráfico de Gols | Gráfico de Mercados | Gráfico de Par e Ímpar | Menu Mosaico -->
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <button id="sub-btn-gols" onclick="setSubView('gols')"
+            style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
+            border-radius:8px;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
+            ⚽ Gráfico de Gols
+        </button>
         <button id="sub-btn-grafico" onclick="setSubView('grafico')"
             style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
             border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;
             display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Gráfico de Mercados
-        </button>
-        <button id="sub-btn-gols" onclick="setSubView('gols')"
-            style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
-            border-radius:8px;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
-            ⚽ Gráfico de Gols
         </button>
         <button id="sub-btn-parimpar" onclick="setSubView('parimpar')"
             style="flex:1;min-width:150px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
@@ -1876,6 +1876,22 @@ async function _aplicarConfigFrontend() {
         _vis('analise-secao-tendencias', 'show_secao_tendencias', 'tendencias', 'atog-tendencias');
         _vis('analise-secao-frequencia', 'show_secao_frequencia', 'frequencia', 'atog-frequencia');
         _vis('analise-secao-desempenho', 'show_secao_desempenho', 'desempenho', 'atog-desempenho');
+
+        // Subviews do histórico (gráficos + mosaico)
+        const _visSubview = (secId, btnId, cfgKey, showKey) => {
+            const ativo = c[cfgKey] !== 'false';
+            S[showKey] = ativo ? S[showKey] : false;
+            const btn = document.getElementById(btnId);
+            if (btn) btn.style.display = ativo ? '' : 'none';
+            if (!ativo) {
+                const sec = document.getElementById(secId);
+                if (sec) sec.style.display = 'none';
+            }
+        };
+        _visSubview('historico-gols-section',    'sub-btn-gols',     'show_subview_gols',     'showGols');
+        _visSubview('historico-chart-section',   'sub-btn-grafico',  'show_subview_grafico',  'showGrafico');
+        _visSubview('historico-parimpar-section','sub-btn-parimpar', 'show_subview_parimpar', 'showParImpar');
+        _visSubview('historico-table-section',   'sub-btn-mosaico',  'show_subview_mosaico',  'showMosaico');
     } catch(e) {}
 }
 
@@ -6771,6 +6787,10 @@ const _CFG_LABELS = {
     show_secao_tendencias:      'Exibir: 📈 Tendências',
     show_secao_frequencia:      'Exibir: 📊 Frequência dos Mercados',
     show_secao_desempenho:      'Exibir: 🏆 Desempenho por Liga',
+    show_subview_gols:          'Exibir botão/seção: ⚽ Gráfico de Gols',
+    show_subview_grafico:       'Exibir botão/seção: 📈 Gráfico de Mercados',
+    show_subview_parimpar:      'Exibir botão/seção: 🔢 Gráfico de Par e Ímpar',
+    show_subview_mosaico:       'Exibir botão/seção: 🏁 Menu Mosaico',
 };
 
 async function abrirConfigSistema() {
