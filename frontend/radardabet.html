@@ -1126,6 +1126,7 @@
                     <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')" title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')" title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"   title="Exibe MM curta e MM longa (rolling hit rate) para cada filtro ativo">📈 MM</button>
+                    <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
                     <input id="inp-mm1" type="number" min="2" max="99" value="9"
                         onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
                         title="Período da MM curta (jogos)"
@@ -1663,6 +1664,7 @@ const TODOS_FILTROS = [
     { id:'ht-1-1',     label:'1-1 HT',    cor:'#a78bfa' },
     { id:'ht-2-0',     label:'2-0 HT',    cor:'#86efac' },
     { id:'ht-0-2',     label:'0-2 HT',    cor:'#fca5a5' },
+    { id:'ht-out',     label:'OUT HT',    cor:'#94a3b8' },
     // HT Resultado
     { id:'ht-casa',    label:'Casa HT',   cor:'#65a30d' },
     { id:'ht-empate',  label:'EmpHT',     cor:'#c4b5fd' },
@@ -1786,8 +1788,9 @@ async function carregarConfigLigas() {
         if (_sb('btn-exibir-clubes'))   _sb('btn-exibir-clubes').classList.toggle('ativo',   S.showNomes);
         if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
         if (_sb('btn-exibir-ht'))       _sb('btn-exibir-ht').classList.toggle('ativo',       S.showHT);
-        // Legendas: persiste em localStorage (preferência local, não config do servidor)
+        // Legendas: config do sistema define o padrão; localStorage (preferência do usuário) sobrescreve
         // showLegendas: true = suprimido (ativo), false = visível (padrão)
+        if (cfg.default_legendas !== undefined) S.showLegendas = cfg.default_legendas === 'true';
         const _lsLeg = localStorage.getItem('showLegendas');
         if (_lsLeg !== null) S.showLegendas = _lsLeg === '1';
         if (_sb('btn-legendas')) _sb('btn-legendas').classList.toggle('ativo', S.showLegendas);
@@ -2236,6 +2239,7 @@ function checa(j, fid) {
         case 'ht-1-1': return htOk && ch === 1 && fh === 1;
         case 'ht-2-0': return htOk && ch === 2 && fh === 0;
         case 'ht-0-2': return htOk && ch === 0 && fh === 2;
+        case 'ht-out': return htOk && !((ch===0&&fh===0)||(ch===1&&fh===0)||(ch===0&&fh===1)||(ch===1&&fh===1)||(ch===2&&fh===0)||(ch===0&&fh===2));
 
         // ── HT resultado ──
         case 'ht-casa':   return rht === 'CASA';
@@ -2998,7 +3002,7 @@ const GRUPOS_LEGENDA = [
     { label: 'Under FT',  ids: ['under0.5','under1.5','under2.5','under3.5'] },
     { label: 'Gols FT',   ids: ['gols-0','gols-1','gols-2','gols-3','gols-4','gols-5p'] },
     { label: 'Result FT', ids: ['ft-casa','ft-fora','ft-empate','casa-marca','fora-marca'] },
-    { label: 'HT Placar', ids: ['ht-0-0','ht-1-0','ht-0-1','ht-1-1','ht-2-0','ht-0-2'] },
+    { label: 'HT Placar', ids: ['ht-0-0','ht-1-0','ht-0-1','ht-1-1','ht-2-0','ht-0-2','ht-out'] },
     { label: 'HT Result', ids: ['ht-casa','ht-empate','ht-fora','ht-over','ht-under','ht-gols'] },
     { label: 'HT/FT',     ids: ['htft-cc','htft-ce','htft-cf','htft-ec','htft-ee','htft-ef','htft-fc','htft-fe','htft-ff'] },
     { label: 'Ch. Dupla', ids: ['cd-1x','cd-x2','cd-12'] },
@@ -3033,7 +3037,6 @@ function renderFiltros() {
     ctrl.style.cssText = 'display:flex;gap:6px;width:100%';
     ctrl.innerHTML = `
         <button style="${_bs(S.showConfig)}" id="btn-config" onclick="toggleConfig()" title="Configurar cores e fontes da grid">⚙️${isMob ? '' : ' Config'}</button>
-        <button style="${_bs(S.showLegendas)}" id="btn-legendas" onclick="toggleLegendas()" title="Legendas">💬${isMob ? '' : ' Legendas'}</button>
         <button style="${_bs(S.showPadroes)}" id="btn-padroes" onclick="togglePadroes()" title="Padrões de gráfico">📋${isMob ? '' : ' Padrões'}</button>
         <button style="${_bs(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Mercados / filtros">🎯${isMob ? '' : ' Mercados'}</button>
     `;
@@ -6783,6 +6786,7 @@ const _CFG_LABELS = {
     default_tipo_mercado:       'Tipo de mercado padrão (Análise)',
     default_janela_recente:     'Janela recente padrão em jogos (Análise)',
     default_so_value_bets:      'Apenas value bets por padrão (Análise)',
+    default_legendas:           '💬 Legendas (suprimir tooltips) ativado por padrão no gráfico',
     // Gráfico
     grafico_altura:      '📐 Altura do painel do gráfico (px)',
     grafico_pct:         '% Exibir valor % no final das linhas',
