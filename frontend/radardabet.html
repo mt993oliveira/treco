@@ -1748,7 +1748,7 @@ async function carregarConfigLigas() {
         _atualizarSelectLigas();
 
         // Padrões do frontend
-        if (cfg.default_horas_historico) S.horas = parseInt(cfg.default_horas_historico) || 6;
+        if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
         if (cfg.default_dias_analise)    S.fa.dias = parseInt(cfg.default_dias_analise) || 3;
         if (cfg.default_min_amostras)    S.fa.minJogos = parseInt(cfg.default_min_amostras) || 5;
         if (cfg.default_freq_min)        S.fa.minPct = parseInt(cfg.default_freq_min) || 0;
@@ -2026,6 +2026,7 @@ const S = {
     secao:         'over',
     filtro:        'over1.5',
     horas:         6,       // período do grid: padrão 6H (sobrescrito pela config)
+    _horasCarregadas: 6,   // máximo de horas efetivamente buscadas do banco
     linhas:        {},
     grafico:       null,
     grafTopo:      null,
@@ -2336,10 +2337,25 @@ function setSubView(v) {
 
 function setSubViewPeriodo(subview, val) {
     const h = val ? parseInt(val) : null;
-    if (subview === 'grafico')  { S.horasGrafico  = h; renderGrafico(); }
-    if (subview === 'gols')     { S.horasGols     = h; renderGraficoGols(); }
-    if (subview === 'parimpar') { S.horasParImpar = h; renderGraficoPar(); }
-    if (subview === 'mosaico')  { S.horasMosaico  = h; renderTabela(); }
+    if (subview === 'grafico')  S.horasGrafico  = h;
+    if (subview === 'gols')     S.horasGols     = h;
+    if (subview === 'parimpar') S.horasParImpar = h;
+    if (subview === 'mosaico')  S.horasMosaico  = h;
+
+    const render = () => {
+        if (subview === 'grafico')  renderGrafico();
+        if (subview === 'gols')     renderGraficoGols();
+        if (subview === 'parimpar') renderGraficoPar();
+        if (subview === 'mosaico')  renderTabela();
+    };
+
+    // Se o período pedido excede os dados carregados, rebusca antes de renderizar
+    if (h && h > (S._horasCarregadas || S.horas)) {
+        S._horasCarregadas = h;
+        carregarHistorico().then(render);
+    } else {
+        render();
+    }
 }
 
 // ============================================================
@@ -2391,7 +2407,9 @@ async function buscarResultados() {
 
 async function carregarHistorico() {
     try {
-        const r = await fetch(`/api/bet365/historico-mercados?horas=${S.horas}${S.showProximos ? '&incluirFuturos=true' : ''}`);
+        const _fetchHoras = Math.max(S.horas, S._horasCarregadas || 0);
+        S._horasCarregadas = _fetchHoras;
+        const r = await fetch(`/api/bet365/historico-mercados?horas=${_fetchHoras}${S.showProximos ? '&incluirFuturos=true' : ''}`);
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Erro');
 
