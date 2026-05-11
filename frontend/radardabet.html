@@ -2344,8 +2344,8 @@ function setSubViewPeriodo(subview, val) {
 
     const render = () => {
         if (subview === 'grafico')  renderGrafico();
-        if (subview === 'gols')     requestAnimationFrame(() => renderGraficoGols());
-        if (subview === 'parimpar') requestAnimationFrame(() => renderGraficoPar());
+        if (subview === 'gols')     renderGraficoGols();
+        if (subview === 'parimpar') renderGraficoPar();
         if (subview === 'mosaico')  renderTabela();
     };
 
@@ -3763,14 +3763,18 @@ function renderGraficoGols() {
     if (!canvasEl) return;
 
     const _hGols = S.horasGols != null ? S.horasGols : S.horas;
+    const _destruirGols = () => {
+        if (S._graficoGols) { try { S._graficoGols.destroy(); } catch(_){} S._graficoGols = null; }
+        const _orp = Chart.getChart(canvasEl);
+        if (_orp) { try { _orp.destroy(); } catch(_){} }
+    };
+
     // Série flat de jogos individuais com placar registrado
     const serieTotal = serieFlat(S.horasGols);
     const serie = serieTotal.filter(j => j.gol_casa != null && j.gol_fora != null);
 
     if (!serie.length) {
-        if (S._graficoGols) { try { S._graficoGols.destroy(); } catch(_){} S._graficoGols = null; }
-        const ctx2 = canvasEl.getContext('2d');
-        ctx2.clearRect(0, 0, canvasEl.width, canvasEl.height);
+        _destruirGols();
         const t = document.getElementById('g-gols-titulo');
         if (t) t.textContent = `⚽ Sem dados com placar (${_hGols}H · ${serieTotal.length} jogos sem score)`;
         return;
@@ -3831,10 +3835,8 @@ function renderGraficoGols() {
     const tituloEl = document.getElementById('g-gols-titulo');
     if (tituloEl) tituloEl.textContent = `⚽ ${serie.length} jogos · ${totalG} gols · soma ${n}j: ref ${mediaRef}`;
 
-    if (S._graficoGols) { try { S._graficoGols.destroy(); } catch(_){} S._graficoGols = null; }
-    const _ctxGols = canvasEl.getContext('2d');
-    _ctxGols.clearRect(0, 0, canvasEl.width, canvasEl.height);
-    try { S._graficoGols = new Chart(_ctxGols, {
+    _destruirGols();
+    try { S._graficoGols = new Chart(canvasEl.getContext('2d'), {
         type: 'line',
         data: { labels, datasets },
         options: {
@@ -3887,13 +3889,17 @@ function renderGraficoPar() {
     if (!canvasEl) return;
 
     const _hPar = S.horasParImpar != null ? S.horasParImpar : S.horas;
+    const _destruirPar = () => {
+        if (S._graficoPar) { try { S._graficoPar.destroy(); } catch(_){} S._graficoPar = null; }
+        const _orp = Chart.getChart(canvasEl);
+        if (_orp) { try { _orp.destroy(); } catch(_){} }
+    };
+
     const serieTotal = serieFlat(S.horasParImpar);
     const serie = serieTotal.filter(j => j.gol_casa != null && j.gol_fora != null);
 
     if (!serie.length) {
-        if (S._graficoPar) { try { S._graficoPar.destroy(); } catch(_){} S._graficoPar = null; }
-        const ctx2 = canvasEl.getContext('2d');
-        ctx2.clearRect(0, 0, canvasEl.width, canvasEl.height);
+        _destruirPar();
         const t = document.getElementById('g-par-titulo');
         if (t) t.textContent = `🔢 Sem dados com placar (${_hPar}H · ${serieTotal.length} jogos sem score)`;
         return;
@@ -3957,10 +3963,8 @@ function renderGraficoPar() {
     const tituloEl = document.getElementById('g-par-titulo');
     if (tituloEl) tituloEl.textContent = `🔢 ${serie.length} jogos · Par: ${totalPar} · Ímpar: ${totalImpar} · soma ${n}j`;
 
-    if (S._graficoPar) { try { S._graficoPar.destroy(); } catch(_){} S._graficoPar = null; }
-    const _ctxPar = canvasEl.getContext('2d');
-    _ctxPar.clearRect(0, 0, canvasEl.width, canvasEl.height);
-    try { S._graficoPar = new Chart(_ctxPar, {
+    _destruirPar();
+    try { S._graficoPar = new Chart(canvasEl.getContext('2d'), {
         type: 'line',
         data: { labels, datasets },
         options: {
