@@ -3762,13 +3762,17 @@ function renderGraficoGols() {
     const canvasEl = document.getElementById('grafico-gols');
     if (!canvasEl) return;
 
+    const _hGols = S.horasGols != null ? S.horasGols : S.horas;
     // Série flat de jogos individuais com placar registrado
-    const serie = serieFlat(S.horasGols).filter(j => j.gol_casa != null && j.gol_fora != null);
+    const serieTotal = serieFlat(S.horasGols);
+    const serie = serieTotal.filter(j => j.gol_casa != null && j.gol_fora != null);
 
     if (!serie.length) {
         if (S._graficoGols) { try { S._graficoGols.destroy(); } catch(_){} S._graficoGols = null; }
+        const ctx2 = canvasEl.getContext('2d');
+        ctx2.clearRect(0, 0, canvasEl.width, canvasEl.height);
         const t = document.getElementById('g-gols-titulo');
-        if (t) t.textContent = '⚽ Sem dados para o período';
+        if (t) t.textContent = `⚽ Sem dados com placar (${_hGols}H · ${serieTotal.length} jogos sem score)`;
         return;
     }
     _GOLS_SERIE = serie;
@@ -3880,12 +3884,16 @@ function renderGraficoPar() {
     const canvasEl = document.getElementById('grafico-parimpar');
     if (!canvasEl) return;
 
-    const serie = serieFlat(S.horasParImpar).filter(j => j.gol_casa != null && j.gol_fora != null);
+    const _hPar = S.horasParImpar != null ? S.horasParImpar : S.horas;
+    const serieTotal = serieFlat(S.horasParImpar);
+    const serie = serieTotal.filter(j => j.gol_casa != null && j.gol_fora != null);
 
     if (!serie.length) {
         if (S._graficoPar) { try { S._graficoPar.destroy(); } catch(_){} S._graficoPar = null; }
+        const ctx2 = canvasEl.getContext('2d');
+        ctx2.clearRect(0, 0, canvasEl.width, canvasEl.height);
         const t = document.getElementById('g-par-titulo');
-        if (t) t.textContent = '🔢 Sem dados para o período';
+        if (t) t.textContent = `🔢 Sem dados com placar (${_hPar}H · ${serieTotal.length} jogos sem score)`;
         return;
     }
     _PAR_SERIE = serie;
