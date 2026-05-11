@@ -1054,6 +1054,35 @@
         </button>
     </div>
 
+    <!-- ⚽ Gráfico de Gols -->
+    <div id="historico-gols-section" style="display:none;margin-bottom:10px">
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <div style="font-size:10px;font-weight:700;color:#64748b" id="g-gols-titulo">⚽ Gols por Jogo</div>
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
+                        <select id="periodo-gols" onchange="setSubViewPeriodo('gols',this.value)"
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;font-weight:700;padding:2px 5px;cursor:pointer;height:22px;outline:none">
+                            <option value="">= Config</option>
+                            <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
+                            <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
+                            <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
+                            <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
+                            <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <button id="btn-gols-mm" class="acao-btn" onclick="_gToggle('grafGolsMM','btn-gols-mm')" title="Exibe média móvel de gols">📈 MM</button>
+                    <button id="btn-gols-gols" class="acao-btn ativo" onclick="_gToggle('grafGolsShowGols','btn-gols-gols')" title="Exibe quantidade de gols no lugar de %">⚽ Gols</button>
+                    <button class="acao-btn" onclick="resetZoomGols()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
+                </div>
+            </div>
+            <div style="position:relative;height:260px"><canvas id="grafico-gols"></canvas></div>
+        </div>
+    </div>
+
     <!-- Chart + Legend -->
     <div id="historico-chart-section" style="display:flex;gap:10px;margin-bottom:10px">
         <div style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;min-width:0">
@@ -1112,35 +1141,6 @@
                 <canvas id="grafico"></canvas>
                 <canvas id="grafico-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
             </div>
-        </div>
-    </div>
-
-    <!-- ⚽ Gráfico de Gols -->
-    <div id="historico-gols-section" style="display:none;margin-bottom:10px">
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
-                <div style="display:flex;align-items:center;gap:8px">
-                    <div style="font-size:10px;font-weight:700;color:#64748b" id="g-gols-titulo">⚽ Gols por Jogo</div>
-                    <div style="display:flex;align-items:center;gap:4px">
-                        <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
-                        <select id="periodo-gols" onchange="setSubViewPeriodo('gols',this.value)"
-                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;font-weight:700;padding:2px 5px;cursor:pointer;height:22px;outline:none">
-                            <option value="">= Config</option>
-                            <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
-                            <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
-                            <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
-                            <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
-                            <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="display:flex;gap:6px;align-items:center">
-                    <button id="btn-gols-mm" class="acao-btn" onclick="_gToggle('grafGolsMM','btn-gols-mm')" title="Exibe média móvel de gols">📈 MM</button>
-                    <button id="btn-gols-gols" class="acao-btn ativo" onclick="_gToggle('grafGolsShowGols','btn-gols-gols')" title="Exibe quantidade de gols no lugar de %">⚽ Gols</button>
-                    <button class="acao-btn" onclick="resetZoomGols()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
-                </div>
-            </div>
-            <div style="position:relative;height:260px"><canvas id="grafico-gols"></canvas></div>
         </div>
     </div>
 
@@ -2036,7 +2036,7 @@ const S = {
     grafMedias:    false,
     grafMM1:       9,
     grafMM2:       21,
-    grafMM1Cor:    '#ffffff',
+    grafMM1Cor:    '#60a5fa',
     grafMM2Cor:    '#fbbf24',
     grafMM1Esp:    1.5,
     grafMM2Esp:    2,
@@ -7030,19 +7030,43 @@ async function _loadConfigSistema() {
                 <span id="cfg-testar-msg" style="font-size:11px;margin-left:10px"></span>
             </div>`;
 
+        const _dashOpts = (val) => [
+            {v:'0',    l:'— Sólido'},
+            {v:'4,4',  l:'- - Tracejado fino'},
+            {v:'8,4',  l:'— — Tracejado grosso'},
+            {v:'2,6',  l:'· · · Pontilhado'},
+        ].map(o => `<option value="${o.v}"${val===o.v?' selected':''}>${o.l}</option>`).join('');
+
         fGrafico.innerHTML =
             `<div style="font-size:10px;color:#475569;margin-bottom:14px">
                 Define quais botões do gráfico começam ativos quando a página é carregada.
                 Você pode alterá-los a qualquer momento clicando nos botões da barra do gráfico.
             </div>` +
             (byGroup.grafico || []).map(d => {
+                const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
                 if (d.tipo === 'number') {
-                    const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
                     return `<div style="margin-bottom:14px">
                         <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
-                        <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="80" max="600"
+                        <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="1" max="600"
                             style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
                             onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    </div>`;
+                }
+                if (d.chave.endsWith('_cor')) {
+                    const val = d.valor || '#60a5fa';
+                    return `<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
+                        <input type="color" id="cfg-${d.chave}" value="${val}"
+                            style="width:36px;height:30px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0;flex-shrink:0">
+                        <label style="font-size:11px;color:#e2e8f0;flex:1;cursor:pointer" for="cfg-${d.chave}">${label}</label>
+                        <span style="font-size:9px;color:#475569;font-family:monospace" id="cfg-${d.chave}-hex">${val}</span>
+                    </div>`;
+                }
+                if (d.chave.endsWith('_dash')) {
+                    return `<div style="margin-bottom:14px">
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                        <select id="cfg-${d.chave}" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none">
+                            ${_dashOpts(d.valor)}
+                        </select>
                     </div>`;
                 }
                 return _toggleHtml(d);
