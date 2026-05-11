@@ -14,10 +14,23 @@
         body { background: #060810; color: #f1f5f9; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; }
 
         /* Liga tabs */
-        .liga-tab { cursor: pointer; padding: 4px 12px; border-radius: 5px; font-size: 11px; font-weight: 700;
-            background: #1e293b; color: #64748b; border: 1px solid #334155; transition: all .15s; white-space: nowrap; letter-spacing:.02em; }
-        .liga-tab.ativo { background: #1fcc59; color: #000; border-color: #1fcc59; }
-        .liga-tab:hover:not(.ativo) { background: #334155; color: #e2e8f0; }
+        .liga-tab {
+            cursor: pointer; padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 700;
+            background: #0f172a; color: #94a3b8; border: 1px solid #1e293b;
+            border-bottom: 2px solid transparent;
+            transition: all .15s; white-space: nowrap; letter-spacing:.02em;
+            display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+        }
+        .liga-tab.ativo {
+            background: rgba(31,204,89,.12); color: #1fcc59;
+            border-color: #1e293b; border-bottom-color: #1fcc59;
+        }
+        .liga-tab:hover:not(.ativo) { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+        .liga-tab .liga-count {
+            font-size: 10px; font-weight: 600; opacity: .65;
+            background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 9px;
+        }
+        .liga-tab.ativo .liga-count { background: rgba(31,204,89,.2); opacity: 1; }
 
         /* Section / filter buttons */
         .secao-btn { cursor: pointer; padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: 600;
@@ -202,8 +215,8 @@
         /* Header: oculta texto "FUTEBOL VIRTUAL" e comprime status */
         #header-subtitle  { display: none !important; }
         #header-separator { display: none !important; }
-        /* Liga tabs: fonte menor */
-        .liga-tab { font-size: 10px; padding: 3px 8px; }
+        /* Liga tabs: fonte menor no mobile */
+        .liga-tab { font-size: 11px; padding: 5px 12px; }
         /* User menu: esconde nome, deixa só avatar */
         #user-nome { display: none !important; }
         /* WhatsApp header: só ícone no mobile */
@@ -218,21 +231,21 @@
     }
     @media (max-width: 480px) {
         body { font-size: 12px; }
-        .liga-tab { font-size: 9px; padding: 2px 6px; }
+        .liga-tab { font-size: 10px; padding: 4px 10px; }
     }
     </style>
 </head>
 <body>
 
 <!-- ========== HEADER ========== -->
-<header style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:9px 16px;position:sticky;top:0;z-index:50">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <img src="/img/radardabet-logo.svg" alt="Radar da Bet" style="height:36px;object-fit:contain">
+<header style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:0;position:sticky;top:0;z-index:50">
+    <!-- Linha 1: Logo + ações -->
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex:1;min-width:0">
+            <img src="/img/radardabet-logo.svg" alt="Radar da Bet" style="height:36px;object-fit:contain;flex-shrink:0">
             <span id="header-separator" style="color:#1e293b">|</span>
             <span id="header-subtitle" style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
         </div>
-        <div id="liga-tabs" style="display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:0"></div>
 
         <!-- WhatsApp Admin -->
         <a class="wa-header-btn"
@@ -300,6 +313,10 @@
                 </button>
             </div>
         </div>
+    </div>
+    <!-- Linha 2: Seleção de ligas -->
+    <div style="padding:0 16px;background:#070e1c;border-top:1px solid #0f172a">
+        <div id="liga-tabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:8px 0"></div>
     </div>
 </header>
 
@@ -2940,7 +2957,7 @@ function renderLigas() {
     const mk = (label, liga, total) => {
         const b = document.createElement('button');
         b.className = 'liga-tab' + (S.ligaAtiva === liga ? ' ativo' : '');
-        b.textContent = label;
+        b.innerHTML = `${label}${total ? ` <span class="liga-count">${total}</span>` : ''}`;
         if (total) b.title = `${liga} — ${total} jogos`;
         b.onclick = () => {
             S.ligaAtiva = liga;
