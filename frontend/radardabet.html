@@ -6735,6 +6735,8 @@ const _CFG_LABELS = {
 };
 
 async function abrirConfigSistema() {
+    const _u = _getUser();
+    if (!_u || _u.TipoUsuario !== 'master') return;
     document.getElementById('user-dropdown').style.display = 'none';
     const msg = document.getElementById('cfg-msg');
     if (msg) msg.style.display = 'none';
