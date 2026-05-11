@@ -1830,6 +1830,10 @@ async function carregarConfigLigas() {
         // Mosaico — células de jogo
         S._mosaicoCelulaLarg  = parseInt(cfg.mosaico_celula_largura) || 40;
         S._mosaicoCelulaFonte = parseInt(cfg.mosaico_celula_fonte)   || 11;
+        // Mercados (pills)
+        S.mktPillFs   = parseInt(cfg.mkt_pill_fs)  || 9;
+        S.mktPillCor  = cfg.mkt_pill_cor  || '#94a3b8';
+        S.mktPillBold = cfg.mkt_pill_bold === 'true';
         // Injeta CSS dinâmico para sobrescrever min/max-width das células
         { const maxW = Math.round(S._mosaicoCelulaLarg * 1.3);
           let ds = document.getElementById('mosaico-td-dyn');
@@ -2077,6 +2081,9 @@ const S = {
     grafMM2Esp:    2,
     grafMM1Dash:   '4,4',
     grafMM2Dash:   '8,4',
+    mktPillFs:     9,
+    mktPillCor:    '#94a3b8',
+    mktPillBold:   false,
     showGols:      false,
     showParImpar:  false,
     horasGrafico:  null,
@@ -3145,8 +3152,8 @@ function renderFiltros() {
                     border:1.5px solid ${fi.cor};
                     background:${ativo ? fi.cor : 'transparent'};
                     ${fi.dashed ? 'border-style:dashed' : ''}"></span>
-                <span style="font-size:9px;font-weight:${ativo ? '700' : '600'};
-                    color:${primario ? '#f1f5f9' : ativo ? '#cbd5e1' : '#94a3b8'};white-space:nowrap">${primario ? '▶ ' : ''}${fi.label}</span>
+                <span style="font-size:${S.mktPillFs||9}px;font-weight:${(S.mktPillBold||ativo) ? '700' : '600'};
+                    color:${primario ? '#f1f5f9' : ativo ? '#e2e8f0' : (S.mktPillCor||'#94a3b8')};white-space:nowrap">${primario ? '▶ ' : ''}${fi.label}</span>
             `;
             pill.onmouseenter = () => _hoverFiltroChart(id);
             pill.onmouseleave = () => _hoverFiltroChart(null);
@@ -6794,6 +6801,9 @@ const _CFG_LABELS = {
     mosaico_gols_largura:       '📐 Mosaico: largura mínima da coluna ⚽ (px)',
     mosaico_celula_largura:     '📐 Mosaico: largura das células de jogo (px)',
     mosaico_celula_fonte:       '📐 Mosaico: tamanho da fonte nas células de jogo (px)',
+    mkt_pill_fs:                '🎯 Mercados: tamanho da fonte dos filtros (px)',
+    mkt_pill_cor:               '🎯 Mercados: cor do texto dos filtros',
+    mkt_pill_bold:              '🎯 Mercados: negrito nos filtros',
     // Manutenção
     manutencao_ativa:           '🚧 Ativar modo manutenção (bloqueia usuários não-Master)',
     manutencao_mensagem:        '🚧 Mensagem exibida na tela de manutenção',
@@ -7245,6 +7255,8 @@ async function salvarConfigSistema() {
             // Atualiza menu de ligas imediatamente
             await carregarConfigLigas();
             renderLigas();
+            // Re-renderiza pills de mercados se painel estiver aberto
+            if (S.showMercados) renderFiltros();
             // Aplica visibilidade de seções imediatamente
             await _aplicarConfigFrontend();
         } else {

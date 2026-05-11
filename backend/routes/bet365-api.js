@@ -1481,6 +1481,10 @@ const CONFIG_DEFAULTS = [
     { chave:'mosaico_gols_largura',         valor:'8',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna ⚽ Gols (px)' },
     { chave:'mosaico_celula_largura',       valor:'40',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: largura das células de jogo (px)' },
     { chave:'mosaico_celula_fonte',         valor:'11',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte das células de jogo (px)' },
+    // ── Mercados (pills de filtro) ──
+    { chave:'mkt_pill_fs',   valor:'9',        tipo:'number',  grupo:'grafico',  descricao:'🎯 Mercados: tamanho da fonte dos filtros (px)' },
+    { chave:'mkt_pill_cor',  valor:'#94a3b8',  tipo:'text',    grupo:'grafico',  descricao:'🎯 Mercados: cor do texto dos filtros (hex)' },
+    { chave:'mkt_pill_bold', valor:'false',    tipo:'boolean', grupo:'grafico',  descricao:'🎯 Mercados: negrito nos filtros' },
     // ── Gráfico — padrões dos botões ──
     { chave:'grafico_altura',      valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico: altura do painel (px; 80–600)' },
     { chave:'grafico_pct',         valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir % no final das linhas por padrão' },
