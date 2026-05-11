@@ -2344,8 +2344,8 @@ function setSubViewPeriodo(subview, val) {
 
     const render = () => {
         if (subview === 'grafico')  renderGrafico();
-        if (subview === 'gols')     renderGraficoGols();
-        if (subview === 'parimpar') renderGraficoPar();
+        if (subview === 'gols')     requestAnimationFrame(() => renderGraficoGols());
+        if (subview === 'parimpar') requestAnimationFrame(() => renderGraficoPar());
         if (subview === 'mosaico')  renderTabela();
     };
 
@@ -3832,7 +3832,9 @@ function renderGraficoGols() {
     if (tituloEl) tituloEl.textContent = `⚽ ${serie.length} jogos · ${totalG} gols · soma ${n}j: ref ${mediaRef}`;
 
     if (S._graficoGols) { try { S._graficoGols.destroy(); } catch(_){} S._graficoGols = null; }
-    try { S._graficoGols = new Chart(canvasEl.getContext('2d'), {
+    const _ctxGols = canvasEl.getContext('2d');
+    _ctxGols.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    try { S._graficoGols = new Chart(_ctxGols, {
         type: 'line',
         data: { labels, datasets },
         options: {
@@ -3956,7 +3958,9 @@ function renderGraficoPar() {
     if (tituloEl) tituloEl.textContent = `🔢 ${serie.length} jogos · Par: ${totalPar} · Ímpar: ${totalImpar} · soma ${n}j`;
 
     if (S._graficoPar) { try { S._graficoPar.destroy(); } catch(_){} S._graficoPar = null; }
-    try { S._graficoPar = new Chart(canvasEl.getContext('2d'), {
+    const _ctxPar = canvasEl.getContext('2d');
+    _ctxPar.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    try { S._graficoPar = new Chart(_ctxPar, {
         type: 'line',
         data: { labels, datasets },
         options: {
