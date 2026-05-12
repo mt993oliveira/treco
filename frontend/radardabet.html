@@ -1948,7 +1948,9 @@ async function carregarConfigLigas() {
 
         // Gráfico — padrões dos botões
         S.grafPct       = cfg.grafico_pct        === 'true';
-        S.grafTopoFundo = cfg.grafico_topo_fundo === 'true';
+        S.grafTopoFundo  = cfg.grafico_topo_fundo === 'true';
+        S._tfTopoCor     = cfg.grafico_tf_topo_cor  || '#4ade80';
+        S._tfFundoCor    = cfg.grafico_tf_fundo_cor || '#f87171';
         S.grafCongest   = cfg.grafico_congest    === 'true';
         S.grafMedias    = cfg.grafico_medias     === 'true';
         if (cfg.grafico_mm1) { S.grafMM1 = parseInt(cfg.grafico_mm1) || 9;  const el = document.getElementById('inp-mm1'); if (el) el.value = S.grafMM1; }
@@ -2251,6 +2253,8 @@ const S = {
     grafTopo:      null,
     grafPct:       false,
     grafTopoFundo: false,
+    _tfTopoCor:    '#4ade80',
+    _tfFundoCor:   '#f87171',
     grafCongest:   false,
     grafMedias:    false,
     grafMM1:       9,
@@ -3876,7 +3880,7 @@ function renderGrafico() {
             const minIdx = data.reduce((b, v, i) => i >= warmup && v < data[b] ? i : b, warmup);
             const base   = pts.map(v => v ? cor : '#dc2626');
             pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : 3);
-            pointBgColor = base.map((c, i) => i === maxIdx ? '#fbbf24' : i === minIdx ? '#f87171' : c);
+            pointBgColor = base.map((c, i) => i === maxIdx ? (S._tfTopoCor||'#4ade80') : i === minIdx ? (S._tfFundoCor||'#f87171') : c);
         }
 
         datasets.push({ type:'line', label:`${f.label} ${pct}%`,
@@ -7073,7 +7077,9 @@ const _CFG_LABELS = {
     grafico_altura:      '📐 Altura do painel do gráfico (px)',
     grafico_gols_altura: '📐 Altura do painel do gráfico de gols (px)',
     grafico_pct:         '% Exibir valor % no final das linhas',
-    grafico_topo_fundo:  '⛰ Marcar topo (🟡) e fundo (🔴) de cada linha',
+    grafico_topo_fundo:  '⛰ Marcar topo/fundo de cada linha',
+    grafico_tf_topo_cor: '⛰ T/F — cor do ponto Topo (máximo)',
+    grafico_tf_fundo_cor:'⛰ T/F — cor do ponto Fundo (mínimo)',
     grafico_congest:     '〰 Destacar zonas de congestão (mercado lateral)',
     grafico_medias:      '📈 Exibir médias móveis por padrão',
     grafico_mm1:             '📈 Período da MM curta (padrão 9 jogos)',
