@@ -6864,7 +6864,7 @@ async function salvarPerfil(e) {
     if (senha && senha !== senha2) { _err('As senhas não coincidem.'); return; }
     if (senha && senha.length < 6) { _err('A senha deve ter pelo menos 6 caracteres.'); return; }
 
-    const body = { id: u.Id, nomeCompleto: nome, usuario, email, telefone };
+    const body = { id: u.Id, usuarioId: u.Id, nomeCompleto: nome, usuario, email, telefone };
     if (senha) body.senha = senha;
 
     // Campos de administração
