@@ -2123,7 +2123,8 @@ const S = {
     _mosaicoShowGols: true,   // exibe coluna ⚽ gols por linha
     selCols:       new Set(),  // colunas selecionadas (índices)
     selRows:       new Set(),  // linhas selecionadas (índices de hora)
-    selScore:      null,       // score selecionado para destaque
+    selScore:      null,       // score FT selecionado para destaque
+    selScoreHT:    null,       // score HT selecionado para destaque
     selClub:       null,       // clube selecionado para destaque
 
     // ── Filtros dinâmicos da aba Análise ──
@@ -3242,13 +3243,21 @@ function _tblToggleRow(ri) {
     renderTabela();
 }
 function _tblSelectScore(score) {
-    S.selScore = S.selScore === score ? null : score;
-    S.selClub  = null;
+    S.selScore   = S.selScore === score ? null : score;
+    S.selScoreHT = null;
+    S.selClub    = null;
+    _aplicarHighlightGrid();
+}
+function _tblSelectScoreHT(score) {
+    S.selScoreHT = S.selScoreHT === score ? null : score;
+    S.selScore   = null;
+    S.selClub    = null;
     _aplicarHighlightGrid();
 }
 function _tblSelectClub(club) {
-    S.selClub  = S.selClub === club ? null : club;
-    S.selScore = null;
+    S.selClub    = S.selClub === club ? null : club;
+    S.selScore   = null;
+    S.selScoreHT = null;
     _aplicarHighlightGrid();
 }
 function _aplicarHighlightGrid() {
@@ -3256,10 +3265,11 @@ function _aplicarHighlightGrid() {
     if (!tbody) return;
     tbody.querySelectorAll('td[data-tt]').forEach(td => {
         td.classList.remove('cell-match-score', 'cell-match-club');
-        if (!S.selScore && !S.selClub && !S.clubesSel?.size) return;
+        if (!S.selScore && !S.selScoreHT && !S.selClub && !S.clubesSel?.size) return;
         const tt = td.dataset.tt || '';
-        if (S.selScore && tt.includes(S.selScore)) td.classList.add('cell-match-score');
-        if (S.selClub  && tt.toLowerCase().includes(S.selClub.toLowerCase())) td.classList.add('cell-match-club');
+        if (S.selScore   && tt.includes(S.selScore))                           td.classList.add('cell-match-score');
+        if (S.selScoreHT && tt.includes(`HT:${S.selScoreHT}`))                 td.classList.add('cell-match-score');
+        if (S.selClub    && tt.toLowerCase().includes(S.selClub.toLowerCase())) td.classList.add('cell-match-club');
         if (S.clubesSel?.size) {
             const ttL = tt.toLowerCase();
             if ([...S.clubesSel].some(c => ttL.includes(c.toLowerCase()))) td.classList.add('cell-match-club');
@@ -4449,11 +4459,11 @@ function renderTabela() {
                 ? (temOdds ? `<span style="display:block;font-size:var(--fs-odd);font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
                   `<span data-action="clube" data-clube="${abbrev(j.time_casa)}" ${nmSlot} style="display:block;font-size:var(--fs-clube);line-height:1.2;color:var(--clube-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
                   `<span data-action="liga" style="display:block;font-size:var(--fs-ft);font-weight:800;cursor:pointer;line-height:1.3;color:var(--ft-txt)">${score}</span>`+
-                  (scoreHT && S.showHT ? `<span style="display:block;font-size:var(--fs-ht);font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center">(${scoreHT})</span>` : '')+
+                  (scoreHT && S.showHT ? `<span data-action="ht-score" data-ht-score="${scoreHT}" style="display:block;font-size:var(--fs-ht);font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center;cursor:pointer">(${scoreHT})</span>` : '')+
                   `<span data-action="clube" data-clube="${abbrev(j.time_fora)}" ${nmSlot} style="display:block;font-size:var(--fs-clube);line-height:1.2;color:var(--clube-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
                   (temOdds ? `<span style="display:block;font-size:var(--fs-odd);font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
                 : `<span data-action="liga" style="cursor:pointer;display:block;font-size:var(--fs-ft);line-height:1.25;color:var(--ft-txt)">${score}</span>`+
-                  (scoreHT && S.showHT ? `<span style="display:block;font-size:var(--fs-ht);color:var(--ht-txt);line-height:1;text-align:center">${scoreHT}</span>` : '')+
+                  (scoreHT && S.showHT ? `<span data-action="ht-score" data-ht-score="${scoreHT}" style="display:block;font-size:var(--fs-ht);color:var(--ht-txt);line-height:1;text-align:center;cursor:pointer">${scoreHT}</span>` : '')+
                   (temOdds ? `<span style="display:flex;gap:2px;margin-top:1px">`+
                     `<span style="flex:1;text-align:center;font-size:var(--fs-odd);font-weight:700;color:${corOddC}">${fmtOdd(oddC)}</span>`+
                     `<span style="flex:1;text-align:center;font-size:var(--fs-odd);font-weight:700;color:${corOddF}">${fmtOdd(oddF)}</span>`+
@@ -5424,6 +5434,9 @@ function handleGridClick(e) {
             }
         }
         abrirModalLigaResultados();
+    } else if (action === 'ht-score') {
+        const htScore = el.dataset.htScore || el.textContent.replace(/[()]/g, '').trim();
+        _tblSelectScoreHT(htScore);
     } else if (action === 'clube') {
         _tblSelectClub(el.dataset.clube || el.textContent.trim());
     }
