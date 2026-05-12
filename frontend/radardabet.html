@@ -1670,9 +1670,9 @@ const TODOS_FILTROS = [
     { id:'ht-empate',  label:'EmpHT',     cor:'#c4b5fd' },
     { id:'ht-fora',    label:'Fora HT',   cor:'#f97316' },
     // HT Gols
-    { id:'ht-over',    label:'OverHT',    cor:'#22d3ee' },
-    { id:'ht-under',   label:'UnderHT',   cor:'#0891b2' },
-    { id:'ht-gols',    label:'Gols HT',   cor:'#67e8f9' },
+    { id:'ht-over',    label:'O1.5 HT',   cor:'#22d3ee', desc:'2+ gols no 1T' },
+    { id:'ht-under',   label:'U1.5 HT',   cor:'#0891b2', desc:'0 ou 1 gol no 1T' },
+    { id:'ht-gols',    label:'Gol HT',    cor:'#67e8f9', desc:'ao menos 1 gol no 1T — inclui 1-0, 0-1, 1-1…' },
     // HT/FT Duplo resultado
     { id:'htft-cc',    label:'casa-casa',      cor:'#166534' },
     { id:'htft-ce',    label:'casa-empate',    cor:'#15803d' },
@@ -2164,7 +2164,7 @@ function checa(j, fid) {
     const ch  = j.gol_casa_ht;
     const fh  = j.gol_fora_ht;
     const htOk = ch != null && fh != null;
-    const rht  = htOk ? (ch > fh ? 'CASA' : fh > ch ? 'FORA' : 'EMPATE') : null;
+    const rht  = htOk ? (ch > fh ? 'CASA' : fh > ch ? 'FORA' : 'EMPATE') : (j.resultado_ht || null);
 
     // Gols exatos — usa "Total Exato de Gols" como fonte primária (mais preciso)
     const texMkt = mkts.find(m => /total exato de gols/i.test(m.mercado));
@@ -3146,7 +3146,8 @@ function renderFiltros() {
             const primario = ativo && S.filtro === id;
 
             const pill = document.createElement('div');
-            pill.title = primario ? `${fi.label} — filtro do gráfico (clique para desativar)` : ativo ? `${fi.label} — clique para usar no gráfico` : `${fi.label} — clique para ativar`;
+            const _desc = fi.desc ? ` (${fi.desc})` : '';
+            pill.title = primario ? `${fi.label}${_desc} — filtro do gráfico (clique para desativar)` : ativo ? `${fi.label}${_desc} — clique para usar no gráfico` : `${fi.label}${_desc} — clique para ativar`;
             pill.style.cssText = `
                 display:inline-flex;align-items:center;gap:2px;cursor:pointer;
                 padding:2px 5px;border-radius:3px;user-select:none;
@@ -3760,9 +3761,10 @@ function renderGrafico() {
                         pan:  { enabled:true, modifierKey:'shift', mode:'x' }
                     }
                 },
+                layout: { padding: { top: 16, bottom: 4 } },
                 scales: {
                     x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                    y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
+                    y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
                 }
             },
             plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin]

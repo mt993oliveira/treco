@@ -905,6 +905,18 @@ router.get('/historico-mercados', async (req, res) => {
                     if (sc) { j.gol_casa_ht = sc.casa; j.gol_fora_ht = sc.fora; }
                 }
             }
+            // resultado_ht: direção do HT (CASA/FORA/EMPATE) — derivado do placar quando disponível,
+            // ou de htInterMkt ("Resultado Intervalo") como fallback para placares "OUT"
+            if (j.gol_casa_ht != null && j.gol_fora_ht != null) {
+                j.resultado_ht = j.gol_casa_ht > j.gol_fora_ht ? 'CASA' : j.gol_fora_ht > j.gol_casa_ht ? 'FORA' : 'EMPATE';
+            } else if (htInterMkt) {
+                const htW = (htInterMkt.selecao || '').toLowerCase().trim();
+                const cL  = (j.time_casa || '').toLowerCase().trim();
+                const fL  = (j.time_fora || '').toLowerCase().trim();
+                if (htW === 'empate') j.resultado_ht = 'EMPATE';
+                else if (cL && htW.includes(cL)) j.resultado_ht = 'CASA';
+                else if (fL && htW.includes(fL)) j.resultado_ht = 'FORA';
+            }
 
             // Placar FT de "Resultado Correto" (sem "Intervalo")
             // Usa rfMkt.selecao (já confirmado) para escolher a linha correta quando houver múltiplas
