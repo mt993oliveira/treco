@@ -7606,6 +7606,11 @@ async function salvarConfigSistema() {
             if (S.showMercados) renderFiltros();
             // Aplica visibilidade de seções imediatamente
             await _aplicarConfigFrontend();
+            // Se salvou chaves do Grade, remove override local para o padrão do sistema valer
+            if (Object.keys(payload).some(k => k.startsWith('grid_'))) {
+                localStorage.removeItem('gridCores');
+                aplicarCoresGrid(carregarCoresGrid());
+            }
         } else {
             msg.style.background = '#4c0f0f';
             msg.style.color = '#f87171';
