@@ -727,12 +727,12 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
     try {
         await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
-        // Verificar se o usuário é master
+        // Verificar se o usuário é master ou administrador
         const userCheck = await sql.query`
             SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}
         `;
-
-        if (userCheck.recordset.length === 0 || userCheck.recordset[0].TipoUsuario !== 'master') {
+        const _chkTipo = (userCheck.recordset[0]?.TipoUsuario || '').toLowerCase();
+        if (!userCheck.recordset.length || (_chkTipo !== 'master' && _chkTipo !== 'administrador' && _chkTipo !== 'admin')) {
             return res.json({ success: false, message: 'Acesso não autorizado' });
         }
 
@@ -1213,7 +1213,8 @@ app.post('/api/usuarios/online-detalhe', requireAuth, async (req, res) => {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
         const chk = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
-        if (!chk.recordset.length || chk.recordset[0].TipoUsuario !== 'master') {
+        const _onlineTipo = (chk.recordset[0]?.TipoUsuario || '').toLowerCase();
+        if (!chk.recordset.length || (_onlineTipo !== 'master' && _onlineTipo !== 'administrador' && _onlineTipo !== 'admin')) {
             return res.json({ success: false, message: 'Acesso negado' });
         }
         const limite = Date.now() - 15 * 60 * 1000;

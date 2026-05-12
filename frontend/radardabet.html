@@ -6737,11 +6737,18 @@ function _initUserMenu() {
     document.getElementById('user-nome').textContent   = u.NomeCompleto || u.Usuario;
     document.getElementById('dd-nome').textContent     = u.NomeCompleto || '—';
     document.getElementById('dd-usuario').textContent  = '@' + (u.Usuario || '—');
-    document.getElementById('dd-tipo').textContent     = u.TipoUsuario === 'master' ? '⭐ Master' : 'Usuário';
-    // Exibe opções master-only
-    const _isMasterType = u.TipoUsuario === 'master';
+
+    const _tipoNorm  = (u.TipoUsuario || '').toLowerCase();
+    const _isMasterType = _tipoNorm === 'master';
+    const _isAdminType  = _tipoNorm === 'administrador' || _tipoNorm === 'admin';
     const _isMasterUser = (u.Usuario || '').toUpperCase() === 'MASTER';
-    if (_isMasterType) {
+
+    // Label do tipo no dropdown
+    document.getElementById('dd-tipo').textContent =
+        _isMasterType ? '⭐ Master' : _isAdminType ? '👑 Administrador' : 'Usuário';
+
+    // Gerenciar Usuários e Online — master e administrador
+    if (_isMasterType || _isAdminType) {
         const btnUsr = document.getElementById('dd-btn-usuarios');
         if (btnUsr) btnUsr.style.display = 'flex';
         const btnOnline = document.getElementById('dd-btn-online');
