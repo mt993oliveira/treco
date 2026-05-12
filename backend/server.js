@@ -778,7 +778,7 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
 
         // Verificar se o usuário é master para criar/editar usuários
         const userCheck = await sql.query`
-            SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}
+            SELECT TipoUsuario, Usuario FROM Usuarios WHERE Id = ${req.body.usuarioId}
         `;
 
         if (userCheck.recordset.length === 0) {
@@ -909,10 +909,11 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             }
 
             // Registrar no histórico de usuários
-            const historicoUsuario = usuario || (await sql.query`SELECT Usuario FROM Usuarios WHERE Id = ${id}`).recordset[0]?.Usuario || 'usuário';
+            const targetLogin = usuario || (await sql.query`SELECT Usuario FROM Usuarios WHERE Id = ${id}`).recordset[0]?.Usuario || 'usuário';
+            const reqLogin = currentUser.Usuario || `ID:${req.body.usuarioId}`;
             await sql.query`
                 INSERT INTO HistoricoUsuarios (UsuarioId, DataAlteracao, Acao)
-                VALUES (${req.body.usuarioId}, GETDATE(), ${'Usuário ' + historicoUsuario + ' atualizado'})
+                VALUES (${req.body.usuarioId}, GETDATE(), ${'[' + reqLogin + '] alterou usuário "' + targetLogin + '"'})
             `;
         } else {
             // Novo usuário - apenas masters podem criar
@@ -930,9 +931,10 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 VALUES (${nomeCompleto}, ${usuario}, ${email}, ${telefoneVal || null}, ${hashedPassword}, ${tipoUsuario}, ${dataInicioLicenca}, ${dataFimLicenca}, GETDATE(), GETDATE())
             `;
 
+            const reqLogin2 = currentUser.Usuario || `ID:${req.body.usuarioId}`;
             await sql.query`
                 INSERT INTO HistoricoUsuarios (UsuarioId, DataAlteracao, Acao)
-                VALUES (${req.body.usuarioId}, GETDATE(), ${'Novo usuário criado: ' + usuario})
+                VALUES (${req.body.usuarioId}, GETDATE(), ${'[' + reqLogin2 + '] criou usuário "' + usuario + '"'})
             `;
 
             // Enviar e-mail de boas-vindas via Formspree (mesmo mecanismo do formulário de contato)
@@ -977,7 +979,7 @@ app.post('/api/usuarios/delete', requireAuth, async (req, res) => {
 
         // Apenas masters podem excluir usuários
         const userCheck = await sql.query`
-            SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}
+            SELECT TipoUsuario, Usuario FROM Usuarios WHERE Id = ${req.body.usuarioId}
         `;
 
         if (userCheck.recordset.length === 0 || userCheck.recordset[0].TipoUsuario !== 'master') {
@@ -989,11 +991,16 @@ app.post('/api/usuarios/delete', requireAuth, async (req, res) => {
             return res.json({ success: false, message: 'Não é possível excluir seu próprio usuário' });
         }
 
+        // Obter login do alvo ANTES de excluir
+        const targetRow = await sql.query`SELECT Usuario FROM Usuarios WHERE Id = ${id}`;
+        const targetLoginDel = targetRow.recordset[0]?.Usuario || `ID:${id}`;
+        const reqLoginDel = userCheck.recordset[0].Usuario || `ID:${req.body.usuarioId}`;
+
         await sql.query`DELETE FROM Usuarios WHERE Id = ${id}`;
 
         await sql.query`
             INSERT INTO HistoricoUsuarios (UsuarioId, DataAlteracao, Acao)
-            VALUES (${req.body.usuarioId}, GETDATE(), ${'Usuário excluído: ID ' + id})
+            VALUES (${req.body.usuarioId}, GETDATE(), ${'[' + reqLoginDel + '] excluiu usuário "' + targetLoginDel + '"'})
         `;
 
         res.json({ success: true, message: 'Usuário excluído com sucesso' });
@@ -1333,6 +1340,62 @@ app.post('/api/usuarios/historico-limpar', requireAuth, async (req, res) => {
             DELETE FROM HistoricoAcessos WHERE data_hora < DATEADD(DAY, -${dias}, GETUTCDATE())
         `;
         res.json({ success: true, removidos: r.rowsAffected[0] || 0 });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+/**
+ * POST /api/usuarios/historico-alteracoes
+ * Retorna histórico de alterações de usuários paginado. Apenas master.
+ */
+app.post('/api/usuarios/historico-alteracoes', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const chk = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!chk.recordset.length || (chk.recordset[0].TipoUsuario || '').toLowerCase() !== 'master') {
+            return res.json({ success: false, message: 'Acesso negado' });
+        }
+        const { busca = '', dataInicio = '', dataFim = '', pagina = 1, porPagina = 50 } = req.body;
+        const pp  = Math.min(200, Math.max(1, Number(porPagina)));
+        const off = (Math.max(1, Number(pagina)) - 1) * pp;
+
+        const cntReq  = sqlConnectionPool.request();
+        const mainReq = sqlConnectionPool.request();
+        const wheres = [];
+
+        if (busca) {
+            wheres.push('h.Acao LIKE @busca');
+            cntReq.input('busca',  sql.NVarChar, `%${busca}%`);
+            mainReq.input('busca', sql.NVarChar, `%${busca}%`);
+        }
+        if (dataInicio) {
+            wheres.push('h.DataAlteracao >= @di');
+            cntReq.input('di',  sql.DateTime2, new Date(dataInicio));
+            mainReq.input('di', sql.DateTime2, new Date(dataInicio));
+        }
+        if (dataFim) {
+            wheres.push('h.DataAlteracao <= @df');
+            cntReq.input('df',  sql.DateTime2, new Date(dataFim));
+            mainReq.input('df', sql.DateTime2, new Date(dataFim));
+        }
+        const w = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
+
+        const cntResult = await cntReq.query(`SELECT COUNT(*) AS total FROM HistoricoUsuarios h ${w}`);
+        const total = cntResult.recordset[0].total;
+
+        mainReq.input('off', sql.Int, off);
+        mainReq.input('pp',  sql.Int, pp);
+        const rows = await mainReq.query(`
+            SELECT h.UsuarioId, h.DataAlteracao, h.Acao, u.Usuario AS QuemFez
+            FROM HistoricoUsuarios h
+            LEFT JOIN Usuarios u ON u.Id = h.UsuarioId
+            ${w}
+            ORDER BY h.DataAlteracao DESC
+            OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
+        `);
+
+        res.json({ success: true, total, pagina: Number(pagina), porPagina: pp, data: rows.recordset });
     } catch(e) {
         res.json({ success: false, message: e.message });
     }
