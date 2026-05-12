@@ -667,6 +667,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 🎨 Cores
             </button>
+            <button id="cfg-tab-grade" onclick="_cfgSetTab('grade')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🏁 Grade
+            </button>
         </div>
 
         <!-- Seção Coleta -->
@@ -727,6 +732,13 @@
         <!-- Seção Cores do Gráfico -->
         <div id="cfg-section-cores" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
             <div id="cfg-cores-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Grade/Mosaico — cores e fontes padrão -->
+        <div id="cfg-section-grade" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-grade-fields">
                 <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
@@ -1954,6 +1966,19 @@ async function carregarConfigLigas() {
             if (b) b.classList.toggle('ativo', !!S[k]);
         });
 
+        // Padrões do grid/mosaico — cores e fontes (usados como base; usuário pode sobrescrever em ⚙️ Config)
+        { const _gridKeys = ['verdeBg','verdeTxt','vermBg','vermTxt','futuroBg','futuroTxt','futuroBrd',
+              'oddFav','oddMed','oddAzarao','selColBg','selColTxt','selColBrd',
+              'selRowBg','selRowTxt','selRowBrd','clubeTxt','ftTxt','htTxt','canetaCor',
+              'clubeFs','ftFs','htFs','oddFs'];
+          S._gridCoresSistema = {};
+          _gridKeys.forEach(k => {
+              const v = cfg['grid_' + k];
+              if (v !== undefined) S._gridCoresSistema[k] = k.endsWith('Fs') ? parseInt(v) || GRID_CORES_PADRAO[k] : v;
+          });
+          if (Object.keys(S._gridCoresSistema).length) aplicarCoresGrid(carregarCoresGrid());
+        }
+
         // Mosaico — colunas esquerda
         S._mosaicoHoraLarg   = parseInt(cfg.mosaico_hora_largura)  || 22;
         S._mosaicoHoraFonteHH= parseInt(cfg.mosaico_hora_fonte_hh) || 8;
@@ -2174,8 +2199,9 @@ const GRID_CORES_PADRAO = {
     clubeFs: 7, ftFs: 10, htFs: 10, oddFs: 6,
 };
 function carregarCoresGrid() {
-    try { return Object.assign({}, GRID_CORES_PADRAO, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
-    catch(e) { return Object.assign({}, GRID_CORES_PADRAO); }
+    const sys = Object.assign({}, GRID_CORES_PADRAO, S._gridCoresSistema || {});
+    try { return Object.assign({}, sys, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
+    catch(e) { return Object.assign({}, sys); }
 }
 function aplicarCoresGrid(c) {
     const canetaEl = document.getElementById('caneta-cor');
@@ -5337,7 +5363,7 @@ function _toggleCfgSection(hdr) {
     if (arrow) arrow.textContent = open ? '▸' : '▾';
 }
 
-const _FS_RANGES = { clube: [5, 14], ft: [7, 18], ht: [7, 18], odd: [4, 12] };
+const _FS_RANGES = { clube: [4, 24], ft: [4, 24], ht: [4, 24], odd: [4, 24] };
 function _adjFs(key, delta) {
     const inp = document.getElementById(`gc-${key}Fs`);
     if (!inp) return;
@@ -5554,13 +5580,14 @@ function cancelarCoresGrid() {
 }
 
 function restaurarCoresGrid() {
-    aplicarCoresGrid(Object.assign({}, GRID_CORES_PADRAO));
-    Object.keys(GRID_CORES_PADRAO).forEach(k => {
+    const defaults = Object.assign({}, GRID_CORES_PADRAO, S._gridCoresSistema || {});
+    aplicarCoresGrid(Object.assign({}, defaults));
+    Object.keys(defaults).forEach(k => {
         const el = document.getElementById(`gc-${k}`);
-        if (el) el.value = GRID_CORES_PADRAO[k];
+        if (el) el.value = defaults[k];
     });
-    _syncFsDisplays(GRID_CORES_PADRAO);
-    _atualizarPreviewCores(GRID_CORES_PADRAO);
+    _syncFsDisplays(defaults);
+    _atualizarPreviewCores(defaults);
 }
 
 // ============================================================
@@ -6981,7 +7008,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -7101,8 +7128,9 @@ async function _loadConfigSistema() {
     const fAlertas = document.getElementById('cfg-alertas-fields');
     const fGrafico = document.getElementById('cfg-grafico-fields');
     const fCores   = document.getElementById('cfg-cores-fields');
+    const fGrade   = document.getElementById('cfg-grade-fields');
     const loadHtml = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = loadHtml;
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = loadHtml;
 
     // Opções para selects de tipo_mercado
     const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
@@ -7380,6 +7408,64 @@ async function _loadConfigSistema() {
                 return _toggleHtml(d);
             }).join('');
 
+        // ── Aba Grade: cores e fontes padrão do mosaico ──────────────────
+        { const gd = {};
+          (data.data || []).filter(d => d.grupo === 'grid').forEach(d => { gd[d.chave] = d.valor; });
+          const _gv  = k => gd['grid_' + k] !== undefined ? gd['grid_' + k] : String(GRID_CORES_PADRAO[k] ?? '');
+          const _inp = (key, label, type='color') => {
+              const val = _gv(key);
+              if (type === 'color') return `
+                  <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0f172a">
+                      <span style="font-size:10px;color:#94a3b8;min-width:130px">${label}</span>
+                      <input type="color" id="cfg-grid_${key}" value="${val}"
+                          style="width:34px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:1px;background:none">
+                      <span style="font-size:10px;color:#475569;font-family:monospace">${val}</span>
+                  </div>`;
+              // number
+              return `
+                  <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0f172a">
+                      <span style="font-size:10px;color:#94a3b8;min-width:130px">${label}</span>
+                      <input type="number" id="cfg-grid_${key}" value="${val}" min="4" max="24"
+                          style="width:60px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;
+                                 padding:3px 6px;font-size:11px;text-align:center;outline:none"
+                          onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                      <span style="font-size:10px;color:#475569">px</span>
+                  </div>`;
+          };
+          const _grp = (titulo, html) => `
+              <div style="margin-bottom:16px">
+                  <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;
+                               padding:4px 0 6px;border-bottom:1px solid #1e293b;margin-bottom:4px">${titulo}</div>
+                  ${html}
+              </div>`;
+          fGrade.innerHTML =
+              `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+                  Padrões do Mosaico aplicados a todos os usuários. Cada usuário pode sobrescrever localmente em ⚙️ Config.
+              </div>` +
+              _grp('📐 Tamanhos de Fonte',
+                  _inp('clubeFs','Fonte dos Clubes','number') +
+                  _inp('ftFs','Fonte Resultado FT','number') +
+                  _inp('htFs','Fonte Resultado HT','number') +
+                  _inp('oddFs','Fonte das Odds','number')) +
+              _grp('📊 Cores dos Resultados',
+                  _inp('ftTxt','Resultado FT — texto') +
+                  _inp('htTxt','Resultado HT — texto') +
+                  _inp('clubeTxt','Clubes — texto')) +
+              _grp('✅ Acerto (verde)',
+                  _inp('verdeBg','Fundo') + _inp('verdeTxt','Texto')) +
+              _grp('❌ Erro (vermelho)',
+                  _inp('vermBg','Fundo') + _inp('vermTxt','Texto')) +
+              _grp('🔜 Próximos Jogos',
+                  _inp('futuroBg','Fundo') + _inp('futuroTxt','Texto') + _inp('futuroBrd','Borda')) +
+              _grp('💹 Odds por faixa',
+                  _inp('oddFav','Favorito (<2.0)') + _inp('oddMed','Médio (2–3)') + _inp('oddAzarao','Azarão (>3)')) +
+              _grp('🔵 Coluna selecionada (clique no :MM)',
+                  _inp('selColBg','Fundo') + _inp('selColTxt','Texto') + _inp('selColBrd','Borda')) +
+              _grp('🟣 Linha selecionada (clique no horário)',
+                  _inp('selRowBg','Fundo') + _inp('selRowTxt','Texto') + _inp('selRowBrd','Borda')) +
+              _grp('✏️ Caneta', _inp('canetaCor','Cor padrão'));
+        }
+
         { const savedCores = {};
           (data.data || []).filter(d => d.chave.startsWith('chart_cor_')).forEach(d => { savedCores[d.chave] = d.valor; });
           fCores.innerHTML =
@@ -7409,7 +7495,7 @@ async function _loadConfigSistema() {
 
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = err;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = err;
     }
 }
 
