@@ -2224,8 +2224,8 @@ function aplicarCoresGrid(c) {
         `.c-verm   { background: ${c.vermBg}   !important; color: ${c.vermTxt}   !important; }\n` +
         `.c-futuro { background: ${c.futuroBg} !important; color: ${c.futuroTxt} !important; border: 1px dashed ${c.futuroBrd} !important; }\n` +
         `.tabela-hist th.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; cursor: pointer; }\n` +
-        `.tabela-hist td.col-sel { outline: 2px solid ${c.selColBrd}80 !important; }\n` +
-        `.tabela-hist tr.row-sel td { outline: 2px solid ${c.selRowBrd}80 !important; }\n` +
+        `.tabela-hist td.col-sel { background: ${c.selColBg}55 !important; outline: 2px solid ${c.selColBrd} !important; }\n` +
+        `.tabela-hist tr.row-sel td { background: ${c.selRowBg}55 !important; outline: 2px solid ${c.selRowBrd} !important; }\n` +
         `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; cursor: pointer; }`;
 }
 // Aplica cores salvas imediatamente (antes de qualquer render)
@@ -5557,9 +5557,9 @@ function _atualizarPreviewCores(c) {
     const pht = document.getElementById('prev-ht-txt');
     if (pht) pht.style.color = c.htTxt;
     const psc = document.getElementById('prev-sel-col');
-    if (psc) { psc.style.background = c.selColBg; psc.style.color = c.selColTxt; psc.style.outline = `2px solid ${c.selColBrd}80`; }
+    if (psc) { psc.style.background = c.selColBg; psc.style.color = c.selColTxt; psc.style.outline = `2px solid ${c.selColBrd}`; }
     const psr = document.getElementById('prev-sel-row');
-    if (psr) { psr.style.background = c.selRowBg; psr.style.color = c.selRowTxt; psr.style.outline = `2px solid ${c.selRowBrd}80`; }
+    if (psr) { psr.style.background = c.selRowBg; psr.style.color = c.selRowTxt; psr.style.outline = `2px solid ${c.selRowBrd}`; }
     const pca = document.getElementById('prev-caneta-cor');
     if (pca) pca.style.color = c.canetaCor || '#f59e0b';
     document.documentElement.style.setProperty('--clube-txt', c.clubeTxt);
