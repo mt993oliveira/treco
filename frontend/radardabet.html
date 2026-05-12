@@ -2199,7 +2199,9 @@ const GRID_CORES_PADRAO = {
     clubeFs: 7, ftFs: 10, htFs: 10, oddFs: 6,
 };
 function carregarCoresGrid() {
-    const sys = Object.assign({}, GRID_CORES_PADRAO, (typeof S !== 'undefined' ? S._gridCoresSistema : null) || {});
+    let sysExt = {};
+    try { if (S && S._gridCoresSistema) sysExt = S._gridCoresSistema; } catch(_) {}
+    const sys = Object.assign({}, GRID_CORES_PADRAO, sysExt);
     try { return Object.assign({}, sys, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
     catch(e) { return Object.assign({}, sys); }
 }
