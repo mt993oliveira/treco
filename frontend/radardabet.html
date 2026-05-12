@@ -1704,8 +1704,14 @@ const TODOS_FILTROS = [
     { id:'st-gols-3',  label:'3G 2T',     cor:'#818cf8' },
     { id:'st-gols-4',  label:'4G 2T',     cor:'#c084fc' },
     { id:'st-gols-5p', label:'5+ 2T',     cor:'#f472b6' },
-    // 2T Ambas marcam
-    { id:'st-ambas',   label:'Ambas 2T',  cor:'#06b6d4' },
+    // 2T Over/Under
+    { id:'st-over1.5',   label:'O1.5 2T',    cor:'#22d3ee', desc:'2+ gols no 2T' },
+    { id:'st-under1.5',  label:'U1.5 2T',    cor:'#0891b2', desc:'0 ou 1 gol no 2T' },
+    // 2T Ambas marcam / não marcam
+    { id:'st-ambas',     label:'Ambas 2T',   cor:'#06b6d4', desc:'ambos marcam no 2T' },
+    { id:'st-ambas-nao', label:'AmbNão 2T',  cor:'#164e63', desc:'ao menos um time não marca no 2T' },
+    // 2T Gols exatos consolidado (3+)
+    { id:'st-gols-3p',   label:'3+ 2T',      cor:'#f472b6', desc:'3 ou mais gols no 2T' },
     // Especial
     { id:'esp-btts-o25', label:'BTTS+O2.5', cor:'#2dd4bf' },
     { id:'esp-btts-u25', label:'BTTS+U2.5', cor:'#38bdf8' },
@@ -2315,27 +2321,35 @@ function checa(j, fid) {
         case 'st-casa':
         case 'st-empate':
         case 'st-fora':
+        case 'st-over1.5':
+        case 'st-under1.5':
         case 'st-gols-0':
         case 'st-gols-1':
         case 'st-gols-2':
         case 'st-gols-3':
         case 'st-gols-4':
         case 'st-gols-5p':
-        case 'st-ambas': {
+        case 'st-gols-3p':
+        case 'st-ambas':
+        case 'st-ambas-nao': {
             if (!htOk || j.gol_casa == null || j.gol_fora == null) return false;
             const c2 = j.gol_casa - ch;
             const f2 = j.gol_fora - fh;
             const t2 = c2 + f2;
-            if (fid === 'st-casa')    return c2 > f2;
-            if (fid === 'st-empate')  return c2 === f2;
-            if (fid === 'st-fora')    return c2 < f2;
-            if (fid === 'st-gols-0')  return t2 === 0;
-            if (fid === 'st-gols-1')  return t2 === 1;
-            if (fid === 'st-gols-2')  return t2 === 2;
-            if (fid === 'st-gols-3')  return t2 === 3;
-            if (fid === 'st-gols-4')  return t2 === 4;
-            if (fid === 'st-gols-5p') return t2 >= 5;
-            if (fid === 'st-ambas')   return c2 > 0 && f2 > 0;
+            if (fid === 'st-casa')      return c2 > f2;
+            if (fid === 'st-empate')    return c2 === f2;
+            if (fid === 'st-fora')      return c2 < f2;
+            if (fid === 'st-over1.5')   return t2 >= 2;
+            if (fid === 'st-under1.5')  return t2 <= 1;
+            if (fid === 'st-gols-0')    return t2 === 0;
+            if (fid === 'st-gols-1')    return t2 === 1;
+            if (fid === 'st-gols-2')    return t2 === 2;
+            if (fid === 'st-gols-3')    return t2 === 3;
+            if (fid === 'st-gols-4')    return t2 === 4;
+            if (fid === 'st-gols-5p')   return t2 >= 5;
+            if (fid === 'st-gols-3p')   return t2 >= 3;
+            if (fid === 'st-ambas')     return c2 > 0 && f2 > 0;
+            if (fid === 'st-ambas-nao') return !(c2 > 0 && f2 > 0);
             return false;
         }
 
@@ -3026,17 +3040,16 @@ const GRUPOS_LEGENDA = [
     { label: 'Over FT',   ids: ['over0.5','over1.5','over2.5','over3.5','over4.5'] },
     { label: 'Under FT',  ids: ['under0.5','under1.5','under2.5','under3.5'] },
     { label: 'Gols FT',   ids: ['gols-0','gols-1','gols-2','gols-3','gols-4','gols-5p'] },
-    { label: 'Result FT', ids: ['ft-casa','ft-fora','ft-empate','casa-marca','fora-marca'] },
-    { label: 'HT Placar', ids: ['ht-0-0','ht-1-0','ht-0-1','ht-1-1','ht-2-0','ht-0-2','ht-out'] },
-    { label: 'HT Result', ids: ['ht-casa','ht-empate','ht-fora','ht-over','ht-under','ht-gols'] },
-    { label: 'HT/FT',     ids: ['htft-cc','htft-ce','htft-cf','htft-ec','htft-ee','htft-ef','htft-fc','htft-fe','htft-ff'] },
-    { label: 'Ch. Dupla', ids: ['cd-1x','cd-x2','cd-12'] },
-    { label: 'Margem',    ids: ['mg-0','mg-eg','mg-1g','mg-2g','mg-3gp'] },
-    { label: '1º Marca',  ids: ['pmr-casa','pmr-fora','pmr-ng'] },
-    { label: '2T Result', ids: ['st-casa','st-empate','st-fora'] },
-    { label: '2T Gols',   ids: ['st-gols-0','st-gols-1','st-gols-2','st-gols-3','st-gols-4','st-gols-5p'] },
-    { label: '2T Ambas',  ids: ['st-ambas'] },
-    { label: 'Especial',  ids: ['esp-btts-o25','esp-btts-u25','esp-casa-o15','esp-fora-o15','equilibrio'] },
+    { label: 'Resultado FT',  ids: ['ft-casa','ft-fora','ft-empate','casa-marca','fora-marca'] },
+    { label: 'HT Placar',     ids: ['ht-0-0','ht-1-0','ht-0-1','ht-1-1','ht-2-0','ht-0-2','ht-out'] },
+    { label: 'Resultado HT',  ids: ['ht-casa','ht-empate','ht-fora','ht-over','ht-under','ht-gols'] },
+    { label: 'HT/FT',         ids: ['htft-cc','htft-ce','htft-cf','htft-ec','htft-ee','htft-ef','htft-fc','htft-fe','htft-ff'] },
+    { label: 'Ch. Dupla',     ids: ['cd-1x','cd-x2','cd-12'] },
+    { label: 'Margem',        ids: ['mg-0','mg-eg','mg-1g','mg-2g','mg-3gp'] },
+    { label: '1º Marca',      ids: ['pmr-casa','pmr-fora','pmr-ng'] },
+    { label: 'Direção 2T',    ids: ['st-casa','st-empate','st-fora'] },
+    { label: 'Resultado 2T',  ids: ['st-over1.5','st-under1.5','st-ambas','st-ambas-nao','st-gols-0','st-gols-1','st-gols-2','st-gols-3p'] },
+    { label: 'Especial',      ids: ['esp-btts-o25','esp-btts-u25','esp-casa-o15','esp-fora-o15','equilibrio'] },
 ];
 const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
 
