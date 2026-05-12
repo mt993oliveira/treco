@@ -2018,6 +2018,9 @@ async function carregarConfigLigas() {
         S._grafAltura = parseInt(cfg.grafico_altura) || 300;
         { const gw = document.getElementById('grafico')?.parentElement;
           if (gw) gw.style.height = S._grafAltura + 'px'; }
+        S._grafGolsAltura = parseInt(cfg.grafico_gols_altura) || 260;
+        { const gw = document.getElementById('grafico-gols')?.parentElement;
+          if (gw) gw.style.height = S._grafGolsAltura + 'px'; }
 
         // Modo manutenção
         S._manutencaoAtiva    = cfg.manutencao_ativa    === 'true';
@@ -2275,7 +2278,8 @@ const S = {
     grafParShowGols:  true,
     _graficoGols:  null,
     _graficoPar:   null,
-    _grafAltura:   300,
+    _grafAltura:     300,
+    _grafGolsAltura: 260,
     _chartCores:   {},
     view:          'historico',
     _analiseSecoes: { ia:true, desempenho:true, detalhe:true, valuebets:true, tendencias:true, frequencia:true },
@@ -7067,6 +7071,7 @@ const _CFG_LABELS = {
     analise_liberar_user:       '📊 Liberar "Análise & Sugestões" para usuários tipo User',
     // Gráfico
     grafico_altura:      '📐 Altura do painel do gráfico (px)',
+    grafico_gols_altura: '📐 Altura do painel do gráfico de gols (px)',
     grafico_pct:         '% Exibir valor % no final das linhas',
     grafico_topo_fundo:  '⛰ Marcar topo (🟡) e fundo (🔴) de cada linha',
     grafico_congest:     '〰 Destacar zonas de congestão (mercado lateral)',

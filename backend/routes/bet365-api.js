@@ -1505,6 +1505,7 @@ const CONFIG_DEFAULTS = [
     { chave:'mkt_grupo_cor', valor:'#64748b',  tipo:'text',    grupo:'grafico',  descricao:'🎯 Mercados: cor dos nomes de grupo (hex)' },
     // ── Gráfico — padrões dos botões ──
     { chave:'grafico_altura',      valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico: altura do painel (px; 80–600)' },
+    { chave:'grafico_gols_altura', valor:'260',   tipo:'number',  grupo:'grafico', descricao:'Gráfico de Gols: altura do painel (px; 80–600)' },
     { chave:'grafico_pct',         valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir % no final das linhas por padrão' },
     { chave:'grafico_topo_fundo',  valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: marcar topo (🟡) e fundo (🔴) por padrão' },
     { chave:'grafico_congest',     valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: destacar zonas de congestão por padrão' },
