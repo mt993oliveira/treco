@@ -307,6 +307,12 @@
                     onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
                     ⚙️ Configurações do Sistema
                 </button>
+                <button id="dd-btn-diagnostico" onclick="abrirDiagnostico()"
+                    style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    🔧 Diagnóstico
+                </button>
                 <button id="dd-btn-online" onclick="abrirOnlineAgora()"
                     style="width:100%;background:none;border:none;color:#4ade80;font-size:12px;
                            padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
@@ -570,6 +576,24 @@
                     🗑 Apagar registros com mais de 30 dias
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL: DIAGNÓSTICO (master only) ========== -->
+<div class="modal-overlay" id="modal-diagnostico">
+    <div class="modal-box" style="max-width:620px;width:96%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+            <h2 style="font-size:14px;font-weight:700">🔧 Diagnóstico do Sistema</h2>
+            <button onclick="fecharModal('modal-diagnostico')"
+                style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div id="diag-content" style="font-size:12px">
+            <div style="color:#475569;text-align:center;padding:20px">Carregando...</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;border-top:1px solid #1e293b;padding-top:14px">
+            <button onclick="abrirDiagnostico()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:12px;cursor:pointer">↺ Atualizar</button>
+            <button onclick="fecharModal('modal-diagnostico')" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 16px;font-size:12px;cursor:pointer">Fechar</button>
         </div>
     </div>
 </div>
@@ -6871,6 +6895,8 @@ function _initUserMenu() {
         if (btnCfg) btnCfg.style.display = 'flex';
         const btnHistUsr = document.getElementById('dd-btn-historico-usuarios');
         if (btnHistUsr) btnHistUsr.style.display = 'flex';
+        const btnDiag = document.getElementById('dd-btn-diagnostico');
+        if (btnDiag) btnDiag.style.display = 'flex';
     }
 }
 
@@ -7968,6 +7994,62 @@ async function _limparHistorico() {
         }
     } catch(e) {
         alert('Erro: ' + e.message);
+    }
+}
+
+async function abrirDiagnostico() {
+    document.getElementById('user-dropdown').style.display = 'none';
+    document.getElementById('modal-diagnostico').classList.add('aberto');
+    const el = document.getElementById('diag-content');
+    el.innerHTML = '<div style="color:#475569;text-align:center;padding:20px">Carregando...</div>';
+    try {
+        const [rStatus, rDb] = await Promise.all([
+            fetch('/api/status-coletor').then(r => r.json()).catch(() => null),
+            fetch('/api/bet365/diagnostico').then(r => r.json()).catch(() => null),
+        ]);
+        const _row = (icon, label, val, cor) =>
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #0f172a">
+                <span style="color:#64748b">${icon} ${label}</span>
+                <span style="font-weight:700;color:${cor||'#e2e8f0'}">${val ?? '—'}</span>
+             </div>`;
+        const _sec = (titulo, html) =>
+            `<div style="margin-bottom:16px">
+                <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;
+                             padding:4px 0 6px;border-bottom:1px solid #1e293b;margin-bottom:4px">${titulo}</div>
+                ${html}
+             </div>`;
+        const _fmtSeg = s => s == null ? '—' : s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m ${s%60}s` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+        let html = '';
+        if (rStatus) {
+            const sv = rStatus.servidor, co = rStatus.coletor;
+            const semC = co.seg_sem_coleta;
+            const semCCor = semC == null ? '#64748b' : semC < 120 ? '#4ade80' : semC < 300 ? '#fbbf24' : '#f87171';
+            html += _sec('🖥️ SERVIDOR',
+                _row('⏱️','Uptime', sv.uptime_fmt) +
+                _row('🕐','Hora (BR)', sv.hora) +
+                _row('💾','Memória RSS', `${sv.memoria_mb} MB`) +
+                _row('🧠','Heap usado', `${sv.heap_mb} MB`));
+            html += _sec('📡 COLETOR BET365',
+                _row('🔄','Estado', co.coletando ? 'Coletando agora' : 'Aguardando', co.coletando ? '#4ade80' : '#94a3b8') +
+                _row('📊','Total de coletas', co.total_coletas) +
+                _row('✅','Última coleta OK', co.ultima_sucesso || 'Nunca', co.ultima_sucesso ? '#4ade80' : '#f87171') +
+                _row('⏳','Tempo sem coleta', _fmtSeg(semC), semCCor) +
+                (co.ultimo_erro ? _row('❌','Último erro', co.ultimo_erro, '#f87171') : '') +
+                _row('🔔','Alerta disparado', co.alerta_disparado ? 'Sim' : 'Não', co.alerta_disparado ? '#fbbf24' : '#4ade80'));
+        }
+        if (rDb?.success) {
+            const db = rDb.data;
+            html += _sec('🗄️ BANCO DE DADOS',
+                _row('⚡','Eventos ativos', db.eventosAtivos) +
+                _row('📅','Jogos c/ mercados (24h)', db.jogosComMercados24h, db.jogosComMercados24h > 0 ? '#4ade80' : '#f87171') +
+                _row('📦','Jogos c/ mercados (total)', db.jogosComMercados));
+            if (db.porLiga?.length)
+                html += _sec('🏆 JOGOS POR LIGA',
+                    db.porLiga.map(l => _row('', l.liga, `${l.total_jogos} jogos`)).join(''));
+        }
+        el.innerHTML = html || '<div style="color:#f87171;padding:12px">Sem dados disponíveis.</div>';
+    } catch(e) {
+        el.innerHTML = `<div style="color:#f87171;padding:12px">Erro: ${e.message}</div>`;
     }
 }
 
