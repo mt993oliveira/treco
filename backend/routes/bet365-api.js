@@ -1501,8 +1501,9 @@ const CONFIG_DEFAULTS = [
     { chave:'mkt_pill_fs',   valor:'9',        tipo:'number',  grupo:'grafico',  descricao:'🎯 Mercados: tamanho da fonte dos filtros (px)' },
     { chave:'mkt_pill_cor',  valor:'#94a3b8',  tipo:'text',    grupo:'grafico',  descricao:'🎯 Mercados: cor do texto dos filtros (hex)' },
     { chave:'mkt_pill_bold', valor:'false',    tipo:'boolean', grupo:'grafico',  descricao:'🎯 Mercados: negrito nos filtros' },
-    { chave:'mkt_grupo_fs',  valor:'7.5',      tipo:'number',  grupo:'grafico',  descricao:'🎯 Mercados: tamanho da fonte dos nomes de grupo (BTTS, OVER FT…) (px)' },
-    { chave:'mkt_grupo_cor', valor:'#64748b',  tipo:'text',    grupo:'grafico',  descricao:'🎯 Mercados: cor dos nomes de grupo (hex)' },
+    { chave:'mkt_grupo_fs',         valor:'7.5',      tipo:'number', grupo:'grafico', descricao:'🎯 Mercados: tamanho da fonte dos nomes de grupo (BTTS, OVER FT…) (px)' },
+    { chave:'mkt_grupo_cor',        valor:'#94a3b8',  tipo:'text',   grupo:'grafico', descricao:'🎯 Mercados: cor dos nomes de grupo — estado ativo (tem filtro ligado)' },
+    { chave:'mkt_grupo_cor_inativo',valor:'#475569',  tipo:'text',   grupo:'grafico', descricao:'🎯 Mercados: cor dos nomes de grupo — estado inativo (nenhum filtro ligado)' },
     // ── Gráfico — padrões dos botões ──
     { chave:'grafico_altura',      valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico: altura do painel (px; 80–600)' },
     { chave:'grafico_gols_altura', valor:'260',   tipo:'number',  grupo:'grafico', descricao:'Gráfico de Gols: altura do painel (px; 80–600)' },
