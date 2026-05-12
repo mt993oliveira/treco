@@ -324,41 +324,103 @@
 
 <!-- ========== MODAL: PERFIL ========== -->
 <div class="modal-overlay" id="modal-perfil">
-    <div class="modal-box" style="max-width:420px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+    <div class="modal-box" style="max-width:460px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
             <h2 style="font-size:14px;font-weight:700">👤 Meu Perfil</h2>
             <button onclick="fecharModal('modal-perfil')"
                 style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
         </div>
-        <form id="perfil-form" onsubmit="salvarPerfil(event)">
-            <div style="margin-bottom:12px">
-                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">NOME COMPLETO</label>
-                <input id="perfil-nome" type="text" required
-                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
-                           padding:8px 10px;font-size:12px;outline:none"
-                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+        <form id="perfil-form" onsubmit="salvarPerfil(event)" style="max-height:76vh;overflow-y:auto;padding-right:2px">
+
+            <!-- ── Dados pessoais ── -->
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">DADOS PESSOAIS</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                <div style="grid-column:1/-1">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">NOME COMPLETO</label>
+                    <input id="perfil-nome" type="text" required
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div>
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">USUÁRIO (LOGIN)</label>
+                    <input id="perfil-usuario" type="text"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div>
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">E-MAIL</label>
+                    <input id="perfil-email" type="email"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div style="grid-column:1/-1">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">TELEFONE <span style="font-weight:400;color:#334155">(opcional)</span></label>
+                    <input id="perfil-telefone" type="text" placeholder="(00) 00000-0000"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
             </div>
-            <div style="margin-bottom:12px">
-                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">E-MAIL</label>
-                <input id="perfil-email" type="email"
-                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
-                           padding:8px 10px;font-size:12px;outline:none"
-                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+
+            <!-- ── Segurança ── -->
+            <div style="border-top:1px solid #1e293b;padding-top:12px;margin-bottom:10px">
+                <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:8px">SEGURANÇA</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <div>
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">
+                            NOVA SENHA <span style="font-weight:400;color:#334155">(em branco = manter)</span>
+                        </label>
+                        <input id="perfil-senha" type="password" autocomplete="new-password"
+                            style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">CONFIRMAR SENHA</label>
+                        <input id="perfil-senha2" type="password" autocomplete="new-password"
+                            style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    </div>
+                </div>
             </div>
-            <div style="border-top:1px solid #1e293b;padding-top:12px;margin-bottom:12px">
-                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">
-                    NOVA SENHA <span style="font-weight:400;color:#334155">(deixe em branco para manter)</span>
-                </label>
-                <input id="perfil-senha" type="password"
-                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
-                           padding:8px 10px;font-size:12px;outline:none;margin-bottom:8px"
-                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">CONFIRMAR NOVA SENHA</label>
-                <input id="perfil-senha2" type="password"
-                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
-                           padding:8px 10px;font-size:12px;outline:none"
-                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+
+            <!-- ── Administração (admin/master only) ── -->
+            <div id="perfil-admin-section" style="display:none;border-top:1px solid #1e3a5f;padding-top:12px;margin-bottom:10px">
+                <div style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.08em;margin-bottom:8px">🔧 ADMINISTRAÇÃO</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                    <div>
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">INÍCIO DA LICENÇA</label>
+                        <input id="perfil-data-inicio" type="date"
+                            style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">FIM DA LICENÇA</label>
+                        <input id="perfil-data-fim" type="date"
+                            style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:6px">STATUS</label>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <div style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer"
+                                 onclick="var cb=document.getElementById('perfil-ativo');cb.checked=!cb.checked;document.getElementById('perfil-ativo-track').style.background=cb.checked?'#1fcc59':'#334155'">
+                                <input type="checkbox" id="perfil-ativo" style="opacity:0;width:0;height:0;position:absolute">
+                                <span id="perfil-ativo-track" style="position:absolute;top:0;left:0;right:0;bottom:0;border-radius:22px;transition:background .2s;background:#334155;pointer-events:none"></span>
+                            </div>
+                            <span style="font-size:11px;color:#94a3b8" id="perfil-ativo-label">Inativo</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">TIPO DE USUÁRIO</label>
+                        <select id="perfil-tipo"
+                            style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                            <option value="user">User</option>
+                            <option value="administrador">Administrador</option>
+                        </select>
+                    </div>
+                </div>
             </div>
+
             <div id="perfil-msg" style="display:none;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px"></div>
             <div style="display:flex;gap:8px;justify-content:flex-end">
                 <button type="button" onclick="fecharModal('modal-perfil')"
@@ -6725,35 +6787,99 @@ function abrirPerfil() {
     document.getElementById('user-dropdown').style.display = 'none';
     const u = _getUser();
     if (!u) return;
-    document.getElementById('perfil-nome').value  = u.NomeCompleto || '';
-    document.getElementById('perfil-email').value = u.Email || '';
-    document.getElementById('perfil-senha').value  = '';
-    document.getElementById('perfil-senha2').value = '';
-    const msg = document.getElementById('perfil-msg');
-    msg.style.display = 'none';
+
+    const _tipo  = (u.TipoUsuario || '').toLowerCase();
+    const _isMasterUser = (u.Usuario || '').toUpperCase() === 'MASTER';
+    const _isAdmin = _tipo === 'administrador' || _tipo === 'admin';
+    const _isElevated = _tipo === 'master' || _isAdmin;
+
+    // Campos comuns
+    document.getElementById('perfil-nome').value     = u.NomeCompleto || '';
+    document.getElementById('perfil-usuario').value  = u.Usuario || '';
+    document.getElementById('perfil-email').value    = u.Email || '';
+    document.getElementById('perfil-telefone').value = u.Telefone || '';
+    document.getElementById('perfil-senha').value    = '';
+    document.getElementById('perfil-senha2').value   = '';
+
+    // Seção de administração
+    const adminSec = document.getElementById('perfil-admin-section');
+    if (_isElevated) {
+        adminSec.style.display = '';
+
+        // Datas de licença
+        const fmtDate = v => v ? new Date(v).toISOString().slice(0, 10) : '';
+        document.getElementById('perfil-data-inicio').value = fmtDate(u.DataInicioLicenca);
+        document.getElementById('perfil-data-fim').value    = fmtDate(u.DataFimLicenca);
+
+        // Status ativo
+        const ativo = u.Ativo !== undefined ? !!u.Ativo : true;
+        const cb    = document.getElementById('perfil-ativo');
+        cb.checked  = ativo;
+        document.getElementById('perfil-ativo-track').style.background = ativo ? '#1fcc59' : '#334155';
+        document.getElementById('perfil-ativo-label').textContent = ativo ? 'Ativo' : 'Inativo';
+        cb.onchange = () => {
+            document.getElementById('perfil-ativo-track').style.background = cb.checked ? '#1fcc59' : '#334155';
+            document.getElementById('perfil-ativo-label').textContent = cb.checked ? 'Ativo' : 'Inativo';
+        };
+
+        // Tipo — master vê a opção "master", admin não vê
+        const sel = document.getElementById('perfil-tipo');
+        sel.innerHTML = '<option value="user">User</option>' +
+                        '<option value="administrador">Administrador</option>' +
+                        (_isMasterUser ? '<option value="master">Master</option>' : '');
+        sel.value = _tipo || 'user';
+    } else {
+        adminSec.style.display = 'none';
+    }
+
+    document.getElementById('perfil-msg').style.display = 'none';
     document.getElementById('modal-perfil').classList.add('aberto');
 }
 
 async function salvarPerfil(e) {
     e.preventDefault();
-    const u    = _getUser();
+    const u = _getUser();
     if (!u) return;
-    const nome  = document.getElementById('perfil-nome').value.trim();
-    const email = document.getElementById('perfil-email').value.trim();
-    const senha = document.getElementById('perfil-senha').value;
-    const senha2 = document.getElementById('perfil-senha2').value;
-    const msg   = document.getElementById('perfil-msg');
 
-    if (senha && senha !== senha2) {
-        msg.textContent  = 'As senhas não coincidem.';
+    const _tipo      = (u.TipoUsuario || '').toLowerCase();
+    const _isElevated = _tipo === 'master' || _tipo === 'administrador' || _tipo === 'admin';
+
+    const nome     = document.getElementById('perfil-nome').value.trim();
+    const usuario  = document.getElementById('perfil-usuario').value.trim();
+    const email    = document.getElementById('perfil-email').value.trim();
+    const telefone = document.getElementById('perfil-telefone').value.trim();
+    const senha    = document.getElementById('perfil-senha').value;
+    const senha2   = document.getElementById('perfil-senha2').value;
+    const msg      = document.getElementById('perfil-msg');
+
+    const _err = txt => {
+        msg.textContent  = txt;
         msg.style.cssText = 'display:block;background:#3b0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
-        return;
+    };
+    const _ok = txt => {
+        msg.textContent  = txt;
+        msg.style.cssText = 'display:block;background:#14532d;border:1px solid #166534;color:#4ade80;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
+    };
+
+    if (senha && senha !== senha2) { _err('As senhas não coincidem.'); return; }
+    if (senha && senha.length < 6) { _err('A senha deve ter pelo menos 6 caracteres.'); return; }
+
+    const body = { id: u.Id, nomeCompleto: nome, usuario, email, telefone };
+    if (senha) body.senha = senha;
+
+    // Campos de administração
+    if (_isElevated) {
+        const dataInicio = document.getElementById('perfil-data-inicio').value;
+        const dataFim    = document.getElementById('perfil-data-fim').value;
+        const ativo      = document.getElementById('perfil-ativo').checked;
+        const tipo       = document.getElementById('perfil-tipo').value;
+        if (dataInicio) body.dataInicioLicenca = dataInicio;
+        if (dataFim)    body.dataFimLicenca    = dataFim;
+        body.ativo       = ativo;
+        body.tipoUsuario = tipo;
     }
 
     try {
-        const body = { id: u.Id, nomeCompleto: nome, email };
-        if (senha) body.senha = senha;
-
         const r = await fetch('/api/usuarios/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -6762,20 +6888,26 @@ async function salvarPerfil(e) {
         const d = await r.json();
 
         if (d.success) {
+            // Atualiza localStorage com os novos dados
             u.NomeCompleto = nome;
-            u.Email = email;
+            u.Usuario      = usuario || u.Usuario;
+            u.Email        = email;
+            if (telefone !== undefined) u.Telefone = telefone;
+            if (_isElevated) {
+                u.TipoUsuario      = body.tipoUsuario || u.TipoUsuario;
+                u.Ativo            = body.ativo ? 1 : 0;
+                if (body.dataInicioLicenca) u.DataInicioLicenca = body.dataInicioLicenca;
+                if (body.dataFimLicenca)    u.DataFimLicenca    = body.dataFimLicenca;
+            }
             localStorage.setItem('currentUser', JSON.stringify(u));
             _initUserMenu();
-            msg.textContent   = '✅ Perfil atualizado com sucesso!';
-            msg.style.cssText = 'display:block;background:#14532d;border:1px solid #166534;color:#4ade80;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
+            _ok('✅ Perfil atualizado com sucesso!');
             setTimeout(() => fecharModal('modal-perfil'), 1500);
         } else {
-            msg.textContent   = '❌ ' + (d.message || 'Erro ao salvar.');
-            msg.style.cssText = 'display:block;background:#3b0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
+            _err('❌ ' + (d.message || 'Erro ao salvar.'));
         }
     } catch(err) {
-        msg.textContent   = '❌ Erro: ' + err.message;
-        msg.style.cssText = 'display:block;background:#3b0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px';
+        _err('❌ Erro: ' + err.message);
     }
 }
 

@@ -788,7 +788,7 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
         const currentUser = userCheck.recordset[0];
 
         if (id) {
-            // Edição de usuário
+            // Edição de usuário — apenas master pode editar outros; qualquer um pode editar o próprio perfil
             if (currentUser.TipoUsuario !== 'master' && parseInt(id) !== req.body.usuarioId) {
                 return res.json({ success: false, message: 'Acesso não autorizado' });
             }
@@ -797,9 +797,20 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             const dataInicioLicenca = req.body.dataInicioLicenca || null;
             const dataFimLicenca = req.body.dataFimLicenca || null;
 
-            // Para atualizações de perfil, os campos Usuario e TipoUsuario só devem ser atualizados se fornecidos explicitamente
-            // Obter o tipo de usuário atual para usar como fallback, caso não seja fornecido
+            // Obter tipo atual do usuário alvo para usar como fallback
             const currentTipoUsuario = (await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${id}`).recordset[0]?.TipoUsuario;
+
+            // ── Segurança: prevenção de escalada de privilégio ──
+            // Apenas master pode definir tipo = 'master'
+            if (tipoUsuario && tipoUsuario === 'master' && currentUser.TipoUsuario !== 'master') {
+                return res.json({ success: false, message: 'Apenas o usuário Master pode definir tipo master.' });
+            }
+            // Apenas admin ou master podem alterar o tipo de usuário
+            const _reqTipo = (currentUser.TipoUsuario || '').toLowerCase();
+            if (tipoUsuario && tipoUsuario !== currentTipoUsuario &&
+                _reqTipo !== 'master' && _reqTipo !== 'administrador' && _reqTipo !== 'admin') {
+                return res.json({ success: false, message: 'Sem permissão para alterar o tipo de usuário.' });
+            }
 
             if (senha) {
                 // Criptografar senha com bcrypt
