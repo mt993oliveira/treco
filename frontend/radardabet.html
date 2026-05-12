@@ -1312,8 +1312,8 @@
             <button class="acao-btn" id="btn-exibir-clubes" onclick="S.showNomes=!S.showNomes;document.getElementById('btn-exibir-clubes').classList.toggle('ativo',S.showNomes);renderTabela()" title="Mostrar nomes dos clubes na grade">🏷️ Exibir Clubes</button>
             <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds Pagas</button>
             <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
-            <button class="acao-btn ativo" id="btn-mosaico-pct" onclick="S._mosaicoShowPct=!S._mosaicoShowPct;document.getElementById('btn-mosaico-pct').classList.toggle('ativo',S._mosaicoShowPct);renderTabela()" title="Mostrar/ocultar coluna % de acerto por linha">% Linha</button>
-            <button class="acao-btn ativo" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
+            <button class="acao-btn" id="btn-mosaico-pct" onclick="S._mosaicoShowPct=!S._mosaicoShowPct;document.getElementById('btn-mosaico-pct').classList.toggle('ativo',S._mosaicoShowPct);renderTabela()" title="Mostrar/ocultar coluna % de acerto por linha">% Linha</button>
+            <button class="acao-btn" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
         </div>
         <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
@@ -1904,16 +1904,20 @@ async function carregarConfigLigas() {
         if (cfg.default_so_value_bets)   S.fa.soValueBets = cfg.default_so_value_bets === 'true';
 
         // Botões padrão da grade
-        if (cfg.default_proximos_jogos !== undefined) S.showProximos = cfg.default_proximos_jogos === 'true';
-        if (cfg.default_exibir_clubes  !== undefined) S.showNomes    = cfg.default_exibir_clubes  === 'true';
-        if (cfg.default_exibir_odds    !== undefined) S.showOdds     = cfg.default_exibir_odds     === 'true';
-        if (cfg.default_exibir_ht      !== undefined) S.showHT       = cfg.default_exibir_ht       === 'true';
+        if (cfg.default_proximos_jogos !== undefined) S.showProximos      = cfg.default_proximos_jogos === 'true';
+        if (cfg.default_exibir_clubes  !== undefined) S.showNomes         = cfg.default_exibir_clubes  === 'true';
+        if (cfg.default_exibir_odds    !== undefined) S.showOdds          = cfg.default_exibir_odds     === 'true';
+        if (cfg.default_exibir_ht      !== undefined) S.showHT            = cfg.default_exibir_ht       === 'true';
+        if (cfg.default_mosaico_pct    !== undefined) S._mosaicoShowPct   = cfg.default_mosaico_pct    === 'true';
+        if (cfg.default_mosaico_gols   !== undefined) S._mosaicoShowGols  = cfg.default_mosaico_gols   === 'true';
         // Sincroniza visual dos botões do header
         const _sb = id => document.getElementById(id);
         if (_sb('btn-proximos-jogos'))  _sb('btn-proximos-jogos').classList.toggle('ativo',  S.showProximos);
         if (_sb('btn-exibir-clubes'))   _sb('btn-exibir-clubes').classList.toggle('ativo',   S.showNomes);
         if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
         if (_sb('btn-exibir-ht'))       _sb('btn-exibir-ht').classList.toggle('ativo',       S.showHT);
+        if (_sb('btn-mosaico-pct'))     _sb('btn-mosaico-pct').classList.toggle('ativo',     S._mosaicoShowPct);
+        if (_sb('btn-mosaico-gols'))    _sb('btn-mosaico-gols').classList.toggle('ativo',    S._mosaicoShowGols);
         // Legendas: config do sistema define o padrão; localStorage (preferência do usuário) sobrescreve
         // showLegendas: true = suprimido (ativo), false = visível (padrão)
         if (cfg.default_legendas !== undefined) S.showLegendas = cfg.default_legendas === 'true';
@@ -2259,8 +2263,8 @@ const S = {
     showProximos:  false,   // exibe próximos jogos agendados na grade
     showHT:        true,    // exibe placar do intervalo (HT) nas células do grid
     showLegendas:  false,   // false = legendas visíveis; true = legendas suprimidas (botão marcado)
-    _mosaicoShowPct:  true,   // exibe coluna % acerto por linha
-    _mosaicoShowGols: true,   // exibe coluna ⚽ gols por linha
+    _mosaicoShowPct:  false,   // exibe coluna % acerto por linha (padrão vem da config)
+    _mosaicoShowGols: false,   // exibe coluna ⚽ gols por linha (padrão vem da config)
     selCols:       new Set(),  // colunas selecionadas (índices)
     selRows:       new Set(),  // linhas selecionadas (índices de hora)
     selScore:      null,       // score FT selecionado para destaque
@@ -7013,6 +7017,8 @@ const _CFG_LABELS = {
     default_exibir_clubes:      '🏷️ Exibir Clubes ativado por padrão',
     default_exibir_odds:        '💹 Exibir Odds Pagas ativado por padrão',
     default_exibir_ht:          '🔍 Exibir HT ativado por padrão',
+    default_mosaico_pct:        '% Linha ativado por padrão no Mosaico',
+    default_mosaico_gols:       '⚽ Linha ativado por padrão no Mosaico',
     auto_refresh_segundos:      'Atualização automática da grade (segundos; 0 = desativar)',
     proximos_antes_resultados:  'Coletar próximos jogos ANTES dos resultados',
     liga_world_cup:             'Copa do Mundo',

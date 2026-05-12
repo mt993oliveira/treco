@@ -1484,6 +1484,8 @@ const CONFIG_DEFAULTS = [
     { chave:'default_exibir_odds',          valor:'false', tipo:'boolean', grupo:'frontend', descricao:'💹 Exibir Odds ativado por padrão na grade' },
     { chave:'default_proximos_jogos',       valor:'false', tipo:'boolean', grupo:'frontend', descricao:'🕐 Próximos Jogos ativado por padrão na grade' },
     { chave:'default_exibir_ht',            valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'🔍 Exibir HT ativado por padrão na grade' },
+    { chave:'default_mosaico_pct',          valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'% Linha ativado por padrão no Mosaico' },
+    { chave:'default_mosaico_gols',         valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'⚽ Linha ativado por padrão no Mosaico' },
     { chave:'default_so_value_bets',        valor:'false', tipo:'boolean', grupo:'frontend', descricao:'Apenas value bets por padrão (Análise)' },
     { chave:'default_legendas',             valor:'false', tipo:'boolean', grupo:'frontend', descricao:'💬 Legendas (suprimir tooltips) ativado por padrão no gráfico' },
     { chave:'analise_liberar_user',         valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Liberar "Análise & Sugestões" para usuários tipo User' },
