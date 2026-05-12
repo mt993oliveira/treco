@@ -1366,6 +1366,9 @@
         </div>
     </div>
 
+    <!-- Painel: Linhas Selecionadas -->
+    <div id="sel-linhas-panel" style="display:none;margin-bottom:8px;background:#080e18;border:1px solid #1e3a5f;border-radius:8px;overflow:hidden"></div>
+
     <!-- Grid principal: 1 linha = 1 hora, 20 colunas = 20 jogos -->
     <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
         <div class="tabela-scroll">
@@ -4485,6 +4488,12 @@ function renderTabela() {
     // Mais recente primeiro (topo da tabela)
     const gsDesc = [...gs].reverse();
 
+    // Acumuladores para o painel "LINHAS SELECIONADAS"
+    const selHits   = Array(N).fill(0);
+    const selTotal  = Array(N).fill(0);
+    const selGols   = Array(N).fill(0);
+    const selGolsCt = Array(N).fill(0);
+
     gsDesc.forEach(grupo => {
         const hora    = grupo.hora;
         // Exibe UTC diretamente — coletor salva horário Bet365 como UTC
@@ -4708,6 +4717,24 @@ function renderTabela() {
         const rowIdx = gsDesc.indexOf(grupo);
         const rowSelCls = S.selRows.has(rowIdx) ? ' row-sel' : '';
         const tdLSelCls = S.selRows.has(rowIdx) ? ' row-sel-head' : '';
+
+        // Acumula dados das linhas selecionadas para o painel
+        if (S.selRows.has(rowIdx)) {
+            slotMap.forEach((j, ci) => {
+                if (!j) return;
+                const _isOculto   = j.placar_oculto === 1 || j.placar_oculto === true;
+                const _isEstimado = j.resultado_estimado === 1 || j.resultado_estimado === true;
+                if (!_isEstimado && !_isOculto) {
+                    selHits[ci]  += (fi && checa(j, fi.id)) ? 1 : 0;
+                    selTotal[ci] += 1;
+                }
+                const _gSel = (j.gol_casa != null && j.gol_fora != null)
+                    ? j.gol_casa + j.gol_fora
+                    : j.total_gols != null ? j.total_gols : null;
+                if (_gSel != null && !_isEstimado) { selGols[ci] += _gSel; selGolsCt[ci]++; }
+            });
+        }
+
         tr.setAttribute('data-row-idx', rowIdx);
         tr.className = rowSelCls;
         tr.innerHTML = `
@@ -4742,6 +4769,58 @@ function renderTabela() {
 
     // Delegação de clique na grid — nomes de clube e placar
     tbody.onclick = handleGridClick;
+
+    // ── Painel LINHAS SELECIONADAS ───────────────────────────────
+    const _panelSel = document.getElementById('sel-linhas-panel');
+    if (_panelSel) {
+        if (S.selRows.size === 0) {
+            _panelSel.style.display = 'none';
+            _panelSel.innerHTML = '';
+        } else {
+            const _selTotalJogos = selTotal.reduce((a, b) => a + b, 0);
+            const _selTotalGols  = selGols.reduce((a, b) => a + b, 0);
+            const _selTotalHits  = selHits.reduce((a, b) => a + b, 0);
+            const _pctGeral = _selTotalJogos ? Math.round(_selTotalHits / _selTotalJogos * 100) : null;
+            const _pctGeralCor = _pctGeral === null ? '#64748b'
+                : _pctGeral >= 65 ? '#4ade80' : _pctGeral >= 45 ? '#fbbf24' : '#f87171';
+
+            const _footSelPct = Array.from({length: N}, (_, ci) => {
+                if (!selTotal[ci]) return `<td style="color:#1e293b;font-size:10px;text-align:center;padding:2px 1px">–</td>`;
+                const p = Math.round(selHits[ci] / selTotal[ci] * 100);
+                const c = p >= 65 ? '#4ade80' : p >= 45 ? '#fbbf24' : '#f87171';
+                return `<td style="color:${c};font-weight:800;font-size:10px;text-align:center;padding:2px 1px">${p}%</td>`;
+            }).join('');
+
+            const _footSelGols = Array.from({length: N}, (_, ci) => {
+                if (!selGolsCt[ci]) return `<td style="color:#1e293b;font-size:9px;text-align:center;padding:2px 1px">–</td>`;
+                const avg = (selGols[ci] / selGolsCt[ci]).toFixed(1);
+                const c = parseFloat(avg) >= 3.5 ? '#4ade80' : parseFloat(avg) >= 2.5 ? '#fbbf24' : '#94a3b8';
+                return `<td style="color:${c};font-weight:700;font-size:9px;text-align:center;padding:2px 1px" title="${selGolsCt[ci]}j · média ${avg}/j">${selGols[ci]}</td>`;
+            }).join('');
+
+            _panelSel.style.display = 'block';
+            _panelSel.innerHTML = `
+                <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+                    <tr style="background:#0a1628;border-bottom:1px solid #1e3a5f">
+                        <td colspan="${N+1}" style="padding:4px 8px;color:#60a5fa;font-weight:700;font-size:11px">
+                            LINHAS SELECIONADAS
+                            <span style="color:#475569;font-weight:400;margin-left:8px">${S.selRows.size} linha${S.selRows.size>1?'s':''} · ${_selTotalJogos} jogos</span>
+                            ${_pctGeral !== null && fi ? `<span style="color:${_pctGeralCor};font-weight:800;margin-left:8px">${_pctGeral}% ${fi.label}</span>` : ''}
+                            ${_selTotalGols > 0 ? `<span style="color:#fbbf24;font-weight:700;margin-left:8px">⚽ ${_selTotalGols}</span>` : ''}
+                        </td>
+                    </tr>
+                    ${fi ? `<tr style="background:#080e18">
+                        <td style="position:sticky;left:0;background:#080e18;font-size:6px;color:#4ade80;font-weight:700;padding:2px 4px;white-space:nowrap;min-width:${S._mosaicoHoraLarg}px;z-index:5">% / POS</td>
+                        ${_footSelPct}
+                    </tr>` : ''}
+                    <tr style="background:#080e18">
+                        <td style="position:sticky;left:0;background:#080e18;font-size:6px;color:#fbbf24;font-weight:700;padding:2px 4px;white-space:nowrap;min-width:${S._mosaicoHoraLarg}px;z-index:5">⚽ GOLS</td>
+                        ${_footSelGols}
+                    </tr>
+                </table>
+            `;
+        }
+    }
 
     // Aplicar highlights de score/clube
     _aplicarHighlightGrid();
