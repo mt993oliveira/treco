@@ -7844,7 +7844,7 @@ let _haltPagina = 1;
 
 async function abrirHistoricoUsuarios() {
     document.getElementById('user-dropdown').style.display = 'none';
-    document.getElementById('modal-historico-usuarios').style.display = 'flex';
+    document.getElementById('modal-historico-usuarios').classList.add('aberto');
     await _carregarHistoricoAlteracoes(1);
 }
 
