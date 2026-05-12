@@ -788,8 +788,11 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
         const currentUser = userCheck.recordset[0];
 
         if (id) {
-            // Edição de usuário — apenas master pode editar outros; qualquer um pode editar o próprio perfil
-            if (currentUser.TipoUsuario !== 'master' && parseInt(id) !== req.body.usuarioId) {
+            const _reqTipoNorm = (currentUser.TipoUsuario || '').toLowerCase();
+            const _reqIsElevated = _reqTipoNorm === 'master' || _reqTipoNorm === 'administrador' || _reqTipoNorm === 'admin';
+
+            // Master e admin podem editar outros usuários; user só pode editar a si mesmo
+            if (!_reqIsElevated && parseInt(id) !== req.body.usuarioId) {
                 return res.json({ success: false, message: 'Acesso não autorizado' });
             }
 
@@ -801,8 +804,12 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             const currentTipoUsuario = (await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${id}`).recordset[0]?.TipoUsuario;
 
             // ── Segurança: prevenção de escalada de privilégio ──
+            // Admin não pode editar o usuário Master
+            if (_reqTipoNorm !== 'master' && (currentTipoUsuario || '').toLowerCase() === 'master') {
+                return res.json({ success: false, message: 'Sem permissão para editar o usuário Master.' });
+            }
             // Apenas master pode definir tipo = 'master'
-            if (tipoUsuario && tipoUsuario === 'master' && currentUser.TipoUsuario !== 'master') {
+            if (tipoUsuario && tipoUsuario === 'master' && _reqTipoNorm !== 'master') {
                 return res.json({ success: false, message: 'Apenas o usuário Master pode definir tipo master.' });
             }
             // Apenas admin ou master podem alterar o tipo de usuário
