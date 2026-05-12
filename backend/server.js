@@ -1669,41 +1669,6 @@ server.listen(PORT, () => {
             _coletorTimer = setTimeout(_cicloColeta, espera * 1000);
         }
 
-        // Endpoint de status do coletor — master only via session
-        app.get('/api/status-coletor', (req, res) => {
-            const uptime  = process.uptime();
-            const mem     = process.memoryUsage();
-            const agora   = Date.now();
-            const semColeta = coletor365.ultimaColetaSucesso
-                ? Math.round((agora - coletor365.ultimaColetaSucesso) / 1000)
-                : null;
-            res.json({
-                servidor: {
-                    uptime_seg: Math.round(uptime),
-                    uptime_fmt: _fmtUptime(uptime),
-                    hora:       new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
-                    memoria_mb: Math.round(mem.rss / 1024 / 1024),
-                    heap_mb:    Math.round(mem.heapUsed / 1024 / 1024),
-                },
-                coletor: {
-                    coletando:         coletor365.coletando,
-                    total_coletas:     coletor365._coletas,
-                    ultima_sucesso:    coletor365.ultimaColetaSucesso
-                        ? new Date(coletor365.ultimaColetaSucesso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-                        : null,
-                    seg_sem_coleta:    semColeta,
-                    ultimo_erro:       coletor365.ultimoErro || null,
-                    alerta_disparado:  _alertaEnviado,
-                }
-            });
-        });
-
-        function _fmtUptime(s) {
-            const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600),
-                  m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
-            return d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m ${sec}s` : `${m}m ${sec}s`;
-        }
-
         console.log(`\n📡 Bet365 - Agendador iniciado (intervalo dinâmico via config DB)\n`);
         _cicloColeta();
 
