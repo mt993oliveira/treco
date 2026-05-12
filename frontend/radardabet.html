@@ -1616,10 +1616,20 @@
 // ============================================================
 (function() {
     const u = (() => { try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e){ return null; } })();
-    const isMaster = u && u.TipoUsuario === 'master';
+    const _tipo = (u?.TipoUsuario || '').toLowerCase();
+    const isMaster    = _tipo === 'master';
+    const isElevated  = isMaster || _tipo === 'admin' || _tipo === 'administrador';
     if (!isMaster) {
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.master-only').forEach(el => { el.style.display = 'none'; });
+        });
+    }
+    // Oculta aba Análise por padrão para usuários tipo User;
+    // carregarConfigLigas() revela se analise_liberar_user = true
+    if (!isElevated) {
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('view-analise');
+            if (btn) btn.style.display = 'none';
         });
     }
 })();
@@ -1868,6 +1878,20 @@ async function carregarConfigLigas() {
         S._manutencaoAtiva    = cfg.manutencao_ativa    === 'true';
         S._manutencaoMensagem = cfg.manutencao_mensagem || 'Estamos realizando melhorias no sistema. Voltamos em breve!';
         S._manutencaoPrevisao = cfg.manutencao_previsao || '';
+
+        // Controla visibilidade da aba "📊 Análise & Sugestões"
+        {
+            const _u = _getUser();
+            const _tipo = (_u?.TipoUsuario || '').toLowerCase();
+            const _isElevated = _tipo === 'master' || _tipo === 'admin' || _tipo === 'administrador';
+            const _liberarUser = cfg.analise_liberar_user === 'true';
+            const _btnA = document.getElementById('view-analise');
+            if (_btnA) {
+                const _show = _isElevated || _liberarUser;
+                _btnA.style.display = _show ? '' : 'none';
+                if (!_show && S.view === 'analise') setView('historico');
+            }
+        }
 
         // Aplica visibilidade das seções
         S._cfgSecoes = cfg;
@@ -6803,6 +6827,7 @@ const _CFG_LABELS = {
     default_janela_recente:     'Janela recente padrão em jogos (Análise)',
     default_so_value_bets:      'Apenas value bets por padrão (Análise)',
     default_legendas:           '💬 Legendas (suprimir tooltips) ativado por padrão no gráfico',
+    analise_liberar_user:       '📊 Liberar "Análise & Sugestões" para usuários tipo User',
     // Gráfico
     grafico_altura:      '📐 Altura do painel do gráfico (px)',
     grafico_pct:         '% Exibir valor % no final das linhas',

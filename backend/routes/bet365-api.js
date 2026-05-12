@@ -1486,6 +1486,7 @@ const CONFIG_DEFAULTS = [
     { chave:'default_exibir_ht',            valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'🔍 Exibir HT ativado por padrão na grade' },
     { chave:'default_so_value_bets',        valor:'false', tipo:'boolean', grupo:'frontend', descricao:'Apenas value bets por padrão (Análise)' },
     { chave:'default_legendas',             valor:'false', tipo:'boolean', grupo:'frontend', descricao:'💬 Legendas (suprimir tooltips) ativado por padrão no gráfico' },
+    { chave:'analise_liberar_user',         valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Liberar "Análise & Sugestões" para usuários tipo User' },
     // ── Mosaico — colunas esquerda ──
     { chave:'mosaico_hora_largura',         valor:'22',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna HORA (px)' },
     { chave:'mosaico_hora_fonte_hh',        valor:'8',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte do horário HH:00 (px)' },
