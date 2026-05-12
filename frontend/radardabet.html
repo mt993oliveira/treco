@@ -725,7 +725,6 @@
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                         <option value="user">Usuário</option>
                         <option value="admin">Administrador</option>
-                        <option value="master">Master</option>
                     </select>
                 </div>
                 <div>
@@ -7485,6 +7484,18 @@ let _todosUsuarios = [];
 async function abrirGerenciarUsuarios() {
     document.getElementById('user-dropdown').style.display = 'none';
     document.getElementById('usr-busca').value = '';
+
+    // Adiciona opção Master no select de tipo apenas para o login MASTER
+    const _sel = document.getElementById('usr-tipo');
+    if (_sel && !_sel.querySelector('option[value="master"]')) {
+        const _u = _getUser();
+        if ((_u?.Usuario || '').toUpperCase() === 'MASTER') {
+            const _opt = document.createElement('option');
+            _opt.value = 'master'; _opt.textContent = 'Master';
+            _sel.appendChild(_opt);
+        }
+    }
+
     document.getElementById('modal-usuarios').classList.add('aberto');
     await _carregarUsuarios();
 }
