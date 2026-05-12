@@ -800,8 +800,12 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             const dataInicioLicenca = req.body.dataInicioLicenca || null;
             const dataFimLicenca = req.body.dataFimLicenca || null;
 
-            // Obter tipo atual do usuário alvo para usar como fallback
-            const currentTipoUsuario = (await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${id}`).recordset[0]?.TipoUsuario;
+            // Obter estado atual do usuário alvo (para fallback e para gerar diff no histórico)
+            const prevRow = (await sql.query`
+                SELECT NomeCompleto, Usuario, Email, Telefone, TipoUsuario, Ativo, DataInicioLicenca, DataFimLicenca
+                FROM Usuarios WHERE Id = ${id}
+            `).recordset[0] || {};
+            const currentTipoUsuario = prevRow.TipoUsuario;
 
             // ── Segurança: prevenção de escalada de privilégio ──
             // Admin não pode editar o usuário Master
@@ -908,13 +912,45 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 await sql.query`UPDATE Usuarios SET Telefone = ${telefoneVal} WHERE Id = ${id}`;
             }
 
-            // Registrar no histórico de usuários
-            const targetLogin = usuario || (await sql.query`SELECT Usuario FROM Usuarios WHERE Id = ${id}`).recordset[0]?.Usuario || 'usuário';
-            const reqLogin = currentUser.Usuario || `ID:${req.body.usuarioId}`;
-            await sql.query`
-                INSERT INTO HistoricoUsuarios (UsuarioId, DataAlteracao, Acao)
-                VALUES (${req.body.usuarioId}, GETDATE(), ${'[' + reqLogin + '] alterou usuário "' + targetLogin + '"'})
-            `;
+            // Registrar no histórico — diff dos campos alterados
+            {
+                const reqLogin    = currentUser.Usuario || `ID:${req.body.usuarioId}`;
+                const targetLogin = prevRow.Usuario || usuario || `ID:${id}`;
+                const _fmt = v => (v == null || v === '') ? '(vazio)' : String(v);
+                const _fmtD = v => v ? new Date(v).toLocaleDateString('pt-BR') : '(vazio)';
+                const diffs = [];
+                if (nomeCompleto !== undefined && nomeCompleto !== prevRow.NomeCompleto)
+                    diffs.push(`Nome: "${_fmt(prevRow.NomeCompleto)}" → "${_fmt(nomeCompleto)}"`);
+                if (usuario && usuario !== prevRow.Usuario)
+                    diffs.push(`Login: "${_fmt(prevRow.Usuario)}" → "${_fmt(usuario)}"`);
+                if (email !== undefined && email !== prevRow.Email)
+                    diffs.push(`Email: "${_fmt(prevRow.Email)}" → "${_fmt(email)}"`);
+                if (telefoneVal !== undefined && (telefoneVal || null) !== (prevRow.Telefone || null))
+                    diffs.push(`Telefone: "${_fmt(prevRow.Telefone)}" → "${_fmt(telefoneVal)}"`);
+                const novoTipo = tipoUsuario || currentTipoUsuario;
+                if (novoTipo && novoTipo !== prevRow.TipoUsuario)
+                    diffs.push(`Tipo: "${_fmt(prevRow.TipoUsuario)}" → "${_fmt(novoTipo)}"`);
+                if (ativoVal !== null && ativoVal !== (prevRow.Ativo ? 1 : 0))
+                    diffs.push(`Ativo: ${prevRow.Ativo ? 'sim' : 'não'} → ${ativoVal ? 'sim' : 'não'}`);
+                if (req.body.dataInicioLicenca !== undefined) {
+                    const prevDi = _fmtD(prevRow.DataInicioLicenca);
+                    const newDi  = req.body.dataInicioLicenca ? _fmtD(new Date(req.body.dataInicioLicenca)) : '(vazio)';
+                    if (prevDi !== newDi) diffs.push(`Início licença: ${prevDi} → ${newDi}`);
+                }
+                if (req.body.dataFimLicenca !== undefined) {
+                    const prevDf = _fmtD(prevRow.DataFimLicenca);
+                    const newDf  = req.body.dataFimLicenca ? _fmtD(new Date(req.body.dataFimLicenca)) : '(vazio)';
+                    if (prevDf !== newDf) diffs.push(`Fim licença: ${prevDf} → ${newDf}`);
+                }
+                if (senha) diffs.push('Senha: alterada');
+                const acaoMsg = diffs.length
+                    ? `[${reqLogin}] alterou "${targetLogin}": ${diffs.join(' | ')}`
+                    : `[${reqLogin}] salvou "${targetLogin}" (sem alterações detectadas)`;
+                await sql.query`
+                    INSERT INTO HistoricoUsuarios (UsuarioId, DataAlteracao, Acao)
+                    VALUES (${req.body.usuarioId}, GETDATE(), ${acaoMsg})
+                `;
+            }
         } else {
             // Novo usuário - apenas masters podem criar
             if (currentUser.TipoUsuario !== 'master') {
