@@ -994,6 +994,7 @@
     <button class="view-btn ativo" id="view-historico" onclick="setView('historico')">📋 Tabela Histórica</button>
     <button class="view-btn" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
+    <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
 </div>
 
 <!-- ========== CONTEÚDO PRINCIPAL ========== -->
@@ -2548,7 +2549,8 @@ function setView(v) {
     document.getElementById('view-analise-content').style.display      = v === 'analise'      ? '' : 'none';
     document.getElementById('view-historico-content').style.display     = v === 'historico'    ? '' : 'none';
     document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
-    ['analise','historico','clubes'].forEach(id => {
+    document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
+    ['analise','historico','clubes','diagnostico'].forEach(id => {
         const el = document.getElementById('view-' + id);
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
@@ -8020,7 +8022,7 @@ async function abrirDiagnostico() {
              </div>`;
         const _fmtSeg = s => s == null ? '—' : s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m ${s%60}s` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
         let html = '';
-        if (rStatus) {
+        if (rStatus?.servidor && rStatus?.coletor) {
             const sv = rStatus.servidor, co = rStatus.coletor;
             const semC = co.seg_sem_coleta;
             const semCCor = semC == null ? '#64748b' : semC < 120 ? '#4ade80' : semC < 300 ? '#fbbf24' : '#f87171';
