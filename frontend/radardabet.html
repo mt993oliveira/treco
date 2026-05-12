@@ -3729,6 +3729,7 @@ function renderGrafico() {
             data: { labels, datasets },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: false,
+                clip: 8,
                 interaction: { intersect: false, mode: 'index' },
                 plugins: {
                     legend: { display: false },
@@ -3761,7 +3762,7 @@ function renderGrafico() {
                         pan:  { enabled:true, modifierKey:'shift', mode:'x' }
                     }
                 },
-                layout: { padding: { top: 16, bottom: 4 } },
+                layout: { padding: { top: 18, bottom: 10 } },
                 scales: {
                     x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
                     y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
