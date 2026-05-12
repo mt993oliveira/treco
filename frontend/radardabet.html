@@ -2239,7 +2239,7 @@ function checa(j, fid) {
         case 'ht-1-1': return htOk && ch === 1 && fh === 1;
         case 'ht-2-0': return htOk && ch === 2 && fh === 0;
         case 'ht-0-2': return htOk && ch === 0 && fh === 2;
-        case 'ht-out': return htOk && !((ch===0&&fh===0)||(ch===1&&fh===0)||(ch===0&&fh===1)||(ch===1&&fh===1)||(ch===2&&fh===0)||(ch===0&&fh===2));
+        case 'ht-out': return j.ht_outro === true;
 
         // ── HT resultado ──
         case 'ht-casa':   return rht === 'CASA';
