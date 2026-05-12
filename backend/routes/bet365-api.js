@@ -1578,7 +1578,10 @@ const CONFIG_DEFAULTS = [
     { chave:'grid_selRowBg',  valor:'#1e1b4b',  tipo:'color',  grupo:'grid', descricao:'🟣 Linha selecionada: fundo' },
     { chave:'grid_selRowTxt', valor:'#a78bfa',  tipo:'color',  grupo:'grid', descricao:'🟣 Linha selecionada: texto' },
     { chave:'grid_selRowBrd', valor:'#a78bfa',  tipo:'color',  grupo:'grid', descricao:'🟣 Linha selecionada: borda' },
-    { chave:'grid_canetaCor', valor:'#f59e0b',  tipo:'color',  grupo:'grid', descricao:'✏️ Caneta: cor padrão' },
+    { chave:'grid_canetaCor',       valor:'#f59e0b',  tipo:'color', grupo:'grid', descricao:'✏️ Caneta: cor padrão' },
+    { chave:'grid_filtroInativoBg', valor:'#1fcc59',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado inativo: cor base' },
+    { chave:'grid_filtroAtivoBg',   valor:'#1fcc59',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado ativo: cor de fundo' },
+    { chave:'grid_filtroAtivoTxt',  valor:'#ffffff',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado ativo: cor do texto' },
 ];
 
 async function _ensureConfigTable(pool) {

@@ -41,9 +41,10 @@
         .secao-btn:hover:not(.ativo) { background: #334155; color: #e2e8f0; }
 
         .filtro-btn { cursor: pointer; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700;
-            background: #1e293b; color: #64748b; border: 1px solid #334155; transition: all .15s; }
-        .filtro-btn.ativo { background: #1fcc59; color: #000; border-color: #1fcc59; }
-        .filtro-btn:hover:not(.ativo) { background: #334155; color: #e2e8f0; }
+            background: rgba(31,204,89,.14); color: #4ade80; border: 1px solid rgba(31,204,89,.28); transition: all .15s; }
+        .filtro-btn.ativo { background: rgba(31,204,89,.9); color: #fff; border-color: #1fcc59;
+            box-shadow: 0 1px 10px rgba(31,204,89,.4); text-shadow: 0 0 8px rgba(31,204,89,.4); }
+        .filtro-btn:hover:not(.ativo) { background: rgba(31,204,89,.25); color: #86efac; border-color: rgba(31,204,89,.45); }
 
 .acao-btn { cursor: pointer; padding: 4px 13px; border-radius: 5px; font-size: 11px; font-weight: 700;
             border: 1px solid #334155; background: #1e293b; color: #e2e8f0; transition: all .15s; }
@@ -1971,7 +1972,8 @@ async function carregarConfigLigas() {
         // Padrões do grid/mosaico — cores e fontes (usados como base; usuário pode sobrescrever em ⚙️ Config)
         { const _gridKeys = ['verdeBg','verdeTxt','vermBg','vermTxt','futuroBg','futuroTxt','futuroBrd',
               'oddFav','oddMed','oddAzarao','selColBg','selColTxt','selColBrd',
-              'selRowBg','selRowTxt','selRowBrd','clubeTxt','ftTxt','htTxt','canetaCor',
+              'selRowBg','selRowTxt','selRowBrd','filtroInativoBg','filtroAtivoBg','filtroAtivoTxt',
+              'clubeTxt','ftTxt','htTxt','canetaCor',
               'clubeFs','ftFs','htFs','oddFs'];
           S._gridCoresSistema = {};
           _gridKeys.forEach(k => {
@@ -2199,6 +2201,7 @@ const GRID_CORES_PADRAO = {
     htTxt:      '#64748b',
     selColBg:   '#1e3a5f', selColTxt: '#60a5fa', selColBrd: '#3b82f6',
     selRowBg:   '#1e1b4b', selRowTxt: '#a78bfa', selRowBrd: '#a78bfa',
+    filtroInativoBg: '#1fcc59', filtroAtivoBg: '#1fcc59', filtroAtivoTxt: '#ffffff',
     canetaCor:  '#f59e0b',
     // tamanhos de fonte do mosaico (px)
     clubeFs: 7, ftFs: 10, htFs: 10, oddFs: 6,
@@ -2223,6 +2226,9 @@ function aplicarCoresGrid(c) {
         `.c-verde  { background: ${c.verdeBg}  !important; color: ${c.verdeTxt}  !important; }\n` +
         `.c-verm   { background: ${c.vermBg}   !important; color: ${c.vermTxt}   !important; }\n` +
         `.c-futuro { background: ${c.futuroBg} !important; color: ${c.futuroTxt} !important; border: 1px dashed ${c.futuroBrd} !important; }\n` +
+        `.filtro-btn { background: ${c.filtroInativoBg}24 !important; color: ${c.filtroInativoBg} !important; border: 1px solid ${c.filtroInativoBg}48 !important; }\n` +
+        `.filtro-btn.ativo { background: ${c.filtroAtivoBg}e6 !important; color: ${c.filtroAtivoTxt} !important; border-color: ${c.filtroAtivoBg} !important; box-shadow: 0 1px 10px ${c.filtroAtivoBg}66 !important; }\n` +
+        `.filtro-btn:hover:not(.ativo) { background: ${c.filtroInativoBg}3d !important; border-color: ${c.filtroInativoBg}70 !important; }\n` +
         `.tabela-hist th.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; cursor: pointer; }\n` +
         `.tabela-hist td.col-sel { background: ${c.selColBg}55 !important; outline: 2px solid ${c.selColBrd} !important; }\n` +
         `.tabela-hist tr.row-sel td { background: ${c.selRowBg}55 !important; outline: 2px solid ${c.selRowBrd} !important; }\n` +
@@ -7476,6 +7482,10 @@ async function _loadConfigSistema() {
                   _inp('selColBg','Fundo') + _inp('selColTxt','Texto') + _inp('selColBrd','Borda')) +
               _grp('🟣 Linha selecionada (clique no horário)',
                   _inp('selRowBg','Fundo') + _inp('selRowTxt','Texto') + _inp('selRowBrd','Borda')) +
+              _grp('🎯 Botões de Mercado (inativo)',
+                  _inp('filtroInativoBg','Cor base')) +
+              _grp('🎯 Botões de Mercado (ativo/selecionado)',
+                  _inp('filtroAtivoBg','Fundo') + _inp('filtroAtivoTxt','Texto')) +
               _grp('✏️ Caneta', _inp('canetaCor','Cor padrão'));
         }
 
