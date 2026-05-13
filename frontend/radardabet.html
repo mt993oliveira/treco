@@ -2336,8 +2336,9 @@ const S = {
     showLegendas:  false,   // false = legendas visíveis; true = legendas suprimidas (botão marcado)
     _mosaicoShowPct:  false,   // exibe coluna % acerto por linha (padrão vem da config)
     _mosaicoShowGols: false,   // exibe coluna ⚽ gols por linha (padrão vem da config)
-    selCols:       new Set(),  // colunas selecionadas (índices)
-    selRows:       new Set(),  // linhas selecionadas (índices de hora)
+    selCols:       new Set(),  // colunas selecionadas (índices) — aplica cor
+    selRows:       new Set(),  // linhas com destaque de cor (índices de hora)
+    panelRows:     new Set(),  // linhas no painel LINHAS SELECIONADAS (sem cor)
     selScore:      null,       // score FT selecionado para destaque
     selScoreHT:    null,       // score HT selecionado para destaque
     selClub:       null,       // clube selecionado para destaque
@@ -3462,6 +3463,10 @@ function _tblToggleCol(ci) {
 }
 function _tblToggleRow(ri) {
     if (S.selRows.has(ri)) S.selRows.delete(ri); else S.selRows.add(ri);
+    renderTabela();
+}
+function _tblTogglePanel(ri) {
+    if (S.panelRows.has(ri)) S.panelRows.delete(ri); else S.panelRows.add(ri);
     renderTabela();
 }
 function _tblSelectScore(score) {
@@ -4719,8 +4724,8 @@ function renderTabela() {
         const rowSelCls = S.selRows.has(rowIdx) ? ' row-sel' : '';
         const tdLSelCls = S.selRows.has(rowIdx) ? ' row-sel-head' : '';
 
-        // Acumula dados das linhas selecionadas para o painel
-        if (S.selRows.has(rowIdx)) {
+        // Acumula dados das linhas no painel (panelRows — sem cor)
+        if (S.panelRows.has(rowIdx)) {
             slotMap.forEach((j, ci) => {
                 if (!j) return;
                 const _isOculto   = j.placar_oculto === 1 || j.placar_oculto === true;
@@ -4736,13 +4741,23 @@ function renderTabela() {
             });
         }
 
+        const _inPanel = S.panelRows.has(rowIdx);
         tr.setAttribute('data-row-idx', rowIdx);
         tr.className = rowSelCls;
         tr.innerHTML = `
             <td class="td-l${tdLSelCls}" onclick="_tblToggleRow(${rowIdx})" style="position:sticky;left:0;background:#0f172a;z-index:5;
                 white-space:normal;min-width:${S._mosaicoHoraLarg}px;cursor:pointer;padding:1px 2px;text-align:center"
-                title="Clique para destacar linha">
-                <span style="display:block;font-size:${S._mosaicoHoraFonteHH}px;font-weight:700;color:#60a5fa;line-height:1.3">${_hh}</span>
+                title="Clique para destacar cor da linha">
+                <span style="display:flex;align-items:center;justify-content:center;gap:2px">
+                    <span style="font-size:${S._mosaicoHoraFonteHH}px;font-weight:700;color:#60a5fa;line-height:1.3">${_hh}</span>
+                    <span onclick="_tblTogglePanel(${rowIdx});event.stopPropagation()"
+                          style="font-size:9px;line-height:1;cursor:pointer;padding:1px 3px;border-radius:3px;
+                                 color:${_inPanel?'#0f172a':'#334155'};
+                                 background:${_inPanel?'#3b82f6':'#1e293b'};
+                                 border:1px solid ${_inPanel?'#60a5fa':'#334155'};
+                                 font-weight:700;transition:all .15s"
+                          title="Adicionar/remover do painel LINHAS SELECIONADAS (sem cor)">▶</span>
+                </span>
                 <span style="display:block;font-size:${S._mosaicoHoraFonteDD}px;color:#475569;font-weight:400;line-height:1.1">${_dd}${temJogo ? ` (${jogosComDados.length})` : ''}</span>
                 ${S._mosaicoShowPct  ? `<span class="${pctC}" style="display:block;font-size:9px;font-weight:700;line-height:1.2;margin-top:1px">${pct !== null ? pct+'%' : '—'}</span>` : ''}
                 ${S._mosaicoShowGols ? `<span style="display:block;font-size:${S._mosaicoHoraFonteDD}px;font-weight:800;color:${golCor};line-height:1.2">${totalGolsLinha != null ? '⚽'+totalGolsLinha : '–'}</span>` : ''}
@@ -4760,7 +4775,7 @@ function renderTabela() {
         }
 
         // Captura HTML da linha para o painel (após aplicar col-sel)
-        if (S.selRows.has(rowIdx)) _selRowsHtml.push(tr.outerHTML);
+        if (S.panelRows.has(rowIdx)) _selRowsHtml.push(tr.outerHTML);
 
         tr.querySelectorAll('td[data-tt]').forEach(td => {
             td.addEventListener('mouseenter', showTT);
@@ -4777,7 +4792,7 @@ function renderTabela() {
     // ── Painel LINHAS SELECIONADAS ───────────────────────────────
     const _panelSel = document.getElementById('sel-linhas-panel');
     if (_panelSel) {
-        if (S.selRows.size === 0) {
+        if (S.panelRows.size === 0) {
             _panelSel.style.display = 'none';
             _panelSel.innerHTML = '';
         } else {
@@ -4806,7 +4821,7 @@ function renderTabela() {
             _panelSel.innerHTML = `
                 <div style="padding:4px 8px;background:#0a1628;border-bottom:1px solid #1e3a5f;color:#60a5fa;font-weight:700;font-size:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     <span>LINHAS SELECIONADAS</span>
-                    <span style="color:#475569;font-weight:400">${S.selRows.size} linha${S.selRows.size>1?'s':''} · ${_selTotalJogos} jogos</span>
+                    <span style="color:#475569;font-weight:400">${S.panelRows.size} linha${S.panelRows.size>1?'s':''} · ${_selTotalJogos} jogos</span>
                     ${_pctGeral !== null && fi ? `<span style="color:${_pctGeralCor};font-weight:800">${_pctGeral}% ${fi.label}</span>` : ''}
                     ${_selTotalGols > 0 ? `<span style="color:#fbbf24;font-weight:700">⚽ ${_selTotalGols}</span>` : ''}
                 </div>
