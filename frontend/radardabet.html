@@ -1352,7 +1352,6 @@
             <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
             <button class="acao-btn" id="btn-mosaico-pct" onclick="S._mosaicoShowPct=!S._mosaicoShowPct;document.getElementById('btn-mosaico-pct').classList.toggle('ativo',S._mosaicoShowPct);renderTabela()" title="Mostrar/ocultar coluna % de acerto por linha">% Linha</button>
             <button class="acao-btn" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
-            <button class="acao-btn" id="btn-volume" onclick="toggleVolume()" title="Gráfico de volume: quantos jogos existiram em cada slot de minuto">📈 Volume</button>
         </div>
         <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
@@ -1370,12 +1369,6 @@
 
     <!-- Painel: Linhas Selecionadas -->
     <div id="sel-linhas-panel" style="display:none;margin-bottom:8px;background:#080e18;border:1px solid #1e3a5f;border-radius:8px;overflow:hidden"></div>
-
-    <!-- Gráfico de Volume por Slot -->
-    <div id="historico-volume-section" style="display:none;margin-bottom:8px;background:#080e18;border:1px solid #1e3a5f;border-radius:8px;padding:10px 14px">
-        <div style="font-size:10px;font-weight:700;color:#60a5fa;margin-bottom:6px">VOLUME POR SLOT DE MINUTO <span style="color:#475569;font-weight:400;font-size:9px">— jogos por posição no ciclo</span></div>
-        <div style="position:relative;height:120px"><canvas id="grafico-volume"></canvas></div>
-    </div>
 
     <!-- Grid principal: 1 linha = 1 hora, 20 colunas = 20 jogos -->
     <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
@@ -2342,9 +2335,8 @@ const S = {
     grafGolsShowGols: true,
     grafParMM:     false,
     grafParShowGols:  true,
-    _graficoGols:   null,
-    _graficoPar:    null,
-    _graficoVolume: null,
+    _graficoGols:  null,
+    _graficoPar:   null,
     _grafAltura:     300,
     _grafGolsAltura: 260,
     _chartCores:   {},
@@ -2353,7 +2345,6 @@ const S = {
     showGrafico:   true,   // toggle independente
     showMosaico:   true,   // toggle independente
     showMercados:  false,  // toggle painel de filtros/mercados
-    showVolume:    false,  // toggle gráfico de volume por slot
     showPadroes:   false,  // toggle painel inline de padrões
     showConfig:    false,  // toggle painel inline de configurações
     clubesSel:     new Set(), // clubes monitorados via Ranking (multi-seleção)
@@ -4443,95 +4434,6 @@ function _renderAllCharts() {
 }
 
 // Estilo CarameloBet: score na célula, cor = filtro ativo
-// ============================================================
-// ============================================================
-// GRÁFICO DE VOLUME POR SLOT DE MINUTO
-// ============================================================
-function toggleVolume() {
-    S.showVolume = !S.showVolume;
-    document.getElementById('btn-volume').classList.toggle('ativo', S.showVolume);
-    const sec = document.getElementById('historico-volume-section');
-    if (sec) sec.style.display = S.showVolume ? 'block' : 'none';
-    if (S.showVolume) renderGraficoVolume();
-}
-
-function renderGraficoVolume() {
-    const canvasEl = document.getElementById('grafico-volume');
-    if (!canvasEl || !_lastColTotal.length) return;
-
-    if (S._graficoVolume) {
-        try { S._graficoVolume.destroy(); } catch(_) {}
-        S._graficoVolume = null;
-    }
-
-    const labels = _lastMinuteSlots.map(m => ':' + String(m).padStart(2, '0'));
-    const data   = _lastColTotal;
-    const media  = data.length ? Math.round(data.reduce((a, b) => a + b, 0) / data.filter(v => v > 0).length) : 0;
-
-    const corLinha  = '#eab308';
-    const corMedia  = 'rgba(148,163,184,0.5)';
-    const corFill   = 'rgba(234,179,8,0.08)';
-
-    try {
-        S._graficoVolume = new Chart(canvasEl.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: 'Jogos',
-                        data,
-                        borderColor: corLinha,
-                        backgroundColor: corFill,
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointBackgroundColor: corLinha,
-                        fill: true,
-                        tension: 0.3,
-                    },
-                    {
-                        label: 'Média',
-                        data: Array(_lastColTotal.length).fill(media),
-                        borderColor: corMedia,
-                        borderWidth: 1,
-                        borderDash: [6, 4],
-                        pointRadius: 0,
-                        fill: false,
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            title: ctx => 'Slot ' + ctx[0].label,
-                            label: ctx => ctx.datasetIndex === 0
-                                ? `${ctx.parsed.y} jogos`
-                                : `Média: ${ctx.parsed.y}`
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: { color: '#475569', font: { size: 9 }, maxRotation: 0 },
-                        grid:  { color: 'rgba(30,41,59,0.8)' }
-                    },
-                    y: {
-                        beginAtZero: false,
-                        ticks: { color: '#64748b', font: { size: 9 }, stepSize: 5 },
-                        grid:  { color: 'rgba(30,41,59,0.8)' },
-                        title: { display: true, text: 'Jogos', color: '#475569', font: { size: 8 } }
-                    }
-                }
-            }
-        });
-    } catch(e) { console.error('[Volume]', e); }
-}
-
 function renderTabela() {
     if (S.view === 'historico' && !S.showMosaico) return;
     const gs = grupos(S.horasMosaico);
@@ -5019,10 +4921,6 @@ function renderTabela() {
     const _diagInfo = document.getElementById('diag-tabela-info');
     if (_diagInfo) _diagInfo.textContent = _infoTxt;
 
-    // Expõe dados para o gráfico de volume
-    _lastColTotal    = colTotal;
-    _lastMinuteSlots = minuteSlots;
-    if (S.showVolume) renderGraficoVolume();
 }
 
 // ============================================================
@@ -8624,8 +8522,6 @@ function _usrMsg(txt, ok) {
 // ============================================================
 let _padroesCache = [];
 let _editandoPadraoId = null;
-let _lastColTotal    = [];
-let _lastMinuteSlots = [];
 
 async function abrirModalPadroes() {
     // mantido por compatibilidade — redireciona para togglePadroes
