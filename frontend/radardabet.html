@@ -2124,6 +2124,25 @@ async function _aplicarConfigFrontend() {
         _visSubview('historico-chart-section',   'sub-btn-grafico',  'show_subview_grafico',  'showGrafico');
         _visSubview('historico-parimpar-section','sub-btn-parimpar', 'show_subview_parimpar', 'showParImpar');
         _visSubview('historico-table-section',   'sub-btn-mosaico',  'show_subview_mosaico',  'showMosaico');
+
+        // Estado inicial (aberto/fechado) — configurável independente do habilitar/desabilitar
+        [['historico-chart-section',    'sub-btn-grafico',  'showGrafico',  'default_open_grafico'],
+         ['historico-table-section',    'sub-btn-mosaico',  'showMosaico',  'default_open_mosaico'],
+         ['historico-gols-section',     'sub-btn-gols',     'showGols',     'default_open_gols'],
+         ['historico-parimpar-section', 'sub-btn-parimpar', 'showParImpar', 'default_open_parimpar'],
+        ].forEach(([secId, btnId, showKey, cfgKey]) => {
+            if (c[cfgKey] === undefined) return;
+            S[showKey] = c[cfgKey] === 'true';
+            const sec = document.getElementById(secId);
+            const btn = document.getElementById(btnId);
+            if (sec) sec.style.display = S[showKey] ? '' : 'none';
+            if (btn) {
+                btn.style.borderColor = S[showKey] ? '#1fcc59' : '';
+                btn.style.color       = S[showKey] ? '#e2e8f0' : '';
+            }
+        });
+        if (c.default_open_mercados !== undefined) S.showMercados = c.default_open_mercados === 'true';
+
     } catch(e) {}
 }
 
@@ -7278,6 +7297,11 @@ const _CFG_LABELS = {
     show_subview_grafico:       'Exibir botão/seção: 📈 Gráfico de Mercados',
     show_subview_parimpar:      'Exibir botão/seção: 🔢 Gráfico de Par e Ímpar',
     show_subview_mosaico:       'Exibir botão/seção: 🏁 Menu Mosaico',
+    default_open_grafico:       'Aberto por padrão: 📈 Gráfico de Mercados',
+    default_open_mosaico:       'Aberto por padrão: 🏁 Menu Mosaico',
+    default_open_gols:          'Aberto por padrão: ⚽ Gráfico de Gols',
+    default_open_parimpar:      'Aberto por padrão: 🔢 Gráfico de Par e Ímpar',
+    default_open_mercados:      'Aberto por padrão: 🎯 Mercados',
 };
 
 async function abrirConfigSistema() {
