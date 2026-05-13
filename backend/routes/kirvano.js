@@ -38,6 +38,17 @@ async function _ensureTable(pool) {
             criado_em    DATETIME2 DEFAULT GETUTCDATE()
         )
     `);
+    await pool.request().query(`
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='kirvano_webhook_log' AND xtype='U')
+        CREATE TABLE kirvano_webhook_log (
+            id           INT IDENTITY(1,1) PRIMARY KEY,
+            recebido_em  DATETIME2 DEFAULT GETUTCDATE(),
+            evento       NVARCHAR(200),
+            email        NVARCHAR(255),
+            action       NVARCHAR(50),
+            payload_raw  NVARCHAR(MAX)
+        )
+    `);
 }
 
 // ── Gera senha aleatória ─────────────────────────────────────────
@@ -81,43 +92,58 @@ async function _criarUsuario(pool, { nome, email, login, senha, dataExpiracao })
     return r.recordset[0]?.Id;
 }
 
+// ── Salva log de webhook (sem travar o fluxo principal) ─────────
+async function _logWebhook(pool, { evento, email, action, payload }) {
+    try {
+        await pool.request()
+            .input('evento',  sql.NVarChar, String(evento || '').slice(0, 200))
+            .input('email',   sql.NVarChar, String(email  || '').slice(0, 255))
+            .input('action',  sql.NVarChar, String(action || '').slice(0, 50))
+            .input('raw',     sql.NVarChar, JSON.stringify(payload).slice(0, 4000))
+            .query(`INSERT INTO kirvano_webhook_log (evento, email, action, payload_raw)
+                    VALUES (@evento, @email, @action, @raw)`);
+    } catch (_) { /* log não pode travar o fluxo */ }
+}
+
 // ── Webhook Kirvano ──────────────────────────────────────────────
 router.post('/webhook', async (req, res) => {
-    // Token: apenas loga, não bloqueia (Kirvano não envia token no header)
-    const tokenBody  = req.body?.token || '';
-    const tokenQuery = req.query?.token || '';
-    console.log('[Kirvano] Webhook recebido. Body keys:', JSON.stringify(Object.keys(req.body || {})));
-
     const payload = req.body;
-    const evento  = payload?.event || payload?.tipo || '';
-    console.log('[Kirvano] Evento recebido:', evento, JSON.stringify(payload).slice(0, 300));
+    const evento  = payload?.event || payload?.tipo || payload?.type || '';
+    console.log('[Kirvano] Webhook recebido. Evento:', evento);
+    console.log('[Kirvano] Body keys:', JSON.stringify(Object.keys(payload || {})));
+    console.log('[Kirvano] Payload (300 chars):', JSON.stringify(payload).slice(0, 300));
+
+    const data     = payload?.data || payload;
+    const customer = data?.customer || data?.comprador || data?.buyer || {};
+    const emailCliente = (customer?.email || customer?.email_address || '').toLowerCase();
+
+    let pool;
+    try { pool = await getDbPool(); await _ensureTable(pool); } catch (_) {}
 
     // Apenas processa compra aprovada ou assinatura ativa
     const isAprovado = ['purchase.approved', 'subscription.active',
                         'PURCHASE_APPROVED', 'SUBSCRIPTION_ACTIVE'].includes(evento);
     if (!isAprovado) {
+        if (pool) await _logWebhook(pool, { evento, email: emailCliente, action: 'ignored', payload });
         return res.json({ received: true, action: 'ignored', evento });
     }
 
     // Extrai dados do cliente — tenta várias estruturas de payload da Kirvano
-    const data     = payload?.data || payload;
-    const customer = data?.customer || data?.comprador || data?.buyer || {};
     const purchase = data?.purchase || data?.compra || {};
     const sub      = data?.subscription || data?.assinatura || {};
 
-    const nomeCliente  = customer?.name  || customer?.nome  || 'Cliente';
-    const emailCliente = customer?.email || customer?.email_address || '';
-    const purchaseId   = purchase?.id || payload?.purchase_id || payload?.id || '';
-    const subId        = sub?.id || payload?.subscription_id || '';
+    const nomeCliente = customer?.name  || customer?.nome  || 'Cliente';
+    const purchaseId  = purchase?.id || payload?.purchase_id || payload?.id || '';
+    const subId       = sub?.id || payload?.subscription_id || '';
 
     if (!emailCliente) {
         console.warn('[Kirvano] Email não encontrado no payload');
+        if (pool) await _logWebhook(pool, { evento, email: '', action: 'erro_sem_email', payload });
         return res.status(400).json({ error: 'Email do cliente não encontrado' });
     }
 
     try {
-        const pool = await getDbPool();
-        await _ensureTable(pool);
+        if (!pool) throw new Error('Sem conexão com banco');
 
         // Evita duplicidade: verifica se já existe assinatura para este purchase_id
         if (purchaseId) {
@@ -192,15 +218,18 @@ router.post('/webhook', async (req, res) => {
                 VALUES (@pid, @sid, @email, @nome, @uid, @login, @plano, @valor, @evento, @status, @expira, @raw)
             `);
 
-        res.json({ received: true, action: 'created', usuario: usuarioLogin });
+        const action = existente.recordset.length > 0 ? 'renovado' : 'criado';
+        await _logWebhook(pool, { evento, email: emailCliente, action, payload });
+        res.json({ received: true, action, usuario: usuarioLogin });
 
     } catch (e) {
         console.error('[Kirvano] Erro no webhook:', e.message);
+        if (pool) await _logWebhook(pool, { evento, email: emailCliente, action: 'erro', payload });
         res.status(500).json({ error: e.message });
     }
 });
 
-// ── Endpoint: busca credenciais pelo email (primeiras 24h) ───────
+// ── Endpoint: busca credenciais pelo email ───────────────────────
 router.get('/credenciais', async (req, res) => {
     const email = (req.query.email || '').trim().toLowerCase();
     if (!email) return res.status(400).json({ success: false, error: 'Email obrigatório' });
@@ -212,15 +241,14 @@ router.get('/credenciais', async (req, res) => {
         const r = await pool.request()
             .input('email', sql.NVarChar, email)
             .query(`
-                SELECT u.Usuario, u.NomeCompleto, u.DataFimLicenca, ct.senha_plain
+                SELECT u.Usuario, u.NomeCompleto, u.DataFimLicenca, u.DataInicioLicenca, ct.senha_plain
                 FROM Usuarios u
                 LEFT JOIN kirvano_credenciais_temp ct ON ct.usuario_id = u.Id
                 WHERE LOWER(u.Email) = @email AND u.Ativo = 1
-                  AND u.DataInicioLicenca >= DATEADD(hour, -24, GETUTCDATE())
             `);
 
         if (!r.recordset.length) {
-            return res.json({ success: false, error: 'Nenhuma conta nova encontrada para este email. Se sua compra foi aprovada, aguarde alguns segundos e tente novamente.' });
+            return res.json({ success: false, error: 'Email não encontrado. Verifique se o email informado é o mesmo usado na compra.' });
         }
 
         const u = r.recordset[0];
@@ -235,6 +263,24 @@ router.get('/credenciais', async (req, res) => {
     } catch (e) {
         console.error('[Kirvano] Erro credenciais:', e.message);
         res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+});
+
+// ── Endpoint: últimos webhooks recebidos (diagnóstico) ───────────
+router.get('/webhook-log', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        await _ensureTable(pool);
+        const limit = Math.min(parseInt(req.query.limit || '50'), 200);
+        const r = await pool.request()
+            .input('limit', sql.Int, limit)
+            .query(`SELECT TOP (@limit) id, recebido_em, evento, email, action,
+                        LEFT(payload_raw, 500) AS payload_preview
+                    FROM kirvano_webhook_log
+                    ORDER BY recebido_em DESC`);
+        res.json({ success: true, total: r.recordset.length, logs: r.recordset });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
