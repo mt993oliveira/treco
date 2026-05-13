@@ -4489,10 +4489,11 @@ function renderTabela() {
     const gsDesc = [...gs].reverse();
 
     // Acumuladores para o painel "LINHAS SELECIONADAS"
-    const selHits   = Array(N).fill(0);
-    const selTotal  = Array(N).fill(0);
-    const selGols   = Array(N).fill(0);
-    const selGolsCt = Array(N).fill(0);
+    const selHits    = Array(N).fill(0);
+    const selTotal   = Array(N).fill(0);
+    const selGols    = Array(N).fill(0);
+    const selGolsCt  = Array(N).fill(0);
+    const _selRowsHtml = [];
 
     gsDesc.forEach(grupo => {
         const hora    = grupo.hora;
@@ -4758,6 +4759,9 @@ function renderTabela() {
             });
         }
 
+        // Captura HTML da linha para o painel (após aplicar col-sel)
+        if (S.selRows.has(rowIdx)) _selRowsHtml.push(tr.outerHTML);
+
         tr.querySelectorAll('td[data-tt]').forEach(td => {
             td.addEventListener('mouseenter', showTT);
             td.addEventListener('mousemove',  moveTT);
@@ -4800,25 +4804,36 @@ function renderTabela() {
 
             _panelSel.style.display = 'block';
             _panelSel.innerHTML = `
-                <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-                    <tr style="background:#0a1628;border-bottom:1px solid #1e3a5f">
-                        <td colspan="${N+1}" style="padding:4px 8px;color:#60a5fa;font-weight:700;font-size:11px">
-                            LINHAS SELECIONADAS
-                            <span style="color:#475569;font-weight:400;margin-left:8px">${S.selRows.size} linha${S.selRows.size>1?'s':''} · ${_selTotalJogos} jogos</span>
-                            ${_pctGeral !== null && fi ? `<span style="color:${_pctGeralCor};font-weight:800;margin-left:8px">${_pctGeral}% ${fi.label}</span>` : ''}
-                            ${_selTotalGols > 0 ? `<span style="color:#fbbf24;font-weight:700;margin-left:8px">⚽ ${_selTotalGols}</span>` : ''}
-                        </td>
-                    </tr>
-                    ${fi ? `<tr style="background:#080e18">
-                        <td style="position:sticky;left:0;background:#080e18;font-size:6px;color:#4ade80;font-weight:700;padding:2px 4px;white-space:nowrap;min-width:${S._mosaicoHoraLarg}px;z-index:5">% / POS</td>
-                        ${_footSelPct}
-                    </tr>` : ''}
-                    <tr style="background:#080e18">
-                        <td style="position:sticky;left:0;background:#080e18;font-size:6px;color:#fbbf24;font-weight:700;padding:2px 4px;white-space:nowrap;min-width:${S._mosaicoHoraLarg}px;z-index:5">⚽ GOLS</td>
-                        ${_footSelGols}
-                    </tr>
-                </table>
+                <div style="padding:4px 8px;background:#0a1628;border-bottom:1px solid #1e3a5f;color:#60a5fa;font-weight:700;font-size:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <span>LINHAS SELECIONADAS</span>
+                    <span style="color:#475569;font-weight:400">${S.selRows.size} linha${S.selRows.size>1?'s':''} · ${_selTotalJogos} jogos</span>
+                    ${_pctGeral !== null && fi ? `<span style="color:${_pctGeralCor};font-weight:800">${_pctGeral}% ${fi.label}</span>` : ''}
+                    ${_selTotalGols > 0 ? `<span style="color:#fbbf24;font-weight:700">⚽ ${_selTotalGols}</span>` : ''}
+                </div>
+                <div style="overflow-x:auto">
+                    <table class="tabela-hist${N >= 30 ? ' compact' : ''}" style="width:100%;border-collapse:collapse">
+                        <tbody>
+                            ${_selRowsHtml.join('')}
+                        </tbody>
+                        <tfoot>
+                            ${fi ? `<tr>
+                                <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#4ade80;font-weight:700;cursor:help" title="% por posição — linhas selecionadas">% / POS</td>
+                                ${_footSelPct}
+                            </tr>` : ''}
+                            <tr>
+                                <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700;white-space:nowrap">⚽ GOLS <span style="color:${_selTotalGols>=100?'#4ade80':_selTotalGols>=40?'#fbbf24':'#94a3b8'}">${_selTotalGols}</span></td>
+                                ${_footSelGols}
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             `;
+            // Re-aplica tooltips nas células do painel
+            _panelSel.querySelectorAll('td[data-tt]').forEach(td => {
+                td.addEventListener('mouseenter', showTT);
+                td.addEventListener('mousemove',  moveTT);
+                td.addEventListener('mouseleave', hideTT);
+            });
         }
     }
 
