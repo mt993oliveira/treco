@@ -8449,6 +8449,14 @@ async function salvarUsuario(e) {
         return;
     }
 
+    const _tipoUsr = document.getElementById('usr-tipo').value;
+    const _licIni  = document.getElementById('usr-lic-ini').value;
+    const _licFim  = document.getElementById('usr-lic-fim').value;
+    if (_tipoUsr !== 'master' && (!_licIni || !_licFim)) {
+        _usrMsg('Data de início e fim da licença são obrigatórias.', false);
+        return;
+    }
+
     const body = {
         id:               idVal ? parseInt(idVal) : null,
         nomeCompleto:     document.getElementById('usr-nome').value.trim(),

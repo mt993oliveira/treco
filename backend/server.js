@@ -312,15 +312,18 @@ app.post('/api/login', async (req, res) => {
                 const fimLicenca = user.DataFimLicenca ? new Date(user.DataFimLicenca) : null;
 
                 let licencaValida = true;
-                if (inicioLicenca && hoje < inicioLicenca) {
-                    licencaValida = false;
-                }
-                if (fimLicenca && hoje > fimLicenca) {
-                    licencaValida = false;
+                if (user.TipoUsuario !== 'master') {
+                    if (!inicioLicenca && !fimLicenca) {
+                        // Sem nenhuma data configurada → acesso bloqueado
+                        licencaValida = false;
+                    } else {
+                        if (inicioLicenca && hoje < inicioLicenca) licencaValida = false;
+                        if (fimLicenca    && hoje > fimLicenca)    licencaValida = false;
+                    }
                 }
 
                 if (!licencaValida) {
-                    res.json({ success: false, message: 'Licença do usuário expirada ou ainda não iniciada' });
+                    res.json({ success: false, message: 'Licença do usuário expirada, ainda não iniciada ou não configurada.' });
                     return;
                 }
 
@@ -961,6 +964,10 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             const hashedPassword = await bcrypt.hash(senha, parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12);
             const dataInicioLicenca = req.body.dataInicioLicenca || null;
             const dataFimLicenca = req.body.dataFimLicenca || null;
+
+            if (tipoUsuario !== 'master' && (!dataInicioLicenca || !dataFimLicenca)) {
+                return res.json({ success: false, message: 'Data de início e fim da licença são obrigatórias para criar um usuário.' });
+            }
 
             await sql.query`
                 INSERT INTO Usuarios (NomeCompleto, Usuario, Email, Telefone, Senha, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, DataAtualizacao)
