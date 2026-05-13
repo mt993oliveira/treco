@@ -1277,13 +1277,43 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                    <button id="btn-linha-tf"   class="acao-btn" onclick="_linhaGToggle('grafTopoFundo','btn-g-tf','btn-linha-tf')" title="Marca topo e fundo da MM">⛰ T/F</button>
-                    <button id="btn-linha-med"  class="acao-btn" onclick="_linhaGToggle('grafMedias','btn-g-med','btn-linha-med')" title="Exibe médias móveis">📊 MM</button>
-                    <button id="btn-linha-pct"  class="acao-btn" onclick="_linhaGToggle('grafPct','btn-g-pct','btn-linha-pct')" title="Exibe rótulos de %">% Valor</button>
+                    <button id="btn-linha-pct"   class="acao-btn" onclick="_linhaToggle('linhaGrafPct','btn-linha-pct')"           title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
+                    <button id="btn-linha-tf"    class="acao-btn" onclick="_linhaToggle('linhaGrafTopoFundo','btn-linha-tf')"       title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
+                    <button id="btn-linha-cong"  class="acao-btn" onclick="_linhaToggle('linhaGrafCongest','btn-linha-cong')"       title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
+                    <button id="btn-linha-med"   class="acao-btn" onclick="_linhaToggle('linhaGrafMedias','btn-linha-med')"         title="Exibe MM curta e MM longa (rolling hit rate) para cada filtro ativo">📈 MM</button>
+                    <button id="btn-linha-legendas" class="acao-btn" onclick="toggleLinhaLegendas()"                                title="Suprimir tooltips do gráfico de linha">💬 Legendas</button>
+                    <input id="inp-linha-mm1" type="number" min="2" max="99" value="9"
+                        onchange="S.linhaGrafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.linhaGrafMM1;renderGraficoLinha()"
+                        title="Período da MM curta (jogos)"
+                        style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <input id="inp-linha-mm2" type="number" min="2" max="200" value="21"
+                        onchange="S.linhaGrafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.linhaGrafMM2;renderGraficoLinha()"
+                        title="Período da MM longa (jogos)"
+                        style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button class="acao-btn" onclick="resetZoomLinha()" title="Resetar zoom (Ctrl+Roda para zoom, Shift+arrastar para pan)">↺ Zoom</button>
+                    <button id="btn-caneta-linha" class="acao-btn" onclick="toggleCanetaLinha()" title="Ativar/desativar desenho no gráfico de linha">✏️ Caneta</button>
+                    <select id="linha-draw-tool" onchange="DRAW_LINHA.ferramenta=this.value" title="Ferramenta de desenho"
+                        style="display:none;background:#0f172a;border:1px solid #1fcc59;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 7px;cursor:pointer;height:26px">
+                        <option value="livre">✏️ Livre</option>
+                        <option value="linha">📏 Linha</option>
+                        <option value="seta">➡️ Seta</option>
+                        <option value="retangulo">⬜ Retângulo</option>
+                        <option value="borracha">🧹 Borracha</option>
+                    </select>
+                    <input type="color" id="linha-caneta-cor" value="#f59e0b" title="Cor da caneta"
+                        style="width:24px;height:24px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0">
+                    <input type="range" id="linha-caneta-esp" min="1" max="8" value="2" title="Espessura"
+                        style="width:50px;accent-color:#f59e0b">
+                    <button class="acao-btn" onclick="limparDesenhoLinha()" title="Apagar riscos do gráfico de linha">🗑 Limpar</button>
                 </div>
             </div>
-            <div style="position:relative;height:300px"><canvas id="grafico-linha"></canvas></div>
+            <div style="position:relative;height:300px">
+                <canvas id="grafico-linha"></canvas>
+                <canvas id="linha-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
+            </div>
         </div>
     </div>
 
@@ -1307,19 +1337,19 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                    <button id="btn-g-pct"   class="acao-btn"       onclick="_linhaGToggle('grafPct','btn-g-pct','btn-linha-pct')"               title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
-                    <button id="btn-g-tf"    class="acao-btn"       onclick="_linhaGToggle('grafTopoFundo','btn-g-tf','btn-linha-tf')"           title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
-                    <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"                               title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
-                    <button id="btn-g-med"   class="acao-btn"       onclick="_linhaGToggle('grafMedias','btn-g-med','btn-linha-med')"             title="Exibe MM curta e MM longa (rolling hit rate) para cada filtro ativo">📈 MM</button>
+                    <button id="btn-g-pct"   class="acao-btn"       onclick="_gToggle('grafPct','btn-g-pct')"            title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
+                    <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')"      title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
+                    <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"      title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
+                    <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"        title="Exibe MM curta e MM longa (rolling hit rate) para cada filtro ativo">📈 MM</button>
                     <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
                     <input id="inp-mm1" type="number" min="2" max="99" value="9"
-                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico();if(S.showLinha)renderGraficoLinha();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
+                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
                         title="Período da MM curta (jogos)"
                         style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
                                font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <input id="inp-mm2" type="number" min="2" max="200" value="21"
-                        onchange="S.grafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.grafMM2;renderGrafico();if(S.showLinha)renderGraficoLinha();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
+                        onchange="S.grafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.grafMM2;renderGrafico();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
                         title="Período da MM longa (jogos)"
                         style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
                                font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
@@ -2344,6 +2374,13 @@ const S = {
     grafTopo:      null,
     grafPct:       false,
     grafTopoFundo: false,
+    linhaGrafPct:       false,
+    linhaGrafTopoFundo: false,
+    linhaGrafCongest:   false,
+    linhaGrafMedias:    false,
+    linhaShowLegendas:  false,
+    linhaGrafMM1:       9,
+    linhaGrafMM2:       21,
     _tfTopoCor:    '#4ade80',
     _tfFundoCor:   '#f87171',
     grafCongest:   false,
@@ -3799,22 +3836,27 @@ function _gToggle(key, btnId) {
     renderGrafico();
 }
 
-// Toggle compartilhado entre Gráfico e Gráfico de Linha — sincroniza ambos os botões e ambos os charts
-function _linhaGToggle(key, graficoBtn, linhaBtn) {
+// Toggle independente para o Gráfico de Linha (não afeta o Gráfico de Mercado)
+function _linhaToggle(key, btnId) {
     S[key] = !S[key];
-    [graficoBtn, linhaBtn].forEach(id => {
-        const b = document.getElementById(id);
-        if (b) b.classList.toggle('ativo', S[key]);
-    });
-    if (key === 'grafPct' || key === 'grafCongest') {
-        if (S.grafico) { try { S.grafico.update(); } catch(_) { renderGrafico(); } }
-        else renderGrafico();
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.toggle('ativo', S[key]);
+    if (key === 'linhaGrafPct' || key === 'linhaGrafCongest') {
         if (S._graficoLinha) { try { S._graficoLinha.update(); } catch(_) { renderGraficoLinha(); } }
-        else if (S.showLinha) renderGraficoLinha();
+        else renderGraficoLinha();
     } else {
-        renderGrafico();
-        if (S.showLinha) renderGraficoLinha();
+        renderGraficoLinha();
     }
+}
+
+function toggleLinhaLegendas() {
+    S.linhaShowLegendas = !S.linhaShowLegendas;
+    const btn = document.getElementById('btn-linha-legendas');
+    if (btn) {
+        btn.style.borderColor = S.linhaShowLegendas ? '#1fcc59' : '#1e293b';
+        btn.style.color       = S.linhaShowLegendas ? '#e2e8f0' : '#94a3b8';
+    }
+    renderGraficoLinha();
 }
 
 // ============================================================
@@ -4094,6 +4136,162 @@ function renderGrafico() {
 }
 
 // ============================================================
+// PLUGINS INDEPENDENTES DO GRÁFICO DE LINHA
+// ============================================================
+const linhaLabelPlugin = {
+    id: 'linhaLabels',
+    afterDatasetsDraw(chart) {
+        if (!S.linhaGrafPct) return;
+        const { ctx } = chart;
+        chart.data.datasets.forEach((ds, di) => {
+            if (ds._isRef || ds._isMA) return;
+            const meta = chart.getDatasetMeta(di);
+            if (!meta.data || !meta.data.length) return;
+            const total = meta.data.length;
+            const step = total > 60 ? 5 : total > 30 ? 3 : 1;
+            ctx.save();
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillStyle = ds.borderColor;
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 2;
+            meta.data.forEach((pt, i) => {
+                if (i % step !== 0) return;
+                if (!pt || ds.data[i] == null) return;
+                ctx.fillText(ds.data[i] + '%', pt.x, pt.y - 6);
+            });
+            ctx.restore();
+        });
+    }
+};
+
+const linhaGrafPlugin = {
+    id: 'linhaGrafCustom',
+    afterDraw(chart) {
+        if (!S.linhaGrafCongest || !chart.chartArea) return;
+        const ctx2 = chart.ctx;
+        const { top, bottom } = chart.chartArea;
+        chart.data.datasets.forEach((ds, di) => {
+            if (ds._isRef || ds._isEquilibrio || ds._isMA) return;
+            const meta = chart.getDatasetMeta(di);
+            if (!meta.data || !meta.data.length) return;
+            const data = ds.data;
+            if (data.length < 5) return;
+            const THRESHOLD = 8, MIN_RUN = 5;
+            const lateral = data.map((_, i) => {
+                const sl = data.slice(Math.max(0, i - 2), Math.min(data.length, i + 3));
+                return Math.max(...sl) - Math.min(...sl) <= THRESHOLD;
+            });
+            let i = 0;
+            while (i < lateral.length) {
+                if (!lateral[i]) { i++; continue; }
+                let j = i;
+                while (j < lateral.length && lateral[j]) j++;
+                if (j - i >= MIN_RUN) {
+                    const x0 = meta.data[i]?.x, x1 = meta.data[j - 1]?.x;
+                    if (x0 != null && x1 != null && x1 > x0) {
+                        ctx2.save();
+                        ctx2.fillStyle   = ds.borderColor + '1a';
+                        ctx2.strokeStyle = ds.borderColor + '44';
+                        ctx2.lineWidth   = 0.5;
+                        ctx2.fillRect(x0, top, x1 - x0, bottom - top);
+                        ctx2.strokeRect(x0, top, x1 - x0, bottom - top);
+                        ctx2.restore();
+                    }
+                }
+                i = j > i ? j : i + 1;
+            }
+        });
+    }
+};
+
+// ============================================================
+// DRAW GRÁFICO DE LINHA — sistema de desenho independente
+// ============================================================
+const DRAW_LINHA = { ativo: false, drawing: false, ctx: null, ferramenta: 'livre', sx: 0, sy: 0 };
+
+function _drawCorLinha() { return document.getElementById('linha-caneta-cor')?.value || '#f59e0b'; }
+function _drawEspLinha() { return parseInt(document.getElementById('linha-caneta-esp')?.value) || 2; }
+
+function _drawBindLinha(canvas) {
+    function getP(e) { return _drawGetPos(e, canvas, null); }
+    function startDraw(e) {
+        if (!DRAW_LINHA.ativo) return;
+        const p = getP(e); DRAW_LINHA.drawing = true; DRAW_LINHA.sx = p.x; DRAW_LINHA.sy = p.y;
+        const ctx = DRAW_LINHA.ctx; if (!ctx) return;
+        const cor = _drawCorLinha(), esp = _drawEspLinha();
+        if (DRAW_LINHA.ferramenta === 'livre') {
+            ctx.globalCompositeOperation = 'source-over';
+            _drawStyle(ctx, cor, esp); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+        } else if (DRAW_LINHA.ferramenta === 'borracha') {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.lineWidth = esp * 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(p.x, p.y);
+        } else {
+            DRAW_LINHA.ctx_snap = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+        e.preventDefault();
+    }
+    function moveDraw(e) {
+        if (!DRAW_LINHA.ativo || !DRAW_LINHA.drawing) return;
+        const p = getP(e); const ctx = DRAW_LINHA.ctx; if (!ctx) return;
+        const cor = _drawCorLinha(), esp = _drawEspLinha();
+        if (DRAW_LINHA.ferramenta === 'livre' || DRAW_LINHA.ferramenta === 'borracha') {
+            ctx.lineTo(p.x, p.y); ctx.stroke();
+        } else {
+            if (DRAW_LINHA.ctx_snap) ctx.putImageData(DRAW_LINHA.ctx_snap, 0, 0);
+            ctx.globalCompositeOperation = 'source-over';
+            _drawStyle(ctx, cor, esp);
+            if (DRAW_LINHA.ferramenta === 'linha') {
+                ctx.beginPath(); ctx.moveTo(DRAW_LINHA.sx, DRAW_LINHA.sy); ctx.lineTo(p.x, p.y); ctx.stroke();
+            } else if (DRAW_LINHA.ferramenta === 'seta') {
+                _drawArrow(ctx, DRAW_LINHA.sx, DRAW_LINHA.sy, p.x, p.y, esp);
+            } else if (DRAW_LINHA.ferramenta === 'retangulo') {
+                ctx.strokeRect(DRAW_LINHA.sx, DRAW_LINHA.sy, p.x - DRAW_LINHA.sx, p.y - DRAW_LINHA.sy);
+            }
+        }
+        e.preventDefault();
+    }
+    function stopDraw() {
+        if (!DRAW_LINHA.drawing) return; DRAW_LINHA.drawing = false;
+        if (DRAW_LINHA.ctx) DRAW_LINHA.ctx.globalCompositeOperation = 'source-over';
+    }
+    canvas.addEventListener('mousedown',  startDraw);
+    canvas.addEventListener('mousemove',  moveDraw);
+    canvas.addEventListener('mouseup',    stopDraw);
+    canvas.addEventListener('mouseleave', stopDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove',  moveDraw,  { passive: false });
+    canvas.addEventListener('touchend',   stopDraw);
+}
+
+function _linhaDrawInit() {
+    const drawCanvas = document.getElementById('linha-draw');
+    if (drawCanvas && !DRAW_LINHA.ctx) {
+        const p = drawCanvas.parentElement;
+        drawCanvas.width  = p.offsetWidth  || 600;
+        drawCanvas.height = p.offsetHeight || 300;
+        DRAW_LINHA.ctx = drawCanvas.getContext('2d');
+        _drawBindLinha(drawCanvas);
+    }
+}
+
+function toggleCanetaLinha() {
+    DRAW_LINHA.ativo = !DRAW_LINHA.ativo;
+    const btn = document.getElementById('btn-caneta-linha');
+    if (btn) btn.classList.toggle('ativo', DRAW_LINHA.ativo);
+    const canvas = document.getElementById('linha-draw');
+    if (canvas) canvas.style.pointerEvents = DRAW_LINHA.ativo ? 'auto' : 'none';
+    const toolSel = document.getElementById('linha-draw-tool');
+    if (toolSel) toolSel.style.display = DRAW_LINHA.ativo ? 'inline-block' : 'none';
+    _linhaDrawInit();
+}
+
+function limparDesenhoLinha() {
+    const cc = document.getElementById('linha-draw');
+    if (cc && DRAW_LINHA.ctx) DRAW_LINHA.ctx.clearRect(0, 0, cc.width, cc.height);
+}
+
+// ============================================================
 // GRÁFICO DE LINHA — mesmo hit-rate do Gráfico, mas com MM pré-aquecida
 // pela janela anterior ao período exibido (reduz viés no início da série)
 // ============================================================
@@ -4105,7 +4303,7 @@ function renderGraficoLinha() {
     if (!canvas) return;
 
     const horasDisplay = S.horasLinha != null ? S.horasLinha : S.horas;
-    const n1 = S.grafMM1 || 9;
+    const n1 = S.linhaGrafMM1 || 9;
     // Uma hora extra de warmup (garante que a MM já tem contexto no 1º ponto exibido)
     const horasTotal = Math.min(horasDisplay + 1, S._horasCarregadas || S.horas);
 
@@ -4166,7 +4364,7 @@ function renderGraficoLinha() {
         let pointRadius  = 3;
         let pointBgColor = hitsSlice.map(v => v ? cor : '#dc2626');
 
-        if (S.grafTopoFundo && pctSlice.length > 1) {
+        if (S.linhaGrafTopoFundo && pctSlice.length > 1) {
             const warmup = Math.min(n1 - 1, pctSlice.length - 1);
             const maxIdx = pctSlice.reduce((b, v, i) => i >= warmup && v > pctSlice[b] ? i : b, warmup);
             const minIdx = pctSlice.reduce((b, v, i) => i >= warmup && v < pctSlice[b] ? i : b, warmup);
@@ -4182,7 +4380,7 @@ function renderGraficoLinha() {
             pointBackgroundColor: pointBgColor, tension:0.2,
             _filtroId: f.id });
 
-        if (S.grafMedias) {
+        if (S.linhaGrafMedias) {
             const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
             const rolAvg = (arr, w) => arr.map((_, i) => {
                 const sl = arr.slice(Math.max(0, i - w + 1), i + 1);
@@ -4192,7 +4390,7 @@ function renderGraficoLinha() {
                 data: rolAvg(pctSlice, n1), borderColor: S.grafMM1Cor||'#ffffff',
                 backgroundColor:'transparent', borderWidth: S.grafMM1Esp||1.5,
                 borderDash: _pd(S.grafMM1Dash||'4,4'), pointRadius:0, tension:0.3, _isMA:true });
-            const n2 = S.grafMM2 || 21;
+            const n2 = S.linhaGrafMM2 || 21;
             datasets.push({ type:'line', label:`${f.label} MM${n2}`,
                 data: rolAvg(pctSlice, n2), borderColor: S.grafMM2Cor||'#fbbf24',
                 backgroundColor:'transparent', borderWidth: S.grafMM2Esp||2,
@@ -4225,7 +4423,7 @@ function renderGraficoLinha() {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        enabled: !S.showLegendas,
+                        enabled: !S.linhaShowLegendas,
                         filter: item => !item.dataset._isRef && !item.dataset._isMA,
                         backgroundColor: 'rgba(15,23,42,0.85)', borderColor:'#334155', borderWidth:1,
                         titleColor:'#94a3b8', bodyColor:'#cbd5e1',
@@ -4259,7 +4457,7 @@ function renderGraficoLinha() {
                     y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
                 }
             },
-            plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin]
+            plugins: [linhaLabelPlugin, linhaGrafPlugin, verticalLinesPlugin]
         });
     } catch(e) { console.error('renderGraficoLinha error:', e); }
 }
@@ -5234,7 +5432,7 @@ function toggleLegendas() {
     if (btn) { btn.style.borderColor = S.showLegendas ? '#1fcc59' : '#1e293b'; btn.style.color = S.showLegendas ? '#e2e8f0' : '#94a3b8'; }
     if (S.showLegendas) hideTT();
     localStorage.setItem('showLegendas', S.showLegendas ? '1' : '0');
-    if (S.view === 'historico') { renderGrafico(); if (S.showLinha) renderGraficoLinha(); }
+    if (S.view === 'historico') renderGrafico();
 }
 
 // ============================================================
