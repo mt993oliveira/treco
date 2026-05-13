@@ -8644,7 +8644,7 @@ function cancelarEdicaoNome() {
     _renderListaPadroes(_padroesCache);
 }
 
-function aplicarPadrao(id) {
+function aplicarPadrao(id, opts = {}) {
     const p = _padroesCache.find(x => x.id === id);
     if (!p) { console.warn('aplicarPadrao: padrão não encontrado no cache', id); return; }
     try {
@@ -8655,17 +8655,17 @@ function aplicarPadrao(id) {
         }
         if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
 
-        // Fecha padrões, abre mercados para mostrar filtros ativos
-        S.showPadroes  = false;
-        S.showMercados = true;
-        S.showConfig   = false;
-
-        // Garante que a seção do gráfico está visível
-        S.showGrafico = true;
-        const sec = document.getElementById('historico-chart-section');
-        if (sec) sec.style.display = 'flex';
-        const btn = document.getElementById('sub-btn-grafico');
-        if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
+        if (!opts.silencioso) {
+            // Aplicação manual: fecha padrões, abre mercados e gráfico
+            S.showPadroes  = false;
+            S.showMercados = true;
+            S.showConfig   = false;
+            S.showGrafico  = true;
+            const sec = document.getElementById('historico-chart-section');
+            if (sec) sec.style.display = 'flex';
+            const btn = document.getElementById('sub-btn-grafico');
+            if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
+        }
 
         renderFiltros();
         renderTabela();
@@ -8971,8 +8971,9 @@ document.addEventListener('DOMContentLoaded', () => {
         await _carregarPadroesParaAlertas();
         await carregarTudo();
         // Auto-aplica padrão principal (se existir) logo após carregar dados
+        // silencioso=true: não abre Mercados/Gráfico — respeita os defaults da config
         const principal = _padroesCache.find(p => p.is_principal);
-        if (principal) aplicarPadrao(principal.id);
+        if (principal) aplicarPadrao(principal.id, { silencioso: true });
         const seg = S._autoRefreshSeg ?? 120;
         if (seg > 0) setInterval(carregarTudo, seg * 1000);
     });
