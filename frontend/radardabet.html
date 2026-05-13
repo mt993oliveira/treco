@@ -1199,6 +1199,13 @@
             display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
             ⚽ Gráfico de Gols
         </button>
+        <button id="sub-btn-linha" onclick="setSubView('linha')"
+            style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
+            border-radius:8px;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 17 9 11 13 15 21 7"/></svg>
+            Gráfico de Linha
+        </button>
         <button id="sub-btn-grafico" onclick="setSubView('grafico')"
             style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
             border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;
@@ -1250,6 +1257,36 @@
         </div>
     </div>
 
+    <!-- 📉 Gráfico de Linha (MM pré-aquecida pela hora anterior) -->
+    <div id="historico-linha-section" style="display:none;margin-bottom:10px">
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <div style="font-size:10px;font-weight:700;color:#64748b" id="g-linha-titulo">Selecione filtros em 🎯 Mercados</div>
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
+                        <select id="periodo-linha" onchange="setSubViewPeriodo('linha',this.value)"
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;font-weight:700;padding:2px 5px;cursor:pointer;height:22px;outline:none">
+                            <option value="">= Config</option>
+                            <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
+                            <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
+                            <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
+                            <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
+                            <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-linha-tf"   class="acao-btn" onclick="_linhaGToggle('grafTopoFundo','btn-g-tf','btn-linha-tf')" title="Marca topo e fundo da MM">⛰ T/F</button>
+                    <button id="btn-linha-med"  class="acao-btn" onclick="_linhaGToggle('grafMedias','btn-g-med','btn-linha-med')" title="Exibe médias móveis">📊 MM</button>
+                    <button id="btn-linha-pct"  class="acao-btn" onclick="_linhaGToggle('grafPct','btn-g-pct','btn-linha-pct')" title="Exibe rótulos de %">% Valor</button>
+                    <button class="acao-btn" onclick="resetZoomLinha()" title="Resetar zoom (Ctrl+Roda para zoom, Shift+arrastar para pan)">↺ Zoom</button>
+                </div>
+            </div>
+            <div style="position:relative;height:300px"><canvas id="grafico-linha"></canvas></div>
+        </div>
+    </div>
+
     <!-- Chart + Legend -->
     <div id="historico-chart-section" style="display:flex;gap:10px;margin-bottom:10px">
         <div style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;min-width:0">
@@ -1270,19 +1307,19 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                    <button id="btn-g-pct"   class="acao-btn"       onclick="_gToggle('grafPct','btn-g-pct')"      title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
-                    <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')" title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
-                    <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')" title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
-                    <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"   title="Exibe MM curta e MM longa (rolling hit rate) para cada filtro ativo">📈 MM</button>
+                    <button id="btn-g-pct"   class="acao-btn"       onclick="_linhaGToggle('grafPct','btn-g-pct','btn-linha-pct')"               title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
+                    <button id="btn-g-tf"    class="acao-btn"       onclick="_linhaGToggle('grafTopoFundo','btn-g-tf','btn-linha-tf')"           title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
+                    <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"                               title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
+                    <button id="btn-g-med"   class="acao-btn"       onclick="_linhaGToggle('grafMedias','btn-g-med','btn-linha-med')"             title="Exibe MM curta e MM longa (rolling hit rate) para cada filtro ativo">📈 MM</button>
                     <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
                     <input id="inp-mm1" type="number" min="2" max="99" value="9"
-                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
+                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico();if(S.showLinha)renderGraficoLinha();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
                         title="Período da MM curta (jogos)"
                         style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
                                font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <input id="inp-mm2" type="number" min="2" max="200" value="21"
-                        onchange="S.grafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.grafMM2;renderGrafico();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
+                        onchange="S.grafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.grafMM2;renderGrafico();if(S.showLinha)renderGraficoLinha();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
                         title="Período da MM longa (jogos)"
                         style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
                                font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
@@ -2326,9 +2363,11 @@ const S = {
     mktGrupoCor:        '#94a3b8',
     mktGrupoCorInativo: '#475569',
     showGols:      false,
+    showLinha:     false,
     showParImpar:  false,
     horasGrafico:  null,
     horasGols:     null,
+    horasLinha:    null,
     horasParImpar: null,
     horasMosaico:  null,
     grafGolsMM:    false,
@@ -2336,6 +2375,7 @@ const S = {
     grafParMM:     false,
     grafParShowGols:  true,
     _graficoGols:  null,
+    _graficoLinha: null,
     _graficoPar:   null,
     _grafAltura:     300,
     _grafGolsAltura: 260,
@@ -2606,17 +2646,19 @@ function toggleAnaliseSecao(key) {
 const _SECAO_DISPLAY = {
     'historico-chart-section':   'flex',
     'historico-gols-section':    'block',
+    'historico-linha-section':   'block',
     'historico-parimpar-section':'block',
     'historico-table-section':   'block',
 };
 function setSubView(v) {
     if (v === 'grafico')   S.showGrafico   = !S.showGrafico;
     if (v === 'gols')      S.showGols      = !S.showGols;
+    if (v === 'linha')     S.showLinha     = !S.showLinha;
     if (v === 'parimpar')  S.showParImpar  = !S.showParImpar;
     if (v === 'mosaico')   S.showMosaico   = !S.showMosaico;
-    const _secs = { grafico:'historico-chart-section', gols:'historico-gols-section', parimpar:'historico-parimpar-section', mosaico:'historico-table-section' };
-    const _btns = { grafico:'sub-btn-grafico', gols:'sub-btn-gols', parimpar:'sub-btn-parimpar', mosaico:'sub-btn-mosaico' };
-    const _show = { grafico:S.showGrafico, gols:S.showGols, parimpar:S.showParImpar, mosaico:S.showMosaico };
+    const _secs = { grafico:'historico-chart-section', gols:'historico-gols-section', linha:'historico-linha-section', parimpar:'historico-parimpar-section', mosaico:'historico-table-section' };
+    const _btns = { grafico:'sub-btn-grafico', gols:'sub-btn-gols', linha:'sub-btn-linha', parimpar:'sub-btn-parimpar', mosaico:'sub-btn-mosaico' };
+    const _show = { grafico:S.showGrafico, gols:S.showGols, linha:S.showLinha, parimpar:S.showParImpar, mosaico:S.showMosaico };
     Object.keys(_secs).forEach(k => {
         const sec = document.getElementById(_secs[k]);
         const btn = document.getElementById(_btns[k]);
@@ -2626,6 +2668,7 @@ function setSubView(v) {
     });
     if (v === 'grafico'  && S.showGrafico)  renderGrafico();
     if (v === 'gols'     && S.showGols)     requestAnimationFrame(() => renderGraficoGols());
+    if (v === 'linha'    && S.showLinha)    requestAnimationFrame(() => renderGraficoLinha());
     if (v === 'parimpar' && S.showParImpar) requestAnimationFrame(() => renderGraficoPar());
     if (v === 'mosaico'  && S.showMosaico)  renderTabela();
 }
@@ -2634,12 +2677,14 @@ function setSubViewPeriodo(subview, val) {
     const h = val ? parseInt(val) : null;
     if (subview === 'grafico')  S.horasGrafico  = h;
     if (subview === 'gols')     S.horasGols     = h;
+    if (subview === 'linha')    S.horasLinha    = h;
     if (subview === 'parimpar') S.horasParImpar = h;
     if (subview === 'mosaico')  S.horasMosaico  = h;
 
     const render = () => {
         if (subview === 'grafico')  renderGrafico();
         if (subview === 'gols')     renderGraficoGols();
+        if (subview === 'linha')    renderGraficoLinha();
         if (subview === 'parimpar') renderGraficoPar();
         if (subview === 'mosaico')  renderTabela();
     };
@@ -3754,6 +3799,24 @@ function _gToggle(key, btnId) {
     renderGrafico();
 }
 
+// Toggle compartilhado entre Gráfico e Gráfico de Linha — sincroniza ambos os botões e ambos os charts
+function _linhaGToggle(key, graficoBtn, linhaBtn) {
+    S[key] = !S[key];
+    [graficoBtn, linhaBtn].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.classList.toggle('ativo', S[key]);
+    });
+    if (key === 'grafPct' || key === 'grafCongest') {
+        if (S.grafico) { try { S.grafico.update(); } catch(_) { renderGrafico(); } }
+        else renderGrafico();
+        if (S._graficoLinha) { try { S._graficoLinha.update(); } catch(_) { renderGraficoLinha(); } }
+        else if (S.showLinha) renderGraficoLinha();
+    } else {
+        renderGrafico();
+        if (S.showLinha) renderGraficoLinha();
+    }
+}
+
 // ============================================================
 // PLUGIN COMPARTILHADO — linhas verticais tracejadas a cada 10 jogos
 // ============================================================
@@ -4028,6 +4091,177 @@ function renderGrafico() {
             plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin]
         });
     } catch(e) { console.error('renderGrafico error:', e); }
+}
+
+// ============================================================
+// GRÁFICO DE LINHA — mesmo hit-rate do Gráfico, mas com MM pré-aquecida
+// pela janela anterior ao período exibido (reduz viés no início da série)
+// ============================================================
+let _LINHA_SERIE = [];
+let _LINHA_HITS  = {};
+
+function renderGraficoLinha() {
+    const canvas = document.getElementById('grafico-linha');
+    if (!canvas) return;
+
+    const horasDisplay = S.horasLinha != null ? S.horasLinha : S.horas;
+    const n1 = S.grafMM1 || 9;
+    // Uma hora extra de warmup (garante que a MM já tem contexto no 1º ponto exibido)
+    const horasTotal = Math.min(horasDisplay + 1, S._horasCarregadas || S.horas);
+
+    const serieFull = serieFlat(horasTotal)
+        .filter(j => j.gol_casa != null && j.gol_fora != null);
+    const serieDisplay = serieFlat(horasDisplay)
+        .filter(j => j.gol_casa != null && j.gol_fora != null);
+
+    const tituloEl = document.getElementById('g-linha-titulo');
+    const ativos   = TODOS_FILTROS.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
+
+    const _destruir = () => {
+        if (S._graficoLinha) { try { S._graficoLinha.destroy(); } catch(_){} S._graficoLinha = null; }
+        const _orp = Chart.getChart(canvas);
+        if (_orp) { try { _orp.destroy(); } catch(_){} }
+    };
+
+    if (!serieDisplay.length) {
+        _destruir();
+        if (tituloEl) tituloEl.textContent = 'Sem dados com placar para o período';
+        return;
+    }
+    if (!ativos.length) {
+        _destruir();
+        if (tituloEl) tituloEl.textContent = 'Selecione filtros em 🎯 Mercados';
+        return;
+    }
+
+    // Rolling hit-rate % calculado na série completa (com warmup)
+    const rolPct = (hits, n) => hits.map((_, i) => {
+        const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
+        return +(sl.reduce((a, b) => a + b, 0) / sl.length * 100).toFixed(1);
+    });
+
+    // Offset: quantos jogos do serieFull são de warmup (não exibidos)
+    const offset = Math.max(0, serieFull.length - serieDisplay.length);
+
+    const datasets = [];
+    const hitsMapDisplay = {};
+
+    if (S.linhas['equilibrio']) {
+        datasets.push({ type:'line', label:'Equilíbrio', data: serieDisplay.map(() => 50),
+            borderColor:'#64748b', backgroundColor:'transparent',
+            borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0,
+            _isEquilibrio:true, _isRef:true });
+    }
+
+    ativos.forEach(f => {
+        const hitsFull   = serieFull.map(j => checa(j, f.id) ? 1 : 0);
+        const pctFull    = rolPct(hitsFull, n1);
+        const hitsSlice  = hitsFull.slice(offset);
+        const pctSlice   = pctFull.slice(offset);
+        hitsMapDisplay[f.id] = hitsSlice;
+
+        const cor = (S._chartCores && S._chartCores[f.id]) || f.cor;
+        const pct = hitsSlice.length ? Math.round(hitsSlice.reduce((a,b)=>a+b,0) / hitsSlice.length * 100) : 0;
+
+        let pointRadius  = 3;
+        let pointBgColor = hitsSlice.map(v => v ? cor : '#dc2626');
+
+        if (S.grafTopoFundo && pctSlice.length > 1) {
+            const warmup = Math.min(n1 - 1, pctSlice.length - 1);
+            const maxIdx = pctSlice.reduce((b, v, i) => i >= warmup && v > pctSlice[b] ? i : b, warmup);
+            const minIdx = pctSlice.reduce((b, v, i) => i >= warmup && v < pctSlice[b] ? i : b, warmup);
+            const base   = hitsSlice.map(v => v ? cor : '#dc2626');
+            pointRadius  = pctSlice.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : 3);
+            pointBgColor = base.map((c, i) => i === maxIdx ? (S._tfTopoCor||'#4ade80') : i === minIdx ? (S._tfFundoCor||'#f87171') : c);
+        }
+
+        datasets.push({ type:'line', label:`${f.label} ${pct}%`,
+            data: pctSlice, borderColor: cor, backgroundColor:'transparent',
+            borderWidth:2, borderDash: f.dashed ? [6,4] : [],
+            pointRadius, pointHoverRadius:5,
+            pointBackgroundColor: pointBgColor, tension:0.2,
+            _filtroId: f.id });
+
+        if (S.grafMedias) {
+            const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
+            const rolAvg = (arr, w) => arr.map((_, i) => {
+                const sl = arr.slice(Math.max(0, i - w + 1), i + 1);
+                return +(sl.reduce((a,b)=>a+b,0) / sl.length).toFixed(1);
+            });
+            datasets.push({ type:'line', label:`${f.label} MM${n1}`,
+                data: rolAvg(pctSlice, n1), borderColor: S.grafMM1Cor||'#ffffff',
+                backgroundColor:'transparent', borderWidth: S.grafMM1Esp||1.5,
+                borderDash: _pd(S.grafMM1Dash||'4,4'), pointRadius:0, tension:0.3, _isMA:true });
+            const n2 = S.grafMM2 || 21;
+            datasets.push({ type:'line', label:`${f.label} MM${n2}`,
+                data: rolAvg(pctSlice, n2), borderColor: S.grafMM2Cor||'#fbbf24',
+                backgroundColor:'transparent', borderWidth: S.grafMM2Esp||2,
+                borderDash: _pd(S.grafMM2Dash||'8,4'), pointRadius:0, tension:0.4, _isMA:true });
+        }
+    });
+
+    const labels = serieDisplay.map(p => {
+        if (!p.data_partida) return '';
+        const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
+        return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+    });
+
+    const warmupStr = offset > 0 ? ` (+${offset} warmup)` : '';
+    if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serieDisplay.length} jogos${warmupStr}`;
+
+    _LINHA_SERIE = serieDisplay;
+    _LINHA_HITS  = hitsMapDisplay;
+
+    _destruir();
+
+    try {
+        S._graficoLinha = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                clip: 8,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: !S.showLegendas,
+                        filter: item => !item.dataset._isRef && !item.dataset._isMA,
+                        backgroundColor: 'rgba(15,23,42,0.85)', borderColor:'#334155', borderWidth:1,
+                        titleColor:'#94a3b8', bodyColor:'#cbd5e1',
+                        callbacks: {
+                            title: ctxArr => {
+                                const j = _LINHA_SERIE[ctxArr[0].dataIndex];
+                                if (!j) return '';
+                                const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
+                                const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
+                                const ht = (j.gol_casa_ht != null && j.gol_fora_ht != null)
+                                    ? `  HT: ${j.gol_casa_ht}-${j.gol_fora_ht}` : j.ht_outro ? '  HT: OUT' : '';
+                                return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}${ht}  (FT: ${j.gol_casa}-${j.gol_fora})`;
+                            },
+                            label: ctx => {
+                                if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
+                                const i   = ctx.dataIndex;
+                                const fid = ctx.dataset._filtroId;
+                                const hit = fid ? (_LINHA_HITS[fid]?.[i] ? ' ✓' : ' ✗') : '';
+                                return ` ${ctx.dataset.label}: ${ctx.raw}%${hit}`;
+                            }
+                        }
+                    },
+                    zoom: {
+                        zoom: { wheel:{ enabled:true, modifierKey:'ctrl' }, pinch:{ enabled:true }, mode:'x' },
+                        pan:  { enabled:true, modifierKey:'shift', mode:'x' }
+                    }
+                },
+                layout: { padding: { top: 18, bottom: 10 } },
+                scales: {
+                    x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                    y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
+                }
+            },
+            plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin]
+        });
+    } catch(e) { console.error('renderGraficoLinha error:', e); }
 }
 
 // ============================================================
@@ -4322,6 +4556,7 @@ function renderGraficoPar() {
 // ── Zoom reset ──────────────────────────────────────────────
 function resetZoomGrafico() { try { if (S.grafico?.resetZoom) S.grafico.resetZoom(); } catch(_){} }
 function resetZoomGols()    { try { if (S._graficoGols?.resetZoom) S._graficoGols.resetZoom(); } catch(_){} }
+function resetZoomLinha()   { try { if (S._graficoLinha?.resetZoom) S._graficoLinha.resetZoom(); } catch(_){} }
 function resetZoomPar()     { try { if (S._graficoPar?.resetZoom) S._graficoPar.resetZoom(); } catch(_){} }
 
 // ============================================================
@@ -4429,6 +4664,7 @@ function minutosParaLiga(liga) {
 // TABELA HISTÓRICA — 1 linha = 1 hora, 20 colunas = jogos daquela hora
 function _renderAllCharts() {
     renderGrafico();
+    if (S.showLinha) renderGraficoLinha();
     renderGraficoGols();
     renderGraficoPar();
 }
@@ -4998,7 +5234,7 @@ function toggleLegendas() {
     if (btn) { btn.style.borderColor = S.showLegendas ? '#1fcc59' : '#1e293b'; btn.style.color = S.showLegendas ? '#e2e8f0' : '#94a3b8'; }
     if (S.showLegendas) hideTT();
     localStorage.setItem('showLegendas', S.showLegendas ? '1' : '0');
-    if (S.view === 'historico') renderGrafico();
+    if (S.view === 'historico') { renderGrafico(); if (S.showLinha) renderGraficoLinha(); }
 }
 
 // ============================================================
@@ -8673,6 +8909,7 @@ function aplicarPadrao(id, opts = {}) {
         // rAF: garante que o canvas tem dimensões corretas antes de criar o chart
         requestAnimationFrame(() => {
             renderGrafico();
+            if (S.showLinha)    renderGraficoLinha();
             if (S.showGols)     renderGraficoGols();
             if (S.showParImpar) renderGraficoPar();
         });
