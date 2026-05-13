@@ -2776,11 +2776,26 @@ function setSubViewPeriodo(subview, val) {
         if (subview === 'linha')    { S.horasLinha    = null; S.jogosLinha    = n; }
         if (subview === 'parimpar') { S.horasParImpar = null; S.jogosParImpar = n; }
         if (subview === 'mosaico')  { S.horasMosaico  = null; S.jogosMosaico  = n; }
-        if (subview === 'grafico')  renderGrafico();
-        if (subview === 'gols')     renderGraficoGols();
-        if (subview === 'linha')    renderGraficoLinha();
-        if (subview === 'parimpar') renderGraficoPar();
-        if (subview === 'mosaico')  renderTabela();
+
+        const renderJogos = () => {
+            if (subview === 'grafico')  renderGrafico();
+            if (subview === 'gols')     renderGraficoGols();
+            if (subview === 'linha')    renderGraficoLinha();
+            if (subview === 'parimpar') renderGraficoPar();
+            if (subview === 'mosaico')  renderTabela();
+        };
+
+        // Verifica se há dados suficientes para N jogos
+        // Estimativa: taxa de jogos/hora baseada no carregado; carrega mais se preciso
+        const taxaJogosHora = S._horasCarregadas > 0 && S.partidas.length > 0
+            ? S.partidas.length / S._horasCarregadas : 20;
+        const horasNecessarias = Math.ceil(n / taxaJogosHora) + 2; // +2h de margem
+        if (horasNecessarias > (S._horasCarregadas || 0)) {
+            S._horasCarregadas = horasNecessarias;
+            carregarHistorico().then(renderJogos);
+        } else {
+            renderJogos();
+        }
         return;
     }
 
@@ -3704,10 +3719,17 @@ function utcHourStart(d) {
     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours());
 }
 
+const _partidaMs = p => {
+    const raw = typeof p.data_partida === 'string'
+        ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z')
+        : p.data_partida;
+    return new Date(raw).getTime();
+};
+
 function gruposDeJogos(n) {
     const sorted = S.partidas
         .filter(p => p.data_partida)
-        .sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
+        .sort((a, b) => _partidaMs(a) - _partidaMs(b));
     const lastN = sorted.slice(-n);
     const byHour = new Map();
     lastN.forEach(p => {
@@ -3763,7 +3785,7 @@ function grupos(horasOverride, jogosOverride) {
 function serieFlat(horasOverride, jogosOverride) {
     return grupos(horasOverride, jogosOverride)
         .flatMap(g => g.jogos)
-        .sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
+        .sort((a, b) => _partidaMs(a) - _partidaMs(b));
 }
 
 // ============================================================
