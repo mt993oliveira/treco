@@ -1191,6 +1191,41 @@
         </div>
     </div>
 
+    <!-- Modo de Filtro: Horas / Jogos -->
+    <div id="modo-filtro-bar" style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.07em;white-space:nowrap">FILTRO</span>
+        <button id="btn-modo-horas" onclick="setModoFiltro('horas')"
+            style="padding:5px 10px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:6px;
+            color:#e2e8f0;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">⏱ Horas</button>
+        <button id="btn-modo-jogos" onclick="setModoFiltro('jogos')"
+            style="padding:5px 10px;background:#0f172a;border:1.5px solid #1e293b;border-radius:6px;
+            color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">🎮 Jogos</button>
+        <select id="jogos-select" onchange="setJogosFilter(this.value)"
+            style="display:none;background:#0f172a;border:1.5px solid #1fcc59;border-radius:6px;
+            color:#e2e8f0;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer;outline:none">
+            <option value="20">20J</option>
+            <option value="40">40J</option>
+            <option value="60">60J</option>
+            <option value="80">80J</option>
+            <option value="100" selected>100J</option>
+            <option value="120">120J</option>
+            <option value="140">140J</option>
+            <option value="160">160J</option>
+            <option value="180">180J</option>
+            <option value="200">200J</option>
+            <option value="240">240J</option>
+            <option value="280">280J</option>
+            <option value="320">320J</option>
+            <option value="360">360J</option>
+            <option value="420">420J</option>
+            <option value="nr">Nº</option>
+        </select>
+        <input id="jogos-custom" type="number" min="1" max="9999" placeholder="Ex: 150"
+            style="display:none;width:80px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:6px;
+            color:#e2e8f0;font-size:11px;font-weight:700;padding:4px 8px;outline:none"
+            oninput="setJogosCustom(this.value)">
+    </div>
+
     <!-- Toggle: Gráfico de Gols | Gráfico de Mercados | Gráfico de Par e Ímpar | Menu Mosaico -->
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <button id="sub-btn-gols" onclick="setSubView('gols')"
@@ -2404,6 +2439,8 @@ const S = {
     showGols:      false,
     showLinha:     false,
     showParImpar:  false,
+    modoFiltro:    'horas',  // 'horas' | 'jogos'
+    jogos:         100,      // último N jogos (modo jogos)
     horasGrafico:  null,
     horasGols:     null,
     horasLinha:    null,
@@ -2735,6 +2772,60 @@ function setSubViewPeriodo(subview, val) {
     } else {
         render();
     }
+}
+
+// ============================================================
+// MODO FILTRO: HORAS / JOGOS
+// ============================================================
+function setModoFiltro(modo) {
+    S.modoFiltro = modo;
+    _updateModoFiltroUI();
+    _renderAllCharts();
+    renderTabela();
+}
+
+function setJogosFilter(val) {
+    const inp = document.getElementById('jogos-custom');
+    if (val === 'nr') {
+        if (inp) { inp.style.display = ''; inp.focus(); }
+        return;
+    }
+    const n = parseInt(val);
+    if (n > 0) {
+        S.jogos = n;
+        if (inp) inp.style.display = 'none';
+        _renderAllCharts();
+        renderTabela();
+    }
+}
+
+function setJogosCustom(val) {
+    const n = parseInt(val);
+    if (n > 0) {
+        S.jogos = n;
+        _renderAllCharts();
+        renderTabela();
+    }
+}
+
+function _updateModoFiltroUI() {
+    const isJogos = S.modoFiltro === 'jogos';
+    const bH  = document.getElementById('btn-modo-horas');
+    const bJ  = document.getElementById('btn-modo-jogos');
+    const sel = document.getElementById('jogos-select');
+    const inp = document.getElementById('jogos-custom');
+    if (!bH || !bJ) return;
+    bH.style.borderColor = isJogos ? '#1e293b' : '#1fcc59';
+    bH.style.color       = isJogos ? '#94a3b8' : '#e2e8f0';
+    bJ.style.borderColor = isJogos ? '#1fcc59' : '#1e293b';
+    bJ.style.color       = isJogos ? '#e2e8f0' : '#94a3b8';
+    if (sel) {
+        sel.style.display = isJogos ? '' : 'none';
+        // Sync select value with S.jogos
+        const opt = [...sel.options].find(o => parseInt(o.value) === S.jogos);
+        if (opt) sel.value = opt.value;
+    }
+    if (inp) inp.style.display = 'none';
 }
 
 // ============================================================
@@ -3634,7 +3725,28 @@ function utcHourStart(d) {
     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours());
 }
 
+function gruposDeJogos(n) {
+    const sorted = S.partidas
+        .filter(p => p.data_partida)
+        .sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
+    const lastN = sorted.slice(-n);
+    const byHour = new Map();
+    lastN.forEach(p => {
+        const raw = typeof p.data_partida === 'string'
+            ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z')
+            : p.data_partida;
+        const d = new Date(raw);
+        if (isNaN(d)) return;
+        const ms  = utcHourStart(d);
+        const key = horaKey(new Date(ms));
+        if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(ms), jogos: [] });
+        byHour.get(key).jogos.push(p);
+    });
+    return [...byHour.values()].sort((a, b) => a.hora - b.hora);
+}
+
 function grupos(horasOverride) {
+    if (S.modoFiltro === 'jogos') return gruposDeJogos(S.jogos);
     const agora  = new Date(Date.now() + BET365_OFFSET_MS);
     const byHour = new Map();
     const _horas = horasOverride != null ? horasOverride : S.horas;
@@ -4948,11 +5060,11 @@ function renderTabela() {
     if (semDados) {
         tbody.innerHTML = `<tr><td colspan="${N+2}" style="text-align:center;padding:40px;color:#334155;background:#060810">
             <div style="font-size:22px;margin-bottom:8px">📊</div>
-            <div style="font-size:12px;color:#475569">Nenhum histórico nas últimas ${S.horas}h</div>
+            <div style="font-size:12px;color:#475569">${S.modoFiltro==='jogos' ? `Nenhum histórico nos últimos ${S.jogos} jogos` : `Nenhum histórico nas últimas ${S.horas}h`}</div>
             <div style="font-size:10px;margin-top:4px;color:#334155">A coleta precisa capturar resultados finais. Verifique o agendador.</div>
         </td></tr>`;
         tfoot.innerHTML = '';
-        const _itxt0 = `0 partidas • ${S.horas}h`;
+        const _itxt0 = S.modoFiltro === 'jogos' ? `0 partidas • ${S.jogos}J` : `0 partidas • ${S.horas}h`;
         const _di0 = document.getElementById('diag-tabela-info'); if (_di0) _di0.textContent = _itxt0;
         return;
     }
@@ -5370,7 +5482,9 @@ function renderTabela() {
 
     const totalPartidas = gs.reduce((s, g) => s + g.jogos.length, 0);
     const horasCom      = gs.filter(g => g.jogos.length > 0).length;
-    const _infoTxt = `${S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
+    const _infoTxt = S.modoFiltro === 'jogos'
+        ? `${S.jogos}J • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`
+        : `${S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
     const _diagInfo = document.getElementById('diag-tabela-info');
     if (_diagInfo) _diagInfo.textContent = _infoTxt;
 
