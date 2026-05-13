@@ -1195,34 +1195,34 @@
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <button id="sub-btn-gols" onclick="setSubView('gols')"
             style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
-            border-radius:8px;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
+            border-radius:7px;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:4px;transition:border-color .2s,color .2s">
             ⚽ Gráfico de Gols
         </button>
         <button id="sub-btn-linha" onclick="setSubView('linha')"
-            style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
-            border-radius:8px;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
+            style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
+            border-radius:7px;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:4px;transition:border-color .2s,color .2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 17 9 11 13 15 21 7"/></svg>
             Gráfico de Linha
         </button>
         <button id="sub-btn-grafico" onclick="setSubView('grafico')"
-            style="flex:1;min-width:140px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
-            border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
+            style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
+            border-radius:7px;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:4px;transition:border-color .2s,color .2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Gráfico de Mercados
         </button>
         <button id="sub-btn-parimpar" onclick="setSubView('parimpar')"
-            style="flex:1;min-width:150px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
-            border-radius:8px;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
+            style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
+            border-radius:7px;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:4px;transition:border-color .2s,color .2s">
             🔢 Gráfico de Par e Ímpar
         </button>
         <button id="sub-btn-mosaico" onclick="setSubView('mosaico')"
-            style="flex:1;min-width:120px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
-            border-radius:8px;color:#e2e8f0;font-size:11px;font-weight:600;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s">
+            style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
+            border-radius:7px;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:4px;transition:border-color .2s,color .2s">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
             Menu Mosaico
         </button>
@@ -2703,7 +2703,7 @@ function setSubView(v) {
         const btn = document.getElementById(_btns[k]);
         const on  = _show[k];
         if (sec) sec.style.display = on ? (_SECAO_DISPLAY[_secs[k]] || 'block') : 'none';
-        if (btn) { btn.style.borderColor = on ? '#1fcc59' : '#1e293b'; btn.style.color = on ? '#e2e8f0' : '#64748b'; }
+        if (btn) { btn.style.borderColor = on ? '#1fcc59' : '#1e293b'; btn.style.color = on ? '#e2e8f0' : '#94a3b8'; }
     });
     if (v === 'grafico'  && S.showGrafico)  renderGrafico();
     if (v === 'gols'     && S.showGols)     requestAnimationFrame(() => renderGraficoGols());
