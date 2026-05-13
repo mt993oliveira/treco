@@ -1191,41 +1191,6 @@
         </div>
     </div>
 
-    <!-- Modo de Filtro: Horas / Jogos -->
-    <div id="modo-filtro-bar" style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-        <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.07em;white-space:nowrap">FILTRO</span>
-        <button id="btn-modo-horas" onclick="setModoFiltro('horas')"
-            style="padding:5px 10px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:6px;
-            color:#e2e8f0;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">⏱ Horas</button>
-        <button id="btn-modo-jogos" onclick="setModoFiltro('jogos')"
-            style="padding:5px 10px;background:#0f172a;border:1.5px solid #1e293b;border-radius:6px;
-            color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">🎮 Jogos</button>
-        <select id="jogos-select" onchange="setJogosFilter(this.value)"
-            style="display:none;background:#0f172a;border:1.5px solid #1fcc59;border-radius:6px;
-            color:#e2e8f0;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer;outline:none">
-            <option value="20">20J</option>
-            <option value="40">40J</option>
-            <option value="60">60J</option>
-            <option value="80">80J</option>
-            <option value="100" selected>100J</option>
-            <option value="120">120J</option>
-            <option value="140">140J</option>
-            <option value="160">160J</option>
-            <option value="180">180J</option>
-            <option value="200">200J</option>
-            <option value="240">240J</option>
-            <option value="280">280J</option>
-            <option value="320">320J</option>
-            <option value="360">360J</option>
-            <option value="420">420J</option>
-            <option value="nr">Nº</option>
-        </select>
-        <input id="jogos-custom" type="number" min="1" max="9999" placeholder="Ex: 150"
-            style="display:none;width:80px;background:#0f172a;border:1.5px solid #1fcc59;border-radius:6px;
-            color:#e2e8f0;font-size:11px;font-weight:700;padding:4px 8px;outline:none"
-            oninput="setJogosCustom(this.value)">
-    </div>
-
     <!-- Toggle: Gráfico de Gols | Gráfico de Mercados | Gráfico de Par e Ímpar | Menu Mosaico -->
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <button id="sub-btn-gols" onclick="setSubView('gols')"
@@ -1269,16 +1234,21 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="font-size:10px;font-weight:700;color:#64748b" id="g-gols-titulo">⚽ Gols por Jogo</div>
-                    <div style="display:flex;align-items:center;gap:4px">
-                        <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <div id="periodo-badge-gols" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
                         <select id="periodo-gols" onchange="setSubViewPeriodo('gols',this.value)"
-                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;font-weight:700;padding:2px 5px;cursor:pointer;height:22px;outline:none">
+                            style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
                             <option value="">= Config</option>
                             <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                             <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                             <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
+                            <option disabled style="color:#334155">───</option>
+                            <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
+                            <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
+                            <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
+                            <option value="j360">360J</option><option value="j420">420J</option>
                         </select>
                     </div>
                 </div>
@@ -1298,16 +1268,21 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="font-size:10px;font-weight:700;color:#64748b" id="g-linha-titulo">Selecione filtros em 🎯 Mercados</div>
-                    <div style="display:flex;align-items:center;gap:4px">
-                        <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <div id="periodo-badge-linha" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
                         <select id="periodo-linha" onchange="setSubViewPeriodo('linha',this.value)"
-                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;font-weight:700;padding:2px 5px;cursor:pointer;height:22px;outline:none">
+                            style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
                             <option value="">= Config</option>
                             <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                             <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                             <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
+                            <option disabled style="color:#334155">───</option>
+                            <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
+                            <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
+                            <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
+                            <option value="j360">360J</option><option value="j420">420J</option>
                         </select>
                     </div>
                 </div>
@@ -1358,16 +1333,21 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Selecione filtros em 🎯 Mercados</div>
-                    <div style="display:flex;align-items:center;gap:4px">
-                        <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <div id="periodo-badge-grafico" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
                         <select id="periodo-grafico" onchange="setSubViewPeriodo('grafico',this.value)"
-                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;font-weight:700;padding:2px 5px;cursor:pointer;height:22px;outline:none">
+                            style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
                             <option value="">= Config</option>
                             <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                             <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                             <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
+                            <option disabled style="color:#334155">───</option>
+                            <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
+                            <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
+                            <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
+                            <option value="j360">360J</option><option value="j420">420J</option>
                         </select>
                     </div>
                 </div>
@@ -1420,16 +1400,21 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="font-size:10px;font-weight:700;color:#64748b" id="g-par-titulo">🔢 Par e Ímpar — % Acumulado</div>
-                    <div style="display:flex;align-items:center;gap:4px">
-                        <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <div id="periodo-badge-parimpar" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
                         <select id="periodo-parimpar" onchange="setSubViewPeriodo('parimpar',this.value)"
-                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;font-weight:700;padding:2px 5px;cursor:pointer;height:22px;outline:none">
+                            style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
                             <option value="">= Config</option>
                             <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                             <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                             <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
+                            <option disabled style="color:#334155">───</option>
+                            <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
+                            <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
+                            <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
+                            <option value="j360">360J</option><option value="j420">420J</option>
                         </select>
                     </div>
                 </div>
@@ -1455,16 +1440,21 @@
             <button class="acao-btn" id="btn-mosaico-pct" onclick="S._mosaicoShowPct=!S._mosaicoShowPct;document.getElementById('btn-mosaico-pct').classList.toggle('ativo',S._mosaicoShowPct);renderTabela()" title="Mostrar/ocultar coluna % de acerto por linha">% Linha</button>
             <button class="acao-btn" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
         </div>
-        <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:8px;color:#475569;font-weight:700">PERÍODO</span>
+        <div style="display:flex;align-items:center;gap:6px">
+            <div id="periodo-badge-mosaico" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
             <select id="periodo-mosaico" onchange="setSubViewPeriodo('mosaico',this.value)"
-                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;font-weight:700;padding:2px 5px;cursor:pointer;height:22px;outline:none">
+                style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
                 <option value="">= Config</option>
                 <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                 <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                 <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                 <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                 <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
+                <option disabled style="color:#334155">───</option>
+                <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
+                <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
+                <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
+                <option value="j360">360J</option><option value="j420">420J</option>
             </select>
         </div>
     </div>
@@ -2439,8 +2429,11 @@ const S = {
     showGols:      false,
     showLinha:     false,
     showParImpar:  false,
-    modoFiltro:    'horas',  // 'horas' | 'jogos'
-    jogos:         100,      // último N jogos (modo jogos)
+    jogosGrafico:  null,
+    jogosGols:     null,
+    jogosLinha:    null,
+    jogosParImpar: null,
+    jogosMosaico:  null,
     horasGrafico:  null,
     horasGols:     null,
     horasLinha:    null,
@@ -2749,13 +2742,54 @@ function setSubView(v) {
     if (v === 'mosaico'  && S.showMosaico)  renderTabela();
 }
 
+function _updatePeriodoBadge(subview, val) {
+    const badge = document.getElementById(`periodo-badge-${subview}`);
+    const sel   = document.getElementById(`periodo-${subview}`);
+    if (!badge) return;
+    const isJogos = val && val.startsWith('j');
+    if (!val) {
+        badge.textContent = '⏱ Período';
+        badge.style.color = '#64748b';
+        badge.style.borderColor = '#1e293b';
+        if (sel) sel.style.borderColor = '#334155';
+    } else if (isJogos) {
+        badge.textContent = `🎮 ${val.slice(1)}J`;
+        badge.style.color = '#1fcc59';
+        badge.style.borderColor = '#1fcc59';
+        if (sel) sel.style.borderColor = '#1fcc59';
+    } else {
+        badge.textContent = `⏱ ${val}H`;
+        badge.style.color = '#60a5fa';
+        badge.style.borderColor = '#60a5fa';
+        if (sel) sel.style.borderColor = '#60a5fa';
+    }
+}
+
 function setSubViewPeriodo(subview, val) {
+    _updatePeriodoBadge(subview, val);
+    const isJogos = val && val.startsWith('j');
+
+    if (isJogos) {
+        const n = parseInt(val.slice(1));
+        if (subview === 'grafico')  { S.horasGrafico  = null; S.jogosGrafico  = n; }
+        if (subview === 'gols')     { S.horasGols     = null; S.jogosGols     = n; }
+        if (subview === 'linha')    { S.horasLinha    = null; S.jogosLinha    = n; }
+        if (subview === 'parimpar') { S.horasParImpar = null; S.jogosParImpar = n; }
+        if (subview === 'mosaico')  { S.horasMosaico  = null; S.jogosMosaico  = n; }
+        if (subview === 'grafico')  renderGrafico();
+        if (subview === 'gols')     renderGraficoGols();
+        if (subview === 'linha')    renderGraficoLinha();
+        if (subview === 'parimpar') renderGraficoPar();
+        if (subview === 'mosaico')  renderTabela();
+        return;
+    }
+
     const h = val ? parseInt(val) : null;
-    if (subview === 'grafico')  S.horasGrafico  = h;
-    if (subview === 'gols')     S.horasGols     = h;
-    if (subview === 'linha')    S.horasLinha    = h;
-    if (subview === 'parimpar') S.horasParImpar = h;
-    if (subview === 'mosaico')  S.horasMosaico  = h;
+    if (subview === 'grafico')  { S.horasGrafico  = h; S.jogosGrafico  = null; }
+    if (subview === 'gols')     { S.horasGols     = h; S.jogosGols     = null; }
+    if (subview === 'linha')    { S.horasLinha    = h; S.jogosLinha    = null; }
+    if (subview === 'parimpar') { S.horasParImpar = h; S.jogosParImpar = null; }
+    if (subview === 'mosaico')  { S.horasMosaico  = h; S.jogosMosaico  = null; }
 
     const render = () => {
         if (subview === 'grafico')  renderGrafico();
@@ -2765,67 +2799,12 @@ function setSubViewPeriodo(subview, val) {
         if (subview === 'mosaico')  renderTabela();
     };
 
-    // Se o período pedido excede os dados carregados, rebusca antes de renderizar
     if (h && h > (S._horasCarregadas || S.horas)) {
         S._horasCarregadas = h;
         carregarHistorico().then(render);
     } else {
         render();
     }
-}
-
-// ============================================================
-// MODO FILTRO: HORAS / JOGOS
-// ============================================================
-function setModoFiltro(modo) {
-    S.modoFiltro = modo;
-    _updateModoFiltroUI();
-    _renderAllCharts();
-    renderTabela();
-}
-
-function setJogosFilter(val) {
-    const inp = document.getElementById('jogos-custom');
-    if (val === 'nr') {
-        if (inp) { inp.style.display = ''; inp.focus(); }
-        return;
-    }
-    const n = parseInt(val);
-    if (n > 0) {
-        S.jogos = n;
-        if (inp) inp.style.display = 'none';
-        _renderAllCharts();
-        renderTabela();
-    }
-}
-
-function setJogosCustom(val) {
-    const n = parseInt(val);
-    if (n > 0) {
-        S.jogos = n;
-        _renderAllCharts();
-        renderTabela();
-    }
-}
-
-function _updateModoFiltroUI() {
-    const isJogos = S.modoFiltro === 'jogos';
-    const bH  = document.getElementById('btn-modo-horas');
-    const bJ  = document.getElementById('btn-modo-jogos');
-    const sel = document.getElementById('jogos-select');
-    const inp = document.getElementById('jogos-custom');
-    if (!bH || !bJ) return;
-    bH.style.borderColor = isJogos ? '#1e293b' : '#1fcc59';
-    bH.style.color       = isJogos ? '#94a3b8' : '#e2e8f0';
-    bJ.style.borderColor = isJogos ? '#1fcc59' : '#1e293b';
-    bJ.style.color       = isJogos ? '#e2e8f0' : '#94a3b8';
-    if (sel) {
-        sel.style.display = isJogos ? '' : 'none';
-        // Sync select value with S.jogos
-        const opt = [...sel.options].find(o => parseInt(o.value) === S.jogos);
-        if (opt) sel.value = opt.value;
-    }
-    if (inp) inp.style.display = 'none';
 }
 
 // ============================================================
@@ -3745,8 +3724,8 @@ function gruposDeJogos(n) {
     return [...byHour.values()].sort((a, b) => a.hora - b.hora);
 }
 
-function grupos(horasOverride) {
-    if (S.modoFiltro === 'jogos') return gruposDeJogos(S.jogos);
+function grupos(horasOverride, jogosOverride) {
+    if (jogosOverride != null) return gruposDeJogos(jogosOverride);
     const agora  = new Date(Date.now() + BET365_OFFSET_MS);
     const byHour = new Map();
     const _horas = horasOverride != null ? horasOverride : S.horas;
@@ -3781,8 +3760,8 @@ function grupos(horasOverride) {
 }
 
 // Série flat de todas as partidas para o gráfico — usa os mesmos slots do mosaico
-function serieFlat(horasOverride) {
-    return grupos(horasOverride)
+function serieFlat(horasOverride, jogosOverride) {
+    return grupos(horasOverride, jogosOverride)
         .flatMap(g => g.jogos)
         .sort((a, b) => new Date(a.data_partida) - new Date(b.data_partida));
 }
@@ -4090,7 +4069,7 @@ function renderGrafico() {
     if (!canvas) return;
 
     // Apenas jogos com placar confirmado
-    const serie = serieFlat(S.horasGrafico)
+    const serie = serieFlat(S.horasGrafico, S.jogosGrafico)
         .filter(j => j.gol_casa != null && j.gol_fora != null);
 
     const tituloEl = document.getElementById('g-titulo');
@@ -4422,15 +4401,20 @@ function renderGraficoLinha() {
     const canvas = document.getElementById('grafico-linha');
     if (!canvas) return;
 
+    const isJogosLinha = S.jogosLinha != null;
     const horasDisplay = S.horasLinha != null ? S.horasLinha : S.horas;
     const n1 = S.linhaGrafMM1 || 9;
-    // Uma hora extra de warmup (garante que a MM já tem contexto no 1º ponto exibido)
-    const horasTotal = Math.min(horasDisplay + 1, S._horasCarregadas || S.horas);
 
-    const serieFull = serieFlat(horasTotal)
-        .filter(j => j.gol_casa != null && j.gol_fora != null);
-    const serieDisplay = serieFlat(horasDisplay)
-        .filter(j => j.gol_casa != null && j.gol_fora != null);
+    let serieFull, serieDisplay;
+    if (isJogosLinha) {
+        serieFull    = serieFlat(null, S.jogosLinha).filter(j => j.gol_casa != null && j.gol_fora != null);
+        serieDisplay = serieFull;
+    } else {
+        // Uma hora extra de warmup (garante que a MM já tem contexto no 1º ponto exibido)
+        const horasTotal = Math.min(horasDisplay + 1, S._horasCarregadas || S.horas);
+        serieFull    = serieFlat(horasTotal).filter(j => j.gol_casa != null && j.gol_fora != null);
+        serieDisplay = serieFlat(horasDisplay).filter(j => j.gol_casa != null && j.gol_fora != null);
+    }
 
     const tituloEl = document.getElementById('g-linha-titulo');
     const ativos   = TODOS_FILTROS.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
@@ -4642,7 +4626,7 @@ function renderGraficoGols() {
     };
 
     // Série flat de jogos individuais com placar registrado
-    const serieTotal = serieFlat(S.horasGols);
+    const serieTotal = serieFlat(S.horasGols, S.jogosGols);
     const serie = serieTotal.filter(j => j.gol_casa != null && j.gol_fora != null);
 
     if (!serie.length) {
@@ -4767,7 +4751,7 @@ function renderGraficoPar() {
         if (_orp) { try { _orp.destroy(); } catch(_){} }
     };
 
-    const serieTotal = serieFlat(S.horasParImpar);
+    const serieTotal = serieFlat(S.horasParImpar, S.jogosParImpar);
     const serie = serieTotal.filter(j => j.gol_casa != null && j.gol_fora != null);
 
     if (!serie.length) {
@@ -5001,7 +4985,7 @@ function _renderAllCharts() {
 // Estilo CarameloBet: score na célula, cor = filtro ativo
 function renderTabela() {
     if (S.view === 'historico' && !S.showMosaico) return;
-    const gs = grupos(S.horasMosaico);
+    const gs = grupos(S.horasMosaico, S.jogosMosaico);
     const fi = TODOS_FILTROS.find(f => f.id === S.filtro) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
     const gridCores = carregarCoresGrid();
     const corOdd = v => v <= 0 ? '#64748b' : v < 2.0 ? gridCores.oddFav : v < 3.0 ? gridCores.oddMed : gridCores.oddAzarao;
@@ -5060,11 +5044,11 @@ function renderTabela() {
     if (semDados) {
         tbody.innerHTML = `<tr><td colspan="${N+2}" style="text-align:center;padding:40px;color:#334155;background:#060810">
             <div style="font-size:22px;margin-bottom:8px">📊</div>
-            <div style="font-size:12px;color:#475569">${S.modoFiltro==='jogos' ? `Nenhum histórico nos últimos ${S.jogos} jogos` : `Nenhum histórico nas últimas ${S.horas}h`}</div>
+            <div style="font-size:12px;color:#475569">${S.jogosMosaico != null ? `Nenhum histórico nos últimos ${S.jogosMosaico} jogos` : `Nenhum histórico nas últimas ${S.horas}h`}</div>
             <div style="font-size:10px;margin-top:4px;color:#334155">A coleta precisa capturar resultados finais. Verifique o agendador.</div>
         </td></tr>`;
         tfoot.innerHTML = '';
-        const _itxt0 = S.modoFiltro === 'jogos' ? `0 partidas • ${S.jogos}J` : `0 partidas • ${S.horas}h`;
+        const _itxt0 = S.jogosMosaico != null ? `0 partidas • ${S.jogosMosaico}J` : `0 partidas • ${S.horas}h`;
         const _di0 = document.getElementById('diag-tabela-info'); if (_di0) _di0.textContent = _itxt0;
         return;
     }
@@ -5482,9 +5466,9 @@ function renderTabela() {
 
     const totalPartidas = gs.reduce((s, g) => s + g.jogos.length, 0);
     const horasCom      = gs.filter(g => g.jogos.length > 0).length;
-    const _infoTxt = S.modoFiltro === 'jogos'
-        ? `${S.jogos}J • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`
-        : `${S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
+    const _infoTxt = S.jogosMosaico != null
+        ? `${S.jogosMosaico}J • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`
+        : `${S.horasMosaico || S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
     const _diagInfo = document.getElementById('diag-tabela-info');
     if (_diagInfo) _diagInfo.textContent = _infoTxt;
 
