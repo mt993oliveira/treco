@@ -4022,12 +4022,18 @@ function renderGrafico() {
 
     const datasets = [];
 
-    // Linha de equilíbrio 50%
+    // Linha de equilíbrio real — uma linha por filtro, na média histórica do período
     if (S.linhas['equilibrio']) {
-        datasets.push({ type:'line', label:'Equilíbrio', data: serie.map(() => 50),
-            borderColor:'#64748b', backgroundColor:'transparent',
-            borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0,
-            _isEquilibrio:true, _isRef:true });
+        ativos.forEach(f => {
+            const hits = hitsMap[f.id];
+            const avg  = +(hits.reduce((a,b)=>a+b,0) / hits.length * 100).toFixed(1);
+            const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
+            datasets.push({ type:'line', label:`${f.label} ~${avg}%`,
+                data: serie.map(() => avg),
+                borderColor: cor + '70', backgroundColor:'transparent',
+                borderWidth:1.5, borderDash:[6,4], pointRadius:0, tension:0,
+                _isEquilibrio:true, _isRef:true });
+        });
     }
 
     ativos.forEach(f => {
@@ -4343,23 +4349,34 @@ function renderGraficoLinha() {
     // Offset: quantos jogos do serieFull são de warmup (não exibidos)
     const offset = Math.max(0, serieFull.length - serieDisplay.length);
 
-    const datasets = [];
+    // Pré-calcula hits e pct de todos os filtros (necessário para equilibrio antes dos datasets)
     const hitsMapDisplay = {};
+    const pctMapDisplay  = {};
+    ativos.forEach(f => {
+        const hitsFull = serieFull.map(j => checa(j, f.id) ? 1 : 0);
+        hitsMapDisplay[f.id] = hitsFull.slice(offset);
+        pctMapDisplay[f.id]  = rolPct(hitsFull, n1).slice(offset);
+    });
 
+    const datasets = [];
+
+    // Equilíbrio real — uma linha por filtro na média histórica do período
     if (S.linhas['equilibrio']) {
-        datasets.push({ type:'line', label:'Equilíbrio', data: serieDisplay.map(() => 50),
-            borderColor:'#64748b', backgroundColor:'transparent',
-            borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0,
-            _isEquilibrio:true, _isRef:true });
+        ativos.forEach(f => {
+            const hits = hitsMapDisplay[f.id];
+            const avg  = +(hits.reduce((a,b)=>a+b,0) / hits.length * 100).toFixed(1);
+            const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
+            datasets.push({ type:'line', label:`${f.label} ~${avg}%`,
+                data: serieDisplay.map(() => avg),
+                borderColor: cor + '70', backgroundColor:'transparent',
+                borderWidth:1.5, borderDash:[6,4], pointRadius:0, tension:0,
+                _isEquilibrio:true, _isRef:true });
+        });
     }
 
     ativos.forEach(f => {
-        const hitsFull   = serieFull.map(j => checa(j, f.id) ? 1 : 0);
-        const pctFull    = rolPct(hitsFull, n1);
-        const hitsSlice  = hitsFull.slice(offset);
-        const pctSlice   = pctFull.slice(offset);
-        hitsMapDisplay[f.id] = hitsSlice;
-
+        const hitsSlice = hitsMapDisplay[f.id];
+        const pctSlice  = pctMapDisplay[f.id];
         const cor = (S._chartCores && S._chartCores[f.id]) || f.cor;
         const pct = hitsSlice.length ? Math.round(hitsSlice.reduce((a,b)=>a+b,0) / hitsSlice.length * 100) : 0;
 
