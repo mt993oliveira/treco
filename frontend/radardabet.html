@@ -1234,21 +1234,22 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="font-size:10px;font-weight:700;color:#64748b" id="g-gols-titulo">⚽ Gols por Jogo</div>
-                    <div style="display:flex;align-items:center;gap:6px">
-                        <div id="periodo-badge-gols" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <span id="periodo-badge-gols" style="font-size:11px;font-weight:700;color:#64748b;border:1px solid #1e293b;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:default">⏱ Período</span>
                         <select id="periodo-gols" onchange="setSubViewPeriodo('gols',this.value)"
-                            style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
                             <option value="">= Config</option>
                             <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                             <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                             <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                            <option disabled style="color:#334155">───</option>
-                            <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
-                            <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
-                            <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
-                            <option value="j360">360J</option><option value="j420">420J</option>
+                            <option disabled>── Jogos ──</option>
+                            <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
+                            <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
+                            <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
+                            <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
+                            <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
                         </select>
                     </div>
                 </div>
@@ -1268,21 +1269,22 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="font-size:10px;font-weight:700;color:#64748b" id="g-linha-titulo">Selecione filtros em 🎯 Mercados</div>
-                    <div style="display:flex;align-items:center;gap:6px">
-                        <div id="periodo-badge-linha" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <span id="periodo-badge-linha" style="font-size:11px;font-weight:700;color:#64748b;border:1px solid #1e293b;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:default">⏱ Período</span>
                         <select id="periodo-linha" onchange="setSubViewPeriodo('linha',this.value)"
-                            style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
                             <option value="">= Config</option>
                             <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                             <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                             <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                            <option disabled style="color:#334155">───</option>
-                            <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
-                            <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
-                            <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
-                            <option value="j360">360J</option><option value="j420">420J</option>
+                            <option disabled>── Jogos ──</option>
+                            <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
+                            <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
+                            <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
+                            <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
+                            <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
                         </select>
                     </div>
                 </div>
@@ -1333,21 +1335,22 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="font-size:10px;font-weight:700;color:#64748b" id="g-titulo">Selecione filtros em 🎯 Mercados</div>
-                    <div style="display:flex;align-items:center;gap:6px">
-                        <div id="periodo-badge-grafico" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <span id="periodo-badge-grafico" style="font-size:11px;font-weight:700;color:#64748b;border:1px solid #1e293b;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:default">⏱ Período</span>
                         <select id="periodo-grafico" onchange="setSubViewPeriodo('grafico',this.value)"
-                            style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
                             <option value="">= Config</option>
                             <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                             <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                             <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                            <option disabled style="color:#334155">───</option>
-                            <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
-                            <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
-                            <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
-                            <option value="j360">360J</option><option value="j420">420J</option>
+                            <option disabled>── Jogos ──</option>
+                            <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
+                            <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
+                            <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
+                            <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
+                            <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
                         </select>
                     </div>
                 </div>
@@ -1400,21 +1403,22 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="font-size:10px;font-weight:700;color:#64748b" id="g-par-titulo">🔢 Par e Ímpar — % Acumulado</div>
-                    <div style="display:flex;align-items:center;gap:6px">
-                        <div id="periodo-badge-parimpar" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <span id="periodo-badge-parimpar" style="font-size:11px;font-weight:700;color:#64748b;border:1px solid #1e293b;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:default">⏱ Período</span>
                         <select id="periodo-parimpar" onchange="setSubViewPeriodo('parimpar',this.value)"
-                            style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
                             <option value="">= Config</option>
                             <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                             <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                             <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                            <option disabled style="color:#334155">───</option>
-                            <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
-                            <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
-                            <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
-                            <option value="j360">360J</option><option value="j420">420J</option>
+                            <option disabled>── Jogos ──</option>
+                            <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
+                            <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
+                            <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
+                            <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
+                            <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
                         </select>
                     </div>
                 </div>
@@ -1441,20 +1445,21 @@
             <button class="acao-btn" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-            <div id="periodo-badge-mosaico" style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap;letter-spacing:.03em;padding:3px 8px;background:#0a0f1e;border:1.5px solid #1e293b;border-radius:6px;cursor:default" title="Filtro de período ativo">⏱ Período</div>
+            <span id="periodo-badge-mosaico" style="font-size:11px;font-weight:700;color:#64748b;border:1px solid #1e293b;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:default">⏱ Período</span>
             <select id="periodo-mosaico" onchange="setSubViewPeriodo('mosaico',this.value)"
-                style="background:#1e293b;border:1.5px solid #334155;color:#e2e8f0;border-radius:6px;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none;transition:border-color .2s,color .2s">
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
                 <option value="">= Config</option>
                 <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
                 <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
                 <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
                 <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                 <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                <option disabled style="color:#334155">───</option>
-                <option value="j20">20J</option><option value="j40">40J</option><option value="j60">60J</option>
-                <option value="j80">80J</option><option value="j100">100J</option><option value="j120">120J</option>
-                <option value="j160">160J</option><option value="j200">200J</option><option value="j280">280J</option>
-                <option value="j360">360J</option><option value="j420">420J</option>
+                <option disabled>── Jogos ──</option>
+                <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
+                <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
+                <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
+                <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
+                <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
             </select>
         </div>
     </div>
@@ -2429,13 +2434,13 @@ const S = {
     showGols:      false,
     showLinha:     false,
     showParImpar:  false,
+    horasGrafico:  null,
+    horasGols:     null,
     jogosGrafico:  null,
     jogosGols:     null,
     jogosLinha:    null,
     jogosParImpar: null,
     jogosMosaico:  null,
-    horasGrafico:  null,
-    horasGols:     null,
     horasLinha:    null,
     horasParImpar: null,
     horasMosaico:  null,
@@ -2743,8 +2748,8 @@ function setSubView(v) {
 }
 
 function _updatePeriodoBadge(subview, val) {
-    const badge = document.getElementById(`periodo-badge-${subview}`);
-    const sel   = document.getElementById(`periodo-${subview}`);
+    const badge = document.getElementById('periodo-badge-' + subview);
+    const sel   = document.getElementById('periodo-' + subview);
     if (!badge) return;
     const isJogos = val && val.startsWith('j');
     if (!val) {
@@ -2753,12 +2758,12 @@ function _updatePeriodoBadge(subview, val) {
         badge.style.borderColor = '#1e293b';
         if (sel) sel.style.borderColor = '#334155';
     } else if (isJogos) {
-        badge.textContent = `🎮 ${val.slice(1)}J`;
+        badge.textContent = '🎮 ' + val.slice(1) + 'J';
         badge.style.color = '#1fcc59';
         badge.style.borderColor = '#1fcc59';
         if (sel) sel.style.borderColor = '#1fcc59';
     } else {
-        badge.textContent = `⏱ ${val}H`;
+        badge.textContent = '⏱ ' + val + 'H';
         badge.style.color = '#60a5fa';
         badge.style.borderColor = '#60a5fa';
         if (sel) sel.style.borderColor = '#60a5fa';
@@ -2777,7 +2782,7 @@ function setSubViewPeriodo(subview, val) {
         if (subview === 'parimpar') { S.horasParImpar = null; S.jogosParImpar = n; }
         if (subview === 'mosaico')  { S.horasMosaico  = null; S.jogosMosaico  = n; }
 
-        const renderJogos = () => {
+        const render = () => {
             if (subview === 'grafico')  renderGrafico();
             if (subview === 'gols')     renderGraficoGols();
             if (subview === 'linha')    renderGraficoLinha();
@@ -2785,16 +2790,14 @@ function setSubViewPeriodo(subview, val) {
             if (subview === 'mosaico')  renderTabela();
         };
 
-        // Verifica se há dados suficientes para N jogos
-        // Estimativa: taxa de jogos/hora baseada no carregado; carrega mais se preciso
-        const taxaJogosHora = S._horasCarregadas > 0 && S.partidas.length > 0
+        const taxa = (S._horasCarregadas > 0 && S.partidas.length > 0)
             ? S.partidas.length / S._horasCarregadas : 20;
-        const horasNecessarias = Math.ceil(n / taxaJogosHora) + 2; // +2h de margem
-        if (horasNecessarias > (S._horasCarregadas || 0)) {
-            S._horasCarregadas = horasNecessarias;
-            carregarHistorico().then(renderJogos);
+        const horasNec = Math.ceil(n / taxa) + 2;
+        if (horasNec > (S._horasCarregadas || 0)) {
+            S._horasCarregadas = horasNec;
+            carregarHistorico().then(render);
         } else {
-            renderJogos();
+            render();
         }
         return;
     }
@@ -3719,18 +3722,16 @@ function utcHourStart(d) {
     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours());
 }
 
-const _partidaMs = p => {
-    const raw = typeof p.data_partida === 'string'
-        ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z')
-        : p.data_partida;
-    return new Date(raw).getTime();
-};
-
 function gruposDeJogos(n) {
-    const sorted = S.partidas
-        .filter(p => p.data_partida)
-        .sort((a, b) => _partidaMs(a) - _partidaMs(b));
-    const lastN = sorted.slice(-n);
+    // Retorna os últimos N jogos de S.partidas agrupados por hora UTC
+    const parse = p => {
+        const raw = typeof p.data_partida === 'string'
+            ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z')
+            : p.data_partida;
+        return new Date(raw).getTime();
+    };
+    const sorted = S.partidas.filter(p => p.data_partida).sort((a, b) => parse(a) - parse(b));
+    const lastN  = sorted.slice(-n);
     const byHour = new Map();
     lastN.forEach(p => {
         const raw = typeof p.data_partida === 'string'
@@ -3785,7 +3786,15 @@ function grupos(horasOverride, jogosOverride) {
 function serieFlat(horasOverride, jogosOverride) {
     return grupos(horasOverride, jogosOverride)
         .flatMap(g => g.jogos)
-        .sort((a, b) => _partidaMs(a) - _partidaMs(b));
+        .sort((a, b) => {
+            const toMs = p => {
+                const raw = typeof p.data_partida === 'string'
+                    ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z')
+                    : p.data_partida;
+                return new Date(raw).getTime();
+            };
+            return toMs(a) - toMs(b);
+        });
 }
 
 // ============================================================
@@ -4423,16 +4432,16 @@ function renderGraficoLinha() {
     const canvas = document.getElementById('grafico-linha');
     if (!canvas) return;
 
-    const isJogosLinha = S.jogosLinha != null;
     const horasDisplay = S.horasLinha != null ? S.horasLinha : S.horas;
     const n1 = S.linhaGrafMM1 || 9;
 
     let serieFull, serieDisplay;
-    if (isJogosLinha) {
+    if (S.jogosLinha != null) {
+        // Modo jogos: sem warmup — usa diretamente os últimos N jogos
         serieFull    = serieFlat(null, S.jogosLinha).filter(j => j.gol_casa != null && j.gol_fora != null);
         serieDisplay = serieFull;
     } else {
-        // Uma hora extra de warmup (garante que a MM já tem contexto no 1º ponto exibido)
+        // Modo horas: uma hora extra de warmup para a MM
         const horasTotal = Math.min(horasDisplay + 1, S._horasCarregadas || S.horas);
         serieFull    = serieFlat(horasTotal).filter(j => j.gol_casa != null && j.gol_fora != null);
         serieDisplay = serieFlat(horasDisplay).filter(j => j.gol_casa != null && j.gol_fora != null);
@@ -5066,11 +5075,11 @@ function renderTabela() {
     if (semDados) {
         tbody.innerHTML = `<tr><td colspan="${N+2}" style="text-align:center;padding:40px;color:#334155;background:#060810">
             <div style="font-size:22px;margin-bottom:8px">📊</div>
-            <div style="font-size:12px;color:#475569">${S.jogosMosaico != null ? `Nenhum histórico nos últimos ${S.jogosMosaico} jogos` : `Nenhum histórico nas últimas ${S.horas}h`}</div>
+            <div style="font-size:12px;color:#475569">Nenhum histórico nas últimas ${S.horas}h</div>
             <div style="font-size:10px;margin-top:4px;color:#334155">A coleta precisa capturar resultados finais. Verifique o agendador.</div>
         </td></tr>`;
         tfoot.innerHTML = '';
-        const _itxt0 = S.jogosMosaico != null ? `0 partidas • ${S.jogosMosaico}J` : `0 partidas • ${S.horas}h`;
+        const _itxt0 = `0 partidas • ${S.horas}h`;
         const _di0 = document.getElementById('diag-tabela-info'); if (_di0) _di0.textContent = _itxt0;
         return;
     }
@@ -5488,9 +5497,10 @@ function renderTabela() {
 
     const totalPartidas = gs.reduce((s, g) => s + g.jogos.length, 0);
     const horasCom      = gs.filter(g => g.jogos.length > 0).length;
-    const _infoTxt = S.jogosMosaico != null
-        ? `${S.jogosMosaico}J • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`
-        : `${S.horasMosaico || S.horas}h • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
+    const _periodoDesc = S.jogosMosaico != null
+        ? `${S.jogosMosaico}J`
+        : `${S.horasMosaico || S.horas}h`;
+    const _infoTxt = `${_periodoDesc} • ${horasCom} horas c/ dados • ${totalPartidas} partidas ${fi ? '| ' + fi.label : ''}`;
     const _diagInfo = document.getElementById('diag-tabela-info');
     if (_diagInfo) _diagInfo.textContent = _infoTxt;
 
