@@ -1553,11 +1553,13 @@ const CONFIG_DEFAULTS = [
     { chave:'show_secao_desempenho',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Desempenho por Liga' },
     { chave:'show_subview_gols',            valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: ⚽ Gráfico de Gols' },
     { chave:'show_subview_grafico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 📈 Gráfico de Mercados' },
+    { chave:'show_subview_linha',           valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 📉 Gráfico de Linha' },
     { chave:'show_subview_parimpar',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 🔢 Gráfico de Par e Ímpar' },
     { chave:'show_subview_mosaico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 🏁 Menu Mosaico' },
     { chave:'default_open_grafico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 📈 Gráfico de Mercados' },
     { chave:'default_open_mosaico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🏁 Menu Mosaico' },
     { chave:'default_open_gols',            valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: ⚽ Gráfico de Gols' },
+    { chave:'default_open_linha',           valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 📉 Gráfico de Linha' },
     { chave:'default_open_parimpar',        valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🔢 Gráfico de Par e Ímpar' },
     { chave:'default_open_mercados',        valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🎯 Mercados' },
     // ── Grade/Mosaico — cores e fontes padrão (sobrescrevem os valores embutidos no código) ──

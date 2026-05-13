@@ -2190,6 +2190,7 @@ async function _aplicarConfigFrontend() {
         };
         _visSubview('historico-gols-section',    'sub-btn-gols',     'show_subview_gols',     'showGols');
         _visSubview('historico-chart-section',   'sub-btn-grafico',  'show_subview_grafico',  'showGrafico');
+        _visSubview('historico-linha-section',   'sub-btn-linha',    'show_subview_linha',    'showLinha');
         _visSubview('historico-parimpar-section','sub-btn-parimpar', 'show_subview_parimpar', 'showParImpar');
         _visSubview('historico-table-section',   'sub-btn-mosaico',  'show_subview_mosaico',  'showMosaico');
 
@@ -2197,6 +2198,7 @@ async function _aplicarConfigFrontend() {
         [['historico-chart-section',    'sub-btn-grafico',  'showGrafico',  'default_open_grafico'],
          ['historico-table-section',    'sub-btn-mosaico',  'showMosaico',  'default_open_mosaico'],
          ['historico-gols-section',     'sub-btn-gols',     'showGols',     'default_open_gols'],
+         ['historico-linha-section',    'sub-btn-linha',    'showLinha',    'default_open_linha'],
          ['historico-parimpar-section', 'sub-btn-parimpar', 'showParImpar', 'default_open_parimpar'],
         ].forEach(([secId, btnId, showKey, cfgKey]) => {
             if (c[cfgKey] === undefined) return;
@@ -7730,11 +7732,13 @@ const _CFG_LABELS = {
     show_secao_desempenho:      'Exibir: 🏆 Desempenho por Liga',
     show_subview_gols:          'Exibir botão/seção: ⚽ Gráfico de Gols',
     show_subview_grafico:       'Exibir botão/seção: 📈 Gráfico de Mercados',
+    show_subview_linha:         'Exibir botão/seção: 📉 Gráfico de Linha',
     show_subview_parimpar:      'Exibir botão/seção: 🔢 Gráfico de Par e Ímpar',
     show_subview_mosaico:       'Exibir botão/seção: 🏁 Menu Mosaico',
     default_open_grafico:       'Aberto por padrão: 📈 Gráfico de Mercados',
     default_open_mosaico:       'Aberto por padrão: 🏁 Menu Mosaico',
     default_open_gols:          'Aberto por padrão: ⚽ Gráfico de Gols',
+    default_open_linha:         'Aberto por padrão: 📉 Gráfico de Linha',
     default_open_parimpar:      'Aberto por padrão: 🔢 Gráfico de Par e Ímpar',
     default_open_mercados:      'Aberto por padrão: 🎯 Mercados',
 };
