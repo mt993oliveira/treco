@@ -1505,8 +1505,9 @@ const CONFIG_DEFAULTS = [
     { chave:'mkt_grupo_cor',        valor:'#94a3b8',  tipo:'text',   grupo:'grafico', descricao:'🎯 Mercados: cor dos nomes de grupo — estado ativo (tem filtro ligado)' },
     { chave:'mkt_grupo_cor_inativo',valor:'#475569',  tipo:'text',   grupo:'grafico', descricao:'🎯 Mercados: cor dos nomes de grupo — estado inativo (nenhum filtro ligado)' },
     // ── Gráfico — padrões dos botões ──
-    { chave:'grafico_altura',      valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico: altura do painel (px; 80–600)' },
-    { chave:'grafico_gols_altura', valor:'260',   tipo:'number',  grupo:'grafico', descricao:'Gráfico de Gols: altura do painel (px; 80–600)' },
+    { chave:'grafico_altura',       valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico: altura do painel (px; 80–600)' },
+    { chave:'grafico_gols_altura',  valor:'260',   tipo:'number',  grupo:'grafico', descricao:'Gráfico de Gols: altura do painel (px; 80–600)' },
+    { chave:'grafico_linha_altura', valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico de Linha: altura do painel (px; 80–600)' },
     { chave:'grafico_pct',         valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir % no final das linhas por padrão' },
     { chave:'grafico_topo_fundo',  valor:'false',   tipo:'boolean', grupo:'grafico', descricao:'Gráfico: marcar topo/fundo por padrão' },
     { chave:'grafico_tf_topo_cor', valor:'#4ade80', tipo:'text',    grupo:'grafico', descricao:'Gráfico T/F: cor do ponto Topo (máximo)' },
