@@ -1257,6 +1257,24 @@ class Bet365Coletor {
     // SESSÃO — detecta "Faça Login para Assistir" e reconecta
     // ─────────────────────────────────────────────────────────────
 
+    // Clica em um botão pelo texto usando eventos reais de ponteiro (não JS click)
+    async _clicarBotaoPorTexto(pg, texto, exato = false) {
+        try {
+            const seletor = await pg.evaluateHandle((txt, exato) => {
+                return [...document.querySelectorAll('button')].find(b =>
+                    exato ? b.textContent.trim() === txt
+                          : b.textContent.trim().includes(txt)
+                ) || null;
+            }, texto, exato);
+            const el = seletor.asElement();
+            if (!el) return false;
+            await el.scrollIntoView();
+            await el.hover();
+            await el.click({ delay: 80 });
+            return true;
+        } catch { return false; }
+    }
+
     async _verificarSessao(pg) {
         try {
             const temAviso = await pg.evaluate(() =>
@@ -1266,23 +1284,15 @@ class Bet365Coletor {
             if (!temAviso) return; // sessão OK
 
             console.log('   🔐 Sessão expirada — "Faça Login para Assistir" detectado, reconectando...');
+            await pg.bringToFront();
 
-            // Passo 1: clica em "Faça Login para Assistir"
-            await pg.evaluate(() => {
-                const btn = [...document.querySelectorAll('button')]
-                    .find(b => (b.textContent || '').trim().includes('Faça Login para Assistir'));
-                if (btn) btn.click();
-            });
+            // Passo 1: clica em "Faça Login para Assistir" com evento real
+            await this._clicarBotaoPorTexto(pg, 'Faça Login para Assistir', false);
             await this._delay(this._cfgNum('delay_modal_login_ms', 2500));
 
-            // Passo 2: clica em "Login" no modal (credenciais já preenchidas pelo browser/cookies)
+            // Passo 2: clica em "Login" no modal com evento real (credenciais já preenchidas)
             let sessaoOk = false;
-            const clicou = await pg.evaluate(() => {
-                const btn = [...document.querySelectorAll('button')]
-                    .find(b => (b.textContent || '').trim() === 'Login');
-                if (btn) { btn.click(); return true; }
-                return false;
-            });
+            const clicou = await this._clicarBotaoPorTexto(pg, 'Login', true);
 
             if (clicou) {
                 console.log('   ⏳ Aguardando confirmação do login (cookie)...');
@@ -1345,13 +1355,8 @@ class Bet365Coletor {
                 await inputPass.click({ clickCount: 3 });
                 await inputPass.type(senha, { delay: 60 });
             }
-            // Clica Login
-            const clicou = await pg.evaluate(() => {
-                const btn = [...document.querySelectorAll('button')]
-                    .find(b => (b.textContent || '').trim() === 'Login');
-                if (btn) { btn.click(); return true; }
-                return false;
-            });
+            // Clica Login com evento real de ponteiro
+            const clicou = await this._clicarBotaoPorTexto(pg, 'Login', true);
             if (!clicou) { console.log('   ❌ Botão Login não encontrado (credenciais)'); return false; }
 
             await this._delay(5000);
