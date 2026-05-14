@@ -1586,7 +1586,7 @@ server.listen(PORT, () => {
     console.log(`🌐 Acesse: http://localhost:${PORT}`);
     console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
     garantirSchemaEventos();
-    // Garante coluna Telefone na tabela Usuarios
+    // Garante colunas de licença e Telefone na tabela Usuarios
     (async () => {
         try {
             await connectSQL(getDatabaseConfigFromEnv());
@@ -1597,7 +1597,21 @@ server.listen(PORT, () => {
                 )
                     ALTER TABLE Usuarios ADD Telefone NVARCHAR(20) NULL
             `;
-        } catch(e) { console.warn('⚠️ Schema Telefone:', e.message); }
+            await sql.query`
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'Usuarios' AND COLUMN_NAME = 'DataInicioLicenca'
+                )
+                    ALTER TABLE Usuarios ADD DataInicioLicenca DATETIME2 NULL
+            `;
+            await sql.query`
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'Usuarios' AND COLUMN_NAME = 'DataFimLicenca'
+                )
+                    ALTER TABLE Usuarios ADD DataFimLicenca DATETIME2 NULL
+            `;
+        } catch(e) { console.warn('⚠️ Schema Usuarios:', e.message); }
     })();
 
     // Garante tabela HistoricoAcessos
