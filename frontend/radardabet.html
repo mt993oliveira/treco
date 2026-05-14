@@ -4435,21 +4435,7 @@ function renderGraficoLinha() {
     const canvas = document.getElementById('grafico-linha');
     if (!canvas) return;
 
-    const horasDisplay = S.horasLinha != null ? S.horasLinha : S.horas;
-    const n1 = S.linhaGrafMM1 || 9;
-
-    let serieFull, serieDisplay;
-    if (S.jogosLinha != null) {
-        // Modo jogos: sem warmup — usa diretamente os últimos N jogos
-        serieFull    = serieFlat(null, S.jogosLinha).filter(j => j.gol_casa != null && j.gol_fora != null);
-        serieDisplay = serieFull;
-    } else {
-        // Modo horas: uma hora extra de warmup para a MM
-        const horasTotal = Math.min(horasDisplay + 1, S._horasCarregadas || S.horas);
-        serieFull    = serieFlat(horasTotal).filter(j => j.gol_casa != null && j.gol_fora != null);
-        serieDisplay = serieFlat(horasDisplay).filter(j => j.gol_casa != null && j.gol_fora != null);
-    }
-
+    const JANELA   = 20; // 1 hora = 20 jogos → cada jogo = 5%
     const tituloEl = document.getElementById('g-linha-titulo');
     const ativos   = TODOS_FILTROS.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
 
@@ -4459,38 +4445,54 @@ function renderGraficoLinha() {
         if (_orp) { try { _orp.destroy(); } catch(_){} }
     };
 
-    if (!serieDisplay.length) {
-        _destruir();
-        if (tituloEl) tituloEl.textContent = 'Sem dados com placar para o período';
-        return;
-    }
     if (!ativos.length) {
         _destruir();
         if (tituloEl) tituloEl.textContent = 'Selecione filtros em 🎯 Mercados';
         return;
     }
 
-    // Rolling hit-rate % calculado na série completa (com warmup)
-    const rolPct = (hits, n) => hits.map((_, i) => {
-        const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
-        return +(sl.reduce((a, b) => a + b, 0) / sl.length * 100).toFixed(1);
-    });
+    // 1. Todos os jogos com placar, ordenados por tempo (base de cálculo)
+    const _parseMs = p => new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getTime();
+    const todasSorted = [...S.partidas]
+        .filter(j => j.gol_casa != null && j.gol_fora != null && j.data_partida)
+        .sort((a, b) => _parseMs(a) - _parseMs(b));
 
-    // Offset: quantos jogos do serieFull são de warmup (não exibidos)
-    const offset = Math.max(0, serieFull.length - serieDisplay.length);
+    // 2. Série de exibição (período selecionado — controla só o eixo X)
+    let serieDisplay;
+    if (S.jogosLinha != null) {
+        serieDisplay = todasSorted.slice(-S.jogosLinha);
+    } else {
+        const horasDisplay = S.horasLinha != null ? S.horasLinha : S.horas;
+        const cutoff = Date.now() + BET365_OFFSET_MS - horasDisplay * 3600000;
+        serieDisplay = todasSorted.filter(j => _parseMs(j) >= cutoff);
+    }
 
-    // Pré-calcula hits e pct de todos os filtros (necessário para equilibrio antes dos datasets)
+    if (!serieDisplay.length) {
+        _destruir();
+        if (tituloEl) tituloEl.textContent = 'Sem dados com placar para o período';
+        return;
+    }
+
+    // Offset: posição em todasSorted onde começa o display
+    const offset = todasSorted.length - serieDisplay.length;
+
+    // 3. Rolling hit-rate janela fixa JANELA calculado sobre todos os jogos
+    //    → os jogos antes do offset servem como warmup natural
     const hitsMapDisplay = {};
     const pctMapDisplay  = {};
     ativos.forEach(f => {
-        const hitsFull = serieFull.map(j => checa(j, f.id) ? 1 : 0);
-        hitsMapDisplay[f.id] = hitsFull.slice(offset);
-        pctMapDisplay[f.id]  = rolPct(hitsFull, n1).slice(offset);
+        const hitsAll = todasSorted.map(j => checa(j, f.id) ? 1 : 0);
+        const pctAll  = hitsAll.map((_, i) => {
+            const sl = hitsAll.slice(Math.max(0, i - JANELA + 1), i + 1);
+            return +(sl.reduce((a, b) => a + b, 0) / sl.length * 100).toFixed(1);
+        });
+        hitsMapDisplay[f.id] = hitsAll.slice(offset);
+        pctMapDisplay[f.id]  = pctAll.slice(offset);
     });
 
     const datasets = [];
 
-    // Equilíbrio real — uma linha por filtro na média histórica do período
+    // Linha de equilíbrio (média do período exibido)
     if (S.linhas['equilibrio']) {
         ativos.forEach(f => {
             const hits = hitsMapDisplay[f.id];
@@ -4510,41 +4512,13 @@ function renderGraficoLinha() {
         const cor = (S._chartCores && S._chartCores[f.id]) || f.cor;
         const pct = hitsSlice.length ? Math.round(hitsSlice.reduce((a,b)=>a+b,0) / hitsSlice.length * 100) : 0;
 
-        let pointRadius  = 3;
-        let pointBgColor = hitsSlice.map(v => v ? cor : '#dc2626');
-
-        if (S.linhaGrafTopoFundo && pctSlice.length > 1) {
-            const warmup = Math.min(n1 - 1, pctSlice.length - 1);
-            const maxIdx = pctSlice.reduce((b, v, i) => i >= warmup && v > pctSlice[b] ? i : b, warmup);
-            const minIdx = pctSlice.reduce((b, v, i) => i >= warmup && v < pctSlice[b] ? i : b, warmup);
-            const base   = hitsSlice.map(v => v ? cor : '#dc2626');
-            pointRadius  = pctSlice.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : 3);
-            pointBgColor = base.map((c, i) => i === maxIdx ? (S._tfTopoCor||'#4ade80') : i === minIdx ? (S._tfFundoCor||'#f87171') : c);
-        }
-
         datasets.push({ type:'line', label:`${f.label} ${pct}%`,
             data: pctSlice, borderColor: cor, backgroundColor:'transparent',
-            borderWidth:2, borderDash: f.dashed ? [6,4] : [],
-            pointRadius, pointHoverRadius:5,
-            pointBackgroundColor: pointBgColor, tension:0.2,
+            borderWidth: 2, borderDash: f.dashed ? [6,4] : [],
+            pointRadius: 3, pointHoverRadius: 5,
+            pointBackgroundColor: hitsSlice.map(v => v ? cor : '#dc2626'),
+            tension: 0,
             _filtroId: f.id });
-
-        if (S.linhaGrafMedias) {
-            const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
-            const rolAvg = (arr, w) => arr.map((_, i) => {
-                const sl = arr.slice(Math.max(0, i - w + 1), i + 1);
-                return +(sl.reduce((a,b)=>a+b,0) / sl.length).toFixed(1);
-            });
-            datasets.push({ type:'line', label:`${f.label} MM${n1}`,
-                data: rolAvg(pctSlice, n1), borderColor: S.grafMM1Cor||'#ffffff',
-                backgroundColor:'transparent', borderWidth: S.grafMM1Esp||1.5,
-                borderDash: _pd(S.grafMM1Dash||'4,4'), pointRadius:0, tension:0.3, _isMA:true });
-            const n2 = S.linhaGrafMM2 || 21;
-            datasets.push({ type:'line', label:`${f.label} MM${n2}`,
-                data: rolAvg(pctSlice, n2), borderColor: S.grafMM2Cor||'#fbbf24',
-                backgroundColor:'transparent', borderWidth: S.grafMM2Esp||2,
-                borderDash: _pd(S.grafMM2Dash||'8,4'), pointRadius:0, tension:0.4, _isMA:true });
-        }
     });
 
     const labels = serieDisplay.map(p => {
@@ -4553,8 +4527,9 @@ function renderGraficoLinha() {
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
 
-    const warmupStr = offset > 0 ? ` (+${offset} warmup)` : '';
-    if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serieDisplay.length} jogos${warmupStr}`;
+    if (tituloEl) tituloEl.textContent =
+        ativos.map(f => f.label).join(' · ') +
+        ` — ${serieDisplay.length} jogos · janela ${JANELA}J (±5%)`;
 
     _LINHA_SERIE = serieDisplay;
     _LINHA_HITS  = hitsMapDisplay;
@@ -4573,7 +4548,7 @@ function renderGraficoLinha() {
                     legend: { display: false },
                     tooltip: {
                         enabled: !S.linhaShowLegendas,
-                        filter: item => !item.dataset._isRef && !item.dataset._isMA,
+                        filter: item => !item.dataset._isRef,
                         backgroundColor: 'rgba(15,23,42,0.85)', borderColor:'#334155', borderWidth:1,
                         titleColor:'#94a3b8', bodyColor:'#cbd5e1',
                         callbacks: {
@@ -4587,7 +4562,7 @@ function renderGraficoLinha() {
                                 return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}${ht}  (FT: ${j.gol_casa}-${j.gol_fora})`;
                             },
                             label: ctx => {
-                                if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
+                                if (ctx.dataset._isRef) return null;
                                 const i   = ctx.dataIndex;
                                 const fid = ctx.dataset._filtroId;
                                 const hit = fid ? (_LINHA_HITS[fid]?.[i] ? ' ✓' : ' ✗') : '';
@@ -4603,7 +4578,15 @@ function renderGraficoLinha() {
                 layout: { padding: { top: 18, bottom: 10 } },
                 scales: {
                     x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                    y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
+                    y: {
+                        min: 0, max: 100,
+                        grid: { color: ctx => ctx.tick.value % 25 === 0 ? '#334155' : '#1e293b50' },
+                        ticks: {
+                            padding: 6, color: '#94a3b8', font: { size: 9 },
+                            stepSize: 5,
+                            callback: v => v % 25 === 0 ? v + '%' : (v % 10 === 0 ? v + '%' : '')
+                        }
+                    }
                 }
             },
             plugins: [linhaLabelPlugin, linhaGrafPlugin, verticalLinesPlugin]
