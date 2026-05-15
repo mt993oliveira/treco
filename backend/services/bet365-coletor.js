@@ -1257,7 +1257,7 @@ class Bet365Coletor {
     // SESSÃO — detecta "Faça Login para Assistir" e reconecta
     // ─────────────────────────────────────────────────────────────
 
-    // Clica em um botão pelo texto usando eventos reais de ponteiro (não JS click)
+    // Clica em um botão (<button>) pelo texto usando eventos reais de ponteiro
     async _clicarBotaoPorTexto(pg, texto, exato = false) {
         try {
             const seletor = await pg.evaluateHandle((txt, exato) => {
@@ -1275,42 +1275,104 @@ class Bet365Coletor {
         } catch { return false; }
     }
 
+    // Clica em qualquer elemento clicável (button, a, [role="button"]) pelo texto
+    async _clicarElementoPorTexto(pg, texto, exato = false) {
+        try {
+            const handle = await pg.evaluateHandle((txt, exato) => {
+                return [...document.querySelectorAll('button, a, [role="button"]')].find(el => {
+                    const t = (el.textContent || el.innerText || '').trim();
+                    return exato ? t === txt : t.includes(txt);
+                }) || null;
+            }, texto, exato);
+            const el = handle.asElement();
+            if (!el) return false;
+            await el.scrollIntoView();
+            await el.hover();
+            await el.click({ delay: 80 });
+            return true;
+        } catch { return false; }
+    }
+
     async _verificarSessao(pg) {
         try {
-            const temAviso = await pg.evaluate(() =>
+            await pg.bringToFront();
+
+            // ── Detecta estado da sessão ──────────────────────────────────────────
+            const url = pg.url();
+            const naPaginaVirtual = url.includes('bet365') && url.includes('AVR');
+
+            // Cenário A: "Faça Login para Assistir" visível na página virtual
+            const temAvisoVirtual = await pg.evaluate(() =>
                 [...document.querySelectorAll('button')].some(b =>
                     (b.textContent || '').trim().includes('Faça Login para Assistir'))
             );
-            if (!temAviso) return; // sessão OK
 
-            console.log('   🔐 Sessão expirada — "Faça Login para Assistir" detectado, reconectando...');
-            await pg.bringToFront();
+            // Cenário B: botão/link "Login" visível no cabeçalho (usuário deslogado)
+            // Só verifica se não há "Faça Login para Assistir" (para não duplicar detecção)
+            const temBotaoLoginHeader = !temAvisoVirtual && await pg.evaluate(() =>
+                [...document.querySelectorAll('button, a, [role="button"]')].some(el => {
+                    const t = (el.textContent || el.innerText || '').trim();
+                    return t === 'Login' || t === 'Log In';
+                })
+            );
 
-            // Passo 1: clica em "Faça Login para Assistir" com evento real
-            await this._clicarBotaoPorTexto(pg, 'Faça Login para Assistir', false);
-            await this._delay(this._cfgNum('delay_modal_login_ms', 2500));
+            if (!temAvisoVirtual && !temBotaoLoginHeader && naPaginaVirtual) return; // sessão OK
 
-            // Passo 2: clica em "Login" no modal com evento real (credenciais já preenchidas)
-            let sessaoOk = false;
-            const clicou = await this._clicarBotaoPorTexto(pg, 'Login', true);
+            const motivo = temAvisoVirtual ? '"Faça Login para Assistir" detectado'
+                : !naPaginaVirtual         ? `URL fora da página virtual: ${url.substring(0, 60)}`
+                                           : 'botão "Login" no cabeçalho detectado';
+            console.log(`   🔐 Sessão expirada — ${motivo} — reconectando...`);
 
-            if (clicou) {
-                console.log('   ⏳ Aguardando confirmação do login (cookie)...');
-                await this._delay(this._cfgNum('delay_pos_login_ms', 4000));
-                sessaoOk = await pg.evaluate(() =>
-                    ![...document.querySelectorAll('button')].some(b =>
-                        (b.textContent || '').trim().includes('Faça Login para Assistir'))
-                );
+            // Se a página saiu da URL virtual, volta antes de logar
+            if (!naPaginaVirtual) {
+                try {
+                    await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                    await this._delay(3000);
+                } catch(e) {
+                    console.warn(`   ⚠️  Falha ao navegar de volta: ${e.message}`);
+                }
             }
 
-            // Fallback: credenciais do .env
+            // ── ETAPA 1: abre o modal de login ────────────────────────────────────
+            // Clica no botão que abre o formulário:
+            //   "Faça Login para Assistir" → abre modal de login na página virtual
+            //   "Login" (cabeçalho)        → abre modal de login na página principal
+            let step1Ok = false;
+            if (temAvisoVirtual) {
+                step1Ok = await this._clicarBotaoPorTexto(pg, 'Faça Login para Assistir', false);
+            } else {
+                step1Ok = await this._clicarElementoPorTexto(pg, 'Login', true);
+            }
+
+            let sessaoOk = false;
+            if (step1Ok) {
+                console.log('   ✅ Etapa 1: modal de login aberto');
+                await this._delay(this._cfgNum('delay_modal_login_ms', 2500));
+
+                // ── ETAPA 2: clica "Login" no modal (credenciais já preenchidas) ──
+                const step2Ok = await this._clicarBotaoPorTexto(pg, 'Login', true);
+                if (step2Ok) {
+                    console.log('   ⏳ Etapa 2: aguardando confirmação do login...');
+                    await this._delay(this._cfgNum('delay_pos_login_ms', 4000));
+                    sessaoOk = await pg.evaluate(() =>
+                        ![...document.querySelectorAll('button')].some(b =>
+                            (b.textContent || '').trim().includes('Faça Login para Assistir'))
+                    );
+                } else {
+                    console.log('   ⚠️  Botão "Login" não encontrado no modal (etapa 2)');
+                }
+            } else {
+                console.log('   ⚠️  Etapa 1 falhou — botão de login não encontrado na página');
+            }
+
+            // ── Fallback: credenciais do .env ─────────────────────────────────────
             if (!sessaoOk) {
-                const motivo = clicou ? 'Cookie insuficiente' : 'Botão "Login" não encontrado no modal';
-                console.log(`   ⚠️  ${motivo} — tentando com credenciais .env...`);
+                const motivoFallback = step1Ok ? 'modal não respondeu' : 'etapa 1 falhou';
+                console.log(`   ⚠️  ${motivoFallback} — tentando com credenciais .env...`);
                 sessaoOk = await this._loginComCredenciais(pg);
             }
 
-            // ── Notificação Telegram ───────────────────────────────
+            // ── Notificação Telegram ──────────────────────────────────────────────
             const agora = new Date().toLocaleTimeString('pt-BR');
             const throttle = 10 * 60 * 1000; // máx 1 alerta de login a cada 10 min
             if (Date.now() - this._ultimoAlertaLoginTs >= throttle) {
