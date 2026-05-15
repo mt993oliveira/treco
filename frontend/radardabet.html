@@ -1461,7 +1461,7 @@
             <table class="tabela-hist" id="tbl">
                 <thead><tr id="tbl-head"></tr></thead>
                 <tbody id="tbl-body"></tbody>
-                <tfoot><tr id="tbl-foot"></tr></tfoot>
+                <tfoot id="tbl-foot"></tfoot>
             </table>
         </div>
     </div>
@@ -5033,7 +5033,7 @@ function _renderAllCharts() {
     renderGraficoPar();
 }
 
-// Estilo CarameloBet: score na célula, cor = filtro ativo
+// Estilo "NÃO EXIBIR", obrigado! rsrs : score na célula, cor = filtro ativo
 function renderTabela() {
     if (S.view === 'historico' && !S.showMosaico) return;
     const gs = grupos(S.horasMosaico, S.jogosMosaico);
@@ -5086,7 +5086,7 @@ function renderTabela() {
         </th>
         ${minuteSlots.map((m, ci) => {
             const selCls = S.selCols.has(ci) ? ' col-sel' : '';
-            return `<th class="th-col-num${selCls}" data-col-idx="${ci}" onclick="_tblToggleCol(${ci})" title="Clique para destacar coluna (:${pad2(m)})">:${pad2(m)}</th>`;
+            return `<th class="th-col-num${selCls}" data-col-idx="${ci}" onclick="_tblToggleCol(${ci})" title="Clique para destacar coluna :${pad2(m)}">${pad2(m)}</th>`;
         }).join('')}
     `;
 
@@ -5494,13 +5494,11 @@ function renderTabela() {
     // Footer com hora:minuto de cada slot
     const footSlotTimes = Array.from({length: N}, (_, ci) => {
         const selCls = S.selCols.has(ci) ? ' col-sel' : '';
-        return `<td class="${selCls}" style="font-size:${gridCores.horaMinFs||10}px;color:${gridCores.horaMinCor||'#475569'};text-align:center;padding:2px 0;font-weight:700">:${pad2(minuteSlots[ci])}</td>`;
+        return `<td class="${selCls}" style="font-size:${gridCores.horaMinFs||10}px;color:${gridCores.horaMinCor||'#475569'};text-align:center;padding:2px 0;font-weight:700">${pad2(minuteSlots[ci])}</td>`;
     }).join('');
 
-    // tfoot é o <tr> interno — reescreve o <tfoot> pai para suportar 3 linhas
-    // % / POS e ⚽ GOLS respeitam os botões "% Linha" e "⚽ Linha"
-    if (!tfoot?.parentElement) return;
-    tfoot.parentElement.innerHTML = `
+    if (!tfoot) return;
+    tfoot.innerHTML = `
         ${S._mosaicoShowPct ? `<tr>
             <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#475569;font-weight:700;cursor:help;min-width:${S._mosaicoHoraLarg}px;padding:1px 2px;white-space:normal" title="% de acerto do filtro ativo por posição de coluna.">%</td>
             ${footPct}
