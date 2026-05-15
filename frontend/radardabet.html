@@ -5489,7 +5489,7 @@ function renderTabela() {
     // Footer com hora:minuto de cada slot
     const footSlotTimes = Array.from({length: N}, (_, ci) => {
         const selCls = S.selCols.has(ci) ? ' col-sel' : '';
-        return `<td class="${selCls}" style="font-size:8px;color:#334155;text-align:center;padding:2px 0">:${pad2(minuteSlots[ci])}</td>`;
+        return `<td class="${selCls}" style="font-size:${gridCores.horaMinFs||10}px;color:${gridCores.horaMinCor||'#475569'};text-align:center;padding:2px 0;font-weight:700">:${pad2(minuteSlots[ci])}</td>`;
     }).join('');
 
     // tfoot é o <tr> interno — reescreve o <tfoot> pai para suportar 3 linhas
