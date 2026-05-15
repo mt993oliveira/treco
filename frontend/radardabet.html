@@ -2088,6 +2088,7 @@ async function carregarConfigLigas() {
         { const _gridKeys = ['verdeBg','verdeTxt','vermBg','vermTxt','futuroBg','futuroTxt','futuroBrd',
               'oddFav','oddMed','oddAzarao','selColBg','selColTxt','selColBrd',
               'selRowBg','selRowTxt','selRowBrd','filtroInativoBg','filtroAtivoBg','filtroAtivoTxt',
+              'horaHHCor','horaMinCor',
               'clubeTxt','ftTxt','htTxt','canetaCor',
               'clubeFs','ftFs','htFs','oddFs'];
           S._gridCoresSistema = {};
@@ -2100,7 +2101,7 @@ async function carregarConfigLigas() {
 
         // Mosaico — colunas esquerda
         S._mosaicoHoraLarg   = parseInt(cfg.mosaico_hora_largura)  || 22;
-        S._mosaicoHoraFonteHH= parseInt(cfg.mosaico_hora_fonte_hh) || 8;
+        S._mosaicoHoraFonteHH= parseInt(cfg.mosaico_hora_fonte_hh) || 12;
         S._mosaicoHoraFonteDD= parseInt(cfg.mosaico_hora_fonte_dd) || 6;
         S._mosaicoPctLarg    = parseInt(cfg.mosaico_pct_largura)   || 10;
         S._mosaicoGolsLarg   = parseInt(cfg.mosaico_gols_largura)  || 8;
@@ -2336,6 +2337,8 @@ const GRID_CORES_PADRAO = {
     oddFav:     '#4ade80',
     oddMed:     '#fbbf24',
     oddAzarao:  '#f87171',
+    horaHHCor:  '#1fcc59',
+    horaMinCor: '#475569',
     clubeTxt:   '#94a3b8',
     ftTxt:      '#e2e8f0',
     htTxt:      '#64748b',
@@ -2372,7 +2375,9 @@ function aplicarCoresGrid(c) {
         `.tabela-hist th.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; outline: 3px solid ${c.selColBrd} !important; cursor: pointer; }\n` +
         `.tabela-hist td.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; outline: 3px solid ${c.selColBrd} !important; }\n` +
         `.tabela-hist tr.row-sel td { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; }\n` +
-        `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; cursor: pointer; }`;
+        `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; cursor: pointer; }\n` +
+        `.tabela-hist th.th-col-num { color: ${c.horaMinCor} !important; }\n` +
+        `.span-hora-hh { color: ${c.horaHHCor} !important; }`;
 }
 // Aplica cores salvas imediatamente (antes de qualquer render)
 aplicarCoresGrid(carregarCoresGrid());
@@ -5363,7 +5368,7 @@ function renderTabela() {
                                  border:2px solid ${_inPanel?'#60a5fa':'#334155'};
                                  transition:all .15s;display:inline-block"
                           title="Adicionar/remover do painel LINHAS SELECIONADAS"></span>
-                    <span style="font-size:${S._mosaicoHoraFonteHH}px;font-weight:700;color:#60a5fa;line-height:1.3">${_hh}</span>
+                    <span class="span-hora-hh" style="font-size:${S._mosaicoHoraFonteHH}px;font-weight:700;line-height:1.3">${_hh}</span>
                 </span>
                 ${S._mosaicoShowDataJogos ? `<span style="display:block;font-size:${S._mosaicoHoraFonteDD}px;color:#475569;font-weight:400;line-height:1.1">${_dd}${temJogo ? ` (${jogosComDados.length})` : ''}</span>` : ''}
                 ${S._mosaicoShowPct  ? `<span class="${pctC}" style="display:block;font-size:9px;font-weight:700;line-height:1.2;margin-top:1px">${pct !== null ? pct+'%' : '—'}</span>` : ''}
@@ -6224,6 +6229,10 @@ function _cfgPanelHTML() {
             _col('Texto','selRowTxt'),
             _col('Borda','selRowBrd'),
             `<div id="prev-sel-row" style="border-radius:4px;padding:4px 10px;font-size:11px;font-weight:800;min-width:36px;text-align:center">14h</div>`))}
+        ${_sec('Hora (HH) e Minuto (:MM)', false, _row2(
+            _col('Cor HH','horaHHCor'),
+            _col('Cor :MM','horaMinCor'),
+            `<div style="display:flex;gap:6px;align-items:center"><span id="prev-hora-hh" style="font-size:12px;font-weight:800;min-width:24px;text-align:center">21</span><span id="prev-hora-min" style="font-size:10px;min-width:24px;text-align:center">:05</span></div>`))}
         ${_sec('Cor dos Clubes', false, _row2(
             _col('Texto','clubeTxt'),
             `<div id="prev-clube-txt" style="font-size:7px;font-weight:700;min-width:36px;text-align:center">Arsenal</div>`))}
@@ -6318,6 +6327,10 @@ function _atualizarPreviewCores(c) {
     if (pom) pom.style.color = c.oddMed;
     const poa = document.getElementById('prev-odd-azarao');
     if (poa) poa.style.color = c.oddAzarao;
+    const phh = document.getElementById('prev-hora-hh');
+    if (phh) phh.style.color = c.horaHHCor;
+    const phm = document.getElementById('prev-hora-min');
+    if (phm) phm.style.color = c.horaMinCor;
     const pcl = document.getElementById('prev-clube-txt');
     if (pcl) pcl.style.color = c.clubeTxt;
     const pft = document.getElementById('prev-ft-txt');
