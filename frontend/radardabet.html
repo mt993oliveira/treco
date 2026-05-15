@@ -2339,8 +2339,8 @@ const GRID_CORES_PADRAO = {
     clubeTxt:   '#94a3b8',
     ftTxt:      '#e2e8f0',
     htTxt:      '#64748b',
-    selColBg:   '#1d4ed8', selColTxt: '#bfdbfe', selColBrd: '#60a5fa',
-    selRowBg:   '#6d28d9', selRowTxt: '#ede9fe', selRowBrd: '#a78bfa',
+    selColBg:   '#1e40af', selColTxt: '#e0f2fe', selColBrd: '#38bdf8',
+    selRowBg:   '#5b21b6', selRowTxt: '#f5f3ff', selRowBrd: '#c084fc',
     filtroInativoBg: '#1fcc59', filtroAtivoBg: '#1fcc59', filtroAtivoTxt: '#ffffff',
     canetaCor:  '#f59e0b',
     // tamanhos de fonte do mosaico (px)
@@ -2370,8 +2370,8 @@ function aplicarCoresGrid(c) {
         `.filtro-btn.ativo { background: ${c.filtroAtivoBg}e6 !important; color: ${c.filtroAtivoTxt} !important; border-color: ${c.filtroAtivoBg} !important; box-shadow: 0 1px 10px ${c.filtroAtivoBg}66 !important; }\n` +
         `.filtro-btn:hover:not(.ativo) { background: ${c.filtroInativoBg}3d !important; border-color: ${c.filtroInativoBg}70 !important; }\n` +
         `.tabela-hist th.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; cursor: pointer; }\n` +
-        `.tabela-hist td.col-sel { background: ${c.selColBg}77 !important; outline: 2px solid ${c.selColBrd} !important; }\n` +
-        `.tabela-hist tr.row-sel td { background: ${c.selRowBg}77 !important; outline: 2px solid ${c.selRowBrd} !important; }\n` +
+        `.tabela-hist td.col-sel { background: ${c.selColBg}cc !important; outline: 3px solid ${c.selColBrd} !important; }\n` +
+        `.tabela-hist tr.row-sel td { background: ${c.selRowBg}cc !important; outline: 3px solid ${c.selRowBrd} !important; }\n` +
         `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; cursor: pointer; }`;
 }
 // Aplica cores salvas imediatamente (antes de qualquer render)
