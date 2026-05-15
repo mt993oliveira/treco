@@ -1491,7 +1491,7 @@ const CONFIG_DEFAULTS = [
     { chave:'analise_liberar_user',         valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Liberar "Análise & Sugestões" para usuários tipo User' },
     // ── Mosaico — colunas esquerda ──
     { chave:'mosaico_hora_largura',         valor:'22',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna HORA (px)' },
-    { chave:'mosaico_mostrar_data_jogos',   valor:'true',  tipo:'text',    grupo:'frontend', descricao:'Mosaico: exibir data DD/MM e contagem de jogos (true/false)' },
+    { chave:'mosaico_mostrar_data_jogos',   valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'Mosaico: exibir data DD/MM e contagem de jogos' },
     { chave:'mosaico_hora_fonte_hh',        valor:'8',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte do horário HH (px)' },
     { chave:'mosaico_hora_fonte_dd',        valor:'6',     tipo:'number',  grupo:'frontend', descricao:'Mosaico: fonte da data DD/MM (px)' },
     { chave:'mosaico_pct_largura',          valor:'10',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna % (px)' },
