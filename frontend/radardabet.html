@@ -2035,8 +2035,9 @@ async function carregarConfigLigas() {
         if (cfg.default_exibir_clubes  !== undefined) S.showNomes         = cfg.default_exibir_clubes  === 'true';
         if (cfg.default_exibir_odds    !== undefined) S.showOdds          = cfg.default_exibir_odds     === 'true';
         if (cfg.default_exibir_ht      !== undefined) S.showHT            = cfg.default_exibir_ht       === 'true';
-        if (cfg.default_mosaico_pct    !== undefined) S._mosaicoShowPct   = cfg.default_mosaico_pct    === 'true';
-        if (cfg.default_mosaico_gols   !== undefined) S._mosaicoShowGols  = cfg.default_mosaico_gols   === 'true';
+        if (cfg.default_mosaico_pct       !== undefined) S._mosaicoShowPct        = cfg.default_mosaico_pct       === 'true';
+        if (cfg.default_mosaico_gols      !== undefined) S._mosaicoShowGols       = cfg.default_mosaico_gols      === 'true';
+        if (cfg.mosaico_mostrar_data_jogos !== undefined) S._mosaicoShowDataJogos = cfg.mosaico_mostrar_data_jogos !== 'false';
         // Sincroniza visual dos botões do header
         const _sb = id => document.getElementById(id);
         if (_sb('btn-proximos-jogos'))  _sb('btn-proximos-jogos').classList.toggle('ativo',  S.showProximos);
@@ -2460,8 +2461,9 @@ const S = {
     showProximos:  false,   // exibe próximos jogos agendados na grade
     showHT:        true,    // exibe placar do intervalo (HT) nas células do grid
     showLegendas:  false,   // false = legendas visíveis; true = legendas suprimidas (botão marcado)
-    _mosaicoShowPct:  false,   // exibe coluna % acerto por linha (padrão vem da config)
-    _mosaicoShowGols: false,   // exibe coluna ⚽ gols por linha (padrão vem da config)
+    _mosaicoShowPct:       false, // exibe coluna % acerto por linha (padrão vem da config)
+    _mosaicoShowGols:      false, // exibe coluna ⚽ gols por linha (padrão vem da config)
+    _mosaicoShowDataJogos: true,  // exibe linha DD/MM e contagem de jogos (padrão vem da config)
     selCols:       new Set(),  // colunas selecionadas (índices) — aplica cor
     selRows:       new Set(),  // linhas com destaque de cor (índices de hora)
     panelRows:     new Set(),  // linhas no painel LINHAS SELECIONADAS (sem cor)
@@ -5109,7 +5111,7 @@ function renderTabela() {
     gsDesc.forEach(grupo => {
         const hora    = grupo.hora;
         // Exibe UTC diretamente — coletor salva horário Bet365 como UTC
-        const _hh = `${pad2(hora.getUTCHours())}:00`;
+        const _hh = `${pad2(hora.getUTCHours())}`;
         const _dd = `${pad2(hora.getUTCDate())}/${pad2(hora.getUTCMonth()+1)}`;
 
         // Deduplicar: para cada par (time_casa x time_fora) manter o registro com
@@ -5363,7 +5365,7 @@ function renderTabela() {
                           title="Adicionar/remover do painel LINHAS SELECIONADAS"></span>
                     <span style="font-size:${S._mosaicoHoraFonteHH}px;font-weight:700;color:#60a5fa;line-height:1.3">${_hh}</span>
                 </span>
-                <span style="display:block;font-size:${S._mosaicoHoraFonteDD}px;color:#475569;font-weight:400;line-height:1.1">${_dd}${temJogo ? ` (${jogosComDados.length})` : ''}</span>
+                ${S._mosaicoShowDataJogos ? `<span style="display:block;font-size:${S._mosaicoHoraFonteDD}px;color:#475569;font-weight:400;line-height:1.1">${_dd}${temJogo ? ` (${jogosComDados.length})` : ''}</span>` : ''}
                 ${S._mosaicoShowPct  ? `<span class="${pctC}" style="display:block;font-size:9px;font-weight:700;line-height:1.2;margin-top:1px">${pct !== null ? pct+'%' : '—'}</span>` : ''}
                 ${S._mosaicoShowGols ? `<span style="display:block;font-size:${S._mosaicoHoraFonteDD}px;font-weight:800;color:${golCor};line-height:1.2">${totalGolsLinha != null ? '⚽'+totalGolsLinha : '–'}</span>` : ''}
             </td>
@@ -7861,7 +7863,8 @@ const _CFG_LABELS = {
     grafico_mm2_dash:        '📈 MM longa: tracejado (ex: "8,4" ou "0"=sólido)',
     // Mosaico
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
-    mosaico_hora_fonte_hh:      '📐 Mosaico: tamanho da fonte HH:00 (px)',
+    mosaico_mostrar_data_jogos:  '👁 Mosaico: exibir data (DD/MM) e contagem de jogos',
+    mosaico_hora_fonte_hh:      '📐 Mosaico: tamanho da fonte da hora HH (px)',
     mosaico_hora_fonte_dd:      '📐 Mosaico: tamanho da fonte DD/MM e stats (px)',
     mosaico_pct_largura:        '📐 Mosaico: largura mínima da coluna % (px)',
     mosaico_gols_largura:       '📐 Mosaico: largura mínima da coluna ⚽ (px)',
