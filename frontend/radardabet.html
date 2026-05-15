@@ -8249,8 +8249,11 @@ async function _loadConfigSistema() {
               `<div style="font-size:10px;color:#475569;margin-bottom:14px">
                   Padrões do Mosaico aplicados a todos os usuários. Cada usuário pode sobrescrever localmente em ⚙️ Config.
               </div>` +
+              _grp('🕐 Hora e Minuto',
+                  _inp('horaHHCor','Cor da Hora (HH)') +
+                  _inp('horaMinCor','Cor do Minuto (:MM)') +
+                  _inp('horaMinFs','Fonte :MM (px)','number')) +
               _grp('📐 Tamanhos de Fonte',
-                  _inp('horaMinFs','Fonte :MM (col. minuto)','number') +
                   _inp('clubeFs','Fonte dos Clubes','number') +
                   _inp('ftFs','Fonte Resultado FT','number') +
                   _inp('htFs','Fonte Resultado HT','number') +

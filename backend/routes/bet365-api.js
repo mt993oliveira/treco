@@ -1565,6 +1565,9 @@ const CONFIG_DEFAULTS = [
     { chave:'default_open_parimpar',        valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🔢 Gráfico de Par e Ímpar' },
     { chave:'default_open_mercados',        valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🎯 Mercados' },
     // ── Grade/Mosaico — cores e fontes padrão (sobrescrevem os valores embutidos no código) ──
+    { chave:'grid_horaHHCor', valor:'#1fcc59',  tipo:'color',  grupo:'grid', descricao:'🕐 Hora (HH): cor' },
+    { chave:'grid_horaMinCor',valor:'#475569',  tipo:'color',  grupo:'grid', descricao:'🕐 Minuto (:MM): cor' },
+    { chave:'grid_horaMinFs', valor:'10',       tipo:'number', grupo:'grid', descricao:'📐 Fonte :MM coluna minuto (px)' },
     { chave:'grid_clubeFs',   valor:'7',        tipo:'number', grupo:'grid', descricao:'📐 Fonte dos Clubes (px)' },
     { chave:'grid_ftFs',      valor:'10',       tipo:'number', grupo:'grid', descricao:'📐 Fonte Resultado FT (px)' },
     { chave:'grid_htFs',      valor:'10',       tipo:'number', grupo:'grid', descricao:'📐 Fonte Resultado HT (px)' },
