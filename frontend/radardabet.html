@@ -96,8 +96,8 @@
         /* Seleção de linha/coluna */
         /* Cores col-sel/row-sel definidas dinamicamente por aplicarCoresGrid() */
         /* Seleção de resultado / clube */
-        .tabela-hist td.cell-match-score { outline: 2px solid #fbbf24 !important; background: #422006 !important; }
-        .tabela-hist td.cell-match-club  { outline: 2px solid #1fcc59 !important; background: #052e16 !important; }
+        .tabela-hist span.cell-match-score { outline: 2px solid #fbbf24 !important; background: #422006 !important; border-radius: 2px; }
+        .tabela-hist span.cell-match-club  { outline: 2px solid #1fcc59 !important; background: #052e16 !important; border-radius: 2px; }
         .tabela-hist th.th-col-num { cursor: pointer; user-select: none; }
         .tabela-hist th.th-col-num:hover { background: #1e293b !important; color: #94a3b8 !important; }
 
@@ -3658,35 +3658,51 @@ function _tblTogglePanel(ri) {
 }
 function _tblSelectScore(score) {
     S.selScore   = S.selScore === score ? null : score;
-    S.selScoreHT = null;
-    S.selClub    = null;
+    S.selScoreHT = null; // FT e HT são mutuamente exclusivos entre si
     _aplicarHighlightGrid();
 }
 function _tblSelectScoreHT(score) {
     S.selScoreHT = S.selScoreHT === score ? null : score;
-    S.selScore   = null;
-    S.selClub    = null;
+    S.selScore   = null; // FT e HT são mutuamente exclusivos entre si
     _aplicarHighlightGrid();
 }
 function _tblSelectClub(club) {
-    S.selClub    = S.selClub === club ? null : club;
-    S.selScore   = null;
-    S.selScoreHT = null;
+    S.selClub = S.selClub === club ? null : club;
     _aplicarHighlightGrid();
 }
 function _aplicarHighlightGrid() {
     const tbody = document.getElementById('tbl-body');
     if (!tbody) return;
+    // Limpa highlights anteriores nos spans
+    tbody.querySelectorAll('span.cell-match-score, span.cell-match-club').forEach(el => {
+        el.classList.remove('cell-match-score', 'cell-match-club');
+    });
+    if (!S.selScore && !S.selScoreHT && !S.selClub && !S.clubesSel?.size) return;
     tbody.querySelectorAll('td[data-tt]').forEach(td => {
-        td.classList.remove('cell-match-score', 'cell-match-club');
-        if (!S.selScore && !S.selScoreHT && !S.selClub && !S.clubesSel?.size) return;
         const tt = td.dataset.tt || '';
-        if (S.selScore   && tt.includes(' ' + S.selScore + ' '))               td.classList.add('cell-match-score');
-        if (S.selScoreHT && tt.includes(`HT:${S.selScoreHT}`))                 td.classList.add('cell-match-score');
-        if (S.selClub    && tt.toLowerCase().includes(S.selClub.toLowerCase())) td.classList.add('cell-match-club');
+        // Placar FT: destaca o span do placar principal (data-action="liga")
+        if (S.selScore && tt.includes(' ' + S.selScore + ' ')) {
+            const sp = td.querySelector('span[data-action="liga"]');
+            if (sp) sp.classList.add('cell-match-score');
+        }
+        // Placar HT: destaca o span do placar parcial (data-action="ht-score")
+        if (S.selScoreHT && tt.includes(`HT:${S.selScoreHT}`)) {
+            const sp = td.querySelector('span[data-action="ht-score"]');
+            if (sp) sp.classList.add('cell-match-score');
+        }
+        // Clube: destaca apenas o span do clube correspondente (data-clube)
+        if (S.selClub) {
+            td.querySelectorAll('span[data-action="clube"]').forEach(sp => {
+                if ((sp.dataset.clube || '').toLowerCase() === S.selClub.toLowerCase())
+                    sp.classList.add('cell-match-club');
+            });
+        }
         if (S.clubesSel?.size) {
-            const ttL = tt.toLowerCase();
-            if ([...S.clubesSel].some(c => ttL.includes(c.toLowerCase()))) td.classList.add('cell-match-club');
+            td.querySelectorAll('span[data-action="clube"]').forEach(sp => {
+                const c = (sp.dataset.clube || '').toLowerCase();
+                if (c && [...S.clubesSel].some(sel => c.includes(sel.toLowerCase())))
+                    sp.classList.add('cell-match-club');
+            });
         }
     });
 }
