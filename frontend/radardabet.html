@@ -2369,10 +2369,10 @@ function aplicarCoresGrid(c) {
         `.filtro-btn { background: ${c.filtroInativoBg}24 !important; color: ${c.filtroInativoBg} !important; border: 1px solid ${c.filtroInativoBg}48 !important; }\n` +
         `.filtro-btn.ativo { background: ${c.filtroAtivoBg}e6 !important; color: ${c.filtroAtivoTxt} !important; border-color: ${c.filtroAtivoBg} !important; box-shadow: 0 1px 10px ${c.filtroAtivoBg}66 !important; }\n` +
         `.filtro-btn:hover:not(.ativo) { background: ${c.filtroInativoBg}3d !important; border-color: ${c.filtroInativoBg}70 !important; }\n` +
-        `.tabela-hist th.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; cursor: pointer; }\n` +
-        `.tabela-hist td.col-sel { background: ${c.selColBg}cc !important; outline: 3px solid ${c.selColBrd} !important; }\n` +
-        `.tabela-hist tr.row-sel td { background: ${c.selRowBg}cc !important; outline: 3px solid ${c.selRowBrd} !important; }\n` +
-        `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; cursor: pointer; }`;
+        `.tabela-hist th.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; outline: 3px solid ${c.selColBrd} !important; cursor: pointer; }\n` +
+        `.tabela-hist td.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; outline: 3px solid ${c.selColBrd} !important; }\n` +
+        `.tabela-hist tr.row-sel td { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; }\n` +
+        `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; cursor: pointer; }`;
 }
 // Aplica cores salvas imediatamente (antes de qualquer render)
 aplicarCoresGrid(carregarCoresGrid());
