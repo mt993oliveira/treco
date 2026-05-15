@@ -2088,7 +2088,7 @@ async function carregarConfigLigas() {
         { const _gridKeys = ['verdeBg','verdeTxt','vermBg','vermTxt','futuroBg','futuroTxt','futuroBrd',
               'oddFav','oddMed','oddAzarao','selColBg','selColTxt','selColBrd',
               'selRowBg','selRowTxt','selRowBrd','filtroInativoBg','filtroAtivoBg','filtroAtivoTxt',
-              'horaHHCor','horaMinCor',
+              'horaHHCor','horaMinCor','horaMinFs',
               'clubeTxt','ftTxt','htTxt','canetaCor',
               'clubeFs','ftFs','htFs','oddFs'];
           S._gridCoresSistema = {};
@@ -2347,6 +2347,7 @@ const GRID_CORES_PADRAO = {
     filtroInativoBg: '#1fcc59', filtroAtivoBg: '#1fcc59', filtroAtivoTxt: '#ffffff',
     canetaCor:  '#f59e0b',
     // tamanhos de fonte do mosaico (px)
+    horaMinFs: 10,
     clubeFs: 7, ftFs: 10, htFs: 10, oddFs: 6,
 };
 function carregarCoresGrid() {
@@ -2376,7 +2377,7 @@ function aplicarCoresGrid(c) {
         `.tabela-hist td.col-sel { background: ${c.selColBg} !important; color: ${c.selColTxt} !important; outline: 3px solid ${c.selColBrd} !important; }\n` +
         `.tabela-hist tr.row-sel td { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; }\n` +
         `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; cursor: pointer; }\n` +
-        `.tabela-hist th.th-col-num { color: ${c.horaMinCor} !important; }\n` +
+        `.tabela-hist th.th-col-num { color: ${c.horaMinCor} !important; font-size: ${c.horaMinFs||10}px !important; }\n` +
         `.span-hora-hh { color: ${c.horaHHCor} !important; }`;
 }
 // Aplica cores salvas imediatamente (antes de qualquer render)
@@ -8249,6 +8250,7 @@ async function _loadConfigSistema() {
                   Padrões do Mosaico aplicados a todos os usuários. Cada usuário pode sobrescrever localmente em ⚙️ Config.
               </div>` +
               _grp('📐 Tamanhos de Fonte',
+                  _inp('horaMinFs','Fonte :MM (col. minuto)','number') +
                   _inp('clubeFs','Fonte dos Clubes','number') +
                   _inp('ftFs','Fonte Resultado FT','number') +
                   _inp('htFs','Fonte Resultado HT','number') +
