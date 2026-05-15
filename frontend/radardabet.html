@@ -96,8 +96,7 @@
         /* Seleção de linha/coluna */
         /* Cores col-sel/row-sel definidas dinamicamente por aplicarCoresGrid() */
         /* Seleção de resultado / clube */
-        .tabela-hist span.cell-match-score { outline: 2px solid #fbbf24 !important; background: #422006 !important; border-radius: 2px; }
-        .tabela-hist span.cell-match-club  { outline: 2px solid #1fcc59 !important; background: #052e16 !important; border-radius: 2px; }
+        /* cell-match-score / cell-match-club gerados dinamicamente por aplicarCoresGrid() */
         .tabela-hist th.th-col-num { cursor: pointer; user-select: none; }
         .tabela-hist th.th-col-num:hover { background: #1e293b !important; color: #94a3b8 !important; }
 
@@ -2087,7 +2086,9 @@ async function carregarConfigLigas() {
         // Padrões do grid/mosaico — cores e fontes (usados como base; usuário pode sobrescrever em ⚙️ Config)
         { const _gridKeys = ['verdeBg','verdeTxt','vermBg','vermTxt','futuroBg','futuroTxt','futuroBrd',
               'oddFav','oddMed','oddAzarao','selColBg','selColTxt','selColBrd',
-              'selRowBg','selRowTxt','selRowBrd','filtroInativoBg','filtroAtivoBg','filtroAtivoTxt',
+              'selRowBg','selRowTxt','selRowBrd',
+              'selScoreBg','selScoreBrd','selClubBg','selClubBrd',
+              'filtroInativoBg','filtroAtivoBg','filtroAtivoTxt',
               'horaHHCor','horaMinCor','horaMinFs',
               'clubeTxt','ftTxt','htTxt','canetaCor',
               'clubeFs','ftFs','htFs','oddFs'];
@@ -2344,6 +2345,8 @@ const GRID_CORES_PADRAO = {
     htTxt:      '#64748b',
     selColBg:   '#1e40af', selColTxt: '#e0f2fe', selColBrd: '#38bdf8',
     selRowBg:   '#5b21b6', selRowTxt: '#f5f3ff', selRowBrd: '#c084fc',
+    selScoreBg: '#422006', selScoreBrd: '#fbbf24',
+    selClubBg:  '#052e16', selClubBrd:  '#1fcc59',
     filtroInativoBg: '#1fcc59', filtroAtivoBg: '#1fcc59', filtroAtivoTxt: '#ffffff',
     canetaCor:  '#f59e0b',
     // tamanhos de fonte do mosaico (px)
@@ -2378,7 +2381,9 @@ function aplicarCoresGrid(c) {
         `.tabela-hist tr.row-sel td { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; }\n` +
         `.tabela-hist td.td-l.row-sel-head { background: ${c.selRowBg} !important; color: ${c.selRowTxt} !important; outline: 3px solid ${c.selRowBrd} !important; cursor: pointer; }\n` +
         `.tabela-hist th.th-col-num { color: ${c.horaMinCor} !important; font-size: ${c.horaMinFs||10}px !important; }\n` +
-        `.span-hora-hh { color: ${c.horaHHCor} !important; }`;
+        `.span-hora-hh { color: ${c.horaHHCor} !important; }\n` +
+        `.tabela-hist span.cell-match-score { outline: 2px solid ${c.selScoreBrd||'#fbbf24'} !important; background: ${c.selScoreBg||'#422006'} !important; border-radius: 2px; }\n` +
+        `.tabela-hist span.cell-match-club  { outline: 2px solid ${c.selClubBrd||'#1fcc59'} !important; background: ${c.selClubBg||'#052e16'} !important; border-radius: 2px; }`;
 }
 // Aplica cores salvas imediatamente (antes de qualquer render)
 aplicarCoresGrid(carregarCoresGrid());
@@ -6220,6 +6225,22 @@ function _cfgPanelHTML() {
             _col('Médio 2–3','oddMed'),
             _col('Azarão &gt;3','oddAzarao'),
             `<div style="display:flex;gap:4px;align-items:center"><span id="prev-odd-fav" style="font-size:10px;font-weight:800;min-width:28px;text-align:center">1.75</span><span id="prev-odd-med" style="font-size:10px;font-weight:800;min-width:28px;text-align:center">2.50</span><span id="prev-odd-azarao" style="font-size:10px;font-weight:800;min-width:28px;text-align:center">3.80</span></div>`))}
+        ${_sec('Seleção de Resultado (clique no placar)', false, _row2(
+            _col('Fundo','selScoreBg'),
+            _col('Borda','selScoreBrd'),
+            `<div id="prev-sel-score" style="border-radius:2px;padding:3px 8px;font-size:11px;font-weight:800;min-width:36px;text-align:center">1-1</div>`))}
+        ${_sec('Seleção de Clube (clique no nome)', false, _row2(
+            _col('Fundo','selClubBg'),
+            _col('Borda','selClubBrd'),
+            `<div id="prev-sel-club" style="border-radius:2px;padding:3px 8px;font-size:9px;font-weight:700;min-width:36px;text-align:center">Arsenal</div>`))}
+        ${_sec('Seleção de Resultado (clique no placar)', false, _row2(
+            _col('Fundo','selScoreBg'),
+            _col('Borda','selScoreBrd'),
+            `<div id="prev-sel-score2" style="border-radius:2px;padding:3px 8px;font-size:11px;font-weight:800;min-width:36px;text-align:center">1-1</div>`))}
+        ${_sec('Seleção de Clube (clique no nome)', false, _row2(
+            _col('Fundo','selClubBg'),
+            _col('Borda','selClubBrd'),
+            `<div id="prev-sel-club2" style="border-radius:2px;padding:3px 8px;font-size:9px;font-weight:700;min-width:36px;text-align:center">Arsenal</div>`))}
         ${_sec('Destaque de Coluna (clique no :MM)', false, _row2(
             _col('Fundo','selColBg'),
             _col('Texto','selColTxt'),
@@ -6328,6 +6349,10 @@ function _atualizarPreviewCores(c) {
     if (pom) pom.style.color = c.oddMed;
     const poa = document.getElementById('prev-odd-azarao');
     if (poa) poa.style.color = c.oddAzarao;
+    const pss = document.getElementById('prev-sel-score');
+    if (pss) { pss.style.background = c.selScoreBg; pss.style.outline = `2px solid ${c.selScoreBrd}`; }
+    const psc2 = document.getElementById('prev-sel-club');
+    if (psc2) { psc2.style.background = c.selClubBg; psc2.style.outline = `2px solid ${c.selClubBrd}`; }
     const phh = document.getElementById('prev-hora-hh');
     if (phh) phh.style.color = c.horaHHCor;
     const phm = document.getElementById('prev-hora-min');
@@ -8270,6 +8295,10 @@ async function _loadConfigSistema() {
                   _inp('futuroBg','Fundo') + _inp('futuroTxt','Texto') + _inp('futuroBrd','Borda')) +
               _grp('💹 Odds por faixa',
                   _inp('oddFav','Favorito (<2.0)') + _inp('oddMed','Médio (2–3)') + _inp('oddAzarao','Azarão (>3)')) +
+              _grp('🎯 Seleção de Resultado (clique no placar)',
+                  _inp('selScoreBg','Fundo') + _inp('selScoreBrd','Borda')) +
+              _grp('🎯 Seleção de Clube (clique no nome)',
+                  _inp('selClubBg','Fundo') + _inp('selClubBrd','Borda')) +
               _grp('🔵 Coluna selecionada (clique no :MM)',
                   _inp('selColBg','Fundo') + _inp('selColTxt','Texto') + _inp('selColBrd','Borda')) +
               _grp('🟣 Linha selecionada (clique no horário)',
