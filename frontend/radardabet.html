@@ -79,7 +79,7 @@
         .tabela-hist.compact th { padding: 3px 1px; font-size: 8px; min-width: unset; }
         .tabela-hist.compact td { padding: 2px 1px; font-size: 9px; min-width: 20px; max-width: 28px; height: 24px; }
         .tabela-hist td.td-l { background: #0f172a; color: #334155; font-size: 10px; font-weight: 600;
-            text-align: left; padding: 3px 6px; white-space: nowrap; }
+            text-align: left; padding: 3px 6px; white-space: nowrap; min-width: unset; }
         .tabela-hist td.td-pct { background: #0f172a; min-width: 10px; font-weight: 800; font-size: 8px; }
         .tabela-hist td.td-g   { background: #0f172a; color: #334155; font-size: 9px; min-width: 18px; }
         .tabela-hist tfoot td  { background: #0c1220; color: #60a5fa; font-weight: 700; }
@@ -5362,9 +5362,9 @@ function renderTabela() {
             <td class="td-l${tdLSelCls}" onclick="_tblToggleRow(${rowIdx})" style="position:sticky;left:0;background:#0f172a;z-index:5;
                 white-space:normal;min-width:${S._mosaicoHoraLarg}px;cursor:pointer;padding:1px 2px;text-align:center"
                 title="Clique para destacar cor da linha">
-                <span style="display:flex;align-items:center;justify-content:center;gap:3px">
+                <span style="display:flex;align-items:center;justify-content:center;gap:1px">
                     <span onclick="_tblTogglePanel(${rowIdx});event.stopPropagation()"
-                          style="width:10px;height:10px;border-radius:50%;cursor:pointer;flex-shrink:0;
+                          style="width:8px;height:8px;border-radius:50%;cursor:pointer;flex-shrink:0;
                                  background:${_inPanel?'#3b82f6':'transparent'};
                                  border:2px solid ${_inPanel?'#60a5fa':'#334155'};
                                  transition:all .15s;display:inline-block"
@@ -5497,15 +5497,15 @@ function renderTabela() {
     if (!tfoot?.parentElement) return;
     tfoot.parentElement.innerHTML = `
         ${S._mosaicoShowPct ? `<tr>
-            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#475569;font-weight:700;cursor:help" title="% de acerto do filtro ativo por posição de coluna. Cada coluna representa um slot de minuto do ciclo. Ex: 40% em :01 = 40% dos jogos que ocorreram no minuto :01 ativaram o filtro selecionado.">% / POS</td>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#475569;font-weight:700;cursor:help;min-width:${S._mosaicoHoraLarg}px;padding:1px 2px;white-space:normal" title="% de acerto do filtro ativo por posição de coluna.">%</td>
             ${footPct}
         </tr>` : ''}
         ${S._mosaicoShowGols ? `<tr>
-            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700;cursor:help;white-space:nowrap" title="Total de gols por posição de coluna. Passe o mouse sobre cada valor para ver média/jogo.">⚽ GOLS <span style="color:${grandTotalGols>=150?'#4ade80':grandTotalGols>=60?'#fbbf24':'#94a3b8'}">${grandTotalGols}</span></td>
+            <td class="td-l" style="position:sticky;left:0;background:#0c1220;font-size:6px;color:#fbbf24;font-weight:700;cursor:help;min-width:${S._mosaicoHoraLarg}px;padding:1px 2px;white-space:normal" title="Total de gols por posição de coluna. Passe o mouse sobre cada valor para ver média/jogo.">⚽<span style="color:${grandTotalGols>=150?'#4ade80':grandTotalGols>=60?'#fbbf24':'#94a3b8'}">${grandTotalGols}</span></td>
             ${footGols}
         </tr>` : ''}
         <tr>
-            <td class="td-l" style="position:sticky;left:0;background:#060810;font-size:8px;color:#1e293b;font-weight:600">MINUTO</td>
+            <td class="td-l" style="position:sticky;left:0;background:#060810;font-size:7px;color:#1e293b;font-weight:600;min-width:${S._mosaicoHoraLarg}px;padding:1px 2px">MIN</td>
             ${footSlotTimes}
         </tr>
     `;
