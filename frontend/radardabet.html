@@ -2098,7 +2098,7 @@ async function carregarConfigLigas() {
               'filtroInativoBg','filtroAtivoBg','filtroAtivoTxt',
               'horaHHCor','horaMinCor','horaMinFs',
               'clubeTxt','ftTxt','htTxt','canetaCor',
-              'clubeFs','ftFs','htFs','oddFs'];
+              'clubeFs','ftFs','htFs','oddFs','proxFs'];
           S._gridCoresSistema = {};
           _gridKeys.forEach(k => {
               const v = cfg['grid_' + k];
@@ -2358,7 +2358,7 @@ const GRID_CORES_PADRAO = {
     canetaCor:  '#f59e0b',
     // tamanhos de fonte do mosaico (px)
     horaMinFs: 10,
-    clubeFs: 7, ftFs: 10, htFs: 10, oddFs: 6,
+    clubeFs: 7, ftFs: 10, htFs: 10, oddFs: 6, proxFs: 9,
 };
 function carregarCoresGrid() {
     let sysExt = {};
@@ -2376,7 +2376,7 @@ function aplicarCoresGrid(c) {
     let s = document.getElementById('grid-cores-style');
     if (!s) { s = document.createElement('style'); s.id = 'grid-cores-style'; document.head.appendChild(s); }
     s.textContent =
-        `:root { --clube-txt: ${c.clubeTxt}; --ft-txt: ${c.ftTxt}; --ht-txt: ${c.htTxt}; --fs-clube: ${c.clubeFs||7}px; --fs-ft: ${c.ftFs||10}px; --fs-ht: ${c.htFs||10}px; --fs-odd: ${c.oddFs||6}px; }\n` +
+        `:root { --clube-txt: ${c.clubeTxt}; --ft-txt: ${c.ftTxt}; --ht-txt: ${c.htTxt}; --fs-clube: ${c.clubeFs||7}px; --fs-ft: ${c.ftFs||10}px; --fs-ht: ${c.htFs||10}px; --fs-odd: ${c.oddFs||6}px; --fs-prox: ${c.proxFs||9}px; }\n` +
         `.c-verde  { background: ${c.verdeBg}  !important; color: ${c.verdeTxt}  !important; }\n` +
         `.c-verm   { background: ${c.vermBg}   !important; color: ${c.vermTxt}   !important; }\n` +
         `.c-futuro { background: ${c.futuroBg} !important; color: ${c.futuroTxt} !important; border: 1px dashed ${c.futuroBrd} !important; }\n` +
@@ -5254,32 +5254,32 @@ function renderTabela() {
                     const _abTc = abbrev(tc), _abTf = abbrev(tf);
                     if (S.showNomes && S.showOdds) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${S._mosaicoCelulaLarg}px">
-                            ${agOC > 0 ? `<span style="display:block;font-size:8px;font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
-                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:9px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
-                            <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
-                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:9px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
-                            ${agOF > 0 ? `<span style="display:block;font-size:8px;font-weight:800;color:${ccOF};text-align:center;line-height:1.4">${fmtA(agOF)}</span>` : ''}
+                            ${agOC > 0 ? `<span style="display:block;font-size:var(--fs-prox);font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
+                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
+                            <span style="display:block;font-size:var(--fs-prox);font-weight:800;text-align:center">—</span>
+                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
+                            ${agOF > 0 ? `<span style="display:block;font-size:var(--fs-prox);font-weight:800;color:${ccOF};text-align:center;line-height:1.4">${fmtA(agOF)}</span>` : ''}
                         </td>`;
                     }
                     if (S.showNomes) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${S._mosaicoCelulaLarg}px">
-                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:9px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
-                            <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
-                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:9px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
+                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
+                            <span style="display:block;font-size:var(--fs-prox);font-weight:800;text-align:center">—</span>
+                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
                         </td>`;
                     }
                     if (S.showOdds) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${S._mosaicoCelulaLarg}px;cursor:default">
-                            <span style="display:block;font-size:9px;font-weight:800;color:${ccOC};text-align:center">${fmtA(agOC)}</span>
+                            <span style="display:block;font-size:var(--fs-prox);font-weight:800;color:${ccOC};text-align:center">${fmtA(agOC)}</span>
                             <span style="display:flex;gap:2px;margin-top:1px">
-                                <span style="flex:1;text-align:center;font-size:8px;font-weight:700;color:${ccOC}">${fmtA(agOC)}</span>
-                                <span style="flex:1;text-align:center;font-size:8px;font-weight:700;color:${ccOF}">${fmtA(agOF)}</span>
+                                <span style="flex:1;text-align:center;font-size:var(--fs-prox);font-weight:700;color:${ccOC}">${fmtA(agOC)}</span>
+                                <span style="flex:1;text-align:center;font-size:var(--fs-prox);font-weight:700;color:${ccOF}">${fmtA(agOF)}</span>
                             </span>
                         </td>`;
                     }
                     // padrão: sem nomes e sem odds → só traço no centro
                     return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${S._mosaicoCelulaLarg}px;cursor:default">
-                        <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
+                        <span style="display:block;font-size:var(--fs-prox);font-weight:800;text-align:center">—</span>
                     </td>`;
                 }
                 return `<td class="c-vazio" style="opacity:.3"></td>`;
@@ -6163,7 +6163,7 @@ function _toggleCfgSection(hdr) {
     if (arrow) arrow.textContent = open ? '▸' : '▾';
 }
 
-const _FS_RANGES = { clube: [4, 24], ft: [4, 24], ht: [4, 24], odd: [4, 24] };
+const _FS_RANGES = { clube: [4, 24], ft: [4, 24], ht: [4, 24], odd: [4, 24], prox: [4, 24] };
 function _adjFs(key, delta) {
     const inp = document.getElementById(`gc-${key}Fs`);
     if (!inp) return;
@@ -6179,7 +6179,7 @@ function _adjFs(key, delta) {
 }
 
 function _syncFsDisplays(c) {
-    const map = { clube: 'clubeFs', ft: 'ftFs', ht: 'htFs', odd: 'oddFs' };
+    const map = { clube: 'clubeFs', ft: 'ftFs', ht: 'htFs', odd: 'oddFs', prox: 'proxFs' };
     Object.entries(map).forEach(([key, cfgKey]) => {
         const val = parseInt(c[cfgKey] !== undefined ? c[cfgKey] : GRID_CORES_PADRAO[cfgKey]);
         const inp  = document.getElementById(`gc-${cfgKey}`);
@@ -6211,12 +6211,14 @@ function _cfgPanelHTML() {
         <input type="hidden" id="gc-ftFs" value="10">
         <input type="hidden" id="gc-htFs" value="10">
         <input type="hidden" id="gc-oddFs" value="6">
+        <input type="hidden" id="gc-proxFs" value="9">
         ${_sec('📐 Tamanhos de Fonte', true, `
             <div style="display:flex;flex-direction:column;gap:7px;margin-top:4px">
                 <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9px;color:#475569;min-width:80px">Clube (casa/fora)</span><button type="button" onclick="_adjFs('clube',-1)" style="${_btn}">−</button><span id="gc-fs-clube-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">7px</span><button type="button" onclick="_adjFs('clube',1)" style="${_btn}">+</button><span id="gc-fs-prev-clube" style="font-size:7px;color:var(--clube-txt);font-weight:700;flex:1;text-align:right">Arsenal</span></div>
                 <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9px;color:#475569;min-width:80px">Resultado FT</span><button type="button" onclick="_adjFs('ft',-1)" style="${_btn}">−</button><span id="gc-fs-ft-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">10px</span><button type="button" onclick="_adjFs('ft',1)" style="${_btn}">+</button><span id="gc-fs-prev-ft" style="font-size:10px;color:var(--ft-txt);font-weight:800;flex:1;text-align:right">1-0</span></div>
                 <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9px;color:#475569;min-width:80px">Resultado HT</span><button type="button" onclick="_adjFs('ht',-1)" style="${_btn}">−</button><span id="gc-fs-ht-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">10px</span><button type="button" onclick="_adjFs('ht',1)" style="${_btn}">+</button><span id="gc-fs-prev-ht" style="font-size:10px;color:var(--ht-txt);font-weight:600;flex:1;text-align:right">(0-0)</span></div>
                 <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9px;color:#475569;min-width:80px">Odds</span><button type="button" onclick="_adjFs('odd',-1)" style="${_btn}">−</button><span id="gc-fs-odd-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">6px</span><button type="button" onclick="_adjFs('odd',1)" style="${_btn}">+</button><span id="gc-fs-prev-odd" style="font-size:6px;font-weight:800;color:#4ade80;flex:1;text-align:right">2.10</span></div>
+                <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9px;color:#475569;min-width:80px">Próximos Jogos</span><button type="button" onclick="_adjFs('prox',-1)" style="${_btn}">−</button><span id="gc-fs-prox-val" style="font-size:10px;color:#e2e8f0;min-width:30px;text-align:center;font-weight:700">9px</span><button type="button" onclick="_adjFs('prox',1)" style="${_btn}">+</button><span id="gc-fs-prev-prox" style="font-size:9px;color:#3b82f6;font-weight:700;flex:1;text-align:right">Arsenal</span></div>
             </div>`)}
         ${_sec('Acerto (verde)', false, _row2(
             _col('Fundo','verdeBg'),
@@ -8293,7 +8295,8 @@ async function _loadConfigSistema() {
                   _inp('clubeFs','Fonte dos Clubes','number') +
                   _inp('ftFs','Fonte Resultado FT','number') +
                   _inp('htFs','Fonte Resultado HT','number') +
-                  _inp('oddFs','Fonte das Odds','number')) +
+                  _inp('oddFs','Fonte das Odds','number') +
+                  _inp('proxFs','Fonte Próximos Jogos','number')) +
               _grp('📊 Cores dos Resultados',
                   _inp('ftTxt','Resultado FT — texto') +
                   _inp('htTxt','Resultado HT — texto') +
