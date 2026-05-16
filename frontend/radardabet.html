@@ -5125,8 +5125,12 @@ function renderTabela() {
     const colGols   = Array(N).fill(0);
     const colGolsCt = Array(N).fill(0);
 
-    // Mais recente primeiro (topo da tabela)
-    const gsDesc = [...gs].reverse();
+    // Histórico mais recente no topo; slot futuro (próximos jogos) no final.
+    const _nowBSTms = Date.now() + 3600000;
+    const gsFuturos = gs.filter(g => g.hora.getTime() > _nowBSTms);
+    const gsHist    = gs.filter(g => g.hora.getTime() <= _nowBSTms);
+    // gsHist descendente (mais recente no topo) + futuros ascendentes no final
+    const gsDesc = [...gsHist].reverse().concat(gsFuturos);
 
     // Acumuladores para o painel "LINHAS SELECIONADAS"
     const selHits    = Array(N).fill(0);
