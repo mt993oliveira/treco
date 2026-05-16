@@ -205,11 +205,11 @@ const LIGA_CONFIG_KEY = {
 // Mapeamento: liga normalizada → IDs da página de resultados (extra.bet365.bet.br)
 // IDs descobertos via investigação em 2026-04-26
 const LIGA_RESULTADOS_URL = {
-    'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
-    'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
-    'Premiership':              { compId: '20120653', compNome: 'Premier League' },
-    'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
-    'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
+    'World Cup':                { compId: '20120650', compNomes: ['Copa do Mundo', 'World Cup'] },
+    'Euro Cup':                 { compId: '20700663', compNomes: ['Euro Cup'] },
+    'Premiership':              { compId: '20120653', compNomes: ['Premier League', 'Premiership'] },
+    'Express Cup':              { compId: '20940364', compNomes: ['Express Cup'] },
+    'Super Liga Sul-Americana': { compId: '20849528', compNomes: ['Super Liga Sul-Americana', 'South American Super League'] },
 };
 
 class Bet365Coletor {
@@ -778,53 +778,49 @@ class Bet365Coletor {
                           'Agosto','Setembro','Outubro','Novembro','Dezembro'];
         const displayDate = `${dd}-${dd}%20${MESES_PT[mm]}%20${yyyy}`;
 
-        // Monta URL direta para a lista de fixtures da liga no dia de hoje (BST)
-        const b64 = s => Buffer.from(s).toString('base64');
-        const qParams = [
-            b64('2'),
-            b64('146'),
-            b64('Futebol%20Virtual'),
-            b64(dateStr),
-            b64(dateStr),
-            b64('0'),
-            b64('0'),
-            b64(displayDate),
-            b64('0'),
-            b64(encodeURIComponent(ligaInfo.compNome)),
-            b64(ligaInfo.compId),
-            b64('0'),
-            '',
-            b64('fixture'),
-            b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
-            '',
-            b64('0'),
-            b64('0'),
-        ].join('|');
-        const urlResultados = `https://extra.bet365.bet.br/results/br?q=${qParams}`;
-
         const horaAtualBST = nowBST.getUTCHours();
         const minAtualBST  = nowBST.getUTCMinutes();
+
+        // Monta URL para cada nome alternativo da liga
+        const b64 = s => Buffer.from(s).toString('base64');
+        const _montarUrl = compNome => {
+            const qParams = [
+                b64('2'), b64('146'), b64('Futebol%20Virtual'),
+                b64(dateStr), b64(dateStr), b64('0'), b64('0'),
+                b64(displayDate), b64('0'),
+                b64(encodeURIComponent(compNome)),
+                b64(ligaInfo.compId), b64('0'), '',
+                b64('fixture'),
+                b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
+                '', b64('0'), b64('0'),
+            ].join('|');
+            return `https://extra.bet365.bet.br/results/br?q=${qParams}`;
+        };
 
         let novaPg = null;
         try {
             novaPg = await pg.browser().newPage();
-            console.log(`   🔗 [${liga.nome}] URL próximos: ${urlResultados.substring(0, 120)}...`);
-            await novaPg.goto(urlResultados, { waitUntil: 'networkidle2', timeout: 30000 });
 
-            // Aguarda os botões de fixture aparecerem (até 10s), evita leitura prematura
-            try {
-                await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 });
-            } catch(_) { /* continua mesmo sem fixtures */ }
-            await this._delay(1500);
+            let futuros = [], totalEncontrados = 0, amostra = [];
+            for (const compNome of ligaInfo.compNomes) {
+                const urlResultados = _montarUrl(compNome);
+                console.log(`   🔗 [${liga.nome}] URL próximos (${compNome}): ${urlResultados.substring(0, 120)}...`);
+                await novaPg.goto(urlResultados, { waitUntil: 'networkidle2', timeout: 30000 });
 
-            // Rola até o fim para forçar carregamento lazy, depois volta ao topo (simulação humana)
-            await novaPg.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-            await this._delay(1500);
-            await novaPg.evaluate(() => window.scrollTo(0, 0));
-            await this._delay(500);
+                // Aguarda os botões de fixture aparecerem (até 10s), evita leitura prematura
+                try {
+                    await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 });
+                } catch(_) { /* continua mesmo sem fixtures */ }
+                await this._delay(1500);
 
-            // Extrai fixtures: lista completa para diagnóstico + filtra futuros
-            const { futuros, totalEncontrados, amostra } = await novaPg.evaluate((h, m, maxN, janela) => {
+                // Rola até o fim para forçar carregamento lazy, depois volta ao topo (simulação humana)
+                await novaPg.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                await this._delay(1500);
+                await novaPg.evaluate(() => window.scrollTo(0, 0));
+                await this._delay(500);
+
+                // Extrai fixtures com esse nome
+                const resultado = await novaPg.evaluate((h, m, maxN, janela) => {
                 const buttons = document.querySelectorAll('button.point-result__fixture');
                 const futuros = [];
                 const amostra = []; // primeiros 5 para log
@@ -849,9 +845,16 @@ class Bet365Coletor {
                     }
                 }
                 return { futuros, totalEncontrados: buttons.length, amostra };
-            }, horaAtualBST, minAtualBST, maxHorarios, this._cfgNum('janela_proximos_min', 6));
+                }, horaAtualBST, minAtualBST, maxHorarios, this._cfgNum('janela_proximos_min', 6));
 
-            console.log(`   ⏰ [${liga.nome}] BST atual: ${horaAtualBST}:${String(minAtualBST).padStart(2,'0')} | Total fixtures na página: ${totalEncontrados} | Próximos: ${futuros.length}`);
+                totalEncontrados = resultado.totalEncontrados;
+                futuros          = resultado.futuros;
+                amostra          = resultado.amostra;
+
+                console.log(`   ⏰ [${liga.nome}] (${compNome}) BST: ${horaAtualBST}:${String(minAtualBST).padStart(2,'0')} | Fixtures: ${totalEncontrados} | Próximos: ${futuros.length}`);
+                if (totalEncontrados > 0) break; // achou com este nome, não precisa tentar o próximo
+            }
+
             if (futuros.length > 0) console.log(`      📋 Próximos fixtures: ${futuros.map(f => `${f.horario} ${f.timeCasa} x ${f.timeFora}`).join(' | ')}`);
 
             for (const f of futuros) {
