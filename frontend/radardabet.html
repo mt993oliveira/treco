@@ -1426,11 +1426,11 @@
             <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
             <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
             <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
-            <button class="acao-btn" id="btn-exibir-clubes" onclick="S.showNomes=!S.showNomes;document.getElementById('btn-exibir-clubes').classList.toggle('ativo',S.showNomes);renderTabela()" title="Mostrar nomes dos clubes na grade">🏷️ Exibir Clubes</button>
-            <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds Pagas</button>
-            <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
-            <button class="acao-btn" id="btn-mosaico-pct" onclick="S._mosaicoShowPct=!S._mosaicoShowPct;document.getElementById('btn-mosaico-pct').classList.toggle('ativo',S._mosaicoShowPct);renderTabela()" title="Mostrar/ocultar coluna % de acerto por linha">% Linha</button>
-            <button class="acao-btn" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
+            <button class="acao-btn" id="btn-exibir-clubes" onclick="S.showNomes=!S.showNomes;localStorage.setItem('rdbt_showNomes',S.showNomes);document.getElementById('btn-exibir-clubes').classList.toggle('ativo',S.showNomes);renderTabela()" title="Mostrar nomes dos clubes na grade">🏷️ Exibir Clubes</button>
+            <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;localStorage.setItem('rdbt_showOdds',S.showOdds);document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds Pagas</button>
+            <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;localStorage.setItem('rdbt_showHT',S.showHT);document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
+            <button class="acao-btn" id="btn-mosaico-pct" onclick="S._mosaicoShowPct=!S._mosaicoShowPct;localStorage.setItem('rdbt_showPct',S._mosaicoShowPct);document.getElementById('btn-mosaico-pct').classList.toggle('ativo',S._mosaicoShowPct);renderTabela()" title="Mostrar/ocultar coluna % de acerto por linha">% Linha</button>
+            <button class="acao-btn" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;localStorage.setItem('rdbt_showGols',S._mosaicoShowGols);document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
             <span id="periodo-badge-mosaico" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
@@ -2029,13 +2029,20 @@ async function carregarConfigLigas() {
         if (cfg.default_janela_recente)  S.fa.nRecente = parseInt(cfg.default_janela_recente) || 20;
         if (cfg.default_so_value_bets)   S.fa.soValueBets = cfg.default_so_value_bets === 'true';
 
-        // Botões padrão da grade
-        if (cfg.default_proximos_jogos !== undefined) S.showProximos      = cfg.default_proximos_jogos === 'true';
-        if (cfg.default_exibir_clubes  !== undefined) S.showNomes         = cfg.default_exibir_clubes  === 'true';
-        if (cfg.default_exibir_odds    !== undefined) S.showOdds          = cfg.default_exibir_odds     === 'true';
-        if (cfg.default_exibir_ht      !== undefined) S.showHT            = cfg.default_exibir_ht       === 'true';
-        if (cfg.default_mosaico_pct       !== undefined) S._mosaicoShowPct        = cfg.default_mosaico_pct       === 'true';
-        if (cfg.default_mosaico_gols      !== undefined) S._mosaicoShowGols       = cfg.default_mosaico_gols      === 'true';
+        // Botões padrão da grade — localStorage tem prioridade sobre config do sistema
+        // Permite que a preferência do usuário persista entre atualizações automáticas
+        const _lsView = (k, cfgVal, def) => {
+            const ls = localStorage.getItem('rdbt_' + k);
+            if (ls !== null) return ls === 'true';
+            if (cfgVal !== undefined) return cfgVal === 'true';
+            return def;
+        };
+        S.showProximos     = _lsView('showProximos', cfg.default_proximos_jogos, false);
+        S.showNomes        = _lsView('showNomes',    cfg.default_exibir_clubes,  true);
+        S.showOdds         = _lsView('showOdds',     cfg.default_exibir_odds,    false);
+        S.showHT           = _lsView('showHT',       cfg.default_exibir_ht,      true);
+        S._mosaicoShowPct  = _lsView('showPct',      cfg.default_mosaico_pct,    false);
+        S._mosaicoShowGols = _lsView('showGols',     cfg.default_mosaico_gols,   false);
         if (cfg.mosaico_mostrar_data_jogos !== undefined) S._mosaicoShowDataJogos = cfg.mosaico_mostrar_data_jogos !== 'false';
         // Sincroniza visual dos botões do header
         const _sb = id => document.getElementById(id);
@@ -5612,6 +5619,7 @@ function toggleLegendas() {
 // ============================================================
 function toggleProximosJogos() {
     S.showProximos = !S.showProximos;
+    localStorage.setItem('rdbt_showProximos', S.showProximos);
     const btn = document.getElementById('btn-proximos-jogos');
     if (btn) btn.classList.toggle('ativo', S.showProximos);
     carregarHistorico();
