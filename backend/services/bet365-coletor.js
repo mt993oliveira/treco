@@ -1293,6 +1293,36 @@ class Bet365Coletor {
         } catch { return false; }
     }
 
+    // Clica no botão de submit DENTRO do modal/formulário de login (não o do cabeçalho)
+    async _clicarBotaoSubmitModal(pg) {
+        try {
+            const handle = await pg.evaluateHandle(() => {
+                // 1ª tentativa: botão dentro de <form> com texto "Login"
+                const dentroForm = [...document.querySelectorAll('form button, form [role="button"]')].find(el => {
+                    const t = (el.textContent || el.innerText || '').trim();
+                    return t === 'Login' || t === 'Log In';
+                });
+                if (dentroForm) return dentroForm;
+                // 2ª tentativa: button[type="submit"] com texto Login (fora de form explícita)
+                const submitBtn = [...document.querySelectorAll('button[type="submit"]')].find(el =>
+                    (el.textContent || '').trim().toLowerCase().includes('login')
+                );
+                if (submitBtn) return submitBtn;
+                // 3ª tentativa: último botão com texto Login (o do modal é mais embaixo no DOM que o do cabeçalho)
+                const todos = [...document.querySelectorAll('button, [role="button"]')].filter(el =>
+                    (el.textContent || el.innerText || '').trim() === 'Login'
+                );
+                return todos.length > 0 ? todos[todos.length - 1] : null;
+            });
+            const el = handle.asElement();
+            if (!el) return false;
+            await el.scrollIntoView();
+            await el.hover();
+            await el.click({ delay: 80 });
+            return true;
+        } catch { return false; }
+    }
+
     async _verificarSessao(pg) {
         try {
             await pg.bringToFront();
@@ -1350,7 +1380,9 @@ class Bet365Coletor {
                 await this._delay(this._cfgNum('delay_modal_login_ms', 2500));
 
                 // ── ETAPA 2: clica "Login" no modal (credenciais já preenchidas) ──
-                const step2Ok = await this._clicarBotaoPorTexto(pg, 'Login', true);
+                // Usa _clicarBotaoSubmitModal para encontrar o botão DENTRO do form/modal,
+                // não o botão "Login" do cabeçalho que aparece atrás do modal no DOM.
+                const step2Ok = await this._clicarBotaoSubmitModal(pg);
                 if (step2Ok) {
                     console.log('   ⏳ Etapa 2: aguardando confirmação do login...');
                     await this._delay(this._cfgNum('delay_pos_login_ms', 4000));
