@@ -3790,11 +3790,20 @@ function grupos(horasOverride, jogosOverride) {
         const key = horaKey(new Date(ms));
         byHour.set(key, { key, hora: new Date(ms), jogos: [] });
     }
-    // Slot da próxima hora: apenas quando "Próximos Jogos" está ativo
-    if (S.showProximos) {
-        const ms  = utcHourStart(new Date(agora.getTime() + 3600000));
-        const key = horaKey(new Date(ms));
-        byHour.set(key, { key, hora: new Date(ms), jogos: [] });
+    // Slot da próxima hora: apenas quando há eventos agendados nela
+    if (S.showProximos && (S.eventosAgendados || []).length > 0) {
+        const _agoraB365 = Date.now() + 3600000;
+        const nextHourMs  = utcHourStart(new Date(_agoraB365 + 3600000));
+        const nextHourEnd = nextHourMs + 3600000;
+        const temNaProxHora = (S.eventosAgendados).some(ev => {
+            if (!ev.horario || normalizarLiga(ev.liga) !== S.ligaAtiva) return false;
+            const t = new Date(ev.horario).getTime();
+            return t >= nextHourMs && t < nextHourEnd;
+        });
+        if (temNaProxHora) {
+            const key = horaKey(new Date(nextHourMs));
+            byHour.set(key, { key, hora: new Date(nextHourMs), jogos: [] });
+        }
     }
 
     // 2. Distribui partidas APENAS nos slots criados — descarta jogos fora da janela
@@ -5228,7 +5237,7 @@ function renderTabela() {
             if (canon !== S.ligaAtiva || !ev.horario) return;
             const d = new Date(ev.horario);
             const diff = d.getTime() - _agoraB365;
-            if (diff < -3 * 60000 || diff > 30 * 60000) return; // só próximos 30 min
+            if (diff < -3 * 60000 || diff > 60 * 60000) return; // só próximos 60 min
             const key = `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
             agendadosMap.set(key, ev);
         });
