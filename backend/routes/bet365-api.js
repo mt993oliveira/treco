@@ -1443,6 +1443,7 @@ const CONFIG_DEFAULTS = [
     { chave:'coletar_proximos_jogos',       valor:'true',  tipo:'boolean', grupo:'coleta', descricao:'Habilitar coleta de próximos jogos agendados' },
     { chave:'max_horarios_proximos',        valor:'4',     tipo:'number',  grupo:'coleta', descricao:'Máximo de horários futuros a coletar por liga (0 = desativar)' },
     { chave:'janela_proximos_min',          valor:'6',     tipo:'number',  grupo:'coleta', descricao:'Janela de antecedência para próximos jogos (minutos). Ex: 6 = pega jogos que começam nos próximos 6 min' },
+    { chave:'intervalo_proximos_min',       valor:'3',     tipo:'number',  grupo:'coleta', descricao:'Intervalo mínimo entre buscas de próximos jogos por liga (minutos). Evita sobrecarga no extra.bet365' },
     // ── Ciclo de coleta ──
     { chave:'intervalo_coleta_seg',         valor:'30',    tipo:'number',  grupo:'coleta', descricao:'Intervalo entre ciclos de coleta (segundos)' },
     // ── Delays de navegação ──

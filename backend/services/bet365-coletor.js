@@ -223,7 +223,8 @@ class Bet365Coletor {
         this.cfg                 = null;
         this.ultimaColetaSucesso = null;
         this.ultimoErro          = null;
-        this._ultimoAlertaLoginTs = 0; // throttle: evita spam de alertas de login
+        this._ultimoAlertaLoginTs  = 0; // throttle: evita spam de alertas de login
+        this._ultimaColetaProximos = new Map(); // liga → timestamp da última busca de próximos
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -748,6 +749,17 @@ class Bet365Coletor {
         }
 
         const ligaNorm = normalizarNomeLiga(liga.nome);
+
+        // Throttle: respeita intervalo mínimo entre buscas por liga
+        const intervaloMs = this._cfgNum('intervalo_proximos_min', 3) * 60 * 1000;
+        const ultimaTs    = this._ultimaColetaProximos.get(ligaNorm) || 0;
+        const decorrido   = Date.now() - ultimaTs;
+        if (decorrido < intervaloMs) {
+            const restante = Math.ceil((intervaloMs - decorrido) / 1000);
+            console.log(`   ⏭️  [${liga.nome}] Próximos: aguardando intervalo (${restante}s restantes).`);
+            return;
+        }
+        this._ultimaColetaProximos.set(ligaNorm, Date.now());
         const ligaInfo = LIGA_RESULTADOS_URL[ligaNorm];
 
         if (!ligaInfo) {
