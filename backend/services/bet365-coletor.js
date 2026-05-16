@@ -37,6 +37,19 @@ const SCREENSHOT_DIR    = path.join(__dirname, '..', '..', 'img', 'screenshots')
 const URL_SOCCER = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR = [];
 
+// Modo de inicialização do browser
+// manual      → comportamento atual (conecta ao Edge existente via remote debugging)
+// auto        → puppeteer.launch() em modo headless (invisível) + login automático
+// auto-visivel → puppeteer.launch() com janela visível + login automático
+const MODO_INICIO = (process.env.BET365_MODO_INICIO || 'manual').toLowerCase().trim();
+
+// Caminho do executável Edge e diretório do perfil BetColetor (usado nos modos auto)
+const EDGE_EXE   = process.env.BET365_EDGE_EXE
+    || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const EDGE_PERFIL = process.env.BET365_EDGE_PERFIL
+    || path.join(process.env.LOCALAPPDATA || 'C:\\Users\\Administrador\\AppData\\Local',
+                 'Microsoft', 'Edge', 'User Data', 'BetColetor');
+
 // Normaliza nomes de mercado (inglês → português)
 const MERCADO_NORMALIZAR = {
     'fulltime result':                    'Resultado Final',
@@ -448,6 +461,35 @@ class Bet365Coletor {
         });
     }
 
+    async _lancarEdgeAuto() {
+        const headless = MODO_INICIO === 'auto';
+        console.log(`🚀 Iniciando Edge automaticamente (${headless ? 'headless' : 'visível'})...`);
+        console.log(`   📁 Perfil: ${EDGE_PERFIL}`);
+
+        this.browser = await puppeteer.launch({
+            executablePath: EDGE_EXE,
+            headless,
+            defaultViewport: null,
+            args: [
+                `--user-data-dir=${EDGE_PERFIL}`,
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+            ],
+        });
+
+        console.log('✅ Edge lançado — abrindo Bet365...');
+        const pages = await this.browser.pages();
+        const pg    = pages[0] || await this.browser.newPage();
+        await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await this._delay(4000);
+
+        // _verificarSessao detecta "Faça Login para Assistir" ou botão Login e faz login automático
+        await this._verificarSessao(pg);
+        await this._delay(3000);
+    }
+
     async conectarBrowser() {
         // Verifica se já está conectado
         if (this.browser) {
@@ -461,6 +503,12 @@ class Bet365Coletor {
             }
         }
 
+        if (MODO_INICIO === 'auto' || MODO_INICIO === 'auto-visivel') {
+            await this._lancarEdgeAuto();
+            return;
+        }
+
+        // Modo manual: conecta ao Edge já aberto pelo usuário
         const endpoint = await this._getEdgeEndpoint();
         console.log(`🌐 Conectando ao Edge (${endpoint.Browser})...`);
 
@@ -473,10 +521,15 @@ class Bet365Coletor {
 
     async encerrar() {
         if (this.browser) {
-            this.browser.disconnect();
+            if (MODO_INICIO === 'auto' || MODO_INICIO === 'auto-visivel') {
+                await this.browser.close().catch(() => {});
+                console.log('🔌 Bet365 - Edge encerrado (modo auto)');
+            } else {
+                this.browser.disconnect();
+                console.log('🔌 Bet365 - Desconectado do Edge');
+            }
             this.browser = null;
             this.page    = null;
-            console.log('🔌 Bet365 - Desconectado do Edge');
         }
         if (this.pool) {
             await this.pool.close().catch(() => {});
