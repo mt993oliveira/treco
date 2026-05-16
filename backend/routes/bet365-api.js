@@ -1629,7 +1629,7 @@ async function _ensureConfigTable(pool) {
                     VALUES (@chave,@valor,@tipo,@grupo,@descricao)
                 ELSE
                     UPDATE bet365_config SET tipo=@tipo, grupo=@grupo, descricao=@descricao
-                    WHERE chave=@chave AND tipo <> @tipo
+                    WHERE chave=@chave AND (tipo <> @tipo OR grupo <> @grupo)
             `);
     }
 }
@@ -1683,7 +1683,7 @@ router.post('/admin/config', async (req, res) => {
                 .input('grupo', sql.VarChar, grupoInferido)
                 .query(`
                     IF EXISTS (SELECT 1 FROM bet365_config WHERE chave=@chave)
-                        UPDATE bet365_config SET valor=@valor, grupo=@grupo, atualizado=GETUTCDATE() WHERE chave=@chave
+                        UPDATE bet365_config SET valor=@valor, atualizado=GETUTCDATE() WHERE chave=@chave
                     ELSE
                         INSERT INTO bet365_config (chave,valor,tipo,grupo,descricao)
                         VALUES (@chave,@valor,'text',@grupo,'')
