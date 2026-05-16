@@ -35,7 +35,7 @@ const SCREENSHOT_ATIVO  = process.env.BET365_SCREENSHOT === 'true';
 const SCREENSHOT_DIAS   = parseInt(process.env.BET365_SCREENSHOT_DIAS) || 30;
 const SCREENSHOT_DIR    = path.join(__dirname, '..', '..', 'img', 'screenshots');
 const URL_SOCCER = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
-const LIGAS_IGNORAR = ['super league'];
+const LIGAS_IGNORAR = [];
 
 // Normaliza nomes de mercado (inglês → português)
 const MERCADO_NORMALIZAR = {
