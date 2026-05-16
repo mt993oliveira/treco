@@ -5264,7 +5264,7 @@ function renderTabela() {
                     const fmtA = v => v > 0 ? v.toFixed(2) : '';
                     const tt   = `PRÓXIMO: ${tc} × ${tf} | C:${fmtA(agOC)} E:${fmtA(agOE)} F:${fmtA(agOF)}`;
                     const ccOC = corOdd(agOC), ccOF = corOdd(agOF);
-                    const _abTc = abbrev(tc), _abTf = abbrev(tf);
+                    const _abTc = tc, _abTf = tf; // tc/tf já são strings normalizadas — abbrev é TDZ aqui
                     if (S.showNomes && S.showOdds) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${S._mosaicoCelulaLarg}px">
                             ${agOC > 0 ? `<span style="display:block;font-size:var(--fs-prox);font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
