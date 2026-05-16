@@ -806,7 +806,7 @@ class Bet365Coletor {
             await this._delay(1000);
 
             // Extrai fixtures: lista completa para diagnóstico + filtra futuros
-            const { futuros, totalEncontrados, amostra } = await novaPg.evaluate((h, m, maxN) => {
+            const { futuros, totalEncontrados, amostra } = await novaPg.evaluate((h, m, maxN, janela) => {
                 const buttons = document.querySelectorAll('button.point-result__fixture');
                 const futuros = [];
                 const amostra = []; // primeiros 5 para log
@@ -821,7 +821,7 @@ class Bet365Coletor {
                     if (amostra.length < 5) amostra.push(`${jH}:${String(jM).padStart(2,'0')} ${match[3].trim()} x ${parts[1].textContent.trim()}`);
                     const nowMins = h * 60 + m;
                     const jMins   = jH * 60 + jM;
-                    if (jMins > nowMins && jMins <= nowMins + 6) {
+                    if (jMins > nowMins && jMins <= nowMins + janela) {
                         futuros.push({
                             horario:  `${jH}:${String(jM).padStart(2,'0')}`,
                             timeCasa: match[3].trim(),
@@ -831,7 +831,7 @@ class Bet365Coletor {
                     }
                 }
                 return { futuros, totalEncontrados: buttons.length, amostra };
-            }, horaAtualBST, minAtualBST, maxHorarios);
+            }, horaAtualBST, minAtualBST, maxHorarios, this._cfgNum('janela_proximos_min', 6));
 
             console.log(`   ⏰ [${liga.nome}] BST atual: ${horaAtualBST}:${String(minAtualBST).padStart(2,'0')} | Total fixtures na página: ${totalEncontrados} | Próximos: ${futuros.length}`);
             if (futuros.length > 0) console.log(`      📋 Próximos fixtures: ${futuros.map(f => `${f.horario} ${f.timeCasa} x ${f.timeFora}`).join(' | ')}`);
