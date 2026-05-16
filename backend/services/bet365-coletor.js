@@ -1510,42 +1510,84 @@ class Bet365Coletor {
         }
     }
 
-    async _loginComCredenciais(pg) {
-        const usuario = (process.env.BET365_USERNAME || '').trim();
-        const senha   = (process.env.BET365_PASSWORD || '').trim();
-        if (!usuario || !senha) {
-            console.log('   ⚠️  BET365_USERNAME/BET365_PASSWORD não definidos no .env — impossível fazer login automático');
-            return false;
+    _listarContas() {
+        // Suporta lista via BET365_CONTAS=user1:pass1,user2:pass2,...
+        // Fallback para BET365_USERNAME/BET365_PASSWORD (compatibilidade)
+        const lista = (process.env.BET365_CONTAS || '').trim();
+        if (lista) {
+            return lista.split(',')
+                .map(c => { const [u, ...rest] = c.trim().split(':'); return [u, rest.join(':')]; })
+                .filter(([u, s]) => u && s);
         }
+        const u = (process.env.BET365_USERNAME || '').trim();
+        const s = (process.env.BET365_PASSWORD || '').trim();
+        return (u && s) ? [[u, s]] : [];
+    }
+
+    async _tentarLoginComPar(pg, usuario, senha) {
         try {
-            // Preenche usuário (limpa o campo antes)
             const inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
             if (inputUser) {
                 await inputUser.click({ clickCount: 3 });
                 await inputUser.type(usuario, { delay: 60 });
             }
-            // Preenche senha
             const inputPass = await pg.$('input[type="password"]');
             if (inputPass) {
                 await inputPass.click({ clickCount: 3 });
                 await inputPass.type(senha, { delay: 60 });
             }
-            // Clica Login com evento real de ponteiro
             const clicou = await this._clicarBotaoPorTexto(pg, 'Login', true);
-            if (!clicou) { console.log('   ❌ Botão Login não encontrado (credenciais)'); return false; }
+            if (!clicou) { console.log('   ❌ Botão Login não encontrado'); return false; }
 
             await this._delay(5000);
+
+            // Detecta pedido de verificação (SMS, email, captcha)
+            const pedindoVerificacao = await pg.evaluate(() => {
+                const texto = (document.body?.innerText || '').toLowerCase();
+                return texto.includes('verificação') || texto.includes('verification')
+                    || texto.includes('confirme seu') || texto.includes('confirm your')
+                    || texto.includes('sms') || texto.includes('código de segurança');
+            });
+            if (pedindoVerificacao) {
+                console.log('   ⚠️  Conta exige verificação (SMS/email) — pulando para próxima...');
+                return 'verificacao';
+            }
+
             const ok = await pg.evaluate(() =>
                 ![...document.querySelectorAll('button')].some(b =>
                     (b.textContent || '').trim().includes('Faça Login para Assistir'))
             );
-            if (ok) { console.log('   ✅ Login com credenciais bem-sucedido!'); return true; }
-            console.log('   ❌ Login com credenciais falhou');
-            return false;
+            return ok ? true : false;
         } catch(e) {
-            console.log('   ❌ Erro no login com credenciais:', e.message);
+            console.log('   ❌ Erro no login:', e.message);
             return false;
         }
+    }
+
+    async _loginComCredenciais(pg) {
+        const contas = this._listarContas();
+        if (contas.length === 0) {
+            console.log('   ⚠️  Nenhuma credencial definida no .env (BET365_CONTAS ou BET365_USERNAME/PASSWORD)');
+            return false;
+        }
+
+        for (let i = 0; i < contas.length; i++) {
+            const [usuario, senha] = contas[i];
+            const label = contas.length > 1 ? ` [conta ${i + 1}/${contas.length}]` : '';
+            console.log(`   🔑 Tentando login${label}: ${usuario}`);
+
+            const resultado = await this._tentarLoginComPar(pg, usuario, senha);
+            if (resultado === true) {
+                console.log(`   ✅ Login bem-sucedido${label}!`);
+                return true;
+            }
+            if (resultado === 'verificacao') continue; // tenta próxima conta
+            // false = falhou por outro motivo, tenta próxima mesmo assim
+            console.log(`   ❌ Login falhou${label}`);
+        }
+
+        console.log('   ❌ Todas as contas falharam');
+        return false;
     }
 
     // ─────────────────────────────────────────────────────────────
