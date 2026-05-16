@@ -1578,6 +1578,7 @@ const CONFIG_DEFAULTS = [
     { chave:'grid_ftFs',      valor:'10',       tipo:'number', grupo:'grid', descricao:'📐 Fonte Resultado FT (px)' },
     { chave:'grid_htFs',      valor:'10',       tipo:'number', grupo:'grid', descricao:'📐 Fonte Resultado HT (px)' },
     { chave:'grid_oddFs',     valor:'6',        tipo:'number', grupo:'grid', descricao:'📐 Fonte das Odds (px)' },
+    { chave:'grid_proxFs',    valor:'9',        tipo:'number', grupo:'grid', descricao:'📐 Fonte Próximos Jogos (px)' },
     { chave:'grid_ftTxt',     valor:'#e2e8f0',  tipo:'color',  grupo:'grid', descricao:'📊 Resultado FT — cor do texto' },
     { chave:'grid_htTxt',     valor:'#64748b',  tipo:'color',  grupo:'grid', descricao:'📊 Resultado HT — cor do texto' },
     { chave:'grid_clubeTxt',  valor:'#94a3b8',  tipo:'color',  grupo:'grid', descricao:'🏷️ Clubes — cor do texto' },
@@ -1671,15 +1672,21 @@ router.post('/admin/config', async (req, res) => {
         const pool = await getDbPool();
         await _ensureConfigTable(pool);
         for (const [chave, valor] of Object.entries(req.body || {})) {
+            const grupoInferido = chave.startsWith('grid_') ? 'grid'
+                : chave.startsWith('liga_') ? 'ligas'
+                : chave.startsWith('grafico_') || chave.startsWith('chart_') ? 'grafico'
+                : chave.startsWith('alerta_') ? 'alertas'
+                : 'cores';
             await pool.request()
                 .input('chave', sql.VarChar, chave)
                 .input('valor', sql.VarChar, String(valor))
+                .input('grupo', sql.VarChar, grupoInferido)
                 .query(`
                     IF EXISTS (SELECT 1 FROM bet365_config WHERE chave=@chave)
-                        UPDATE bet365_config SET valor=@valor, atualizado=GETUTCDATE() WHERE chave=@chave
+                        UPDATE bet365_config SET valor=@valor, grupo=@grupo, atualizado=GETUTCDATE() WHERE chave=@chave
                     ELSE
                         INSERT INTO bet365_config (chave,valor,tipo,grupo,descricao)
-                        VALUES (@chave,@valor,'text','cores','')
+                        VALUES (@chave,@valor,'text',@grupo,'')
                 `);
         }
         res.json({ success: true });

@@ -815,7 +815,13 @@ class Bet365Coletor {
             try {
                 await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 });
             } catch(_) { /* continua mesmo sem fixtures */ }
-            await this._delay(1000);
+            await this._delay(1500);
+
+            // Rola até o fim para forçar carregamento lazy, depois volta ao topo (simulação humana)
+            await novaPg.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+            await this._delay(1500);
+            await novaPg.evaluate(() => window.scrollTo(0, 0));
+            await this._delay(500);
 
             // Extrai fixtures: lista completa para diagnóstico + filtra futuros
             const { futuros, totalEncontrados, amostra } = await novaPg.evaluate((h, m, maxN, janela) => {
