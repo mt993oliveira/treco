@@ -5213,11 +5213,15 @@ function renderTabela() {
         const tr = document.createElement('tr');
 
         // Mapa de eventos agendados para a liga ativa → chave "YYYY-MM-DD HH:MM"
+        // Só inclui eventos nos próximos 30 min (convenção BST-as-UTC do coletor)
         const agendadosMap = new Map();
+        const _agoraB365 = Date.now() + 3600000;
         (S.eventosAgendados || []).forEach(ev => {
             const canon = normalizarLiga(ev.liga);
             if (canon !== S.ligaAtiva || !ev.horario) return;
             const d = new Date(ev.horario);
+            const diff = d.getTime() - _agoraB365;
+            if (diff < -3 * 60000 || diff > 30 * 60000) return; // só próximos 30 min
             const key = `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
             agendadosMap.set(key, ev);
         });
@@ -5240,20 +5244,21 @@ function renderTabela() {
                     const fmtA = v => v > 0 ? v.toFixed(2) : '';
                     const tt   = `PRÓXIMO: ${tc} × ${tf} | C:${fmtA(agOC)} E:${fmtA(agOE)} F:${fmtA(agOF)}`;
                     const ccOC = corOdd(agOC), ccOF = corOdd(agOF);
+                    const _abTc = abbrev(tc), _abTf = abbrev(tf);
                     if (S.showNomes && S.showOdds) {
-                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${S._mosaicoCelulaLarg}px;cursor:default">
+                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${S._mosaicoCelulaLarg}px">
                             ${agOC > 0 ? `<span style="display:block;font-size:6px;font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
-                            <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
+                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
                             <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
-                            <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tf}</span>
+                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
                             ${agOF > 0 ? `<span style="display:block;font-size:6px;font-weight:800;color:${ccOF};text-align:center;line-height:1.4">${fmtA(agOF)}</span>` : ''}
                         </td>`;
                     }
                     if (S.showNomes) {
-                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${S._mosaicoCelulaLarg}px;cursor:default">
-                            <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tc}</span>
+                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${S._mosaicoCelulaLarg}px">
+                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
                             <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
-                            <span style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tf}</span>
+                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
                         </td>`;
                     }
                     if (S.showOdds) {
