@@ -1567,7 +1567,18 @@ class Bet365Coletor {
                 }
             }
             if (!ligasOk) {
-                throw new Error('Ligas não apareceram após 3 tentativas — verifique se a página está aberta no Edge');
+                // Ligas não apareceram — pode ser sessão expirada; tenta relogar antes de desistir
+                console.log('   🔐 Ligas ausentes após 3 tentativas — verificando sessão...');
+                await this._verificarSessao(this.page);
+                // Após relogin, aguarda ligas mais uma vez
+                try {
+                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                    ligasOk = true;
+                    console.log('   ✅ Ligas apareceram após relogin');
+                } catch(_) {}
+                if (!ligasOk) {
+                    throw new Error('Ligas não apareceram mesmo após tentativa de relogin — intervenção manual necessária');
+                }
             }
 
             // Verifica sessão — se "Faça Login para Assistir" aparecer, reconecta automaticamente
