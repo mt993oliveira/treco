@@ -207,7 +207,7 @@ const LIGA_CONFIG_KEY = {
 const LIGA_RESULTADOS_URL = {
     'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
     'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
-    'Premiership':              { compId: '20120653', compNome: 'Premiership' },
+    'Premiership':              { compId: '20120653', compNome: 'Premier League' },
     'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
     'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
 };
