@@ -5254,26 +5254,26 @@ function renderTabela() {
                     const _abTc = abbrev(tc), _abTf = abbrev(tf);
                     if (S.showNomes && S.showOdds) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${S._mosaicoCelulaLarg}px">
-                            ${agOC > 0 ? `<span style="display:block;font-size:6px;font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
-                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
+                            ${agOC > 0 ? `<span style="display:block;font-size:8px;font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
+                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:9px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
                             <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
-                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
-                            ${agOF > 0 ? `<span style="display:block;font-size:6px;font-weight:800;color:${ccOF};text-align:center;line-height:1.4">${fmtA(agOF)}</span>` : ''}
+                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:9px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
+                            ${agOF > 0 ? `<span style="display:block;font-size:8px;font-weight:800;color:${ccOF};text-align:center;line-height:1.4">${fmtA(agOF)}</span>` : ''}
                         </td>`;
                     }
                     if (S.showNomes) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${S._mosaicoCelulaLarg}px">
-                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
+                            <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:9px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
                             <span style="display:block;font-size:9px;font-weight:800;text-align:center">—</span>
-                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:7px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
+                            <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:9px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
                         </td>`;
                     }
                     if (S.showOdds) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${S._mosaicoCelulaLarg}px;cursor:default">
                             <span style="display:block;font-size:9px;font-weight:800;color:${ccOC};text-align:center">${fmtA(agOC)}</span>
                             <span style="display:flex;gap:2px;margin-top:1px">
-                                <span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${ccOC}">${fmtA(agOC)}</span>
-                                <span style="flex:1;text-align:center;font-size:6px;font-weight:700;color:${ccOF}">${fmtA(agOF)}</span>
+                                <span style="flex:1;text-align:center;font-size:8px;font-weight:700;color:${ccOC}">${fmtA(agOC)}</span>
+                                <span style="flex:1;text-align:center;font-size:8px;font-weight:700;color:${ccOF}">${fmtA(agOF)}</span>
                             </span>
                         </td>`;
                     }
