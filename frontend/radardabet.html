@@ -2917,7 +2917,7 @@ async function carregarHistorico() {
                 const re = await fetch('/api/bet365/eventos-completos');
                 const de = await re.json();
                 if (de.success) {
-                    S.eventosAgendados = (de.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
+                    S.eventosAgendados = (de.data || []).filter(j => j.status === 'AGENDADO');
                 }
             } catch(_) {}
         } else {
@@ -3836,11 +3836,11 @@ async function renderProximosJogos() {
         }
 
         // Armazena todos os agendados para uso na grid (projeção de próximos jogos)
-        S.eventosAgendados = (d.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
+        S.eventosAgendados = (d.data || []).filter(j => j.status === 'AGENDADO');
         if (S.view === 'historico') renderTabela();
 
-        // Filtrar por liga ativa e só AGENDADOS com odds
-        let jogos = (d.data || []).filter(j => j.status === 'AGENDADO' && j.odd_casa > 0);
+        // Filtrar por liga ativa
+        let jogos = (d.data || []).filter(j => j.status === 'AGENDADO');
         if (S.ligaAtiva) jogos = jogos.filter(j => normalizarLiga(j.liga) === S.ligaAtiva);
         jogos = jogos.sort((a, b) => new Date(a.horario||0) - new Date(b.horario||0)).slice(0, 12);
 
