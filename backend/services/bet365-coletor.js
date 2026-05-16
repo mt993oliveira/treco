@@ -228,6 +228,13 @@ class Bet365Coletor {
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+    // Ctrl+F5: recarrega ignorando cache (equivalente a location.reload(true) no navegador)
+    async _hardRefresh(pg, timeoutMs = 30000) {
+        const navPromise = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
+        await pg.evaluate(() => location.reload(true));
+        await navPromise;
+    }
+
     _cfgNum(chave, def) { return parseInt(this.cfg?.[chave]) || def; }
     _cfgBool(chave, def = true) {
         const v = this.cfg?.[chave];
@@ -967,16 +974,16 @@ class Bet365Coletor {
                 console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
             }
 
-            // F5 (soft refresh) após cada liga — mantém cache, só recarrega dados
-            console.log(`   🔄 [${liga.nome}] F5 — recarregando...`);
+            // Ctrl+F5 (hard refresh) após cada liga — força buscar do servidor, sem cache
+            console.log(`   🔄 [${liga.nome}] Ctrl+F5 — recarregando sem cache...`);
             for (let r = 1; r <= 3; r++) {
                 try {
-                    await pg.reload({ waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_navegacao_ms', 30000) });
+                    await this._hardRefresh(pg, this._cfgNum('timeout_navegacao_ms', 30000));
                     await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
                     await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
                     break; // ligas apareceram, continua para próxima liga
                 } catch(e) {
-                    console.log(`   ⚠️  Ligas não apareceram após F5 (${r}/3), tentando novamente...`);
+                    console.log(`   ⚠️  Ligas não apareceram após Ctrl+F5 (${r}/3), tentando novamente...`);
                     if (r === 3) console.log('   ❌ Não foi possível recarregar. Próxima liga pode falhar.');
                 }
             }
@@ -1529,12 +1536,12 @@ class Bet365Coletor {
                     ligasOk = true;
                     break;
                 } catch(e) {
-                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — F5...`);
+                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — Ctrl+F5...`);
                     try {
-                        await this.page.reload({ waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_navegacao_ms', 30000) });
+                        await this._hardRefresh(this.page, this._cfgNum('timeout_navegacao_ms', 30000));
                         await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
                     } catch(reloadErr) {
-                        console.log(`   ⚠️  Reload falhou: ${reloadErr.message}`);
+                        console.log(`   ⚠️  Hard refresh falhou: ${reloadErr.message}`);
                     }
                 }
             }
