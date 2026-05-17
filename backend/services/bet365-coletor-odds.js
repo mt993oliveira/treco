@@ -206,6 +206,12 @@ async function lerTodasAsOdds(pg, ligaNorm) {
 
     for (let idx = 0; idx < qtdBtns; idx++) {
         try {
+            // Lê texto do botão antes de clicar (para logging)
+            const btnTxt = await pg.evaluate((i) => {
+                const b = document.querySelectorAll('.vr-EventTimesNavBarButton')[i];
+                return b ? (b.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || b.textContent.trim()) : '?';
+            }, idx);
+
             const clicou = await pg.evaluate((i) => {
                 const btns = [...document.querySelectorAll('.vr-EventTimesNavBarButton')];
                 if (!btns[i]) return false;
@@ -213,16 +219,27 @@ async function lerTodasAsOdds(pg, ligaNorm) {
                 btns[i].click();
                 return true;
             }, idx);
-            if (!clicou) continue;
+            if (!clicou) {
+                console.log(`   ⏭️  [${ligaNorm}] btn[${idx}] "${btnTxt}" — não clicou`);
+                continue;
+            }
 
             await new Promise(r => setTimeout(r, DELAY_HORARIO_MS));
             try {
                 await pg.waitForSelector('.gl-MarketGroupPod.gl-MarketGroup', { timeout: 5000 });
-            } catch(_) { continue; }
+            } catch(_) {
+                console.log(`   ⏭️  [${ligaNorm}] btn[${idx}] "${btnTxt}" — pods não apareceram (5s)`);
+                continue;
+            }
             await new Promise(r => setTimeout(r, 300));
 
             const odds = await pg.evaluate(lerOddsDOM);
-            if (odds.ok) resultados.push(odds);
+            if (odds.ok) {
+                console.log(`   ✔️  [${ligaNorm}] btn[${idx}] "${btnTxt}" → ${odds.timeCasa} × ${odds.timeFora} C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                resultados.push(odds);
+            } else {
+                console.log(`   ⏭️  [${ligaNorm}] btn[${idx}] "${btnTxt}" — ${odds.motivo || JSON.stringify(odds)}`);
+            }
         } catch(e) {
             console.warn(`   ⚠️  [Odds] Erro no horário ${idx}: ${e.message}`);
         }
