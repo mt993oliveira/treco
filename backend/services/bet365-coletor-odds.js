@@ -109,23 +109,35 @@ async function conectarEdge() {
     });
     const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null, protocolTimeout: 60000 });
 
-    // Abre nova aba exclusiva — não usa nem interfere na aba do Coletor 1
-    const pg = await browser.newPage();
+    // Usa window.open() a partir da aba existente da Bet365 (Coletor 1).
+    // Isso abre a nova aba com foco e pelo contexto do próprio site —
+    // idêntico ao que um humano faz clicando em "abrir em nova aba".
+    // browser.newPage() via CDP é detectado como bot e a SPA não renderiza.
+    const pages = await browser.pages();
+    const anchorPg = pages.find(p => { try { return p.url().includes('bet365'); } catch(_) { return false; } });
+    if (!anchorPg) throw new Error('Aba bet365 não encontrada na porta ' + DEBUG_PORT + ' — faça login primeiro');
 
-    // Força aba a se comportar como sempre visível antes de qualquer navegação.
-    // Bet365 SPA usa Page Visibility API e não renderiza em abas em segundo plano.
-    await pg.evaluateOnNewDocument(() => {
-        Object.defineProperty(document, 'hidden',          { get: () => false });
-        Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
-        document.addEventListener('visibilitychange', e => e.stopImmediatePropagation(), true);
+    const novaAbaPromise = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Timeout aguardando nova aba')), 10000);
+        browser.once('targetcreated', async target => {
+            clearTimeout(timer);
+            resolve(await target.page());
+        });
     });
 
+    await anchorPg.evaluate((url) => window.open(url, '_blank'), URL_SOCCER);
+    const pg = await novaAbaPromise;
     await pg.bringToFront();
-    await pg.goto(URL_SOCCER, { waitUntil: 'networkidle2', timeout: 60000 });
     await new Promise(r => setTimeout(r, 5000));
-    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
 
-    console.log(`   ✅ [Odds] Nova aba aberta (porta ${DEBUG_PORT})`);
+    try {
+        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
+    } catch(e) {
+        await pg.close().catch(() => {});
+        throw new Error('Ligas não carregaram na nova aba — verifique se está logado');
+    }
+
+    console.log(`   ✅ [Odds] Nova aba aberta via window.open (porta ${DEBUG_PORT})`);
     return { browser, pg };
 }
 
