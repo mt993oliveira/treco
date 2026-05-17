@@ -7,16 +7,14 @@
  * bet365_eventos (campos odd_casa, odd_empate, odd_fora).
  *
  * Roda continuamente em ciclos automáticos (padrão: 90s).
- * Porta Edge: 9223 (conta separada do Coletor 1)
+ * Porta Edge: 9222 (mesma do Coletor 1, aba separada — não interfere)
  *
  * Fluxo por ciclo:
  *   Hard refresh → para cada liga → clica na aba →
- *   lê odds do Fulltime Result → salva em bet365_eventos
+ *   itera TODOS os botões de horário → lê odds de cada jogo →
+ *   salva próximos jogos + odds em bet365_eventos
  *
- * Não navega para Resultados — não interfere com o Coletor 1.
- *
- * PRÓXIMOS JOGOS: implementação futura via extra.bet365.bet.br
- * (código de referência documentado no bet365-coletor-historico.js)
+ * Não usa a aba do Coletor 1 — abre aba própria no mesmo browser.
  * ============================================================
  */
 
@@ -29,9 +27,9 @@ const http   = require('http');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const DEBUG_PORT   = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9223;
+const DEBUG_PORT   = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9222;
 const URL_SOCCER        = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
-const LIGAS_IGNORAR     = ['super league'];
+const LIGAS_IGNORAR     = [];
 const INTERVALO_MS      = parseInt(process.env.BET365_ODDS_INTERVALO_MS)      || 90000;
 const DELAY_HORARIO_MS  = parseInt(process.env.BET365_ODDS_DELAY_HORARIO_MS)  || 2000;
 const DELAY_LIGA_MS     = parseInt(process.env.BET365_ODDS_DELAY_LIGA_MS)     || 2500;
@@ -95,7 +93,7 @@ async function getPool() {
     return pool;
 }
 
-// ── Puppeteer: conecta ao Edge existente ─────────────────────
+// ── Puppeteer: conecta ao Edge e abre aba própria ────────────
 async function conectarEdge() {
     const wsUrl = await new Promise((resolve, reject) => {
         const req = http.get(`http://127.0.0.1:${DEBUG_PORT}/json/version`, res => {
@@ -110,10 +108,14 @@ async function conectarEdge() {
         req.setTimeout(5000, () => { req.destroy(); reject(new Error(`timeout porta ${DEBUG_PORT}`)); });
     });
     const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null, protocolTimeout: 60000 });
-    const pages   = await browser.pages();
-    const pg      = pages.find(p => { try { return p.url().includes('bet365'); } catch(_) { return false; } });
-    if (!pg) throw new Error('Aba bet365 não encontrada na porta ' + DEBUG_PORT);
-    console.log(`   ✅ [Odds] Conectado (porta ${DEBUG_PORT}) | ${pg.url().substring(0, 60)}`);
+
+    // Abre nova aba exclusiva — não usa nem interfere na aba do Coletor 1
+    const pg = await browser.newPage();
+    await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await new Promise(r => setTimeout(r, 3000));
+    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
+
+    console.log(`   ✅ [Odds] Nova aba aberta (porta ${DEBUG_PORT})`);
     return { browser, pg };
 }
 
@@ -139,93 +141,84 @@ async function diagnosticarPagina(pg, ligaNorm, label) {
     if (info.btnTextos.length) console.log(`      Mercados: ${info.btnTextos.join(' | ')}`);
 }
 
-// ── Lê odds pré-jogo ─────────────────────────────────────────
-// Estratégia:
-//   1) Verifica página atual — se tiver pod com odds NÃO suspensas, usa direto
-//   2) Se odds suspensas (jogo em race-off), clica no próximo botão de horário
-//      e aguarda os pods carregarem (waitForSelector, até 6s)
-//   3) Lê odds do pod não suspenso
-//
-// NOTA: .svc-MarketGroup_RaceOff é IRMÃO dos pods, não ancestral.
-// Indicador correto de jogo em andamento: _Suspended em TODOS os participantes.
-async function lerOddsPreJogo(pg) {
-    // Função DOM pura: lê pod "Resultado Final"
-    // Prefere pod NÃO suspenso; se só tiver suspenso, usa mesmo assim (odds são válidas)
-    const lerOddsDOM = () => {
-        const allPods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
-            .filter(p => {
-                const txt = p.querySelector('.gl-MarketGroupButton_Text')?.textContent.trim();
-                return txt === 'Fulltime Result' || txt === 'Resultado Final';
-            });
-        if (allPods.length === 0) return { motivo: 'sem_mercado' };
+// ── Lê odds do pod Fulltime Result no DOM atual ───────────────
+// Serializada e passada ao pg.evaluate() — deve ser auto-contida
+function lerOddsDOM() {
+    const allPods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
+        .filter(p => {
+            const txt = p.querySelector('.gl-MarketGroupButton_Text')?.textContent.trim();
+            return txt === 'Fulltime Result' || txt === 'Resultado Final';
+        });
+    if (allPods.length === 0) return { motivo: 'sem_mercado' };
 
-        // Prefere pod não suspenso; cai no primeiro disponível se todos suspensos
-        let ftPod = null, suspended = false;
-        for (const pod of allPods) {
-            const parts = [...pod.querySelectorAll('.srb-ParticipantStackedBorderless')];
-            const allSusp = parts.length > 0 && parts.every(p => p.classList.contains('srb-ParticipantStackedBorderless_Suspended'));
-            if (!allSusp) { ftPod = pod; suspended = false; break; }
-            if (!ftPod)   { ftPod = pod; suspended = true; }
-        }
-
-        // Horário: botão selecionado
-        const selBtn = document.querySelector('.vr-EventTimesNavBarButton-selected');
-        const horario = selBtn
-            ? selBtn.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || selBtn.textContent.trim()
-            : null;
-
-        const participantes = [...ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')].map(el => ({
-            nome: el.querySelector('.srb-ParticipantStackedBorderless_Name')?.textContent.trim() || '',
-            odd:  parseFloat(el.querySelector('.srb-ParticipantStackedBorderless_Odds')?.textContent.trim()) || 0,
-        }));
-        if (participantes.length < 3) return { motivo: 'participantes_insuficientes', qtd: participantes.length };
-
-        const isEmpate = n => n === 'Draw' || n === 'Empate';
-        const empIdx   = participantes.findIndex(p => isEmpate(p.nome));
-        const times    = participantes.filter(p => !isEmpate(p.nome));
-        const oddCasa   = times[0]?.odd || 0;
-        const oddEmpate = empIdx >= 0 ? participantes[empIdx].odd : 0;
-        const oddFora   = times[1]?.odd || 0;
-        const timeCasa  = times[0]?.nome || null;
-        const timeFora  = times[1]?.nome || null;
-
-        if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0)
-            return { motivo: 'odds_zeradas', suspended };
-
-        return { ok: true, suspended, horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
-    };
-
-    // 1ª tentativa: página atual
-    let odds = await pg.evaluate(lerOddsDOM);
-    if (odds.ok) return odds;
-
-    // 2ª tentativa: clica no próximo botão de horário (o não selecionado imediatamente após o atual)
-    const horarioClicado = await pg.evaluate(() => {
-        const btns = [...document.querySelectorAll('.vr-EventTimesNavBarButton')];
-        const selIdx = btns.findIndex(b =>
-            b.classList.contains('vr-EventTimesNavBarButton-selected') ||
-            b.querySelector('.vr-EventTimesNavBarButton_Text--selected') ||
-            b.classList.contains('selected'));
-        const proximo = selIdx >= 0 ? btns[selIdx + 1] : btns[0];
-        if (!proximo) return null;
-        const texto = proximo.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim()
-            || proximo.textContent.trim();
-        proximo.click();
-        return texto;
-    });
-
-    if (!horarioClicado) return { motivo: 'sem_botao_proximo' };
-
-    // Aguarda pods aparecerem (re-render da página ao mudar de horário)
-    try {
-        await pg.waitForSelector('.gl-MarketGroupPod.gl-MarketGroup', { timeout: 6000 });
-    } catch(_) {
-        return { motivo: 'sem_mercado', horario: horarioClicado };
+    let ftPod = null, suspended = false;
+    for (const pod of allPods) {
+        const parts = [...pod.querySelectorAll('.srb-ParticipantStackedBorderless')];
+        const allSusp = parts.length > 0 && parts.every(p => p.classList.contains('srb-ParticipantStackedBorderless_Suspended'));
+        if (!allSusp) { ftPod = pod; suspended = false; break; }
+        if (!ftPod)   { ftPod = pod; suspended = true; }
     }
-    await new Promise(r => setTimeout(r, 500));
 
-    odds = await pg.evaluate(lerOddsDOM);
-    return { ...odds, horario: horarioClicado };
+    const selBtn = document.querySelector('.vr-EventTimesNavBarButton-selected');
+    const horario = selBtn
+        ? selBtn.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || selBtn.textContent.trim()
+        : null;
+
+    const participantes = [...ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')].map(el => ({
+        nome: el.querySelector('.srb-ParticipantStackedBorderless_Name')?.textContent.trim() || '',
+        odd:  parseFloat(el.querySelector('.srb-ParticipantStackedBorderless_Odds')?.textContent.trim()) || 0,
+    }));
+    if (participantes.length < 3) return { motivo: 'participantes_insuficientes', qtd: participantes.length };
+
+    const isEmpate = n => n === 'Draw' || n === 'Empate';
+    const empIdx   = participantes.findIndex(p => isEmpate(p.nome));
+    const times    = participantes.filter(p => !isEmpate(p.nome));
+    const oddCasa   = times[0]?.odd || 0;
+    const oddEmpate = empIdx >= 0 ? participantes[empIdx].odd : 0;
+    const oddFora   = times[1]?.odd || 0;
+    const timeCasa  = times[0]?.nome || null;
+    const timeFora  = times[1]?.nome || null;
+
+    if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0)
+        return { motivo: 'odds_zeradas', suspended };
+
+    return { ok: true, suspended, horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
+}
+
+// ── Itera TODOS os botões de horário e coleta odds de cada jogo ─
+async function lerTodasAsOdds(pg) {
+    const resultados = [];
+
+    const qtdBtns = await pg.evaluate(() =>
+        document.querySelectorAll('.vr-EventTimesNavBarButton').length
+    );
+    if (qtdBtns === 0) return resultados;
+
+    for (let idx = 0; idx < qtdBtns; idx++) {
+        try {
+            const clicou = await pg.evaluate((i) => {
+                const btns = [...document.querySelectorAll('.vr-EventTimesNavBarButton')];
+                if (!btns[i]) return false;
+                btns[i].scrollIntoView();
+                btns[i].click();
+                return true;
+            }, idx);
+            if (!clicou) continue;
+
+            await new Promise(r => setTimeout(r, DELAY_HORARIO_MS));
+            try {
+                await pg.waitForSelector('.gl-MarketGroupPod.gl-MarketGroup', { timeout: 5000 });
+            } catch(_) { continue; }
+            await new Promise(r => setTimeout(r, 300));
+
+            const odds = await pg.evaluate(lerOddsDOM);
+            if (odds.ok) resultados.push(odds);
+        } catch(e) {
+            console.warn(`   ⚠️  [Odds] Erro no horário ${idx}: ${e.message}`);
+        }
+    }
+
+    return resultados;
 }
 
 // ── Salva evento no banco (MERGE) ────────────────────────────
@@ -291,13 +284,6 @@ async function hardRefresh(pg) {
 
 // ── Ciclo principal ──────────────────────────────────────────
 async function ciclo(pg) {
-    const MOTIVO_MSG = {
-        sem_mercado:                 'sem mercado',
-        em_andamento:                'em andamento',
-        participantes_insuficientes: 'poucos participantes',
-        odds_zeradas:                'odds zeradas',
-    };
-
     // Hard refresh inicial — garante página limpa antes do ciclo
     await hardRefresh(pg);
 
@@ -367,22 +353,19 @@ async function ciclo(pg) {
                 continue;
             }
 
-            const odds = await lerOddsPreJogo(pg);
-            const clubes = (odds.timeCasa && odds.timeFora)
-                ? ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`
-                : '';
-            if (odds.ok) {
-                await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
-                                   odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
-                // 💰 = odds frescas (próximo jogo) | 📌 = race-off (jogo já iniciado, odds salvas como referência)
-                const icon = odds.suspended ? '📌' : '💰';
-                const label = odds.suspended ? ' [race-off]' : ' [próximo]';
-                console.log(`   ${icon} [${ligaNorm}] ${odds.horario}${clubes}${label} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
-                oddsOk++;
+            const todasOdds = await lerTodasAsOdds(pg);
+            if (todasOdds.length === 0) {
+                console.log(`   ⏭️  [${ligaNorm}] — sem odds disponíveis`);
             } else {
-                console.log(`   ⏭️  [${ligaNorm}]${clubes} — ${MOTIVO_MSG[odds.motivo] || odds.motivo}`);
-                if (odds.motivo === 'sem_mercado') {
-                    await diagnosticarPagina(pg, ligaNorm, '(default)');
+                for (const odds of todasOdds) {
+                    await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
+                                       odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
+                    // 💰 = próximo jogo | 📌 = race-off (jogo em andamento)
+                    const icon   = odds.suspended ? '📌' : '💰';
+                    const label  = odds.suspended ? ' [race-off]' : ' [próximo]';
+                    const clubes = ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`;
+                    console.log(`   ${icon} [${ligaNorm}] ${odds.horario}${clubes}${label} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                    oddsOk++;
                 }
             }
 
@@ -423,6 +406,7 @@ async function run() {
             } catch(_) { /* DB indisponível — continua normalmente */ }
 
             if (!pg || pg.isClosed()) {
+                if (pg && !pg.isClosed()) await pg.close().catch(() => {});
                 const conn = await conectarEdge();
                 browser = conn.browser;
                 pg      = conn.pg;
@@ -430,6 +414,7 @@ async function run() {
             await ciclo(pg);
         } catch(err) {
             console.error(`   ❌ [Odds] Erro no ciclo: ${err.message}`);
+            if (pg && !pg.isClosed()) await pg.close().catch(() => {});
             pg = null;
         }
 
