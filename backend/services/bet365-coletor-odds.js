@@ -195,12 +195,13 @@ function lerOddsDOM() {
 }
 
 // ── Itera TODOS os botões de horário e coleta odds de cada jogo ─
-async function lerTodasAsOdds(pg) {
+async function lerTodasAsOdds(pg, ligaNorm) {
     const resultados = [];
 
     const qtdBtns = await pg.evaluate(() =>
         document.querySelectorAll('.vr-EventTimesNavBarButton').length
     );
+    console.log(`   🕐 [${ligaNorm}] ${qtdBtns} botão(ões) de horário encontrado(s)`);
     if (qtdBtns === 0) return resultados;
 
     for (let idx = 0; idx < qtdBtns; idx++) {
@@ -365,7 +366,7 @@ async function ciclo(pg) {
                 }
 
                 // Itera todos os horários e coleta odds de cada jogo
-                const todasOdds = await lerTodasAsOdds(pg);
+                const todasOdds = await lerTodasAsOdds(pg, ligaNorm);
                 if (todasOdds.length === 0) {
                     console.log(`   ⏭️  [${ligaNorm}] — sem odds disponíveis`);
                 } else {
