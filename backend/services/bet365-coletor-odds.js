@@ -112,11 +112,11 @@ async function conectarEdge() {
     // Abre nova aba exclusiva — não usa nem interfere na aba do Coletor 1
     const pg = await browser.newPage();
 
-    // Passo 1: carrega a base do site (SPA inicializa)
-    await pg.goto('https://www.bet365.bet.br/', { waitUntil: 'networkidle2', timeout: 60000 });
+    // Passo 1: carrega home (#/HO/) — SPA inicializa corretamente aqui
+    await pg.goto('https://www.bet365.bet.br/#/HO/', { waitUntil: 'networkidle2', timeout: 60000 });
     await new Promise(r => setTimeout(r, 3000));
 
-    // Passo 2: navega para a seção virtual via JS (SPA processa o hash route)
+    // Passo 2: navega para seção virtual via JS (SPA já está ativa)
     await pg.evaluate((url) => { window.location.href = url; }, URL_SOCCER);
     await new Promise(r => setTimeout(r, 5000));
     await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
