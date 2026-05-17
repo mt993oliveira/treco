@@ -31,18 +31,14 @@ echo ============================================
 echo.
 pause > nul
 
-echo Abrindo segunda aba para o Coletor 2 (odds)...
-start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
-  --profile-directory="BetColetor" ^
-  "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/"
-
 echo.
 echo ============================================
-echo  SEGUNDA ABA (Coletor 2):
+echo  SEGUNDA ABA - Coletor 2 (odds e proximos jogos):
 echo.
-echo  Uma segunda aba foi aberta no mesmo Edge.
-echo  Aguarde as ligas aparecerem nela tambem.
-echo  Depois pressione qualquer tecla aqui.
+echo  1. No Edge ja aberto, pressione Ctrl+T
+echo  2. Acesse: https://www.bet365.bet.br/#/AVR/B146/R%%5E1/
+echo  3. Aguarde as ligas aparecerem nesta segunda aba
+echo  4. Depois pressione qualquer tecla aqui
 echo ============================================
 echo.
 pause > nul
