@@ -61,6 +61,11 @@ function normalizarNomeTime(nome) {
     return TIME_NORMALIZAR[nome.toLowerCase().trim()] || nome;
 }
 
+// ── Delay aleatório (simula comportamento humano) ─────────────
+function randomDelay(minMs, maxMs) {
+    return new Promise(r => setTimeout(r, minMs + Math.random() * (maxMs - minMs)));
+}
+
 // ── Hash / ID ────────────────────────────────────────────────
 function _hash(str) {
     let h = 0x811c9dc5;
@@ -227,14 +232,13 @@ async function lerTodasAsOdds(pg, ligaNorm) {
                 continue;
             }
 
-            await new Promise(r => setTimeout(r, DELAY_HORARIO_MS));
+            // Delay humano após clicar no horário — aleatório para não ser previsível
+            await randomDelay(1500, 3200);
 
             try {
-                await pg.waitForSelector('.gl-MarketGroupPod.gl-MarketGroup', { timeout: 5000 });
+                await pg.waitForSelector('.gl-MarketGroupPod.gl-MarketGroup', { timeout: 6000 });
             } catch(_) {
-                // Mostra o estado atual da página para diagnóstico
                 await diagnosticarPagina(pg, ligaNorm, ` "${horarioAlvo}" sem pods:`);
-                // Aguarda os botões de nav recuperarem antes de tentar o próximo
                 try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 8000 }); }
                 catch(_2) {
                     console.log(`   ❌ [${ligaNorm}] Nav desapareceu — abortando liga`);
@@ -242,7 +246,7 @@ async function lerTodasAsOdds(pg, ligaNorm) {
                 }
                 continue;
             }
-            await new Promise(r => setTimeout(r, 300));
+            await randomDelay(300, 700);
 
             const odds = await pg.evaluate(lerOddsDOM);
             if (odds.ok) {
@@ -332,8 +336,27 @@ async function hardRefreshComRetry(pg) {
 
 // ── Ciclo principal ──────────────────────────────────────────
 async function ciclo(pg) {
-    // Hard refresh inicial — garante página limpa antes do ciclo
-    await hardRefreshComRetry(pg);
+    await pg.bringToFront();
+
+    // Verificação suave: garante que estamos na página correta
+    // SEM Ctrl+F5 — hard refresh repetido é comportamento claramente não-humano
+    const urlAtual = pg.url();
+    if (!urlAtual.includes('bet365') || !urlAtual.includes('AVR')) {
+        console.log('   🌐 [Odds] Navegando para página de virtual soccer...');
+        await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await randomDelay(2500, 4500);
+    }
+
+    // Aguarda ligas aparecerem
+    try {
+        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 12000 });
+    } catch(_) {
+        console.log('   ⚠️ [Odds] Ligas não encontradas — pulando ciclo');
+        return { oddsOk: 0 };
+    }
+
+    // Pausa humana antes de começar (simula usuário "olhando" a tela)
+    await randomDelay(800, 2000);
 
     const ligas = await pg.evaluate(() =>
         [...document.querySelectorAll('.vrl-MeetingsHeaderButton')]
@@ -351,7 +374,9 @@ async function ciclo(pg) {
         try {
             await pg.bringToFront();
 
-            // Clica na liga pelo NOME (igual ao Coletor 1 — mais robusto que por índice)
+            // Pausa humana antes de clicar na liga (simula hesitação/leitura)
+            await randomDelay(600, 1800);
+
             const clicou = await pg.evaluate((nome) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
                 for (const tab of tabs) {
@@ -363,10 +388,9 @@ async function ciclo(pg) {
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
 
-            // Aguarda SPA carregar (igual ao Coletor 1: delay_apos_clicar_liga_ms padrão 3000ms)
-            await new Promise(r => setTimeout(r, DELAY_LIGA_MS));
+            // Delay humano após clicar na liga (2-4s — simula carregar e olhar a página)
+            await randomDelay(2000, 4000);
 
-            // Verifica se liga está ativa (tem horários ou pods)
             const estadoApos = await pg.evaluate(() => {
                 const ligaBtns = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')];
                 const ligaAtiva = ligaBtns.find(b => [...b.classList].some(c =>
@@ -383,7 +407,6 @@ async function ciclo(pg) {
                 const navOk = estadoApos.ligaAtiva === nomeLiga ? '✅nav' : `❌nav(=${estadoApos.ligaAtiva})`;
                 console.log(`   ⏭️  [${ligaNorm}] Liga inativa | ${navOk}`);
             } else {
-                // Aguarda pods carregarem
                 try {
                     await pg.waitForSelector(
                         '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff, .svc-MarketGroup-eventstarted',
@@ -393,7 +416,6 @@ async function ciclo(pg) {
                     await diagnosticarPagina(pg, ligaNorm, ' pods não carregaram:');
                 }
 
-                // Itera todos os horários e coleta odds de cada jogo
                 const todasOdds = await lerTodasAsOdds(pg, ligaNorm);
                 if (todasOdds.length === 0) {
                     console.log(`   ⏭️  [${ligaNorm}] — sem odds disponíveis`);
@@ -414,9 +436,8 @@ async function ciclo(pg) {
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
 
-        // Hard refresh após cada liga — igual ao Coletor 1 (até 3 tentativas)
-        console.log(`   🔄 [${ligaNorm}] Ctrl+F5 — recarregando sem cache...`);
-        await hardRefreshComRetry(pg);
+        // SEM hard refresh após cada liga — apenas segue para a próxima aba
+        // Um humano simplesmente clica na próxima liga; o SPA atualiza o conteúdo
     }
 
     console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
@@ -459,7 +480,12 @@ async function run() {
             pg = null;
         }
 
-        await new Promise(r => setTimeout(r, INTERVALO_MS));
+        // Intervalo com jitter aleatório (INTERVALO_MS + até 60s extra)
+        // Evita que o coletor tenha um "pulso" previsível e detectável
+        const jitter = Math.floor(Math.random() * 60000);
+        const espera = INTERVALO_MS + jitter;
+        console.log(`   ⏳ [Odds] Próximo ciclo em ${Math.round(espera / 1000)}s`);
+        await new Promise(r => setTimeout(r, espera));
     }
 }
 
