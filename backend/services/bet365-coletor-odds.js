@@ -198,50 +198,61 @@ function lerOddsDOM() {
 async function lerTodasAsOdds(pg, ligaNorm) {
     const resultados = [];
 
-    const qtdBtns = await pg.evaluate(() =>
-        document.querySelectorAll('.vr-EventTimesNavBarButton').length
+    // Coleta os textos dos botões ANTES de qualquer clique
+    // O DOM pode se reconstruir após cada clique — usar texto é mais robusto que índice
+    const horarios = await pg.evaluate(() =>
+        [...document.querySelectorAll('.vr-EventTimesNavBarButton')]
+            .map(b => b.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || b.textContent.trim())
+            .filter(Boolean)
     );
-    console.log(`   🕐 [${ligaNorm}] ${qtdBtns} botão(ões) de horário encontrado(s)`);
-    if (qtdBtns === 0) return resultados;
+    console.log(`   🕐 [${ligaNorm}] ${horarios.length} horário(s): ${horarios.join(' | ')}`);
+    if (horarios.length === 0) return resultados;
 
-    for (let idx = 0; idx < qtdBtns; idx++) {
+    for (const horarioAlvo of horarios) {
         try {
-            // Lê texto do botão antes de clicar (para logging)
-            const btnTxt = await pg.evaluate((i) => {
-                const b = document.querySelectorAll('.vr-EventTimesNavBarButton')[i];
-                return b ? (b.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || b.textContent.trim()) : '?';
-            }, idx);
-
-            const clicou = await pg.evaluate((i) => {
-                const btns = [...document.querySelectorAll('.vr-EventTimesNavBarButton')];
-                if (!btns[i]) return false;
-                btns[i].scrollIntoView();
-                btns[i].click();
+            // Clica pelo TEXTO do botão — não quebra quando o DOM se reorganiza
+            const clicou = await pg.evaluate((texto) => {
+                const btn = [...document.querySelectorAll('.vr-EventTimesNavBarButton')].find(b => {
+                    const t = b.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || b.textContent.trim();
+                    return t === texto;
+                });
+                if (!btn) return false;
+                btn.scrollIntoView();
+                btn.click();
                 return true;
-            }, idx);
+            }, horarioAlvo);
+
             if (!clicou) {
-                console.log(`   ⏭️  [${ligaNorm}] btn[${idx}] "${btnTxt}" — não clicou`);
+                console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — botão sumiu do DOM (jogo já passou?)`);
                 continue;
             }
 
             await new Promise(r => setTimeout(r, DELAY_HORARIO_MS));
+
             try {
                 await pg.waitForSelector('.gl-MarketGroupPod.gl-MarketGroup', { timeout: 5000 });
             } catch(_) {
-                console.log(`   ⏭️  [${ligaNorm}] btn[${idx}] "${btnTxt}" — pods não apareceram (5s)`);
+                // Mostra o estado atual da página para diagnóstico
+                await diagnosticarPagina(pg, ligaNorm, ` "${horarioAlvo}" sem pods:`);
+                // Aguarda os botões de nav recuperarem antes de tentar o próximo
+                try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 8000 }); }
+                catch(_2) {
+                    console.log(`   ❌ [${ligaNorm}] Nav desapareceu — abortando liga`);
+                    break;
+                }
                 continue;
             }
             await new Promise(r => setTimeout(r, 300));
 
             const odds = await pg.evaluate(lerOddsDOM);
             if (odds.ok) {
-                console.log(`   ✔️  [${ligaNorm}] btn[${idx}] "${btnTxt}" → ${odds.timeCasa} × ${odds.timeFora} C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                console.log(`   ✔️  [${ligaNorm}] "${horarioAlvo}" → ${odds.timeCasa} × ${odds.timeFora} C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
                 resultados.push(odds);
             } else {
-                console.log(`   ⏭️  [${ligaNorm}] btn[${idx}] "${btnTxt}" — ${odds.motivo || JSON.stringify(odds)}`);
+                console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — ${odds.motivo || JSON.stringify(odds)}`);
             }
         } catch(e) {
-            console.warn(`   ⚠️  [Odds] Erro no horário ${idx}: ${e.message}`);
+            console.warn(`   ⚠️  [Odds] Erro no horário "${horarioAlvo}": ${e.message}`);
         }
     }
 
