@@ -109,35 +109,22 @@ async function conectarEdge() {
     });
     const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null, protocolTimeout: 60000 });
 
-    // Usa window.open() a partir da aba existente da Bet365 (Coletor 1).
-    // Isso abre a nova aba com foco e pelo contexto do próprio site —
-    // idêntico ao que um humano faz clicando em "abrir em nova aba".
-    // browser.newPage() via CDP é detectado como bot e a SPA não renderiza.
+    // Encontra a segunda aba AVR — aberta pelo iniciar-tudo.bat via linha de comando do Edge.
+    // Não abre nada programaticamente: a aba já foi aberta pelo usuário (via bat), então
+    // renderiza corretamente sem ser detectada como bot.
     const pages = await browser.pages();
-    const anchorPg = pages.find(p => { try { return p.url().includes('bet365'); } catch(_) { return false; } });
-    if (!anchorPg) throw new Error('Aba bet365 não encontrada na porta ' + DEBUG_PORT + ' — faça login primeiro');
-
-    const novaAbaPromise = new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('Timeout aguardando nova aba')), 10000);
-        browser.once('targetcreated', async target => {
-            clearTimeout(timer);
-            resolve(await target.page());
-        });
+    const avrPages = pages.filter(p => {
+        try { return p.url().includes('bet365') && p.url().includes('AVR'); }
+        catch(_) { return false; }
     });
 
-    await anchorPg.evaluate((url) => window.open(url, '_blank'), URL_SOCCER);
-    const pg = await novaAbaPromise;
-    await pg.bringToFront();
-    await new Promise(r => setTimeout(r, 5000));
+    // Coletor 1 usa a primeira aba AVR; Coletor 2 usa a última (aberta pelo bat)
+    if (avrPages.length < 2) throw new Error(
+        `Apenas ${avrPages.length} aba(s) AVR encontrada(s) — rode o iniciar-tudo.bat para abrir a segunda aba`
+    );
+    const pg = avrPages[avrPages.length - 1];
 
-    try {
-        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
-    } catch(e) {
-        await pg.close().catch(() => {});
-        throw new Error('Ligas não carregaram na nova aba — verifique se está logado');
-    }
-
-    console.log(`   ✅ [Odds] Nova aba aberta via window.open (porta ${DEBUG_PORT})`);
+    console.log(`   ✅ [Odds] Aba encontrada (porta ${DEBUG_PORT}): ${pg.url().substring(0, 60)}`);
     return { browser, pg };
 }
 

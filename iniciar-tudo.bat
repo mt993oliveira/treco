@@ -26,7 +26,22 @@ echo  EDGE (porta 9222):
 echo.
 echo  Acesse: https://www.bet365.bet.br/#/AVR/B146/R%%5E1/
 echo  Faca login e aguarde as ligas aparecerem na tela.
-echo  O Coletor 2 (odds) usara esta mesma janela em aba separada.
+echo  Depois pressione qualquer tecla aqui.
+echo ============================================
+echo.
+pause > nul
+
+echo Abrindo segunda aba para o Coletor 2 (odds)...
+start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
+  --profile-directory="BetColetor" ^
+  "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/"
+
+echo.
+echo ============================================
+echo  SEGUNDA ABA (Coletor 2):
+echo.
+echo  Uma segunda aba foi aberta no mesmo Edge.
+echo  Aguarde as ligas aparecerem nela tambem.
 echo  Depois pressione qualquer tecla aqui.
 echo ============================================
 echo.
