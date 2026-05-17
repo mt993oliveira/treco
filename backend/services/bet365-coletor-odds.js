@@ -291,10 +291,20 @@ async function hardRefresh(pg) {
     }
 }
 
+// ── Hard refresh com até 3 tentativas (igual ao Coletor 1) ───
+async function hardRefreshComRetry(pg) {
+    for (let r = 1; r <= 3; r++) {
+        const ok = await hardRefresh(pg);
+        if (ok) return true;
+        console.log(`   ⚠️  [Odds] Refresh tentativa ${r}/3 falhou`);
+    }
+    return false;
+}
+
 // ── Ciclo principal ──────────────────────────────────────────
 async function ciclo(pg) {
     // Hard refresh inicial — garante página limpa antes do ciclo
-    await hardRefresh(pg);
+    await hardRefreshComRetry(pg);
 
     const ligas = await pg.evaluate(() =>
         [...document.querySelectorAll('.vrl-MeetingsHeaderButton')]
@@ -310,30 +320,24 @@ async function ciclo(pg) {
         const nomeLiga = ligasFiltradas[i];
         const ligaNorm = normalizarNomeLiga(nomeLiga);
         try {
-            // Garante que a aba do browser está em foco (necessário para eventos de mouse reais)
             await pg.bringToFront();
 
-            // Clique nativo via ElementHandle — dispara eventos reais de mouse (mousedown/up/click)
-            // Busca o índice em uma única chamada evaluate (evita N round-trips ao browser)
-            const tabIdx = await pg.evaluate((nome) => {
-                const tabs = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')];
-                return tabs.findIndex(t =>
-                    t.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome
-                );
+            // Clica na liga pelo NOME (igual ao Coletor 1 — mais robusto que por índice)
+            const clicou = await pg.evaluate((nome) => {
+                const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+                for (const tab of tabs) {
+                    const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
+                    if (txt === nome) { tab.click(); return true; }
+                }
+                return false;
             }, nomeLiga);
-
-            let clicou = false;
-            if (tabIdx >= 0) {
-                const tabs = await pg.$$('.vrl-MeetingsHeaderButton');
-                if (tabs[tabIdx]) { await tabs[tabIdx].click(); clicou = true; }
-            }
 
             if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Aba não encontrada`); continue; }
 
-            // Aguarda SPA carregar o conteúdo da liga após o clique
-            await new Promise(r => setTimeout(r, 3000));
+            // Aguarda SPA carregar (igual ao Coletor 1: delay_apos_clicar_liga_ms padrão 3000ms)
+            await new Promise(r => setTimeout(r, DELAY_LIGA_MS));
 
-            // Verificação rápida: se não há botões de horário, a liga está inativa agora
+            // Verifica se liga está ativa (tem horários ou pods)
             const estadoApos = await pg.evaluate(() => {
                 const ligaBtns = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')];
                 const ligaAtiva = ligaBtns.find(b => [...b.classList].some(c =>
@@ -341,40 +345,39 @@ async function ciclo(pg) {
                 ))?.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '?';
                 return {
                     timeBtns: document.querySelectorAll('.vr-EventTimesNavBarButton').length,
-                    pods: document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length,
+                    pods:     document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length,
                     ligaAtiva,
                 };
             });
+
             if (estadoApos.timeBtns === 0 && estadoApos.pods === 0) {
                 const navOk = estadoApos.ligaAtiva === nomeLiga ? '✅nav' : `❌nav(=${estadoApos.ligaAtiva})`;
                 console.log(`   ⏭️  [${ligaNorm}] Liga inativa | ${navOk}`);
-                continue;
-            }
-
-            // Tem jogos agendados — aguarda pods ou race-off carregarem
-            try {
-                await pg.waitForSelector(
-                    '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff, .svc-MarketGroup-eventstarted',
-                    { timeout: 8000 }
-                );
-            } catch(_) {
-                await diagnosticarPagina(pg, ligaNorm, ' pods não carregaram:');
-                continue;
-            }
-
-            const todasOdds = await lerTodasAsOdds(pg);
-            if (todasOdds.length === 0) {
-                console.log(`   ⏭️  [${ligaNorm}] — sem odds disponíveis`);
             } else {
-                for (const odds of todasOdds) {
-                    await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
-                                       odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
-                    // 💰 = próximo jogo | 📌 = race-off (jogo em andamento)
-                    const icon   = odds.suspended ? '📌' : '💰';
-                    const label  = odds.suspended ? ' [race-off]' : ' [próximo]';
-                    const clubes = ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`;
-                    console.log(`   ${icon} [${ligaNorm}] ${odds.horario}${clubes}${label} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
-                    oddsOk++;
+                // Aguarda pods carregarem
+                try {
+                    await pg.waitForSelector(
+                        '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff, .svc-MarketGroup-eventstarted',
+                        { timeout: 8000 }
+                    );
+                } catch(_) {
+                    await diagnosticarPagina(pg, ligaNorm, ' pods não carregaram:');
+                }
+
+                // Itera todos os horários e coleta odds de cada jogo
+                const todasOdds = await lerTodasAsOdds(pg);
+                if (todasOdds.length === 0) {
+                    console.log(`   ⏭️  [${ligaNorm}] — sem odds disponíveis`);
+                } else {
+                    for (const odds of todasOdds) {
+                        await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
+                                           odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
+                        const icon   = odds.suspended ? '📌' : '💰';
+                        const label  = odds.suspended ? ' [race-off]' : ' [próximo]';
+                        const clubes = ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`;
+                        console.log(`   ${icon} [${ligaNorm}] ${odds.horario}${clubes}${label} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                        oddsOk++;
+                    }
                 }
             }
 
@@ -382,9 +385,9 @@ async function ciclo(pg) {
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
 
-        // Sem hard refresh entre ligas — o hard refresh causa estado inválido no SPA
-        // impedindo que abas como Copa do Mundo carreguem seu conteúdo.
-        // Navegação via click direto funciona como o usuário faz manualmente.
+        // Hard refresh após cada liga — igual ao Coletor 1 (até 3 tentativas)
+        console.log(`   🔄 [${ligaNorm}] Ctrl+F5 — recarregando sem cache...`);
+        await hardRefreshComRetry(pg);
     }
 
     console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
