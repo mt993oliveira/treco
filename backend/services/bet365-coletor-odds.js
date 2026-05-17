@@ -111,9 +111,9 @@ async function conectarEdge() {
 
     // Abre nova aba exclusiva — não usa nem interfere na aba do Coletor 1
     const pg = await browser.newPage();
-    await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await new Promise(r => setTimeout(r, 3000));
-    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
+    await pg.goto(URL_SOCCER, { waitUntil: 'networkidle2', timeout: 60000 });
+    await new Promise(r => setTimeout(r, 5000));
+    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
 
     console.log(`   ✅ [Odds] Nova aba aberta (porta ${DEBUG_PORT})`);
     return { browser, pg };
