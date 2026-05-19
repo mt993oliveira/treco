@@ -995,6 +995,8 @@
     <button class="view-btn" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
+    <button class="view-btn master-only" id="view-config" onclick="abrirConfigSistema()">⚙️ Config</button>
+    <button class="view-btn master-only" id="view-padroes" onclick="abrirPadroesSistema()">📋 Padrões</button>
 </div>
 
 <!-- ========== CONTEÚDO PRINCIPAL ========== -->
@@ -7975,6 +7977,11 @@ async function abrirConfigSistema() {
     _cfgSetTab('coleta');
     document.getElementById('modal-config-sistema').classList.add('aberto');
     await _loadConfigSistema();
+}
+
+async function abrirPadroesSistema() {
+    await abrirConfigSistema();
+    _cfgSetTab('frontend');
 }
 
 async function _loadConfigSistema() {
