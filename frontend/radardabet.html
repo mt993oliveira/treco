@@ -995,8 +995,8 @@
     <button class="view-btn" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
-    <button class="view-btn master-only" id="view-config" onclick="abrirConfigSistema()">⚙️ Config</button>
-    <button class="view-btn master-only" id="view-padroes" onclick="abrirPadroesSistema()">📋 Padrões</button>
+    <button class="view-btn" id="view-config" onclick="toggleConfig()">⚙️ Config</button>
+    <button class="view-btn" id="view-padroes" onclick="togglePadroes()">📋 Padrões</button>
 </div>
 
 <!-- ========== CONTEÚDO PRINCIPAL ========== -->
@@ -3454,6 +3454,8 @@ function renderFiltros() {
     if (_b('btn-exibir-odds'))   _b('btn-exibir-odds').classList.toggle('ativo',   !!S.showOdds);
     if (_b('btn-exibir-ht'))     _b('btn-exibir-ht').classList.toggle('ativo',     !!S.showHT);
     if (_b('btn-legendas'))      _b('btn-legendas').classList.toggle('ativo',      !!S.showLegendas);
+    if (_b('view-config'))       _b('view-config').classList.toggle('ativo',       !!S.showConfig);
+    if (_b('view-padroes'))      _b('view-padroes').classList.toggle('ativo',      !!S.showPadroes);
 
     const c = document.getElementById('filtros-row');
     c.innerHTML = ''; // limpa tudo — todo conteúdo é dinâmico
@@ -3468,8 +3470,6 @@ function renderFiltros() {
     const ctrl = document.createElement('div');
     ctrl.style.cssText = 'display:flex;gap:6px;width:100%';
     ctrl.innerHTML = `
-        <button style="${_bs(S.showConfig)}" id="btn-config" onclick="toggleConfig()" title="Configurar cores e fontes da grid">⚙️${isMob ? '' : ' Config'}</button>
-        <button style="${_bs(S.showPadroes)}" id="btn-padroes" onclick="togglePadroes()" title="Padrões de gráfico">📋${isMob ? '' : ' Padrões'}</button>
         <button style="${_bs(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Mercados / filtros">🎯${isMob ? '' : ' Mercados'}</button>
     `;
     c.appendChild(ctrl);
@@ -7979,10 +7979,6 @@ async function abrirConfigSistema() {
     await _loadConfigSistema();
 }
 
-async function abrirPadroesSistema() {
-    await abrirConfigSistema();
-    _cfgSetTab('frontend');
-}
 
 async function _loadConfigSistema() {
     const fColeta  = document.getElementById('cfg-coleta-fields');
