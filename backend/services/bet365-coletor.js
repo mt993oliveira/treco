@@ -1444,15 +1444,20 @@ class Bet365Coletor {
                 }
             }
 
+            // Aguarda página estabilizar antes de interagir (evita "Execution context was destroyed")
+            await this._delay(2500);
+
             // ── ETAPA 1: abre o modal de login ────────────────────────────────────
             // Clica no botão que abre o formulário:
             //   "Faça Login para Assistir" → abre modal de login na página virtual
-            //   "Login" (cabeçalho)        → abre modal de login na página principal
+            //   "Login" / "Log In" (cabeçalho) → abre modal de login na página principal
             let step1Ok = false;
             if (temAvisoVirtual) {
                 step1Ok = await this._clicarBotaoPorTexto(pg, 'Faça Login para Assistir', false);
             } else {
+                // Tenta 'Login' primeiro, depois 'Log In' — a Bet365 usa ambas as grafias
                 step1Ok = await this._clicarElementoPorTexto(pg, 'Login', true);
+                if (!step1Ok) step1Ok = await this._clicarElementoPorTexto(pg, 'Log In', true);
             }
 
             let sessaoOk = false;
