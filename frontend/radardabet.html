@@ -3551,7 +3551,7 @@ function renderFiltros() {
     const c = document.getElementById('filtros-row');
     c.innerHTML = '';
 
-    const temConteudo = S.showPadroes || S.showMercados;
+    const temConteudo = S.showPadroes || S.showMercados || S.showConfig;
     const wrap = document.getElementById('filtros-row-wrap');
     if (wrap) wrap.style.display = temConteudo ? 'block' : 'none';
 
