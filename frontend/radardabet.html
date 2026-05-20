@@ -1820,9 +1820,19 @@
             <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
                 <span style="font-size:12px;color:#94a3b8">Janela:</span>
                 <select id="alerta-janela" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:12px;padding:3px 8px;cursor:pointer">
+                    <option value="all">Todas</option>
+                    <option disabled>── Jogos ──</option>
+                    <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
+                    <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
+                    <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
+                    <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
+                    <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
+                    <option disabled>── Horas ──</option>
                     <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
-                    <option value="4">4H</option><option value="6">6H</option><option value="12" selected>12H</option>
-                    <option value="24">24H</option>
+                    <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
+                    <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
+                    <option value="10">10H</option><option value="11">11H</option><option value="12" selected>12H</option>
+                    <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
                 </select>
             </div>
         </div>
@@ -9795,7 +9805,7 @@ function abrirAlertaEditor(id) {
     _alertaEditandoId = id;
     let f = {};
     try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) {}
-    const al = f.alerta || { ativo: false, condicoes: [], janela: 12 };
+    const al = f.alerta || { ativo: false, condicoes: [], janela: '12' };
     _alertaCondicoes = al.condicoes ? JSON.parse(JSON.stringify(al.condicoes)) : [];
 
     const nomeEl = document.getElementById('alerta-padrao-nome');
@@ -9803,7 +9813,7 @@ function abrirAlertaEditor(id) {
     const ativoEl = document.getElementById('alerta-ativo');
     if (ativoEl) ativoEl.checked = !!al.ativo;
     const janelaEl = document.getElementById('alerta-janela');
-    if (janelaEl) janelaEl.value = al.janela || 12;
+    if (janelaEl) janelaEl.value = String(al.janela || '12');
 
     _renderCondicoesAlerta();
     document.getElementById('modal-alerta').classList.add('aberto');
@@ -9852,7 +9862,7 @@ async function salvarAlertaPadrao() {
     try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) {}
     f.alerta = {
         ativo:    !!(document.getElementById('alerta-ativo')?.checked),
-        janela:   parseInt(document.getElementById('alerta-janela')?.value) || 12,
+        janela:   document.getElementById('alerta-janela')?.value || '12',
         condicoes: _alertaCondicoes
     };
     const fs = JSON.stringify(f);
@@ -9891,14 +9901,22 @@ function _verificarAlertas() {
             try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) { continue; }
             const al = f.alerta;
             if (!al || !al.ativo || !al.condicoes?.length) continue;
-            const horas = parseInt(al.janela) || 12;
-            const corte = new Date(agora.getTime() - horas * 3600000);
-            const todosJogos = serieFlat();
-            const jogos = todosJogos.filter(j => {
-                if (!j.data_partida) return false;
-                const dt = new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
-                return dt >= corte && dt <= agora;
-            });
+            const todosJogos = serieFlat().filter(j => j.data_partida);
+            const jv = String(al.janela || '12');
+            let jogos;
+            if (jv === 'all') {
+                jogos = todosJogos;
+            } else if (jv.startsWith('j')) {
+                const n = parseInt(jv.slice(1)) || 20;
+                jogos = todosJogos.slice(-n);
+            } else {
+                const horas = parseInt(jv) || 12;
+                const corte = new Date(agora.getTime() - horas * 3600000);
+                jogos = todosJogos.filter(j => {
+                    const dt = new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
+                    return dt >= corte && dt <= agora;
+                });
+            }
             if (!jogos.length) continue;
             const todasOk = al.condicoes.every(c => {
                 if (!TODOS_FILTROS.find(x => x.id === c.mercado)) return false;
