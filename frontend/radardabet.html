@@ -1260,6 +1260,8 @@
                     <button class="acao-btn" onclick="resetZoomGols()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
                 </div>
             </div>
+            <!-- Pills de mercado do Gráfico de Gols -->
+            <div id="pills-gols" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;"></div>
             <div style="position:relative;height:260px"><canvas id="grafico-gols"></canvas></div>
         </div>
     </div>
@@ -2519,6 +2521,19 @@ TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = false; });
 S.linhasLinha = {};
 TODOS_FILTROS.forEach(f => { S.linhasLinha[f.id] = false; });
 
+// Métricas do Gráfico de Gols (séries de contagem — independente de TODOS_FILTROS)
+const FILTROS_GOLS = [
+    { id:'gols-total', label:'Gols',     cor:'#e2e8f0', desc:'Total de gols por jogo (casa + fora)' },
+    { id:'gols-casa',  label:'Casa',     cor:'#4ade80', desc:'Gols marcados pelo time da casa' },
+    { id:'gols-fora',  label:'Fora',     cor:'#fb923c', desc:'Gols marcados pelo time visitante' },
+    { id:'gols-1t',    label:'Gols 1T',  cor:'#60a5fa', desc:'Gols no primeiro tempo' },
+    { id:'gols-2t',    label:'Gols 2T',  cor:'#a78bfa', desc:'Gols no segundo tempo' },
+    { id:'gols-equi',  label:'Equil.',   cor:'#1fcc59', dashed:true, desc:'Linha de referência (média do período)' },
+];
+S.linhasGols = {};
+FILTROS_GOLS.forEach(f => { S.linhasGols[f.id] = false; });
+S.linhasGols['gols-total'] = true; // padrão: mostra gols totais ao abrir
+
 // ============================================================
 // LÓGICA DE FILTROS (client-side)
 // ============================================================
@@ -3704,6 +3719,69 @@ function _togglePillMercado(id) {
     renderGrafico();
 }
 
+function _renderPillsGols() {
+    const container = document.getElementById('pills-gols');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const btnStyle = 'padding:2px 8px;border-radius:4px;border:1px solid #334155;background:#1e293b;' +
+                     'color:#94a3b8;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap';
+    const btnTodos  = document.createElement('button');
+    btnTodos.textContent = 'Todos';
+    btnTodos.style.cssText = btnStyle;
+    btnTodos.onclick = _lgTodosGols;
+    container.appendChild(btnTodos);
+
+    const btnLimpar = document.createElement('button');
+    btnLimpar.textContent = 'Limpar';
+    btnLimpar.style.cssText = btnStyle;
+    btnLimpar.onclick = _lgLimparGols;
+    container.appendChild(btnLimpar);
+
+    const sep = document.createElement('div');
+    sep.style.cssText = 'width:1px;height:14px;background:#1e293b;align-self:center;margin:0 2px';
+    container.appendChild(sep);
+
+    FILTROS_GOLS.forEach(f => {
+        const ativo = !!S.linhasGols[f.id];
+        const cor   = f.cor;
+        const pill  = document.createElement('span');
+        pill.style.cssText =
+            `display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;` +
+            `border:1.5px ${f.dashed ? 'dashed' : 'solid'} ${ativo ? cor : '#334155'};` +
+            `background:${ativo ? cor + '22' : 'transparent'};` +
+            `color:${ativo ? '#e2e8f0' : '#64748b'};` +
+            `font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .12s`;
+        pill.title = f.desc || f.label;
+        const dot = document.createElement('span');
+        dot.style.cssText =
+            `width:8px;height:8px;border-radius:2px;background:${cor};` +
+            `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
+        pill.appendChild(dot);
+        pill.appendChild(document.createTextNode(f.label));
+        pill.onclick = () => { _togglePillGols(f.id); };
+        container.appendChild(pill);
+    });
+}
+
+function _togglePillGols(id) {
+    S.linhasGols[id] = !S.linhasGols[id];
+    _renderPillsGols();
+    renderGraficoGols();
+}
+
+function _lgTodosGols() {
+    FILTROS_GOLS.forEach(f => { S.linhasGols[f.id] = true; });
+    _renderPillsGols();
+    renderGraficoGols();
+}
+
+function _lgLimparGols() {
+    FILTROS_GOLS.forEach(f => { S.linhasGols[f.id] = false; });
+    _renderPillsGols();
+    renderGraficoGols();
+}
+
 function _renderPillsLinha() {
     const container = document.getElementById('pills-linha');
     if (!container) return;
@@ -4858,22 +4936,32 @@ function renderGraficoGols() {
     }
     _GOLS_SERIE = serie;
 
-    const n      = S.grafMM1 || 9;
-    const golsJ  = serie.map(j => j.gol_casa + j.gol_fora);
-    const totalG = golsJ.reduce((a, b) => a + b, 0);
+    const n = S.grafMM1 || 9;
 
-    // Soma rolante (janela de n jogos) — sem divisão
-    const rollingSum = golsJ.map((_, i) => {
-        const sl = golsJ.slice(Math.max(0, i - n + 1), i + 1);
+    _renderPillsGols();
+
+    // Função auxiliar: extrai array de gols por jogo conforme métrica
+    const _extrairGols = id => {
+        switch(id) {
+            case 'gols-total': return serie.map(j => j.gol_casa + j.gol_fora);
+            case 'gols-casa':  return serie.map(j => j.gol_casa);
+            case 'gols-fora':  return serie.map(j => j.gol_fora);
+            case 'gols-1t':    return serie.map(j => (j.gol_casa_ht != null ? j.gol_casa_ht : 0) + (j.gol_fora_ht != null ? j.gol_fora_ht : 0));
+            case 'gols-2t':    return serie.map(j => {
+                const ht = (j.gol_casa_ht != null ? j.gol_casa_ht : 0) + (j.gol_fora_ht != null ? j.gol_fora_ht : 0);
+                return Math.max(0, (j.gol_casa + j.gol_fora) - ht);
+            });
+            default: return [];
+        }
+    };
+
+    const _rollingSum = arr => arr.map((_, i) => {
+        const sl = arr.slice(Math.max(0, i - n + 1), i + 1);
         return sl.reduce((a, b) => a + b, 0);
     });
 
-    const mediaRef = +(rollingSum.reduce((a, b) => a + b, 0) / rollingSum.length).toFixed(1);
-    const yMin = Math.max(0, Math.floor(Math.min(...rollingSum) / 5) * 5 - 5);
-    const yMax = Math.ceil(Math.max(...rollingSum) / 5) * 5 + 5;
-
-    const cor   = (S._chartCores && S._chartCores['_gols_linha']) || '#e2e8f0';
-    const corRef = '#1fcc59';
+    const ativosGols = FILTROS_GOLS.filter(f => S.linhasGols[f.id] && f.id !== 'gols-equi');
+    const totalG = serie.map(j => j.gol_casa + j.gol_fora).reduce((a, b) => a + b, 0);
 
     const labels = serie.map(p => {
         if (!p.data_partida) return '';
@@ -4881,36 +4969,63 @@ function renderGraficoGols() {
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
 
-    const datasets = [
-        // Linha de referência (média da soma rolante)
-        { type: 'line', label: `Ref ${mediaRef}`,
-          data: serie.map(() => mediaRef),
-          borderColor: corRef, backgroundColor: 'transparent',
-          borderWidth: 1, borderDash: [6, 4], pointRadius: 0, tension: 0, _isRef: true },
-        // Linha principal: soma rolante de gols
-        { type: 'line', label: `⚽ Soma ${n}j`,
-          data: rollingSum,
-          borderColor: cor, backgroundColor: 'transparent',
-          borderWidth: 2, pointRadius: 3, pointHoverRadius: 6,
-          pointBackgroundColor: cor, tension: 0.2 }
-    ];
+    const datasets = [];
 
-    if (S.grafGolsMM) {
-        const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
-        const rollingAvg = (arr, w) => arr.map((_, i) => {
-            const sl = arr.slice(Math.max(0, i - w + 1), i + 1);
-            return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
+    // Séries de gols selecionadas
+    ativosGols.forEach(f => {
+        const brutos = _extrairGols(f.id);
+        const rolSum = _rollingSum(brutos);
+        const cor = f.cor;
+        datasets.push({
+            type: 'line', label: `${f.label} soma${n}j`,
+            data: rolSum,
+            borderColor: cor, backgroundColor: 'transparent',
+            borderWidth: 2, pointRadius: 2, pointHoverRadius: 5,
+            pointBackgroundColor: cor, tension: 0.2,
+            _metricId: f.id
         });
-        const n2 = S.grafMM2 || 21;
-        datasets.push({ type:'line', label:`MM${n2}`,
-            data: rollingAvg(rollingSum, n2),
-            borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
-            borderWidth: S.grafMM2Esp||2, borderDash: _pd(S.grafMM2Dash||'8,4'),
-            pointRadius: 0, tension: 0.4, _isMA: true });
+
+        // MM opcional (apenas para a série de gols total, mantém comportamento anterior)
+        if (S.grafGolsMM && f.id === 'gols-total') {
+            const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
+            const n2 = S.grafMM2 || 21;
+            const rolAvg = rolSum.map((_, i) => {
+                const sl = rolSum.slice(Math.max(0, i - n2 + 1), i + 1);
+                return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
+            });
+            datasets.push({ type:'line', label:`MM${n2}`,
+                data: rolAvg,
+                borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
+                borderWidth: S.grafMM2Esp||2, borderDash: _pd(S.grafMM2Dash||'8,4'),
+                pointRadius: 0, tension: 0.4, _isMA: true });
+        }
+    });
+
+    // Linha de equilíbrio (média da primeira série ativa, ou gols total por padrão)
+    if (S.linhasGols['gols-equi'] && ativosGols.length > 0) {
+        const brutos = _extrairGols(ativosGols[0].id);
+        const rolSum = _rollingSum(brutos);
+        const mediaRef = +(rolSum.reduce((a, b) => a + b, 0) / rolSum.length).toFixed(1);
+        datasets.push({ type:'line', label:`Ref ${mediaRef}`,
+            data: serie.map(() => mediaRef),
+            borderColor: '#1fcc59', backgroundColor:'transparent',
+            borderWidth: 1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true });
     }
 
+    // Fallback: nenhuma métrica selecionada — mostra mensagem
     const tituloEl = document.getElementById('g-gols-titulo');
-    if (tituloEl) tituloEl.textContent = `⚽ ${serie.length} jogos · ${totalG} gols · soma ${n}j: ref ${mediaRef}`;
+    if (datasets.length === 0) {
+        _destruirGols();
+        if (tituloEl) tituloEl.textContent = 'Selecione métricas acima';
+        return;
+    }
+
+    // Escala Y dinâmica
+    const todasSeries = datasets.filter(d => !d._isRef && !d._isMA).flatMap(d => d.data);
+    const yMin = Math.max(0, Math.floor(Math.min(...todasSeries) / 5) * 5 - 5);
+    const yMax = Math.ceil(Math.max(...todasSeries) / 5) * 5 + 5;
+
+    if (tituloEl) tituloEl.textContent = `⚽ ${serie.length} jogos · ${totalG} gols totais · soma ${n}j`;
 
     _destruirGols();
     try { S._graficoGols = new Chart(canvasEl.getContext('2d'), {
