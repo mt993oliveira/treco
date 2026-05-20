@@ -2519,16 +2519,18 @@ const S = {
 
 // Por padrão todos desligados — usuário seleciona em Mercados ou aplica um Padrão
 TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
-S.filtro = 'over1.5';
-S.filtroMosaico = localStorage.getItem('rdbt_filtroMosaico') || 'over1.5';
+S.filtro = 'over2.5';
+S.filtroMosaico = localStorage.getItem('rdbt_filtroMosaico') || 'over2.5';
 
-// Estado independente do Gráfico de Mercados (não compartilha com Gráfico de Linha)
+// Estado independente do Gráfico de Mercados — O2.5 ativo por padrão
 S.linhasMercados = {};
 TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = false; });
+S.linhasMercados['over2.5'] = true;
 
-// Estado independente do Gráfico de Linha
+// Estado independente do Gráfico de Linha — O2.5 ativo por padrão
 S.linhasLinha = {};
 TODOS_FILTROS.forEach(f => { S.linhasLinha[f.id] = false; });
+S.linhasLinha['over2.5'] = true;
 
 // Métricas do Gráfico de Gols (séries de contagem — independente de TODOS_FILTROS)
 const FILTROS_GOLS = [
