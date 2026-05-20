@@ -1980,6 +1980,9 @@ const TODOS_FILTROS = [
     { id:'pmr-casa', label:'1ºC',  cor:'#4ade80' },
     { id:'pmr-fora', label:'1ºV',  cor:'#fb923c' },
     { id:'pmr-ng',   label:'0-0',  cor:'#94a3b8' },
+    // Par / Ímpar FT
+    { id:'par-ft',   label:'Par',  cor:'#a78bfa', desc:'Total de gols par (0, 2, 4, 6…)' },
+    { id:'impar-ft', label:'Ímpar',cor:'#fb7185', desc:'Total de gols ímpar (1, 3, 5…)' },
     // Referência
     { id:'equilibrio',   label:'Equilíbrio', cor:'#64748b', dashed:true },
 ];
@@ -2718,6 +2721,10 @@ function checa(j, fid) {
             if (fid === 'st-ambas-nao') return !(c2 > 0 && f2 > 0);
             return false;
         }
+
+        // ── Par / Ímpar FT ──
+        case 'par-ft':   return total != null ? total % 2 === 0 : false;
+        case 'impar-ft': return total != null ? total % 2 !== 0 : false;
 
         // ── Equilíbrio — linha de referência 50% ──
         case 'equilibrio':   return Math.random() < 0.5;
@@ -3477,6 +3484,7 @@ const GRUPOS_LEGENDA = [
     { label: 'Direção 2T',    ids: ['st-casa','st-empate','st-fora'] },
     { label: 'Resultado 2T',  ids: ['st-over1.5','st-under1.5','st-ambas','st-ambas-nao','st-gols-0','st-gols-1','st-gols-2','st-gols-3p'] },
     { label: 'Especial',      ids: ['esp-btts-o25','esp-btts-u25','esp-casa-o15','esp-fora-o15','equilibrio'] },
+    { label: 'Par/Ímpar',    ids: ['par-ft','impar-ft'] },
 ];
 const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
 
@@ -3522,20 +3530,6 @@ function renderFiltros() {
 
     const c = document.getElementById('filtros-row');
     c.innerHTML = ''; // limpa tudo — todo conteúdo é dinâmico
-
-    // ── Controles principais — compactos, numa linha ──
-    const isMob = window.innerWidth < 640;
-    const _bs = (ativo) => `flex:1;padding:${isMob ? '6px 8px' : '7px 10px'};background:#0f172a;
-        border:1.5px solid ${ativo ? '#1fcc59' : '#1e293b'};border-radius:7px;
-        color:${ativo ? '#e2e8f0' : '#94a3b8'};font-size:${isMob ? '11px' : '12px'};font-weight:600;cursor:pointer;
-        display:flex;align-items:center;justify-content:center;gap:4px;
-        transition:border-color .2s,color .2s;white-space:nowrap`;
-    const ctrl = document.createElement('div');
-    ctrl.style.cssText = 'display:flex;gap:6px;width:100%';
-    ctrl.innerHTML = `
-        <button style="${_bs(S.showMercados)}" id="btn-mercados" onclick="toggleMercados()" title="Mercados / filtros">🎯${isMob ? '' : ' Mercados'}</button>
-    `;
-    c.appendChild(ctrl);
 
     if (S.showPadroes) {
         const _padNome = document.getElementById('padroes-nome-input')?.value || '';
@@ -3726,15 +3720,17 @@ function _renderPillsMercados() {
         const ativo = !!S.linhasMercados[f.id];
         const cor   = (S._chartCores && S._chartCores[f.id]) || f.cor;
         const pill  = document.createElement('span');
+        const _pfs = S.mktPillFs || 10;
         pill.style.cssText =
             `display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;` +
             `border:1.5px ${f.dashed ? 'dashed' : 'solid'} ${ativo ? cor : '#334155'};` +
             `background:${ativo ? cor + '22' : 'transparent'};` +
             `color:${ativo ? '#e2e8f0' : '#64748b'};` +
-            `font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .12s`;
+            `font-size:${_pfs}px;font-weight:${S.mktPillBold ? '700' : '600'};cursor:pointer;white-space:nowrap;transition:all .12s`;
         const dot = document.createElement('span');
+        const _ds = Math.round(_pfs * 0.8);
         dot.style.cssText =
-            `width:8px;height:8px;border-radius:2px;background:${cor};` +
+            `width:${_ds}px;height:${_ds}px;border-radius:2px;background:${cor};` +
             `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
         const grupo = _GRUPO_POR_ID[f.id] || '';
         pill.title = f.label + (grupo ? ' (' + grupo + ')' : '') + (f.desc ? ' — ' + f.desc : '');
@@ -3778,16 +3774,18 @@ function _renderPillsGols() {
         const ativo = !!S.linhasGols[f.id];
         const cor   = f.cor;
         const pill  = document.createElement('span');
+        const _pfsG = S.mktPillFs || 10;
         pill.style.cssText =
             `display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;` +
             `border:1.5px ${f.dashed ? 'dashed' : 'solid'} ${ativo ? cor : '#334155'};` +
             `background:${ativo ? cor + '22' : 'transparent'};` +
             `color:${ativo ? '#e2e8f0' : '#64748b'};` +
-            `font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .12s`;
+            `font-size:${_pfsG}px;font-weight:${S.mktPillBold ? '700' : '600'};cursor:pointer;white-space:nowrap;transition:all .12s`;
         pill.title = f.desc || f.label;
         const dot = document.createElement('span');
+        const _dsG = Math.round(_pfsG * 0.8);
         dot.style.cssText =
-            `width:8px;height:8px;border-radius:2px;background:${cor};` +
+            `width:${_dsG}px;height:${_dsG}px;border-radius:2px;background:${cor};` +
             `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
         pill.appendChild(dot);
         pill.appendChild(document.createTextNode(f.label));
@@ -3841,15 +3839,17 @@ function _renderPillsLinha() {
         const ativo = !!S.linhasLinha[f.id];
         const cor   = (S._chartCores && S._chartCores[f.id]) || f.cor;
         const pill  = document.createElement('span');
+        const _pfsL = S.mktPillFs || 10;
         pill.style.cssText =
             `display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;` +
             `border:1.5px ${f.dashed ? 'dashed' : 'solid'} ${ativo ? cor : '#334155'};` +
             `background:${ativo ? cor + '22' : 'transparent'};` +
             `color:${ativo ? '#e2e8f0' : '#64748b'};` +
-            `font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .12s`;
+            `font-size:${_pfsL}px;font-weight:${S.mktPillBold ? '700' : '600'};cursor:pointer;white-space:nowrap;transition:all .12s`;
         const dot = document.createElement('span');
+        const _dsL = Math.round(_pfsL * 0.8);
         dot.style.cssText =
-            `width:8px;height:8px;border-radius:2px;background:${cor};` +
+            `width:${_dsL}px;height:${_dsL}px;border-radius:2px;background:${cor};` +
             `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
         const grupo = _GRUPO_POR_ID[f.id] || '';
         pill.title = f.label + (grupo ? ' (' + grupo + ')' : '') + (f.desc ? ' — ' + f.desc : '');
