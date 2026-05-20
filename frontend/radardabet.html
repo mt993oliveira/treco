@@ -1380,6 +1380,8 @@
                     <button class="acao-btn" onclick="limparDesenho()" title="Apagar riscos">🗑 Limpar</button>
                 </div>
             </div>
+            <!-- Pills de mercado — independentes do painel global 🎯 Mercados -->
+            <div id="pills-mercados" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;"></div>
             <div style="position:relative;height:300px">
                 <canvas id="grafico"></canvas>
                 <canvas id="grafico-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
@@ -2507,6 +2509,10 @@ const S = {
 TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
 S.filtro = 'over1.5';
 
+// Estado independente do Gráfico de Mercados (não compartilha com Gráfico de Linha)
+S.linhasMercados = {};
+TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = false; });
+
 // ============================================================
 // LÓGICA DE FILTROS (client-side)
 // ============================================================
@@ -3632,6 +3638,72 @@ function renderFiltros() {
     c.appendChild(blocksRow);
 }
 
+// ── Pills de mercado do Gráfico de Mercados (estado independente) ────────────
+
+function _renderPillsMercados() {
+    const container = document.getElementById('pills-mercados');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Botões Todos / Limpar
+    const btnStyle = 'padding:2px 8px;border-radius:4px;border:1px solid #334155;background:#1e293b;' +
+                     'color:#94a3b8;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap';
+    const btnTodos  = document.createElement('button');
+    btnTodos.textContent = 'Todos';
+    btnTodos.style.cssText = btnStyle;
+    btnTodos.onclick = _lgTodosMercados;
+    container.appendChild(btnTodos);
+
+    const btnLimpar = document.createElement('button');
+    btnLimpar.textContent = 'Limpar';
+    btnLimpar.style.cssText = btnStyle;
+    btnLimpar.onclick = _lgLimparMercados;
+    container.appendChild(btnLimpar);
+
+    const sep = document.createElement('div');
+    sep.style.cssText = 'width:1px;height:14px;background:#1e293b;align-self:center;margin:0 2px';
+    container.appendChild(sep);
+
+    // Uma pill por filtro
+    TODOS_FILTROS.forEach(f => {
+        const ativo = !!S.linhasMercados[f.id];
+        const cor   = (S._chartCores && S._chartCores[f.id]) || f.cor;
+        const pill  = document.createElement('span');
+        pill.style.cssText =
+            `display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;` +
+            `border:1.5px ${f.dashed ? 'dashed' : 'solid'} ${ativo ? cor : '#334155'};` +
+            `background:${ativo ? cor + '22' : 'transparent'};` +
+            `color:${ativo ? '#e2e8f0' : '#64748b'};` +
+            `font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .12s`;
+        const dot = document.createElement('span');
+        dot.style.cssText =
+            `width:8px;height:8px;border-radius:2px;background:${cor};` +
+            `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
+        pill.appendChild(dot);
+        pill.appendChild(document.createTextNode(f.label));
+        pill.onclick = () => { _togglePillMercado(f.id); };
+        container.appendChild(pill);
+    });
+}
+
+function _togglePillMercado(id) {
+    S.linhasMercados[id] = !S.linhasMercados[id];
+    _renderPillsMercados();
+    renderGrafico();
+}
+
+function _lgTodosMercados() {
+    TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = true; });
+    _renderPillsMercados();
+    renderGrafico();
+}
+
+function _lgLimparMercados() {
+    TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = false; });
+    _renderPillsMercados();
+    renderGrafico();
+}
+
 function _lgTodos() {
     TODOS_FILTROS.forEach(f => { S.linhas[f.id] = true; });
     S.filtro = 'over1.5';
@@ -4146,7 +4218,9 @@ function renderGrafico() {
         .filter(j => j.gol_casa != null && j.gol_fora != null);
 
     const tituloEl = document.getElementById('g-titulo');
-    const ativos   = TODOS_FILTROS.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
+    const ativos   = TODOS_FILTROS.filter(f => S.linhasMercados[f.id] && f.id !== 'equilibrio');
+
+    _renderPillsMercados();
 
     const _destruirGrafico = () => {
         if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
@@ -4161,7 +4235,7 @@ function renderGrafico() {
     }
     if (!ativos.length) {
         _destruirGrafico();
-        if (tituloEl) tituloEl.textContent = 'Selecione filtros em 🎯 Mercados';
+        if (tituloEl) tituloEl.textContent = 'Selecione mercados acima';
         return;
     }
 
@@ -4187,7 +4261,7 @@ function renderGrafico() {
     const datasets = [];
 
     // Linha de equilíbrio real — uma linha por filtro, na média histórica do período
-    if (S.linhas['equilibrio']) {
+    if (S.linhasMercados['equilibrio']) {
         ativos.forEach(f => {
             const hits = hitsMap[f.id];
             const avg  = +(hits.reduce((a,b)=>a+b,0) / hits.length * 100).toFixed(1);
