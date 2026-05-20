@@ -1295,6 +1295,7 @@
                     <button id="btn-linha-tf"    class="acao-btn" onclick="_linhaToggle('linhaGrafTopoFundo','btn-linha-tf')"       title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-linha-cong"  class="acao-btn" onclick="_linhaToggle('linhaGrafCongest','btn-linha-cong')"       title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <button id="btn-linha-mm"    class="acao-btn" onclick="_linhaToggle('linhaGrafMM','btn-linha-mm')"               title="Média Móvel — sobrepõe uma linha suavizada sobre cada curva ativa.&#10;&#10;Quando a curva principal está ACIMA da MM o mercado está aquecido; ABAIXO indica resfriamento.&#10;&#10;O período é o mesmo da MM Longa configurado no Gráfico de Mercados (campo ao lado do botão 📈 MM).">📈 MM</button>
+                    <button id="btn-linha-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
                     <button id="btn-linha-legendas" class="acao-btn" onclick="toggleLinhaLegendas()"                                title="Suprimir tooltips do gráfico de linha">💬 Legendas</button>
                     <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button class="acao-btn" onclick="resetZoomLinha()" title="Resetar zoom (Ctrl+Roda para zoom, Shift+arrastar para pan)">↺ Zoom</button>
@@ -1353,6 +1354,7 @@
                     <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')"      title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"      title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"        title="Média Móvel — sobrepõe uma linha suavizada sobre cada curva ativa.&#10;&#10;Use como referência de tendência: quando a curva principal está ACIMA da MM o mercado está aquecido (acima da média); ABAIXO indica resfriamento.&#10;&#10;Ajuste o período nos campos ao lado: valor pequeno (ex: 9) = sensível a variações recentes; valor grande (ex: 40-60) = linha estável que representa a média do período.">📈 MM</button>
+                    <button id="btn-g-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
                     <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
                     <input id="inp-mm1" type="number" min="2" max="99" value="9"
                         onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
@@ -2111,9 +2113,11 @@ async function carregarConfigLigas() {
         if (cfg.grafico_ponto_borda)     S.grafPontoBorda   = parseFloat(cfg.grafico_ponto_borda) || 1.5;
         if (cfg.grafico_ponto_sobe_cor)  S.grafPontoCorSobe  = cfg.grafico_ponto_sobe_cor;
         if (cfg.grafico_ponto_desce_cor) S.grafPontoCorDesce = cfg.grafico_ponto_desce_cor;
+        if (cfg.grafico_ponto_flat !== undefined) S.grafPontoFlat = cfg.grafico_ponto_flat !== 'false';
         // Sincroniza classes dos botões com o estado carregado
         [['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
          ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med'],
+         ['grafPontoFlat','btn-g-flat'],['grafPontoFlat','btn-linha-flat'],
          ['linhaGrafMM','btn-linha-mm']].forEach(([k,id]) => {
             const b = document.getElementById(id);
             if (b) b.classList.toggle('ativo', !!S[k]);
@@ -2470,6 +2474,7 @@ const S = {
     grafPontoBorda:   1.5,
     grafPontoCorSobe: '#4ade80',
     grafPontoCorDesce:'#ef4444',
+    grafPontoFlat:    true,
     mktPillFs:     9,
     mktPillCor:    '#94a3b8',
     mktPillBold:   false,
@@ -4288,6 +4293,16 @@ function _gToggle(key, btnId) {
     renderGrafico();
 }
 
+function _togglePontoFlat() {
+    S.grafPontoFlat = !S.grafPontoFlat;
+    ['btn-g-flat','btn-linha-flat'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.classList.toggle('ativo', S.grafPontoFlat);
+    });
+    renderGrafico();
+    if (S.showLinha) renderGraficoLinha();
+}
+
 // Toggle independente para o Gráfico de Linha (não afeta o Gráfico de Mercado)
 function _linhaToggle(key, btnId) {
     S[key] = !S[key];
@@ -4509,6 +4524,13 @@ function renderGrafico() {
             const base   = data.map((v, i) => i === 0 ? cor : v > data[i-1] ? _corSobe : v < data[i-1] ? _corDesce : cor);
             pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? (S.grafPontoRaio||4) + 3 : S.grafPontoRaio||4);
             pointBgColor = base.map((c, i) => i === maxIdx ? (S._tfTopoCor||'#4ade80') : i === minIdx ? (S._tfFundoCor||'#f87171') : c);
+        }
+
+        // Ocultar bolinhas planas (sem variação)
+        if (!S.grafPontoFlat) {
+            const baseR = Array.isArray(pointRadius) ? pointRadius : data.map(() => S.grafPontoRaio || 4);
+            pointBgColor = pointBgColor.map((c, i) => (i > 0 && data[i] === data[i-1]) ? 'transparent' : c);
+            pointRadius  = data.map((v, i, a) => (i > 0 && v === a[i-1]) ? 0 : baseR[i]);
         }
 
         datasets.push({ type:'line', label:`${f.label} ${pct}%`,
@@ -4880,6 +4902,13 @@ function renderGraficoLinha() {
             pointBgColor = base.map((c, i) =>
                 i === maxIdx ? (S._tfTopoCor  || '#4ade80') :
                 i === minIdx ? (S._tfFundoCor || '#f87171') : c);
+        }
+
+        // Ocultar bolinhas planas (sem variação)
+        if (!S.grafPontoFlat) {
+            const baseR = Array.isArray(pointRadius) ? pointRadius : pctSlice.map(() => S.grafPontoRaio || 4);
+            pointBgColor = pointBgColor.map((c, i) => (i > 0 && pctSlice[i] === pctSlice[i-1]) ? 'transparent' : c);
+            pointRadius  = pctSlice.map((v, i, a) => (i > 0 && v === a[i-1]) ? 0 : baseR[i]);
         }
 
         datasets.push({ type:'line', label:`${f.label} ${pct}%`,
@@ -8304,6 +8333,7 @@ const _CFG_LABELS = {
     grafico_ponto_borda:     '📈 Gráfico: espessura da borda das bolinhas (px)',
     grafico_ponto_sobe_cor:  '📈 Gráfico: cor da bolinha quando sobe',
     grafico_ponto_desce_cor: '📈 Gráfico: cor da bolinha quando desce',
+    grafico_ponto_flat:      '📈 Gráfico: exibir bolinhas planas (valor igual ao anterior)',
     // Mosaico
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
     mosaico_mostrar_data_jogos:  '👁 Mosaico: exibir data (DD/MM) e contagem de jogos',

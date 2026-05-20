@@ -1531,8 +1531,9 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_impar_cor',   valor:'#f97316', tipo:'text',   grupo:'grafico', descricao:'🔢 Gráfico Par/Ímpar: cor do Ímpar' },
     { chave:'grafico_ponto_raio',      valor:'4',       tipo:'number', grupo:'grafico', descricao:'📈 Gráfico: raio das bolinhas nos gráficos (px)' },
     { chave:'grafico_ponto_borda',     valor:'1.5',     tipo:'number', grupo:'grafico', descricao:'📈 Gráfico: espessura da borda das bolinhas (px)' },
-    { chave:'grafico_ponto_sobe_cor',  valor:'#4ade80', tipo:'text',   grupo:'grafico', descricao:'📈 Gráfico: cor da bolinha quando sobe (hex)' },
-    { chave:'grafico_ponto_desce_cor', valor:'#ef4444', tipo:'text',   grupo:'grafico', descricao:'📈 Gráfico: cor da bolinha quando desce (hex)' },
+    { chave:'grafico_ponto_sobe_cor',  valor:'#4ade80', tipo:'text',    grupo:'grafico', descricao:'📈 Gráfico: cor da bolinha quando sobe (hex)' },
+    { chave:'grafico_ponto_desce_cor', valor:'#ef4444', tipo:'text',    grupo:'grafico', descricao:'📈 Gráfico: cor da bolinha quando desce (hex)' },
+    { chave:'grafico_ponto_flat',      valor:'true',    tipo:'boolean', grupo:'grafico', descricao:'📈 Gráfico: exibir bolinhas planas (valor igual ao anterior)' },
     // ── Coletores ──
     { chave:'coletor2_ativo', valor:'true',  tipo:'boolean', grupo:'sistema', descricao:'⚡ Coletor 2 (Odds pré-jogo) — ativar/pausar coleta automática de odds' },
     { chave:'coletor3_ativo', valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📚 Coletor 3 (Histórico) — ativar/pausar backfill de dados históricos' },
