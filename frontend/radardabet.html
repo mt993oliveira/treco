@@ -4477,16 +4477,16 @@ function renderGrafico() {
         const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
         const pct  = Math.round(pts.reduce((a,b)=>a+b,0) / serie.length * 100);
 
-        // Cor por ponto: verde = passou, vermelho = não passou
+        // Cor por ponto: verde = subiu, vermelho = desceu
         let pointRadius  = 3;
-        let pointBgColor = pts.map(v => v ? cor : '#dc2626');
+        let pointBgColor = data.map((v, i) => i === 0 ? cor : v > data[i-1] ? '#4ade80' : v < data[i-1] ? '#ef4444' : cor);
 
         // T/F — marca pico máximo (amarelo) e mínimo (vermelho) após warmup
         if (S.grafTopoFundo && data.length > 1) {
             const warmup = Math.min(n1 - 1, data.length - 1);
             const maxIdx = data.reduce((b, v, i) => i >= warmup && v > data[b] ? i : b, warmup);
             const minIdx = data.reduce((b, v, i) => i >= warmup && v < data[b] ? i : b, warmup);
-            const base   = pts.map(v => v ? cor : '#dc2626');
+            const base   = data.map((v, i) => i === 0 ? cor : v > data[i-1] ? '#4ade80' : v < data[i-1] ? '#ef4444' : cor);
             pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : 3);
             pointBgColor = base.map((c, i) => i === maxIdx ? (S._tfTopoCor||'#4ade80') : i === minIdx ? (S._tfFundoCor||'#f87171') : c);
         }
@@ -4846,16 +4846,16 @@ function renderGraficoLinha() {
         const pct = hitsSlice.length ? Math.round(hitsSlice.reduce((a,b)=>a+b,0) / hitsSlice.length * 100) : 0;
 
         let pointRadius  = 3;
-        let pointBgColor = hitsSlice.map(v => v ? cor : '#dc2626');
+        let pointBgColor = pctSlice.map((v, i) => i === 0 ? cor : v > pctSlice[i-1] ? '#4ade80' : v < pctSlice[i-1] ? '#ef4444' : cor);
 
         if (S.linhaGrafTopoFundo && pctSlice.length > 1) {
             const maxIdx = pctSlice.reduce((b, v, i) => v > pctSlice[b] ? i : b, 0);
             const minIdx = pctSlice.reduce((b, v, i) => v < pctSlice[b] ? i : b, 0);
+            const base   = pctSlice.map((v, i) => i === 0 ? cor : v > pctSlice[i-1] ? '#4ade80' : v < pctSlice[i-1] ? '#ef4444' : cor);
             pointRadius  = pctSlice.map((_, i) => (i === maxIdx || i === minIdx) ? 7 : 3);
-            pointBgColor = hitsSlice.map((v, i) =>
+            pointBgColor = base.map((c, i) =>
                 i === maxIdx ? (S._tfTopoCor  || '#4ade80') :
-                i === minIdx ? (S._tfFundoCor || '#f87171') :
-                v ? cor : '#dc2626');
+                i === minIdx ? (S._tfFundoCor || '#f87171') : c);
         }
 
         datasets.push({ type:'line', label:`${f.label} ${pct}%`,
