@@ -1312,6 +1312,8 @@
                     <button class="acao-btn" onclick="limparDesenhoLinha()" title="Apagar riscos do gráfico de linha">🗑 Limpar</button>
                 </div>
             </div>
+            <!-- Pills de mercado — independentes do painel global 🎯 Mercados -->
+            <div id="pills-linha" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;"></div>
             <div id="div-grafico-linha" style="position:relative;height:300px">
                 <canvas id="grafico-linha"></canvas>
                 <canvas id="linha-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
@@ -2513,6 +2515,10 @@ S.filtro = 'over1.5';
 S.linhasMercados = {};
 TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = false; });
 
+// Estado independente do Gráfico de Linha
+S.linhasLinha = {};
+TODOS_FILTROS.forEach(f => { S.linhasLinha[f.id] = false; });
+
 // ============================================================
 // LÓGICA DE FILTROS (client-side)
 // ============================================================
@@ -3692,6 +3698,68 @@ function _togglePillMercado(id) {
     renderGrafico();
 }
 
+function _renderPillsLinha() {
+    const container = document.getElementById('pills-linha');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const btnStyle = 'padding:2px 8px;border-radius:4px;border:1px solid #334155;background:#1e293b;' +
+                     'color:#94a3b8;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap';
+    const btnTodos  = document.createElement('button');
+    btnTodos.textContent = 'Todos';
+    btnTodos.style.cssText = btnStyle;
+    btnTodos.onclick = _lgTodosLinha;
+    container.appendChild(btnTodos);
+
+    const btnLimpar = document.createElement('button');
+    btnLimpar.textContent = 'Limpar';
+    btnLimpar.style.cssText = btnStyle;
+    btnLimpar.onclick = _lgLimparLinha;
+    container.appendChild(btnLimpar);
+
+    const sep = document.createElement('div');
+    sep.style.cssText = 'width:1px;height:14px;background:#1e293b;align-self:center;margin:0 2px';
+    container.appendChild(sep);
+
+    TODOS_FILTROS.forEach(f => {
+        const ativo = !!S.linhasLinha[f.id];
+        const cor   = (S._chartCores && S._chartCores[f.id]) || f.cor;
+        const pill  = document.createElement('span');
+        pill.style.cssText =
+            `display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;` +
+            `border:1.5px ${f.dashed ? 'dashed' : 'solid'} ${ativo ? cor : '#334155'};` +
+            `background:${ativo ? cor + '22' : 'transparent'};` +
+            `color:${ativo ? '#e2e8f0' : '#64748b'};` +
+            `font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .12s`;
+        const dot = document.createElement('span');
+        dot.style.cssText =
+            `width:8px;height:8px;border-radius:2px;background:${cor};` +
+            `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
+        pill.appendChild(dot);
+        pill.appendChild(document.createTextNode(f.label));
+        pill.onclick = () => { _togglePillLinha(f.id); };
+        container.appendChild(pill);
+    });
+}
+
+function _togglePillLinha(id) {
+    S.linhasLinha[id] = !S.linhasLinha[id];
+    _renderPillsLinha();
+    renderGraficoLinha();
+}
+
+function _lgTodosLinha() {
+    TODOS_FILTROS.forEach(f => { S.linhasLinha[f.id] = true; });
+    _renderPillsLinha();
+    renderGraficoLinha();
+}
+
+function _lgLimparLinha() {
+    TODOS_FILTROS.forEach(f => { S.linhasLinha[f.id] = false; });
+    _renderPillsLinha();
+    renderGraficoLinha();
+}
+
 function _lgTodosMercados() {
     TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = true; });
     _renderPillsMercados();
@@ -4550,7 +4618,9 @@ function renderGraficoLinha() {
 
     const JANELA   = 20; // 1 hora = 20 jogos → cada jogo = 5%
     const tituloEl = document.getElementById('g-linha-titulo');
-    const ativos   = TODOS_FILTROS.filter(f => S.linhas[f.id] && f.id !== 'equilibrio');
+    const ativos   = TODOS_FILTROS.filter(f => S.linhasLinha[f.id] && f.id !== 'equilibrio');
+
+    _renderPillsLinha();
 
     const _destruir = () => {
         if (S._graficoLinha) { try { S._graficoLinha.destroy(); } catch(_){} S._graficoLinha = null; }
@@ -4560,7 +4630,7 @@ function renderGraficoLinha() {
 
     if (!ativos.length) {
         _destruir();
-        if (tituloEl) tituloEl.textContent = 'Selecione filtros em 🎯 Mercados';
+        if (tituloEl) tituloEl.textContent = 'Selecione mercados acima';
         return;
     }
 
@@ -4606,7 +4676,7 @@ function renderGraficoLinha() {
     const datasets = [];
 
     // Linha de equilíbrio (média do período exibido)
-    if (S.linhas['equilibrio']) {
+    if (S.linhasLinha['equilibrio']) {
         ativos.forEach(f => {
             const hits = hitsMapDisplay[f.id];
             const avg  = +(hits.reduce((a,b)=>a+b,0) / hits.length * 100).toFixed(1);
