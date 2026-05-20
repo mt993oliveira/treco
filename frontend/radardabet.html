@@ -1294,6 +1294,7 @@
                     <button id="btn-linha-pct"   class="acao-btn" onclick="_linhaToggle('linhaGrafPct','btn-linha-pct')"           title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
                     <button id="btn-linha-tf"    class="acao-btn" onclick="_linhaToggle('linhaGrafTopoFundo','btn-linha-tf')"       title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-linha-cong"  class="acao-btn" onclick="_linhaToggle('linhaGrafCongest','btn-linha-cong')"       title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
+                    <button id="btn-linha-mm"    class="acao-btn" onclick="_linhaToggle('linhaGrafMM','btn-linha-mm')"               title="Exibe média móvel (MM longa) sobre cada linha">📈 MM</button>
                     <button id="btn-linha-legendas" class="acao-btn" onclick="toggleLinhaLegendas()"                                title="Suprimir tooltips do gráfico de linha">💬 Legendas</button>
                     <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button class="acao-btn" onclick="resetZoomLinha()" title="Resetar zoom (Ctrl+Roda para zoom, Shift+arrastar para pan)">↺ Zoom</button>
@@ -2098,7 +2099,8 @@ async function carregarConfigLigas() {
         if (cfg.grafico_mm2_dash)      S.grafMM2Dash      = cfg.grafico_mm2_dash;
         // Sincroniza classes dos botões com o estado carregado
         [['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
-         ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med']].forEach(([k,id]) => {
+         ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med'],
+         ['linhaGrafMM','btn-linha-mm']].forEach(([k,id]) => {
             const b = document.getElementById(id);
             if (b) b.classList.toggle('ativo', !!S[k]);
         });
@@ -2437,6 +2439,7 @@ const S = {
     linhaShowLegendas:  false,
     linhaGrafMM1:       9,
     linhaGrafMM2:       21,
+    linhaGrafMM:        false,
     _tfTopoCor:    '#4ade80',
     _tfFundoCor:   '#f87171',
     grafCongest:   false,
@@ -4488,21 +4491,16 @@ function renderGrafico() {
             pointBackgroundColor: pointBgColor, tension:0.2,
             _filtroId: f.id });
 
-        // MM — médias móveis adicionais
+        // MM — uma linha de média móvel longa
         if (S.grafMedias) {
             const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
-            const rolAvg = (arr, w) => arr.map((_, i) => {
-                const sl = arr.slice(Math.max(0, i - w + 1), i + 1);
+            const n2 = S.grafMM2 || 21;
+            const rolAvg = data.map((_, i) => {
+                const sl = data.slice(Math.max(0, i - n2 + 1), i + 1);
                 return +(sl.reduce((a,b)=>a+b,0) / sl.length).toFixed(1);
             });
-            const n1d = n1;
-            datasets.push({ type:'line', label:`${f.label} MM${n1d}`,
-                data: rolAvg(data, n1d), borderColor: S.grafMM1Cor||'#ffffff',
-                backgroundColor:'transparent', borderWidth: S.grafMM1Esp||1.5,
-                borderDash: _pd(S.grafMM1Dash||'4,4'), pointRadius:0, tension:0.3, _isMA:true });
-            const n2 = S.grafMM2 || 21;
             datasets.push({ type:'line', label:`${f.label} MM${n2}`,
-                data: rolAvg(data, n2), borderColor: S.grafMM2Cor||'#fbbf24',
+                data: rolAvg, borderColor: S.grafMM2Cor||'#fbbf24',
                 backgroundColor:'transparent', borderWidth: S.grafMM2Esp||2,
                 borderDash: _pd(S.grafMM2Dash||'8,4'), pointRadius:0, tension:0.4, _isMA:true });
         }
@@ -4834,6 +4832,19 @@ function renderGraficoLinha() {
             pointBackgroundColor: pointBgColor,
             tension: 0,
             _filtroId: f.id });
+
+        if (S.linhaGrafMM) {
+            const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
+            const n2 = S.grafMM2 || 21;
+            const rolAvg = pctSlice.map((_, i) => {
+                const sl = pctSlice.slice(Math.max(0, i - n2 + 1), i + 1);
+                return +(sl.reduce((a,b)=>a+b,0) / sl.length).toFixed(1);
+            });
+            datasets.push({ type:'line', label:`${f.label} MM${n2}`,
+                data: rolAvg, borderColor: S.grafMM2Cor||'#fbbf24',
+                backgroundColor:'transparent', borderWidth: S.grafMM2Esp||2,
+                borderDash: _pd(S.grafMM2Dash||'8,4'), pointRadius:0, tension:0.4, _isMA:true });
+        }
     });
 
     const labels = serieDisplay.map(p => {
