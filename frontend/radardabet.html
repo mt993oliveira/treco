@@ -4374,6 +4374,7 @@ const grafPlugin = {
 let _MKTGRAF_SERIE = [];
 let _MKTGRAF_HITS  = {};
 let _MKTGRAF_N1    = 9;
+let _hoveringChart = false; // suprime rebuild de pills durante hover-preview
 
 // Rótulos de % — só exibe quando "% Valor" está ativo (S.grafPct = true)
 const mktLabelPlugin = {
@@ -4414,7 +4415,7 @@ function renderGrafico() {
     const tituloEl = document.getElementById('g-titulo');
     const ativos   = TODOS_FILTROS.filter(f => S.linhasMercados[f.id] && f.id !== 'equilibrio');
 
-    _renderPillsMercados();
+    if (!_hoveringChart) _renderPillsMercados();
 
     const _destruirGrafico = () => {
         if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
@@ -4736,61 +4737,27 @@ let _LINHA_TODAS_SORTED = [];
 let _LINHA_OFFSET       = 0;
 
 function _previewPillMercados(f) {
-    if (!S.grafico || S.linhasMercados[f.id]) return;
-    const serie = _MKTGRAF_SERIE;
-    if (!serie || !serie.length) return;
-    S.grafico.data.datasets = S.grafico.data.datasets.filter(ds => !ds._preview);
-    const n = _MKTGRAF_N1 || 9;
-    const hits = serie.map(j => checa(j, f.id) ? 1 : 0);
-    const pct  = hits.map((_, i) => {
-        const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
-        return +(sl.reduce((a,b)=>a+b,0) / sl.length * 100).toFixed(1);
-    });
-    const cor = (S._chartCores?.[f.id]) || f.cor;
-    const avg = Math.round(hits.reduce((a,b)=>a+b,0) / serie.length * 100);
-    S.grafico.data.datasets.push({
-        type:'line', label:`${f.label} ${avg}%`,
-        data: pct, borderColor: cor, backgroundColor: cor + '18',
-        borderWidth: 1.5, borderDash: [5,4],
-        pointRadius: 0, tension: 0.2, _preview: true
-    });
-    S.grafico.update('none');
+    if (S.linhasMercados[f.id]) return; // já ativo — linha já visível
+    S.linhasMercados[f.id] = true;
+    _hoveringChart = true;
+    renderGrafico();
+    _hoveringChart = false;
+    S.linhasMercados[f.id] = false; // reverte estado (chart já foi desenhado)
 }
 function _clearPreviewPillMercados() {
-    if (!S.grafico) return;
-    if (!S.grafico.data.datasets.some(ds => ds._preview)) return;
-    S.grafico.data.datasets = S.grafico.data.datasets.filter(ds => !ds._preview);
-    S.grafico.update('none');
+    renderGrafico(); // re-render sem o filtro de preview
 }
 
 function _previewPillLinha(f) {
-    if (!S._graficoLinha || S.linhasLinha[f.id]) return;
-    const todas = _LINHA_TODAS_SORTED;
-    if (!todas || !todas.length) return;
-    S._graficoLinha.data.datasets = S._graficoLinha.data.datasets.filter(ds => !ds._preview);
-    const JANELA = 20;
-    const hitsAll = todas.map(j => checa(j, f.id) ? 1 : 0);
-    const pctAll  = hitsAll.map((_, i) => {
-        const sl = hitsAll.slice(Math.max(0, i - JANELA + 1), i + 1);
-        return +(sl.reduce((a,b)=>a+b,0) / sl.length * 100).toFixed(1);
-    });
-    const pctSlice = pctAll.slice(_LINHA_OFFSET || 0);
-    if (!pctSlice.length) return;
-    const cor = (S._chartCores?.[f.id]) || f.cor;
-    const avg = Math.round(pctSlice.reduce((a,b)=>a+b,0) / pctSlice.length);
-    S._graficoLinha.data.datasets.push({
-        type:'line', label:`${f.label} ${avg}%`,
-        data: pctSlice, borderColor: cor, backgroundColor: cor + '18',
-        borderWidth: 1.5, borderDash: [5,4],
-        pointRadius: 0, tension: 0, _preview: true
-    });
-    S._graficoLinha.update('none');
+    if (S.linhasLinha[f.id]) return;
+    S.linhasLinha[f.id] = true;
+    _hoveringChart = true;
+    renderGraficoLinha();
+    _hoveringChart = false;
+    S.linhasLinha[f.id] = false;
 }
 function _clearPreviewPillLinha() {
-    if (!S._graficoLinha) return;
-    if (!S._graficoLinha.data.datasets.some(ds => ds._preview)) return;
-    S._graficoLinha.data.datasets = S._graficoLinha.data.datasets.filter(ds => !ds._preview);
-    S._graficoLinha.update('none');
+    renderGraficoLinha();
 }
 
 function renderGraficoLinha() {
@@ -4801,7 +4768,7 @@ function renderGraficoLinha() {
     const tituloEl = document.getElementById('g-linha-titulo');
     const ativos   = TODOS_FILTROS.filter(f => S.linhasLinha[f.id] && f.id !== 'equilibrio');
 
-    _renderPillsLinha();
+    if (!_hoveringChart) _renderPillsLinha();
 
     const _destruir = () => {
         if (S._graficoLinha) { try { S._graficoLinha.destroy(); } catch(_){} S._graficoLinha = null; }
