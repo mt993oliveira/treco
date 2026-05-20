@@ -15,6 +15,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const app = express();
+app.set('trust proxy', 1); // lê X-Forwarded-For do Nginx corretamente
 
 // ✅ CONFIGURAÇÃO CORRETA DO CORS (substitua tudo que tem antes)
 app.use(cors({
@@ -170,7 +171,8 @@ function _parseUA(ua) {
 }
 
 async function _geoLookup(ip) {
-    if (!ip || ip === '?' || ip === '::1' || /^(127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) {
+    const _ip = ip ? ip.replace(/^::ffff:/, '') : ip;
+    if (!_ip || _ip === '?' || _ip === '::1' || /^(127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(_ip)) {
         return { city: 'Local', region: '', country: 'BR', org: 'Rede local' };
     }
     const cached = _geoCache.get(ip);
@@ -1200,6 +1202,7 @@ app.post('/api/usuarios/ping', async (req, res) => {
         nome: nome || existing.nome || '?',
         tipo: tipo || existing.tipo || 'user',
         lastSeen: new Date(),
+        loginTime: existing.loginTime || new Date(),
         ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || existing.ip || '?',
         userAgent: existing.userAgent || req.headers['user-agent'] || '',
     });
