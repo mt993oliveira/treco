@@ -3740,6 +3740,8 @@ function _renderPillsMercados() {
         pill.title = f.label + (grupo ? ' (' + grupo + ')' : '') + (f.desc ? ' — ' + f.desc : '');
         pill.appendChild(dot);
         pill.appendChild(document.createTextNode(f.label));
+        pill.onmouseenter = () => _previewPillMercados(f);
+        pill.onmouseleave = () => _clearPreviewPillMercados();
         pill.onclick = () => { _togglePillMercado(f.id); };
         container.appendChild(pill);
     });
@@ -3859,6 +3861,8 @@ function _renderPillsLinha() {
         pill.title = f.label + (grupo ? ' (' + grupo + ')' : '') + (f.desc ? ' — ' + f.desc : '');
         pill.appendChild(dot);
         pill.appendChild(document.createTextNode(f.label));
+        pill.onmouseenter = () => _previewPillLinha(f);
+        pill.onmouseleave = () => _clearPreviewPillLinha();
         pill.onclick = () => { _togglePillLinha(f.id); };
         container.appendChild(pill);
     });
@@ -4726,8 +4730,68 @@ function limparDesenhoLinha() {
 // GRÁFICO DE LINHA — mesmo hit-rate do Gráfico, mas com MM pré-aquecida
 // pela janela anterior ao período exibido (reduz viés no início da série)
 // ============================================================
-let _LINHA_SERIE = [];
-let _LINHA_HITS  = {};
+let _LINHA_SERIE        = [];
+let _LINHA_HITS         = {};
+let _LINHA_TODAS_SORTED = [];
+let _LINHA_OFFSET       = 0;
+
+function _previewPillMercados(f) {
+    if (!S.grafico || S.linhasMercados[f.id]) return;
+    const serie = _MKTGRAF_SERIE;
+    if (!serie || !serie.length) return;
+    S.grafico.data.datasets = S.grafico.data.datasets.filter(ds => !ds._preview);
+    const n = _MKTGRAF_N1 || 9;
+    const hits = serie.map(j => checa(j, f.id) ? 1 : 0);
+    const pct  = hits.map((_, i) => {
+        const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
+        return +(sl.reduce((a,b)=>a+b,0) / sl.length * 100).toFixed(1);
+    });
+    const cor = (S._chartCores?.[f.id]) || f.cor;
+    const avg = Math.round(hits.reduce((a,b)=>a+b,0) / serie.length * 100);
+    S.grafico.data.datasets.push({
+        type:'line', label:`${f.label} ${avg}%`,
+        data: pct, borderColor: cor, backgroundColor: cor + '18',
+        borderWidth: 1.5, borderDash: [5,4],
+        pointRadius: 0, tension: 0.2, _preview: true
+    });
+    S.grafico.update('none');
+}
+function _clearPreviewPillMercados() {
+    if (!S.grafico) return;
+    if (!S.grafico.data.datasets.some(ds => ds._preview)) return;
+    S.grafico.data.datasets = S.grafico.data.datasets.filter(ds => !ds._preview);
+    S.grafico.update('none');
+}
+
+function _previewPillLinha(f) {
+    if (!S._graficoLinha || S.linhasLinha[f.id]) return;
+    const todas = _LINHA_TODAS_SORTED;
+    if (!todas || !todas.length) return;
+    S._graficoLinha.data.datasets = S._graficoLinha.data.datasets.filter(ds => !ds._preview);
+    const JANELA = 20;
+    const hitsAll = todas.map(j => checa(j, f.id) ? 1 : 0);
+    const pctAll  = hitsAll.map((_, i) => {
+        const sl = hitsAll.slice(Math.max(0, i - JANELA + 1), i + 1);
+        return +(sl.reduce((a,b)=>a+b,0) / sl.length * 100).toFixed(1);
+    });
+    const pctSlice = pctAll.slice(_LINHA_OFFSET || 0);
+    if (!pctSlice.length) return;
+    const cor = (S._chartCores?.[f.id]) || f.cor;
+    const avg = Math.round(pctSlice.reduce((a,b)=>a+b,0) / pctSlice.length);
+    S._graficoLinha.data.datasets.push({
+        type:'line', label:`${f.label} ${avg}%`,
+        data: pctSlice, borderColor: cor, backgroundColor: cor + '18',
+        borderWidth: 1.5, borderDash: [5,4],
+        pointRadius: 0, tension: 0, _preview: true
+    });
+    S._graficoLinha.update('none');
+}
+function _clearPreviewPillLinha() {
+    if (!S._graficoLinha) return;
+    if (!S._graficoLinha.data.datasets.some(ds => ds._preview)) return;
+    S._graficoLinha.data.datasets = S._graficoLinha.data.datasets.filter(ds => !ds._preview);
+    S._graficoLinha.update('none');
+}
 
 function renderGraficoLinha() {
     const canvas = document.getElementById('grafico-linha');
@@ -4857,8 +4921,10 @@ function renderGraficoLinha() {
         ativos.map(f => f.label).join(' · ') +
         ` — ${serieDisplay.length} jogos · janela ${JANELA}J (±5%)`;
 
-    _LINHA_SERIE = serieDisplay;
-    _LINHA_HITS  = hitsMapDisplay;
+    _LINHA_SERIE        = serieDisplay;
+    _LINHA_HITS         = hitsMapDisplay;
+    _LINHA_TODAS_SORTED = todasSorted;
+    _LINHA_OFFSET       = offset;
 
     _destruir();
 
