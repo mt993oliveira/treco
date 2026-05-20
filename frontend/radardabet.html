@@ -3459,6 +3459,10 @@ const GRUPOS_LEGENDA = [
 ];
 const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
 
+// Mapa id → nome do grupo (para tooltips das pills)
+const _GRUPO_POR_ID = {};
+GRUPOS_LEGENDA.forEach(g => g.ids.forEach(id => { _GRUPO_POR_ID[id] = g.label; }));
+
 function renderFiltros() {
     // Sincroniza estado ativo dos botões do header
     const _b = id => document.getElementById(id);
@@ -3685,6 +3689,8 @@ function _renderPillsMercados() {
         dot.style.cssText =
             `width:8px;height:8px;border-radius:2px;background:${cor};` +
             `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
+        const grupo = _GRUPO_POR_ID[f.id] || '';
+        pill.title = f.label + (grupo ? ' (' + grupo + ')' : '') + (f.desc ? ' — ' + f.desc : '');
         pill.appendChild(dot);
         pill.appendChild(document.createTextNode(f.label));
         pill.onclick = () => { _togglePillMercado(f.id); };
@@ -3735,6 +3741,8 @@ function _renderPillsLinha() {
         dot.style.cssText =
             `width:8px;height:8px;border-radius:2px;background:${cor};` +
             `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
+        const grupo = _GRUPO_POR_ID[f.id] || '';
+        pill.title = f.label + (grupo ? ' (' + grupo + ')' : '') + (f.desc ? ' — ' + f.desc : '');
         pill.appendChild(dot);
         pill.appendChild(document.createTextNode(f.label));
         pill.onclick = () => { _togglePillLinha(f.id); };
