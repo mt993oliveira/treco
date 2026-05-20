@@ -51,6 +51,8 @@
             display: inline-flex; align-items: center; height: 26px; white-space: nowrap; }
         .acao-btn:hover { background: #334155; }
         .acao-btn.ativo { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+        #select-filtro-mosaico option { background: #1e293b; color: #e2e8f0; }
+        #select-filtro-mosaico option:checked { background: #7c3aed; color: #fff; }
 
         /* Analysis cards */
         .liga-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 14px;
@@ -1441,7 +1443,7 @@
             <button class="acao-btn" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;localStorage.setItem('rdbt_showGols',S._mosaicoShowGols);document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
             <select id="select-filtro-mosaico" onchange="_setFiltroMosaico(this.value)"
                 title="Mercado exibido no mosaico (cor das células + % Linha)"
-                style="background:#7c3aed;border:1px solid #7c3aed;color:#fff;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:110px"></select>
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:110px"></select>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
             <span id="periodo-badge-mosaico" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
