@@ -1185,12 +1185,9 @@
 <!-- ========== VIEW: HISTÓRICO ========== -->
 <div id="view-historico-content" style="padding:12px 16px">
 
-    <!-- Controls bar — linha 1: período + filtro de condição -->
-    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:10px">
-
-        <!-- Linha única: controles + blocos de filtros -->
+    <!-- Controls bar — visível apenas quando Padrões ou Mercados panel estão abertos -->
+    <div id="filtros-row-wrap" style="display:none;background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;margin-bottom:10px">
         <div id="filtros-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
-            <!-- Controles e blocos de filtros são inseridos aqui por renderFiltros() -->
         </div>
     </div>
 
@@ -3529,7 +3526,11 @@ function renderFiltros() {
     if (_b('view-padroes'))      _b('view-padroes').classList.toggle('ativo',      !!S.showPadroes);
 
     const c = document.getElementById('filtros-row');
-    c.innerHTML = ''; // limpa tudo — todo conteúdo é dinâmico
+    c.innerHTML = '';
+
+    const temConteudo = S.showPadroes || S.showMercados;
+    const wrap = document.getElementById('filtros-row-wrap');
+    if (wrap) wrap.style.display = temConteudo ? 'block' : 'none';
 
     if (S.showPadroes) {
         const _padNome = document.getElementById('padroes-nome-input')?.value || '';
