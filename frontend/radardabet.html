@@ -1291,12 +1291,12 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-linha-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
+                    <button id="btn-linha-legendas" class="acao-btn" onclick="toggleLinhaLegendas()"                                title="Suprimir tooltips do gráfico de linha">💬 Legendas</button>
                     <button id="btn-linha-pct"   class="acao-btn" onclick="_linhaToggle('linhaGrafPct','btn-linha-pct')"           title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
                     <button id="btn-linha-tf"    class="acao-btn" onclick="_linhaToggle('linhaGrafTopoFundo','btn-linha-tf')"       title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-linha-cong"  class="acao-btn" onclick="_linhaToggle('linhaGrafCongest','btn-linha-cong')"       title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <button id="btn-linha-mm"    class="acao-btn" onclick="_linhaToggle('linhaGrafMM','btn-linha-mm')"               title="Média Móvel — sobrepõe uma linha suavizada sobre cada curva ativa.&#10;&#10;Quando a curva principal está ACIMA da MM o mercado está aquecido; ABAIXO indica resfriamento.&#10;&#10;O período é o mesmo da MM Longa configurado no Gráfico de Mercados (campo ao lado do botão 📈 MM).">📈 MM</button>
-                    <button id="btn-linha-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
-                    <button id="btn-linha-legendas" class="acao-btn" onclick="toggleLinhaLegendas()"                                title="Suprimir tooltips do gráfico de linha">💬 Legendas</button>
                     <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button class="acao-btn" onclick="resetZoomLinha()" title="Resetar zoom (Ctrl+Roda para zoom, Shift+arrastar para pan)">↺ Zoom</button>
                     <button id="btn-caneta-linha" class="acao-btn" onclick="toggleCanetaLinha()" title="Ativar/desativar desenho no gráfico de linha">✏️ Caneta</button>
@@ -1350,12 +1350,12 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-g-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
+                    <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
                     <button id="btn-g-pct"   class="acao-btn"       onclick="_gToggle('grafPct','btn-g-pct')"            title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
                     <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')"      title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"      title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"        title="Média Móvel — sobrepõe uma linha suavizada sobre cada curva ativa.&#10;&#10;Use como referência de tendência: quando a curva principal está ACIMA da MM o mercado está aquecido (acima da média); ABAIXO indica resfriamento.&#10;&#10;Ajuste o período nos campos ao lado: valor pequeno (ex: 9) = sensível a variações recentes; valor grande (ex: 40-60) = linha estável que representa a média do período.">📈 MM</button>
-                    <button id="btn-g-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
-                    <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
                     <input id="inp-mm1" type="number" min="2" max="99" value="9"
                         onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
                         title="MM Curta — período em número de jogos (padrão: 9).&#10;&#10;Reage rápido às variações recentes. Valor pequeno = mais sensível ao momento atual, mas com mais ruído visual."
