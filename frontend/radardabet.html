@@ -9163,20 +9163,35 @@ async function _carregarHistoricoAcessos(pagina) {
             const ts = TIPO_STYLE[h.tipo] || { bg:'#0f172a', color:'#e2e8f0', label: escHtml(h.tipo) };
             const dt = h.data_hora ? new Date(h.data_hora).toLocaleString('pt-BR') : '—';
             const ua = _parseUAfrontend(h.user_agent);
+            const loc = [h.cidade, h.pais].filter(Boolean).join(' / ') || '—';
+            const prov = h.provedor ? escHtml(h.provedor.replace(/^AS\d+\s*/,'')) : '—';
+            const dur = h.duracao_seg != null
+                ? (h.duracao_seg >= 3600
+                    ? `${Math.floor(h.duracao_seg/3600)}h${Math.floor((h.duracao_seg%3600)/60)}m`
+                    : h.duracao_seg >= 60
+                        ? `${Math.floor(h.duracao_seg/60)}m${h.duracao_seg%60}s`
+                        : `${h.duracao_seg}s`)
+                : '—';
             return `<tr onmouseover="this.style.background='#0a1020'" onmouseout="this.style.background=''">
                 <td style="${td}"><span style="color:#e2e8f0;font-weight:600">${escHtml(h.usuario||'?')}</span></td>
                 <td style="${td}"><span style="background:${ts.bg};color:${ts.color};padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;white-space:nowrap">${ts.label}</span></td>
                 <td style="${td}"><span style="color:#64748b;font-family:monospace;font-size:9px">${escHtml(h.ip||'—')}</span></td>
                 <td style="${td}"><span style="color:#94a3b8;font-size:9px">${escHtml(ua)}</span></td>
+                <td style="${td}"><span style="color:#7dd3fc;font-size:9px">${escHtml(loc)}</span></td>
+                <td style="${td}"><span style="color:#64748b;font-size:9px;max-width:140px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(h.provedor||'')}">${prov}</span></td>
+                <td style="${td}"><span style="color:#a78bfa;font-size:9px">${dur}</span></td>
                 <td style="${td}"><span style="color:#64748b;font-size:9px">${dt}</span></td>
             </tr>`;
         }).join('');
-        el.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:620px">
+        el.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:820px">
             <thead><tr>
                 <th style="${th}">USUÁRIO</th>
                 <th style="${th}">EVENTO</th>
                 <th style="${th}">IP</th>
                 <th style="${th}">NAVEGADOR / SO</th>
+                <th style="${th}">LOCALIZAÇÃO</th>
+                <th style="${th}">PROVEDOR</th>
+                <th style="${th}">DURAÇÃO</th>
                 <th style="${th}">DATA/HORA (UTC)</th>
             </tr></thead>
             <tbody>${rows}</tbody>

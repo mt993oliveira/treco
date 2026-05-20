@@ -190,13 +190,18 @@ async function _geoLookup(ip) {
     }
 }
 
-async function _registrarAcesso(usuarioId, usuario, tipo, ip, userAgent) {
+async function _registrarAcesso(usuarioId, usuario, tipo, ip, userAgent, geo, duracao_seg) {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
+        const cidade   = geo?.city    ? String(geo.city).substring(0,100)    : null;
+        const pais     = geo?.country ? String(geo.country).substring(0,10)  : null;
+        const provedor = geo?.org     ? String(geo.org).substring(0,200)     : null;
+        const dur      = (duracao_seg != null && isFinite(duracao_seg)) ? Math.round(duracao_seg) : null;
         await sql.query`
-            INSERT INTO HistoricoAcessos (usuario_id, usuario, tipo, ip, user_agent, data_hora)
+            INSERT INTO HistoricoAcessos (usuario_id, usuario, tipo, ip, user_agent, data_hora, cidade, pais, provedor, duracao_seg)
             VALUES (${usuarioId ? Number(usuarioId) : null}, ${(usuario||'?').substring(0,100)},
-                    ${tipo}, ${(ip||'?').substring(0,60)}, ${(userAgent||'').substring(0,500)}, GETUTCDATE())
+                    ${tipo}, ${(ip||'?').substring(0,60)}, ${(userAgent||'').substring(0,500)}, GETUTCDATE(),
+                    ${cidade}, ${pais}, ${provedor}, ${dur})
         `;
     } catch(e) { /* fire-and-forget */ }
 }
@@ -355,20 +360,20 @@ app.post('/api/login', async (req, res) => {
                     userAgent: req.headers['user-agent'] || '',
                 });
                 _trackLoginSuccess(user.Id);
-                _registrarAcesso(user.Id, user.Usuario, 'login_ok', _loginIp, req.headers['user-agent']).catch(()=>{});
+                _geoLookup(_loginIp).then(geo => _registrarAcesso(user.Id, user.Usuario, 'login_ok', _loginIp, req.headers['user-agent'], geo, null)).catch(()=>{});
 
                 const { Senha, ...userWithoutPassword } = user;
                 res.json({ success: true, user: userWithoutPassword });
             } else {
                 const _failIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
                 _trackLoginFail(username, _failIp);
-                _registrarAcesso(null, username, 'login_fail', _failIp, req.headers['user-agent']).catch(()=>{});
+                _geoLookup(_failIp).then(geo => _registrarAcesso(null, username, 'login_fail', _failIp, req.headers['user-agent'], geo, null)).catch(()=>{});
                 res.json({ success: false, message: 'Credenciais inválidas' });
             }
         } else {
             const _failIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
             _trackLoginFail(username, _failIp);
-            _registrarAcesso(null, username, 'login_fail', _failIp, req.headers['user-agent']).catch(()=>{});
+            _geoLookup(_failIp).then(geo => _registrarAcesso(null, username, 'login_fail', _failIp, req.headers['user-agent'], geo, null)).catch(()=>{});
             res.json({ success: false, message: 'Credenciais inválidas' });
         }
 
@@ -1213,9 +1218,10 @@ app.post('/api/logout', async (req, res) => {
     const { usuarioId } = req.body;
     if (usuarioId) {
         const _lgtSess = activeSessions.get(String(usuarioId));
-        const _lgtIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
-        _registrarAcesso(usuarioId, _lgtSess?.usuario || '?', 'logout', _lgtIp, req.headers['user-agent']).catch(()=>{});
+        const _lgtIp   = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+        const _lgtDur  = _lgtSess?.loginTime ? Math.round((Date.now() - new Date(_lgtSess.loginTime).getTime()) / 1000) : null;
         activeSessions.delete(String(usuarioId));
+        _geoLookup(_lgtIp).then(geo => _registrarAcesso(usuarioId, _lgtSess?.usuario || '?', 'logout', _lgtIp, req.headers['user-agent'], geo, _lgtDur)).catch(()=>{});
     }
     res.json({ success: true });
 });
@@ -1230,9 +1236,10 @@ app.post('/api/usuarios/desconectar-todos', requireAuth, async (req, res) => {
         let removidos = 0;
         for (const [key, s] of activeSessions.entries()) {
             if (s.tipo !== 'master') {
-                _registrarAcesso(s.id, s.usuario, 'desconectado', s.ip, s.userAgent).catch(()=>{});
+                const _dur = s.loginTime ? Math.round((Date.now() - new Date(s.loginTime).getTime()) / 1000) : null;
                 activeSessions.delete(key);
                 removidos++;
+                _geoLookup(s.ip).then(geo => _registrarAcesso(s.id, s.usuario, 'desconectado', s.ip, s.userAgent, geo, _dur)).catch(()=>{});
             }
         }
         res.json({ success: true, removidos });
@@ -1257,8 +1264,13 @@ app.post('/api/usuarios/desconectar/:id', requireAuth, async (req, res) => {
         if (target && target.tipo === 'master') {
             return res.json({ success: false, message: 'Não é possível desconectar um Master' });
         }
-        if (target) _registrarAcesso(target.id, target.usuario, 'desconectado', target.ip, target.userAgent).catch(()=>{});
-        activeSessions.delete(targetId);
+        if (target) {
+            const _dur = target.loginTime ? Math.round((Date.now() - new Date(target.loginTime).getTime()) / 1000) : null;
+            activeSessions.delete(targetId);
+            _geoLookup(target.ip).then(geo => _registrarAcesso(target.id, target.usuario, 'desconectado', target.ip, target.userAgent, geo, _dur)).catch(()=>{});
+        } else {
+            activeSessions.delete(targetId);
+        }
         res.json({ success: true });
     } catch(e) {
         res.json({ success: false, message: e.message });
@@ -1359,7 +1371,7 @@ app.post('/api/usuarios/historico-acessos', requireAuth, async (req, res) => {
         mainReq.input('off', sql.Int, off);
         mainReq.input('pp',  sql.Int, pp);
         const rows = await mainReq.query(`
-            SELECT id, usuario_id, usuario, tipo, ip, user_agent, data_hora
+            SELECT id, usuario_id, usuario, tipo, ip, user_agent, data_hora, cidade, pais, provedor, duracao_seg
             FROM HistoricoAcessos ${w}
             ORDER BY data_hora DESC
             OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
@@ -1624,15 +1636,28 @@ server.listen(PORT, () => {
             await sql.query`
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='HistoricoAcessos' AND xtype='U')
                 CREATE TABLE HistoricoAcessos (
-                    id          INT IDENTITY(1,1) PRIMARY KEY,
-                    usuario_id  INT NULL,
-                    usuario     NVARCHAR(100) NOT NULL,
-                    tipo        NVARCHAR(30)  NOT NULL,
-                    ip          NVARCHAR(60),
-                    user_agent  NVARCHAR(500),
-                    data_hora   DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+                    id           INT IDENTITY(1,1) PRIMARY KEY,
+                    usuario_id   INT NULL,
+                    usuario      NVARCHAR(100) NOT NULL,
+                    tipo         NVARCHAR(30)  NOT NULL,
+                    ip           NVARCHAR(60),
+                    user_agent   NVARCHAR(500),
+                    data_hora    DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    cidade       NVARCHAR(100),
+                    pais         NVARCHAR(10),
+                    provedor     NVARCHAR(200),
+                    duracao_seg  INT
                 )
             `;
+            // Adiciona colunas geo/duracao se a tabela já existia sem elas
+            for (const [col, def] of [
+                ['cidade',      'NVARCHAR(100)'],
+                ['pais',        'NVARCHAR(10)'],
+                ['provedor',    'NVARCHAR(200)'],
+                ['duracao_seg', 'INT'],
+            ]) {
+                await sql.query(`IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('HistoricoAcessos') AND name='${col}') ALTER TABLE HistoricoAcessos ADD ${col} ${def}`);
+            }
             await sql.query`
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('HistoricoAcessos') AND name='IX_HA_data_hora')
                     CREATE INDEX IX_HA_data_hora ON HistoricoAcessos (data_hora DESC)
