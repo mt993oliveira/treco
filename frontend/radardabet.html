@@ -1439,6 +1439,9 @@
             <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;localStorage.setItem('rdbt_showHT',S.showHT);document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
             <button class="acao-btn" id="btn-mosaico-pct" onclick="S._mosaicoShowPct=!S._mosaicoShowPct;localStorage.setItem('rdbt_showPct',S._mosaicoShowPct);document.getElementById('btn-mosaico-pct').classList.toggle('ativo',S._mosaicoShowPct);renderTabela()" title="Mostrar/ocultar coluna % de acerto por linha">% Linha</button>
             <button class="acao-btn" id="btn-mosaico-gols" onclick="S._mosaicoShowGols=!S._mosaicoShowGols;localStorage.setItem('rdbt_showGols',S._mosaicoShowGols);document.getElementById('btn-mosaico-gols').classList.toggle('ativo',S._mosaicoShowGols);renderTabela()" title="Mostrar/ocultar coluna ⚽ gols por linha">⚽ Linha</button>
+            <select id="select-filtro-mosaico" onchange="_setFiltroMosaico(this.value)"
+                title="Mercado exibido no mosaico (cor das células + % Linha)"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:110px"></select>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
             <span id="periodo-badge-mosaico" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
@@ -2512,6 +2515,7 @@ const S = {
 // Por padrão todos desligados — usuário seleciona em Mercados ou aplica um Padrão
 TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
 S.filtro = 'over1.5';
+S.filtroMosaico = localStorage.getItem('rdbt_filtroMosaico') || 'over1.5';
 
 // Estado independente do Gráfico de Mercados (não compartilha com Gráfico de Linha)
 S.linhasMercados = {};
@@ -3477,6 +3481,32 @@ const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
 // Mapa id → nome do grupo (para tooltips das pills)
 const _GRUPO_POR_ID = {};
 GRUPOS_LEGENDA.forEach(g => g.ids.forEach(id => { _GRUPO_POR_ID[id] = g.label; }));
+
+// Popula seletor de mercado independente do Mosaico
+(function() {
+    const sel = document.getElementById('select-filtro-mosaico');
+    if (!sel) return;
+    GRUPOS_LEGENDA.forEach(grupo => {
+        const og = document.createElement('optgroup');
+        og.label = grupo.label;
+        grupo.ids.filter(id => id !== 'equilibrio').forEach(id => {
+            const fi2 = _filtroById(id);
+            if (!fi2) return;
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = fi2.label;
+            if (id === S.filtroMosaico) opt.selected = true;
+            og.appendChild(opt);
+        });
+        if (og.children.length) sel.appendChild(og);
+    });
+})();
+
+function _setFiltroMosaico(id) {
+    S.filtroMosaico = id;
+    localStorage.setItem('rdbt_filtroMosaico', id);
+    renderTabela();
+}
 
 function renderFiltros() {
     // Sincroniza estado ativo dos botões do header
@@ -5322,7 +5352,7 @@ function _renderAllCharts() {
 function renderTabela() {
     if (S.view === 'historico' && !S.showMosaico) return;
     const gs = grupos(S.horasMosaico, S.jogosMosaico);
-    const fi = TODOS_FILTROS.find(f => f.id === S.filtro) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
+    const fi = TODOS_FILTROS.find(f => f.id === S.filtroMosaico) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
     const gridCores = carregarCoresGrid();
     const corOdd = v => v <= 0 ? '#64748b' : v < 2.0 ? gridCores.oddFav : v < 3.0 ? gridCores.oddMed : gridCores.oddAzarao;
 
@@ -6735,7 +6765,7 @@ function handleGridClick(e) {
 function abrirModalSlot(min) {
     const minStr = pad2(min);
     document.getElementById('modal-slot-titulo').textContent = `Jogos no slot :${minStr}`;
-    const fi = TODOS_FILTROS.find(f => f.id === S.filtro);
+    const fi = TODOS_FILTROS.find(f => f.id === S.filtroMosaico);
     const jogos = S.partidas
         .filter(p => p.data_partida && new Date(p.data_partida).getUTCMinutes() === min)
         .sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida));
@@ -6780,7 +6810,7 @@ function abrirModalSlot(min) {
 function abrirModalLigaResultados() {
     const ligaLabel = S.ligaAtiva || 'Todas as ligas';
     document.getElementById('modal-liga-res-titulo').textContent = `Resultados — ${ligaLabel}`;
-    const fi = TODOS_FILTROS.find(f => f.id === S.filtro);
+    const fi = TODOS_FILTROS.find(f => f.id === S.filtroMosaico);
     const jogos = [...S.partidas].sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida));
 
     const body = document.getElementById('modal-liga-res-body');
