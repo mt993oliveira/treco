@@ -10693,7 +10693,7 @@ function limparDesenho() {
 let _kirvPagAss = 1, _kirvPagWh = 1;
 
 function abrirKirvano() {
-    fecharDropdown();
+    document.getElementById('user-dropdown').style.display = 'none';
     document.getElementById('modal-kirvano').classList.add('aberto');
     _kirvTab('ass');
 }
