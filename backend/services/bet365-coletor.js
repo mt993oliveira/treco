@@ -1050,17 +1050,20 @@ class Bet365Coletor {
 
             // Ctrl+F5 (hard refresh) após cada liga — força buscar do servidor, sem cache
             console.log(`   🔄 [${liga.nome}] Ctrl+F5 — recarregando sem cache...`);
-            for (let r = 1; r <= 3; r++) {
+            let recarregouOk = false;
+            for (let r = 1; r <= 2; r++) {
                 try {
                     await this._hardRefresh(pg, this._cfgNum('timeout_navegacao_ms', 30000));
-                    await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
+                    await this._delay(this._cfgNum('delay_pos_reload_ms', 8000));
                     await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                    recarregouOk = true;
                     break; // ligas apareceram, continua para próxima liga
                 } catch(e) {
-                    console.log(`   ⚠️  Ligas não apareceram após Ctrl+F5 (${r}/3), tentando novamente...`);
-                    if (r === 3) console.log('   ❌ Não foi possível recarregar. Próxima liga pode falhar.');
+                    console.log(`   ⚠️  Ligas não apareceram após Ctrl+F5 (${r}/2), verificando sessão...`);
+                    await this._verificarSessao(pg);
                 }
             }
+            if (!recarregouOk) console.log('   ❌ Não foi possível recarregar. Próxima liga pode falhar.');
         }
 
         console.log(`\n   ✅ Total: ${todosEventos.length} evento(s), ${todosResultados.length} resultado(s)`);
@@ -1690,40 +1693,43 @@ class Bet365Coletor {
                 this.page = page;
             }
 
-            // Aguarda ligas — com até 3 tentativas de reload automático
+            // ── PASSO 1: Verifica sessão ANTES de qualquer Ctrl+F5 ──────────────────
+            // Se o Login já está aparecendo, não adianta recarregar — vai direto ao login.
             console.log('   ⏳ Aguardando ligas...');
+            await this._verificarSessao(this.page);
+
+            // ── PASSO 2: Aguarda ligas — com até 2 Ctrl+F5 e espera generosa ───────
             let ligasOk = false;
-            for (let tentativa = 1; tentativa <= 3; tentativa++) {
-                try {
-                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
-                    ligasOk = true;
-                    break;
-                } catch(e) {
-                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/3) — Ctrl+F5...`);
+            try {
+                await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                ligasOk = true;
+            } catch(_) {}
+
+            if (!ligasOk) {
+                for (let tentativa = 1; tentativa <= 2; tentativa++) {
+                    console.log(`   ⚠️  Ligas não apareceram (tentativa ${tentativa}/2) — Ctrl+F5...`);
                     try {
                         await this._hardRefresh(this.page, this._cfgNum('timeout_navegacao_ms', 30000));
-                        await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
+                        // Aguarda a página estabilizar antes de verificar — mais tempo do que antes
+                        await this._delay(this._cfgNum('delay_pos_reload_ms', 8000));
                     } catch(reloadErr) {
                         console.log(`   ⚠️  Hard refresh falhou: ${reloadErr.message}`);
                     }
-                }
-            }
-            if (!ligasOk) {
-                // Ligas não apareceram — pode ser sessão expirada; tenta relogar antes de desistir
-                console.log('   🔐 Ligas ausentes após 3 tentativas — verificando sessão...');
-                await this._verificarSessao(this.page);
-                // Após relogin, aguarda ligas mais uma vez
-                try {
-                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
-                    ligasOk = true;
-                    console.log('   ✅ Ligas apareceram após relogin');
-                } catch(_) {}
-                if (!ligasOk) {
-                    throw new Error('Ligas não apareceram mesmo após tentativa de relogin — intervenção manual necessária');
+                    // Verifica sessão APÓS cada reload — pode ter expirado durante a navegação
+                    await this._verificarSessao(this.page);
+                    try {
+                        await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                        ligasOk = true;
+                        break;
+                    } catch(_) {}
                 }
             }
 
-            // Verifica sessão — se "Faça Login para Assistir" aparecer, reconecta automaticamente
+            if (!ligasOk) {
+                throw new Error('Ligas não apareceram após login + 2 recarregamentos — intervenção manual necessária');
+            }
+
+            // ── PASSO 3: Verificação final de sessão após ligas carregarem ─────────
             await this._verificarSessao(this.page);
 
             const { eventos: evBrutos, resultados: resBrutos, contadores } = await this._extrairDados(this.page);
