@@ -10716,7 +10716,7 @@ async function _kirvCarregarAss(pagina) {
     _kirvPagAss = pagina || 1;
     const el  = document.getElementById('kirv-ass-content');
     const pg  = document.getElementById('kirv-ass-pag');
-    const uid = S.usuario?.Id || S.usuario?.id;
+    const uid = _getUser()?.Id;
     el.innerHTML = '<p style="color:#475569;font-size:11px;text-align:center;padding:20px">Carregando...</p>';
     try {
         const r = await fetch('/api/kirvano/admin/assinaturas', {
@@ -10780,7 +10780,7 @@ async function _kirvCarregarWh(pagina) {
     _kirvPagWh = pagina || 1;
     const el  = document.getElementById('kirv-wh-content');
     const pg  = document.getElementById('kirv-wh-pag');
-    const uid = S.usuario?.Id || S.usuario?.id;
+    const uid = _getUser()?.Id;
     el.innerHTML = '<p style="color:#475569;font-size:11px;text-align:center;padding:20px">Carregando...</p>';
     try {
         const r = await fetch('/api/kirvano/admin/webhooks', {
