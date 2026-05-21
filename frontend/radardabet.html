@@ -315,6 +315,12 @@
                     onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
                     🔧 Diagnóstico
                 </button>
+                <button id="dd-btn-kirvano" onclick="abrirKirvano()"
+                    style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    💳 Kirvano
+                </button>
                 <button id="dd-btn-online" onclick="abrirOnlineAgora()"
                     style="width:100%;background:none;border:none;color:#4ade80;font-size:12px;
                            padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
@@ -596,6 +602,73 @@
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;border-top:1px solid #1e293b;padding-top:14px">
             <button onclick="abrirDiagnostico()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 14px;font-size:12px;cursor:pointer">↺ Atualizar</button>
             <button onclick="fecharModal('modal-diagnostico')" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 16px;font-size:12px;cursor:pointer">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL: KIRVANO ========== -->
+<div class="modal-overlay" id="modal-kirvano">
+    <div class="modal-box" style="max-width:1100px;width:98%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="font-size:14px;font-weight:700">💳 Kirvano</h2>
+            <button onclick="fecharModal('modal-kirvano')"
+                style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <!-- Tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #1e293b;padding-bottom:12px">
+            <button id="kirv-tab-btn-ass" onclick="_kirvTab('ass')"
+                style="background:#1fcc59;border:none;color:#000;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">
+                📋 Assinaturas
+            </button>
+            <button id="kirv-tab-btn-wh" onclick="_kirvTab('wh')"
+                style="background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">
+                🔔 Webhooks
+            </button>
+        </div>
+
+        <!-- PAINEL: ASSINATURAS -->
+        <div id="kirv-panel-ass">
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+                <input id="kirv-ass-email" type="text" placeholder="Buscar email / login / nome..."
+                    style="flex:1;min-width:180px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:5px 8px;font-size:10px" />
+                <select id="kirv-ass-status"
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:5px 8px;font-size:10px">
+                    <option value="">Todos os status</option>
+                    <option value="ativo">ativo</option>
+                    <option value="cancelado">cancelado</option>
+                    <option value="expirado">expirado</option>
+                </select>
+                <button onclick="_kirvCarregarAss(1)"
+                    style="background:#1fcc59;border:none;color:#000;border-radius:4px;padding:5px 14px;font-size:10px;font-weight:700;cursor:pointer">
+                    Filtrar
+                </button>
+                <button onclick="document.getElementById('kirv-ass-email').value='';document.getElementById('kirv-ass-status').value='';_kirvCarregarAss(1)"
+                    style="background:#0f172a;border:1px solid #334155;color:#64748b;border-radius:4px;padding:5px 10px;font-size:10px;cursor:pointer">
+                    Limpar
+                </button>
+            </div>
+            <div id="kirv-ass-content" style="overflow-x:auto"><p style="color:#475569;font-size:11px;text-align:center;padding:20px">Carregando...</p></div>
+            <div id="kirv-ass-pag" style="margin-top:8px"></div>
+        </div>
+
+        <!-- PAINEL: WEBHOOKS -->
+        <div id="kirv-panel-wh" style="display:none">
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+                <input id="kirv-wh-email" type="text" placeholder="Buscar email..."
+                    style="flex:1;min-width:180px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:5px 8px;font-size:10px" />
+                <input id="kirv-wh-evento" type="text" placeholder="Evento (ex: purchase.approved)..."
+                    style="flex:1;min-width:180px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:5px 8px;font-size:10px" />
+                <button onclick="_kirvCarregarWh(1)"
+                    style="background:#1fcc59;border:none;color:#000;border-radius:4px;padding:5px 14px;font-size:10px;font-weight:700;cursor:pointer">
+                    Filtrar
+                </button>
+                <button onclick="document.getElementById('kirv-wh-email').value='';document.getElementById('kirv-wh-evento').value='';_kirvCarregarWh(1)"
+                    style="background:#0f172a;border:1px solid #334155;color:#64748b;border-radius:4px;padding:5px 10px;font-size:10px;cursor:pointer">
+                    Limpar
+                </button>
+            </div>
+            <div id="kirv-wh-content" style="overflow-x:auto"><p style="color:#475569;font-size:11px;text-align:center;padding:20px">Carregando...</p></div>
+            <div id="kirv-wh-pag" style="margin-top:8px"></div>
         </div>
     </div>
 </div>
@@ -8099,6 +8172,8 @@ function _initUserMenu() {
         if (btnHistUsr) btnHistUsr.style.display = 'flex';
         const btnDiag = document.getElementById('dd-btn-diagnostico');
         if (btnDiag) btnDiag.style.display = 'flex';
+        const btnKirv = document.getElementById('dd-btn-kirvano');
+        if (btnKirv) btnKirv.style.display = 'flex';
     }
 }
 
@@ -10613,6 +10688,188 @@ function limparDesenho() {
     // Primeira coleta após 2 minutos do carregamento, depois a cada 1 hora
     setTimeout(() => { coletar(); setInterval(coletar, 60 * 60 * 1000); }, 2 * 60 * 1000);
 })();
+
+// ─── KIRVANO ─────────────────────────────────────────────────────
+let _kirvPagAss = 1, _kirvPagWh = 1;
+
+function abrirKirvano() {
+    fecharDropdown();
+    document.getElementById('modal-kirvano').classList.add('aberto');
+    _kirvTab('ass');
+}
+
+function _kirvTab(aba) {
+    ['ass','wh'].forEach(t => {
+        document.getElementById(`kirv-panel-${t}`).style.display = t === aba ? '' : 'none';
+        const btn = document.getElementById(`kirv-tab-btn-${t}`);
+        if (btn) {
+            btn.style.background = t === aba ? '#1fcc59' : '#0f172a';
+            btn.style.color      = t === aba ? '#000'    : '#94a3b8';
+            btn.style.border     = t === aba ? 'none'    : '1px solid #334155';
+        }
+    });
+    if (aba === 'ass') _kirvCarregarAss(1);
+    else               _kirvCarregarWh(1);
+}
+
+async function _kirvCarregarAss(pagina) {
+    _kirvPagAss = pagina || 1;
+    const el  = document.getElementById('kirv-ass-content');
+    const pg  = document.getElementById('kirv-ass-pag');
+    const uid = S.usuario?.Id || S.usuario?.id;
+    el.innerHTML = '<p style="color:#475569;font-size:11px;text-align:center;padding:20px">Carregando...</p>';
+    try {
+        const r = await fetch('/api/kirvano/admin/assinaturas', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                usuarioId: uid,
+                email:     document.getElementById('kirv-ass-email')?.value || '',
+                status:    document.getElementById('kirv-ass-status')?.value || '',
+                pagina:    _kirvPagAss, porPagina: 50
+            })
+        });
+        const d = await r.json();
+        if (!d.success) { el.innerHTML = `<p style="color:#f87171;font-size:11px;text-align:center;padding:20px">${escHtml(d.message||'Erro')}</p>`; return; }
+        if (!d.data?.length) { el.innerHTML = '<p style="color:#475569;font-size:11px;text-align:center;padding:20px">Nenhum registro encontrado.</p>'; pg.innerHTML=''; return; }
+
+        const STATUS_STYLE = {
+            ativo:     { bg:'#0f2c1a', color:'#4ade80' },
+            cancelado: { bg:'#2c0f0f', color:'#f87171' },
+            expirado:  { bg:'#1c1a0a', color:'#fbbf24' },
+        };
+        const th = 'padding:6px 8px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b;white-space:nowrap;background:#0c1220';
+        const td = 'padding:5px 8px;border-bottom:1px solid #0d1421;vertical-align:middle;font-size:10px';
+        const rows = d.data.map(a => {
+            const ss = STATUS_STYLE[a.status] || { bg:'#0f172a', color:'#94a3b8' };
+            const criado = a.data_criacao ? new Date(a.data_criacao).toLocaleString('pt-BR') : '—';
+            const expira = a.data_expiracao ? new Date(a.data_expiracao).toLocaleString('pt-BR') : '—';
+            const expirou = a.data_expiracao && new Date(a.data_expiracao) < new Date();
+            return `<tr onmouseover="this.style.background='#0a1020'" onmouseout="this.style.background=''">
+                <td style="${td}"><span style="color:#475569;font-size:9px">#${a.id}</span></td>
+                <td style="${td}"><span style="color:#e2e8f0;font-weight:600">${escHtml(a.email_cliente||'—')}</span><br><span style="color:#64748b;font-size:9px">${escHtml(a.nome_cliente||'')}</span></td>
+                <td style="${td}"><span style="color:#7dd3fc;font-size:9px">${escHtml(a.usuario_login||'—')}</span></td>
+                <td style="${td}"><span style="color:#94a3b8;font-size:9px">${escHtml(a.plano||'—')}</span></td>
+                <td style="${td}"><span style="color:#4ade80;font-size:9px">R$ ${Number(a.valor||0).toFixed(2)}</span></td>
+                <td style="${td}"><span style="background:${ss.bg};color:${ss.color};padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">${escHtml(a.status||'—')}</span></td>
+                <td style="${td}"><span style="color:#64748b;font-size:9px">${criado}</span></td>
+                <td style="${td}"><span style="color:${expirou?'#f87171':'#94a3b8'};font-size:9px">${expira}</span></td>
+                <td style="${td}"><span style="color:#475569;font-family:monospace;font-size:8px" title="${escHtml(a.kirvano_purchase_id||'')}">${escHtml((a.kirvano_purchase_id||'—').substring(0,16))}...</span></td>
+            </tr>`;
+        }).join('');
+        el.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:820px">
+            <thead><tr>
+                <th style="${th}">#</th>
+                <th style="${th}">EMAIL / NOME</th>
+                <th style="${th}">USUÁRIO</th>
+                <th style="${th}">PLANO</th>
+                <th style="${th}">VALOR</th>
+                <th style="${th}">STATUS</th>
+                <th style="${th}">COMPRA</th>
+                <th style="${th}">EXPIRA</th>
+                <th style="${th}">PURCHASE ID</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+        _kirvPaginacao(pg, d.total, d.porPagina, _kirvPagAss, _kirvCarregarAss);
+    } catch(e) {
+        el.innerHTML = `<p style="color:#f87171;font-size:11px;text-align:center;padding:20px">Erro: ${escHtml(e.message)}</p>`;
+    }
+}
+
+async function _kirvCarregarWh(pagina) {
+    _kirvPagWh = pagina || 1;
+    const el  = document.getElementById('kirv-wh-content');
+    const pg  = document.getElementById('kirv-wh-pag');
+    const uid = S.usuario?.Id || S.usuario?.id;
+    el.innerHTML = '<p style="color:#475569;font-size:11px;text-align:center;padding:20px">Carregando...</p>';
+    try {
+        const r = await fetch('/api/kirvano/admin/webhooks', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                usuarioId: uid,
+                email:  document.getElementById('kirv-wh-email')?.value || '',
+                evento: document.getElementById('kirv-wh-evento')?.value || '',
+                pagina: _kirvPagWh, porPagina: 50
+            })
+        });
+        const d = await r.json();
+        if (!d.success) { el.innerHTML = `<p style="color:#f87171;font-size:11px;text-align:center;padding:20px">${escHtml(d.message||'Erro')}</p>`; return; }
+        if (!d.data?.length) { el.innerHTML = '<p style="color:#475569;font-size:11px;text-align:center;padding:20px">Nenhum registro encontrado.</p>'; pg.innerHTML=''; return; }
+
+        const ACTION_STYLE = {
+            criado:    { bg:'#0f2c1a', color:'#4ade80' },
+            renovado:  { bg:'#0f1f3d', color:'#60a5fa' },
+            ignored:   { bg:'#1e293b', color:'#64748b' },
+            erro:      { bg:'#2c0f0f', color:'#f87171' },
+            duplicate: { bg:'#1c1a0a', color:'#fbbf24' },
+        };
+        const th = 'padding:6px 8px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b;white-space:nowrap;background:#0c1220';
+        const td = 'padding:5px 8px;border-bottom:1px solid #0d1421;vertical-align:middle;font-size:10px';
+        const rows = d.data.map(w => {
+            const as = ACTION_STYLE[w.action] || { bg:'#0f172a', color:'#94a3b8' };
+            const dt = w.recebido_em ? new Date(w.recebido_em).toLocaleString('pt-BR') : '—';
+            const payloadId = `kirv-payload-${w.id}`;
+            let payloadFormatado = '';
+            try { payloadFormatado = JSON.stringify(JSON.parse(w.payload_raw), null, 2); }
+            catch { payloadFormatado = w.payload_raw || ''; }
+            return `<tr onmouseover="this.style.background='#0a1020'" onmouseout="this.style.background=''">
+                <td style="${td}"><span style="color:#475569;font-size:9px">#${w.id}</span></td>
+                <td style="${td}"><span style="color:#64748b;font-size:9px">${dt}</span></td>
+                <td style="${td}"><span style="color:#a78bfa;font-size:9px;word-break:break-all">${escHtml(w.evento||'—')}</span></td>
+                <td style="${td}"><span style="color:#e2e8f0;font-size:9px">${escHtml(w.email||'—')}</span></td>
+                <td style="${td}"><span style="background:${as.bg};color:${as.color};padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">${escHtml(w.action||'—')}</span></td>
+                <td style="${td}"><button onclick="_kirvTogglePayload('${payloadId}')" style="background:#1e293b;border:none;color:#94a3b8;border-radius:4px;padding:3px 8px;font-size:9px;cursor:pointer">▶ ver</button></td>
+            </tr>
+            <tr id="${payloadId}" style="display:none">
+                <td colspan="6" style="padding:0 8px 8px 8px;background:#080e1a">
+                    <pre style="margin:0;padding:10px;background:#0d1421;border-radius:6px;font-size:9px;color:#94a3b8;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto">${escHtml(payloadFormatado)}</pre>
+                </td>
+            </tr>`;
+        }).join('');
+        el.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:700px">
+            <thead><tr>
+                <th style="${th}">#</th>
+                <th style="${th}">DATA/HORA</th>
+                <th style="${th}">EVENTO</th>
+                <th style="${th}">EMAIL</th>
+                <th style="${th}">AÇÃO</th>
+                <th style="${th}">PAYLOAD</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+        _kirvPaginacao(pg, d.total, d.porPagina, _kirvPagWh, _kirvCarregarWh);
+    } catch(e) {
+        el.innerHTML = `<p style="color:#f87171;font-size:11px;text-align:center;padding:20px">Erro: ${escHtml(e.message)}</p>`;
+    }
+}
+
+function _kirvTogglePayload(id) {
+    const row = document.getElementById(id);
+    if (!row) return;
+    const visible = row.style.display !== 'none';
+    row.style.display = visible ? 'none' : '';
+    const btn = row.previousElementSibling?.querySelector('button');
+    if (btn) btn.textContent = visible ? '▶ ver' : '▼ fechar';
+}
+
+function _kirvPaginacao(el, total, pp, paginaAtual, fn) {
+    if (!el) return;
+    const totalPages = Math.ceil(total / pp);
+    if (totalPages <= 1) { el.innerHTML = `<div style="color:#475569;font-size:10px;text-align:center;padding:6px">${total} registro(s)</div>`; return; }
+    const btnStyle = (ativo) =>
+        `background:${ativo?'#1fcc59':'#0f172a'};border:1px solid ${ativo?'#1fcc59':'#334155'};` +
+        `color:${ativo?'#000':'#94a3b8'};border-radius:4px;padding:3px 9px;font-size:10px;cursor:pointer`;
+    const pages = [];
+    for (let i = Math.max(1, paginaAtual-2); i <= Math.min(totalPages, paginaAtual+2); i++) {
+        pages.push(`<button onclick="(${fn.name})(${i})" style="${btnStyle(i===paginaAtual)}">${i}</button>`);
+    }
+    el.innerHTML = `<div style="display:flex;gap:6px;align-items:center;justify-content:center;padding:8px 0;flex-wrap:wrap">
+        <span style="color:#475569;font-size:10px">${total} registro(s)</span>
+        ${paginaAtual > 1 ? `<button onclick="(${fn.name})(${paginaAtual-1})" style="${btnStyle(false)}">‹</button>` : ''}
+        ${pages.join('')}
+        ${paginaAtual < totalPages ? `<button onclick="(${fn.name})(${paginaAtual+1})" style="${btnStyle(false)}">›</button>` : ''}
+    </div>`;
+}
 </script>
 
 </div><!-- /#main-wrap -->

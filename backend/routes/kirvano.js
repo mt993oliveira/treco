@@ -284,4 +284,91 @@ router.get('/webhook-log', async (req, res) => {
     }
 });
 
+// POST /api/kirvano/admin/assinaturas
+router.post('/admin/assinaturas', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const { usuarioId, email = '', status = '', pagina = 1, porPagina = 50 } = req.body;
+        if (!usuarioId) return res.json({ success: false, message: 'Não autenticado' });
+        const auth = await pool.request().input('id', sql.Int, Number(usuarioId))
+            .query(`SELECT TipoUsuario FROM Usuarios WHERE Id = @id`);
+        if (!auth.recordset.length || auth.recordset[0].TipoUsuario !== 'master')
+            return res.json({ success: false, message: 'Acesso negado' });
+        await _ensureTable(pool);
+        const pp  = Math.min(200, Math.max(1, Number(porPagina)));
+        const off = (Math.max(1, Number(pagina)) - 1) * pp;
+        const wheres = [];
+        const cntReq  = pool.request();
+        const mainReq = pool.request();
+        if (email) {
+            wheres.push('(email_cliente LIKE @email OR usuario_login LIKE @email OR nome_cliente LIKE @email)');
+            cntReq.input('email',  sql.NVarChar, `%${email}%`);
+            mainReq.input('email', sql.NVarChar, `%${email}%`);
+        }
+        if (status) {
+            wheres.push('status = @status');
+            cntReq.input('status',  sql.NVarChar, status);
+            mainReq.input('status', sql.NVarChar, status);
+        }
+        const w = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
+        const cntResult = await cntReq.query(`SELECT COUNT(*) AS total FROM kirvano_assinaturas ${w}`);
+        const total = cntResult.recordset[0].total;
+        mainReq.input('off', sql.Int, off);
+        mainReq.input('pp',  sql.Int, pp);
+        const rows = await mainReq.query(`
+            SELECT id, kirvano_purchase_id, kirvano_subscription_id, email_cliente, nome_cliente,
+                   usuario_id, usuario_login, plano, valor, evento, status, data_criacao, data_expiracao
+            FROM kirvano_assinaturas ${w}
+            ORDER BY data_criacao DESC
+            OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
+        `);
+        res.json({ success: true, total, pagina: Number(pagina), porPagina: pp, data: rows.recordset });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/kirvano/admin/webhooks
+router.post('/admin/webhooks', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const { usuarioId, email = '', evento = '', pagina = 1, porPagina = 50 } = req.body;
+        if (!usuarioId) return res.json({ success: false, message: 'Não autenticado' });
+        const auth = await pool.request().input('id', sql.Int, Number(usuarioId))
+            .query(`SELECT TipoUsuario FROM Usuarios WHERE Id = @id`);
+        if (!auth.recordset.length || auth.recordset[0].TipoUsuario !== 'master')
+            return res.json({ success: false, message: 'Acesso negado' });
+        await _ensureTable(pool);
+        const pp  = Math.min(200, Math.max(1, Number(porPagina)));
+        const off = (Math.max(1, Number(pagina)) - 1) * pp;
+        const wheres = [];
+        const cntReq  = pool.request();
+        const mainReq = pool.request();
+        if (email) {
+            wheres.push('email LIKE @email');
+            cntReq.input('email',  sql.NVarChar, `%${email}%`);
+            mainReq.input('email', sql.NVarChar, `%${email}%`);
+        }
+        if (evento) {
+            wheres.push('evento LIKE @evento');
+            cntReq.input('evento',  sql.NVarChar, `%${evento}%`);
+            mainReq.input('evento', sql.NVarChar, `%${evento}%`);
+        }
+        const w = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
+        const cntResult = await cntReq.query(`SELECT COUNT(*) AS total FROM kirvano_webhook_log ${w}`);
+        const total = cntResult.recordset[0].total;
+        mainReq.input('off', sql.Int, off);
+        mainReq.input('pp',  sql.Int, pp);
+        const rows = await mainReq.query(`
+            SELECT id, recebido_em, evento, email, action, payload_raw
+            FROM kirvano_webhook_log ${w}
+            ORDER BY recebido_em DESC
+            OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
+        `);
+        res.json({ success: true, total, pagina: Number(pagina), porPagina: pp, data: rows.recordset });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
 module.exports = router;
