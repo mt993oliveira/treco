@@ -2199,6 +2199,7 @@ async function carregarConfigLigas() {
         if (cfg.grafico_ponto_sobe_cor)  S.grafPontoCorSobe  = cfg.grafico_ponto_sobe_cor;
         if (cfg.grafico_ponto_desce_cor) S.grafPontoCorDesce = cfg.grafico_ponto_desce_cor;
         if (cfg.grafico_ponto_flat !== undefined) S.grafPontoFlat = cfg.grafico_ponto_flat !== 'false';
+        if (cfg.grafico_pct_cor) S._grafPctCor = cfg.grafico_pct_cor;
         // Sincroniza classes dos botões com o estado carregado
         [['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
          ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med'],
@@ -4510,7 +4511,7 @@ const mktLabelPlugin = {
             const step  = total > 60 ? 3 : total > 30 ? 2 : 1;
             ctx.save();
             ctx.font        = 'bold 8px sans-serif';
-            ctx.fillStyle   = ds.borderColor;
+            ctx.fillStyle   = S._grafPctCor || ds.borderColor;
             ctx.textAlign   = 'center';
             ctx.shadowColor = '#000';
             ctx.shadowBlur  = 2;
@@ -4718,7 +4719,7 @@ const linhaLabelPlugin = {
             const step = total > 60 ? 5 : total > 30 ? 3 : 1;
             ctx.save();
             ctx.font = 'bold 9px sans-serif';
-            ctx.fillStyle = ds.borderColor;
+            ctx.fillStyle = S._grafPctCor || ds.borderColor;
             ctx.textAlign = 'center';
             ctx.shadowColor = '#000';
             ctx.shadowBlur = 2;
@@ -8403,6 +8404,7 @@ const _CFG_LABELS = {
     grafico_gols_altura: '📐 Altura do painel do gráfico de gols (px)',
     grafico_linha_altura:'📐 Altura do painel do gráfico de linha (px)',
     grafico_pct:         '% Exibir valor % no final das linhas',
+    grafico_pct_cor:     '% Cor do texto de porcentagem nas linhas',
     grafico_topo_fundo:  '⛰ Marcar topo/fundo de cada linha',
     grafico_tf_topo_cor: '⛰ T/F — cor do ponto Topo (máximo)',
     grafico_tf_fundo_cor:'⛰ T/F — cor do ponto Fundo (mínimo)',
