@@ -1442,21 +1442,36 @@ class Bet365Coletor {
                 } catch(e) {
                     console.warn(`   ⚠️  Falha ao navegar de volta: ${e.message}`);
                 }
+                // Re-verifica sessão após navegar — pode já estar logado na página virtual
+                const reTemAviso = await pg.evaluate(() =>
+                    [...document.querySelectorAll('button')].some(b => (b.textContent||'').trim().includes('Faça Login para Assistir'))
+                ).catch(() => false);
+                const reTemLogin = !reTemAviso && await pg.evaluate(() =>
+                    [...document.querySelectorAll('button, a, [role="button"]')].some(el => {
+                        const t = (el.textContent||el.innerText||'').trim();
+                        return t === 'Login' || t === 'Log In';
+                    })
+                ).catch(() => false);
+                if (!reTemAviso && !reTemLogin) {
+                    console.log('   ✅ Sessão ativa após retorno à página virtual');
+                    return;
+                }
             }
 
             // Aguarda página estabilizar antes de interagir (evita "Execution context was destroyed")
             await this._delay(2500);
 
             // ── ETAPA 1: abre o modal de login ────────────────────────────────────
-            // Clica no botão que abre o formulário:
-            //   "Faça Login para Assistir" → abre modal de login na página virtual
-            //   "Login" / "Log In" (cabeçalho) → abre modal de login na página principal
+            // Usa _clicarBotaoPorTexto (somente <button>) para evitar clicar em <a href>
+            // que causaria navegação ao invés de abrir o modal.
             let step1Ok = false;
             if (temAvisoVirtual) {
                 step1Ok = await this._clicarBotaoPorTexto(pg, 'Faça Login para Assistir', false);
             } else {
-                // Tenta 'Login' primeiro, depois 'Log In' — a Bet365 usa ambas as grafias
-                step1Ok = await this._clicarElementoPorTexto(pg, 'Login', true);
+                step1Ok = await this._clicarBotaoPorTexto(pg, 'Login', true);
+                if (!step1Ok) step1Ok = await this._clicarBotaoPorTexto(pg, 'Log In', true);
+                // Fallback: inclui <a> e [role="button"] se não encontrou <button>
+                if (!step1Ok) step1Ok = await this._clicarElementoPorTexto(pg, 'Login', true);
                 if (!step1Ok) step1Ok = await this._clicarElementoPorTexto(pg, 'Log In', true);
             }
 
@@ -1488,6 +1503,20 @@ class Bet365Coletor {
                 const motivoFallback = step1Ok ? 'modal não respondeu' : 'etapa 1 falhou';
                 console.log(`   ⚠️  ${motivoFallback} — tentando com credenciais .env...`);
                 sessaoOk = await this._loginComCredenciais(pg);
+            }
+
+            // ── Após login bem-sucedido, garante retorno à página virtual ──────────
+            if (sessaoOk) {
+                try {
+                    const urlPos = pg.url();
+                    if (!urlPos.includes('AVR')) {
+                        console.log('   🔄 Redirecionando para página virtual após login...');
+                        await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                        await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
+                    }
+                } catch(e) {
+                    console.warn('   ⚠️  Falha ao redirecionar após login:', e.message);
+                }
             }
 
             // ── Notificação Telegram ──────────────────────────────────────────────
@@ -1531,7 +1560,18 @@ class Bet365Coletor {
 
     async _tentarLoginComPar(pg, usuario, senha) {
         try {
-            const inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+            // Se não há campos de input visíveis, o modal pode não estar aberto —
+            // tenta abrir clicando no botão "Login" do cabeçalho primeiro
+            let inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+            if (!inputUser) {
+                const abrindoModal = await this._clicarBotaoPorTexto(pg, 'Login', true)
+                    || await this._clicarBotaoPorTexto(pg, 'Log In', true)
+                    || await this._clicarElementoPorTexto(pg, 'Login', true);
+                if (abrindoModal) {
+                    await this._delay(this._cfgNum('delay_modal_login_ms', 2500));
+                    inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+                }
+            }
             if (inputUser) {
                 await inputUser.click({ clickCount: 3 });
                 await inputUser.type(usuario, { delay: 60 });
@@ -1541,7 +1581,9 @@ class Bet365Coletor {
                 await inputPass.click({ clickCount: 3 });
                 await inputPass.type(senha, { delay: 60 });
             }
-            const clicou = await this._clicarBotaoPorTexto(pg, 'Login', true);
+            // Clica no botão submit dentro do form/modal
+            const clicou = await this._clicarBotaoSubmitModal(pg)
+                || await this._clicarBotaoPorTexto(pg, 'Login', true);
             if (!clicou) { console.log('   ❌ Botão Login não encontrado'); return false; }
 
             await this._delay(5000);
