@@ -9523,6 +9523,8 @@ function _pingSession() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuarioId: u.Id, usuario: u.Usuario, nome: u.NomeCompleto, tipo: u.TipoUsuario }),
+    }).then(r => r.json()).then(d => {
+        if (d.disconnected) fazerLogout(true);
     }).catch(() => {});
 }
 
@@ -10181,9 +10183,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     conectarWS();
 
-    // Ping de sessão: imediato + a cada 2 minutos
+    // Ping de sessão: imediato + a cada 1 minuto
     _pingSession();
-    setInterval(_pingSession, 2 * 60 * 1000);
+    setInterval(_pingSession, 60 * 1000);
 
     // Define hoje como data padrão nos campos de diagnóstico
     const hoje = new Date().toISOString().slice(0, 10);

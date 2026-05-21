@@ -6,6 +6,7 @@ const axios = require('axios');
 
 // Map de sessões ativas: userId -> { id, usuario, nome, tipo, lastSeen, loginTime, ip, userAgent }
 const activeSessions = new Map();
+const forcedLogouts  = new Set(); // IDs desconectados pelo admin — próximo ping força logout
 const loginHistory  = new Map(); // String(userId) -> { countToday, lastLoginDate }
 const loginFailures = new Map(); // username_lower -> [{ ip, ts }]
 const _geoCache     = new Map(); // ip -> { city, region, country, org, cachedAt }
@@ -1199,10 +1200,16 @@ app.post('/api/contato', async (req, res) => {
 app.post('/api/usuarios/ping', async (req, res) => {
     const { usuarioId, usuario, nome, tipo } = req.body;
     if (!usuarioId) return res.json({ ok: false });
-    const existing = activeSessions.get(String(usuarioId)) || {};
-    activeSessions.set(String(usuarioId), {
+    const uid = String(usuarioId);
+    if (forcedLogouts.has(uid)) {
+        forcedLogouts.delete(uid);
+        activeSessions.delete(uid);
+        return res.json({ ok: false, disconnected: true });
+    }
+    const existing = activeSessions.get(uid) || {};
+    activeSessions.set(uid, {
         ...existing,
-        id: String(usuarioId),
+        id: uid,
         usuario: usuario || existing.usuario || '?',
         nome: nome || existing.nome || '?',
         tipo: tipo || existing.tipo || 'user',
@@ -1238,6 +1245,7 @@ app.post('/api/usuarios/desconectar-todos', requireAuth, async (req, res) => {
             if (s.tipo !== 'master') {
                 const _dur = s.loginTime ? Math.round((Date.now() - new Date(s.loginTime).getTime()) / 1000) : null;
                 activeSessions.delete(key);
+                forcedLogouts.add(key);
                 removidos++;
                 _geoLookup(s.ip).then(geo => _registrarAcesso(s.id, s.usuario, 'desconectado', s.ip, s.userAgent, geo, _dur)).catch(()=>{});
             }
@@ -1267,9 +1275,11 @@ app.post('/api/usuarios/desconectar/:id', requireAuth, async (req, res) => {
         if (target) {
             const _dur = target.loginTime ? Math.round((Date.now() - new Date(target.loginTime).getTime()) / 1000) : null;
             activeSessions.delete(targetId);
+            forcedLogouts.add(targetId);
             _geoLookup(target.ip).then(geo => _registrarAcesso(target.id, target.usuario, 'desconectado', target.ip, target.userAgent, geo, _dur)).catch(()=>{});
         } else {
             activeSessions.delete(targetId);
+            forcedLogouts.add(targetId);
         }
         res.json({ success: true });
     } catch(e) {
