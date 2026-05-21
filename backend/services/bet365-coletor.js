@@ -1631,7 +1631,17 @@ class Bet365Coletor {
                 console.log(`   ✅ Login bem-sucedido${label}!`);
                 return true;
             }
-            if (resultado === 'verificacao') continue; // tenta próxima conta
+            if (resultado === 'verificacao') {
+                // Notifica via Telegram mesmo que haja conta de fallback disponível
+                const pool = await this.conectarBanco().catch(() => null);
+                dispararAlerta(this.cfg, pool,
+                    `⚠️ Bet365 — conta ${usuario} exige verificação`,
+                    `A conta ${usuario} solicitou verificação de SMS/email durante o auto-login.\n` +
+                    `${i + 1 < contas.length ? `Tentando conta de fallback (${i + 2}/${contas.length})...` : 'Não há conta de fallback — intervenção manual necessária.'}\n` +
+                    `🕐 ${new Date().toLocaleTimeString('pt-BR')}`
+                ).catch(() => {});
+                continue; // tenta próxima conta
+            }
             // false = falhou por outro motivo, tenta próxima mesmo assim
             console.log(`   ❌ Login falhou${label}`);
         }
