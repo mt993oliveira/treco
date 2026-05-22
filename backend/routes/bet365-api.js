@@ -1658,6 +1658,67 @@ async function getSystemConfig() {
     }
 }
 
+// ── Auditoria do Coletor ─────────────────────────────────────────────────────
+router.get('/admin/auditoria', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const pagina    = Math.max(1, parseInt(req.query.pagina    || '1'));
+        const porPagina = Math.min(200, Math.max(1, parseInt(req.query.porPagina || '50')));
+        const tipo      = (req.query.tipo      || '').trim();
+        const dataIni   = (req.query.dataInicio || '').trim();
+        const dataFim   = (req.query.dataFim    || '').trim();
+
+        // Cria tabela se não existir (pode ser a primeira leitura antes do coletor gravar)
+        await pool.request().query(`
+            IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name='coletor_auditoria' AND xtype='U')
+                CREATE TABLE coletor_auditoria (
+                    id        INT IDENTITY(1,1) PRIMARY KEY,
+                    data_hora DATETIME2 DEFAULT GETUTCDATE(),
+                    tipo      NVARCHAR(50)  NOT NULL,
+                    detalhe   NVARCHAR(500) NULL,
+                    conta     NVARCHAR(100) NULL
+                )
+        `);
+
+        const wheres = [];
+        const cntReq  = pool.request();
+        const mainReq = pool.request();
+        if (tipo) {
+            wheres.push('tipo = @tipo');
+            cntReq.input('tipo',  sql.NVarChar, tipo);
+            mainReq.input('tipo', sql.NVarChar, tipo);
+        }
+        if (dataIni) {
+            wheres.push('data_hora >= @dataIni');
+            cntReq.input('dataIni',  sql.DateTime2, new Date(dataIni + 'T00:00:00'));
+            mainReq.input('dataIni', sql.DateTime2, new Date(dataIni + 'T00:00:00'));
+        }
+        if (dataFim) {
+            wheres.push('data_hora <= @dataFim');
+            cntReq.input('dataFim',  sql.DateTime2, new Date(dataFim + 'T23:59:59'));
+            mainReq.input('dataFim', sql.DateTime2, new Date(dataFim + 'T23:59:59'));
+        }
+        const w   = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
+        const off = (pagina - 1) * porPagina;
+
+        const cntResult = await cntReq.query(`SELECT COUNT(*) AS total FROM coletor_auditoria ${w}`);
+        const total = cntResult.recordset[0].total;
+
+        mainReq.input('off', sql.Int, off);
+        mainReq.input('pp',  sql.Int, porPagina);
+        const rows = await mainReq.query(`
+            SELECT id, data_hora, tipo, detalhe, conta
+            FROM coletor_auditoria ${w}
+            ORDER BY data_hora DESC
+            OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
+        `);
+
+        res.json({ success: true, total, pagina, porPagina, data: rows.recordset });
+    } catch(e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
 router.get('/admin/config', async (req, res) => {
     try {
         const pool = await getDbPool();

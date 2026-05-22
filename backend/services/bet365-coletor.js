@@ -1436,6 +1436,7 @@ class Bet365Coletor {
                 : !naPaginaVirtual         ? `URL fora da página virtual: ${url.substring(0, 60)}`
                                            : 'botão "Login" no cabeçalho detectado';
             console.log(`   🔐 Sessão expirada — ${motivo} — reconectando...`);
+            this._logAuditoria('sessao_expirada', motivo);
 
             // Se a página saiu da URL virtual, volta antes de logar
             if (!naPaginaVirtual) {
@@ -1457,6 +1458,7 @@ class Bet365Coletor {
                 ).catch(() => false);
                 if (!reTemAviso && !reTemLogin) {
                     console.log('   ✅ Sessão ativa após retorno à página virtual');
+                    this._logAuditoria('sessao_ok', 'Sessão ativa após retorno à página virtual');
                     return;
                 }
             }
@@ -1505,6 +1507,7 @@ class Bet365Coletor {
             if (!sessaoOk) {
                 const motivoFallback = step1Ok ? 'modal não respondeu' : 'etapa 1 falhou';
                 console.log(`   ⚠️  ${motivoFallback} — tentando com credenciais .env...`);
+                this._logAuditoria('login_fallback', motivoFallback);
                 sessaoOk = await this._loginComCredenciais(pg);
             }
 
@@ -1625,13 +1628,16 @@ class Bet365Coletor {
             const [usuario, senha] = contas[i];
             const label = contas.length > 1 ? ` [conta ${i + 1}/${contas.length}]` : '';
             console.log(`   🔑 Tentando login${label}: ${usuario}`);
+            this._logAuditoria('login_tentativa', `Tentando login${label}`, usuario);
 
             const resultado = await this._tentarLoginComPar(pg, usuario, senha);
             if (resultado === true) {
                 console.log(`   ✅ Login bem-sucedido${label}!`);
+                this._logAuditoria('login_ok', `Login bem-sucedido${label}`, usuario);
                 return true;
             }
             if (resultado === 'verificacao') {
+                this._logAuditoria('verificacao_exigida', 'Conta solicitou verificação SMS/email', usuario);
                 // Notifica via Telegram mesmo que haja conta de fallback disponível
                 const pool = await this.conectarBanco().catch(() => null);
                 dispararAlerta(this.cfg, pool,
@@ -1644,9 +1650,11 @@ class Bet365Coletor {
             }
             // false = falhou por outro motivo, tenta próxima mesmo assim
             console.log(`   ❌ Login falhou${label}`);
+            this._logAuditoria('login_falhou', `Credencial rejeitada${label}`, usuario);
         }
 
         console.log('   ❌ Todas as contas falharam');
+        this._logAuditoria('todas_falharam', 'Nenhuma conta conseguiu fazer login');
         return false;
     }
 
@@ -1674,6 +1682,32 @@ class Bet365Coletor {
         } catch(e) {
             console.error('   ⚠️  Erro ao gravar log:', e.message);
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // AUDITORIA DO COLETOR
+    // ─────────────────────────────────────────────────────────────
+
+    _logAuditoria(tipo, detalhe = null, conta = null) {
+        this.conectarBanco().then(pool => {
+            pool.request()
+                .input('tipo',    sql.NVarChar(50),  String(tipo).substring(0, 50))
+                .input('detalhe', sql.NVarChar(500), detalhe ? String(detalhe).substring(0, 500) : null)
+                .input('conta',   sql.NVarChar(100), conta   ? String(conta).substring(0, 100)   : null)
+                .query(`
+                    IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name='coletor_auditoria' AND xtype='U')
+                        CREATE TABLE coletor_auditoria (
+                            id        INT IDENTITY(1,1) PRIMARY KEY,
+                            data_hora DATETIME2 DEFAULT GETUTCDATE(),
+                            tipo      NVARCHAR(50)  NOT NULL,
+                            detalhe   NVARCHAR(500) NULL,
+                            conta     NVARCHAR(100) NULL
+                        );
+                    INSERT INTO coletor_auditoria (tipo, detalhe, conta)
+                    VALUES (@tipo, @detalhe, @conta);
+                `)
+                .catch(() => {});
+        }).catch(() => {});
     }
 
     // ─────────────────────────────────────────────────────────────
