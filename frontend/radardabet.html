@@ -4744,6 +4744,11 @@ function renderGrafico() {
 
     if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos`;
 
+    // Escala Y dinâmica — ajusta à amplitude real dos dados (igual ao Gráfico de Gols)
+    const _valsG = datasets.filter(d => !d._isRef && !d._isMA && !d._isEquilibrio).flatMap(d => d.data).filter(v => v != null);
+    const _yMinG = _valsG.length ? Math.max(0,   Math.floor(Math.min(..._valsG) / 5) * 5 - 5)  : 0;
+    const _yMaxG = _valsG.length ? Math.min(100,  Math.ceil(Math.max(..._valsG) / 5) * 5 + 5)  : 100;
+
     _destruirGrafico();
 
     try {
@@ -4788,7 +4793,7 @@ function renderGrafico() {
                 layout: { padding: { top: 18, bottom: 10 } },
                 scales: {
                     x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                    y: { min:0, max:100, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
+                    y: { min:_yMinG, max:_yMaxG, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
                 }
             },
             plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin]
@@ -5129,6 +5134,11 @@ function renderGraficoLinha() {
     _LINHA_TODAS_SORTED = todasSorted;
     _LINHA_OFFSET       = offset;
 
+    // Amplitude dinâmica — ajusta min/max ao intervalo real dos dados (igual ao Gráfico de Gols)
+    const _valsL = datasets.filter(d => !d._isRef && !d._isMA && !d._isEquilibrio).flatMap(d => d.data).filter(v => v != null);
+    const _yMinL = _valsL.length ? Math.max(0,   Math.floor(Math.min(..._valsL) / 5) * 5 - 5)  : 0;
+    const _yMaxL = _valsL.length ? Math.min(100,  Math.ceil(Math.max(..._valsL) / 5) * 5 + 5)  : 100;
+
     _destruir();
 
     try {
@@ -5174,7 +5184,7 @@ function renderGraficoLinha() {
                 scales: {
                     x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
                     y: {
-                        min: 0, max: 100,
+                        min: _yMinL, max: _yMaxL,
                         grid: { color: ctx => ctx.tick.value % 25 === 0 ? '#334155' : '#1e293b50' },
                         ticks: {
                             padding: 6, color: '#94a3b8', font: { size: 9 },
