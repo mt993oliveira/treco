@@ -114,21 +114,33 @@ async function conectarEdge() {
     });
     const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null, protocolTimeout: 60000 });
 
-    // Encontra a segunda aba AVR — aberta pelo iniciar-tudo.bat via linha de comando do Edge.
-    // Não abre nada programaticamente: a aba já foi aberta pelo usuário (via bat), então
-    // renderiza corretamente sem ser detectada como bot.
-    const pages = await browser.pages();
-    const avrPages = pages.filter(p => {
+    // Encontra abas AVR — Coletor 1 usa a primeira, Coletor 2 usa a última.
+    // O iniciar-tudo.bat abre 2 abas AVR desde o início; se só houver 1, abre a segunda aqui.
+    let pages = await browser.pages();
+    let avrPages = pages.filter(p => {
         try { return p.url().includes('bet365') && p.url().includes('AVR'); }
         catch(_) { return false; }
     });
 
-    // Coletor 1 usa a primeira aba AVR; Coletor 2 usa a última (aberta pelo bat)
-    if (avrPages.length < 2) throw new Error(
-        `Apenas ${avrPages.length} aba(s) AVR encontrada(s) — rode o iniciar-tudo.bat para abrir a segunda aba`
-    );
-    const pg = avrPages[avrPages.length - 1];
+    if (avrPages.length < 2) {
+        console.log(`   ℹ️  [Odds] Apenas ${avrPages.length} aba(s) AVR — abrindo segunda aba automaticamente...`);
+        const novaPg = await browser.newPage();
+        await novaPg.goto(URL_SOCCER, { waitUntil: 'load', timeout: 60000 });
+        // Aguarda a página renderizar (7s para a Bet365 carregar completamente)
+        await new Promise(r => setTimeout(r, 7000));
+        // Re-verifica
+        pages    = await browser.pages();
+        avrPages = pages.filter(p => {
+            try { return p.url().includes('bet365') && p.url().includes('AVR'); }
+            catch(_) { return false; }
+        });
+        if (avrPages.length < 2) throw new Error(
+            `Não foi possível abrir a segunda aba AVR — verifique se o login está ativo`
+        );
+        console.log('   ✅ [Odds] Segunda aba AVR aberta com sucesso');
+    }
 
+    const pg = avrPages[avrPages.length - 1];
     console.log(`   ✅ [Odds] Aba encontrada (porta ${DEBUG_PORT}): ${pg.url().substring(0, 60)}`);
     return { browser, pg };
 }
