@@ -1533,7 +1533,7 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_ponto_borda',     valor:'1.5',     tipo:'number', grupo:'grafico', descricao:'📈 Gráfico: espessura da borda das bolinhas (px)' },
     { chave:'grafico_ponto_sobe_cor',  valor:'#4ade80', tipo:'text',    grupo:'grafico', descricao:'📈 Gráfico: cor da bolinha quando sobe (hex)' },
     { chave:'grafico_ponto_desce_cor', valor:'#ef4444', tipo:'text',    grupo:'grafico', descricao:'📈 Gráfico: cor da bolinha quando desce (hex)' },
-    { chave:'grafico_ponto_flat',      valor:'true',    tipo:'boolean', grupo:'grafico', descricao:'📈 Gráfico: exibir bolinhas planas (valor igual ao anterior)' },
+    { chave:'grafico_ponto_flat',      valor:'true',    tipo:'boolean', grupo:'frontend', descricao:'● Plano ativado por padrão (exibir bolinhas em pontos sem variação no gráfico)' },
     { chave:'grafico_pct_cor',         valor:'#ef4444', tipo:'text',    grupo:'grafico', descricao:'% Gráfico: cor do texto de porcentagem nas linhas' },
     { chave:'grafico_pct_tamanho',     valor:'8',       tipo:'number',  grupo:'grafico', descricao:'% Gráfico: tamanho da fonte da porcentagem (px)' },
     // ── Coletores ──
