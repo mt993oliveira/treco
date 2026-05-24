@@ -2375,6 +2375,18 @@ async function _aplicarConfigFrontend() {
         };
         _visSubview('historico-gols-section',    'sub-btn-gols',     'show_subview_gols',     'showGols');
         _visSubview('historico-chart-section',   'sub-btn-grafico',  'show_subview_grafico',  'showGrafico');
+        // Restrição MASTER: se grafico_mercados_master_only=true, oculta para quem não for o usuário MASTER
+        if (c.grafico_mercados_master_only === 'true') {
+            const _uMO = (() => { try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e){ return null; } })();
+            const _isMasterUser = (_uMO?.Usuario || '').toUpperCase() === 'MASTER';
+            if (!_isMasterUser) {
+                S.showGrafico = false;
+                const _btnMO = document.getElementById('sub-btn-grafico');
+                const _secMO = document.getElementById('historico-chart-section');
+                if (_btnMO) _btnMO.style.display = 'none';
+                if (_secMO) _secMO.style.display = 'none';
+            }
+        }
         _visSubview('historico-linha-section',   'sub-btn-linha',    'show_subview_linha',    'showLinha');
         _visSubview('historico-parimpar-section','sub-btn-parimpar', 'show_subview_parimpar', 'showParImpar');
         _visSubview('historico-table-section',   'sub-btn-mosaico',  'show_subview_mosaico',  'showMosaico');
@@ -8563,6 +8575,7 @@ const _CFG_LABELS = {
     manutencao_previsao:        '🚧 Previsão de retorno (ex: "às 14:00" ou "em 30 min")',
     // Sistema
     sessao_timeout_minutos:     'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)',
+    grafico_mercados_master_only: '📈 Gráfico de Mercados: exibir somente para o usuário MASTER',
     // Seções
     show_secao_ia:              'Exibir: 🤖 IA — Sugestões para Próximos Jogos',
     show_secao_value_bets:      'Exibir: 💰 Value Bets',
