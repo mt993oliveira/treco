@@ -1324,18 +1324,24 @@
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
                         </select>
+                        <span style="font-size:10px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 8px;white-space:nowrap;cursor:default" title="Base Fixa — janela de jogos para a soma rolante de gols">📐 Base</span>
+                        <select id="base-gols" onchange="S.grafGolsJanela=parseInt(this.value);renderGraficoGols()" title="Base Fixa — quantidade de jogos da janela para a soma rolante"
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:70px">
+                            <option value="5">5 Jogos</option>
+                            <option value="9" selected>9 Jogos</option>
+                            <option value="10">10 Jogos</option>
+                            <option value="15">15 Jogos</option>
+                            <option value="20">20 Jogos</option>
+                            <option value="25">25 Jogos</option>
+                            <option value="30">30 Jogos</option>
+                            <option value="40">40 Jogos</option>
+                            <option value="50">50 Jogos</option>
+                        </select>
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center">
                     <button id="btn-gols-mm" class="acao-btn" onclick="_gToggle('grafGolsMM','btn-gols-mm')" title="Exibe média móvel de gols">📈 MM</button>
                     <button id="btn-gols-gols" class="acao-btn ativo" onclick="_gToggle('grafGolsShowGols','btn-gols-gols')" title="Exibe quantidade de gols no lugar de %">⚽ Gols</button>
-                    <span style="font-size:9px;color:#475569;font-weight:700" title="Base Fixa — janela de jogos para a soma rolante">Base</span>
-                    <input id="inp-gols-janela" type="number" min="2" max="99" value="9"
-                        onchange="S.grafGolsJanela=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafGolsJanela;renderGraficoGols()"
-                        title="Base Fixa (Gráfico de Gols) — janela de jogos para a soma rolante (padrão: 9).&#10;&#10;Ex: 9 = soma os gols dos últimos 9 jogos para cada ponto do gráfico."
-                        style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
-                               font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
-                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <button class="acao-btn" onclick="resetZoomGols()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
                 </div>
             </div>
@@ -1368,6 +1374,19 @@
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
                         </select>
+                        <span style="font-size:10px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 8px;white-space:nowrap;cursor:default" title="Base Fixa — janela de jogos para o cálculo rolling. Os jogos anteriores ao período servem como warmup.">📐 Base</span>
+                        <select id="base-linha" onchange="S.grafLinhaJanela=parseInt(this.value);renderGraficoLinha()" title="Base Fixa — quantidade de jogos da janela rolling (os jogos anteriores ao período exibido servem como warmup)"
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:70px">
+                            <option value="5">5 Jogos</option>
+                            <option value="9">9 Jogos</option>
+                            <option value="10">10 Jogos</option>
+                            <option value="15">15 Jogos</option>
+                            <option value="20" selected>20 Jogos</option>
+                            <option value="25">25 Jogos</option>
+                            <option value="30">30 Jogos</option>
+                            <option value="40">40 Jogos</option>
+                            <option value="50">50 Jogos</option>
+                        </select>
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
@@ -1377,13 +1396,6 @@
                     <button id="btn-linha-tf"    class="acao-btn" onclick="_linhaToggle('linhaGrafTopoFundo','btn-linha-tf')"       title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-linha-cong"  class="acao-btn" onclick="_linhaToggle('linhaGrafCongest','btn-linha-cong')"       title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <button id="btn-linha-mm"    class="acao-btn" onclick="_linhaToggle('linhaGrafMM','btn-linha-mm')"               title="Média Móvel — sobrepõe uma linha suavizada sobre cada curva ativa.&#10;&#10;Quando a curva principal está ACIMA da MM o mercado está aquecido; ABAIXO indica resfriamento.&#10;&#10;O período é o mesmo da MM Longa configurado no Gráfico de Mercados (campo ao lado do botão 📈 MM).">📈 MM</button>
-                    <span style="font-size:9px;color:#475569;font-weight:700" title="Base Fixa — janela de jogos para o cálculo rolling (os jogos anteriores ao período exibido servem como warmup)">Base</span>
-                    <input id="inp-linha-janela" type="number" min="2" max="99" value="20"
-                        onchange="S.grafLinhaJanela=Math.max(2,Math.min(99,parseInt(this.value)||20));this.value=S.grafLinhaJanela;renderGraficoLinha()"
-                        title="Base Fixa (Gráfico de Linha) — janela de jogos para o cálculo rolling (padrão: 20).&#10;&#10;Os jogos anteriores ao período exibido servem como warmup, eliminando o efeito de borda no início da curva."
-                        style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
-                               font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
-                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button class="acao-btn" onclick="resetZoomLinha()" title="Resetar zoom (Ctrl+Roda para zoom, Shift+arrastar para pan)">↺ Zoom</button>
                     <button id="btn-caneta-linha" class="acao-btn" onclick="toggleCanetaLinha()" title="Ativar/desativar desenho no gráfico de linha">✏️ Caneta</button>
@@ -1434,6 +1446,19 @@
                             <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
                         </select>
+                        <span style="font-size:10px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 8px;white-space:nowrap;cursor:default" title="Base Fixa — janela de jogos para o cálculo rolling principal">📐 Base</span>
+                        <select id="base-grafico" onchange="S.grafMM1=parseInt(this.value);const _imm=document.getElementById('inp-mm1');if(_imm)_imm.value=S.grafMM1;renderGrafico();if(S.showParImpar)renderGraficoPar()" title="Base Fixa — quantidade de jogos da janela rolling para o Gráfico de Mercados"
+                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:70px">
+                            <option value="5">5 Jogos</option>
+                            <option value="9" selected>9 Jogos</option>
+                            <option value="10">10 Jogos</option>
+                            <option value="15">15 Jogos</option>
+                            <option value="20">20 Jogos</option>
+                            <option value="25">25 Jogos</option>
+                            <option value="30">30 Jogos</option>
+                            <option value="40">40 Jogos</option>
+                            <option value="50">50 Jogos</option>
+                        </select>
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
@@ -1443,10 +1468,9 @@
                     <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')"      title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"      title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"        title="Média Móvel — sobrepõe uma linha suavizada sobre cada curva ativa.&#10;&#10;Use como referência de tendência: quando a curva principal está ACIMA da MM o mercado está aquecido (acima da média); ABAIXO indica resfriamento.&#10;&#10;Ajuste o período nos campos ao lado: valor pequeno (ex: 9) = sensível a variações recentes; valor grande (ex: 40-60) = linha estável que representa a média do período.">📈 MM</button>
-                    <span style="font-size:9px;color:#475569;font-weight:700" title="Base Fixa — janela de jogos para o cálculo rolling principal">Base</span>
                     <input id="inp-mm1" type="number" min="2" max="99" value="9"
-                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;renderGrafico();if(S.showParImpar)renderGraficoPar()"
-                        title="Base Fixa (Gráfico de Mercados) — janela de jogos para o cálculo rolling principal (padrão: 9).&#10;&#10;Valor pequeno = mais sensível ao momento atual; valor grande = curva mais suave."
+                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;const _bg=document.getElementById('base-grafico');if(_bg)_bg.value=S.grafMM1;renderGrafico();if(S.showParImpar)renderGraficoPar()"
+                        title="MM Curta — período em número de jogos (padrão: 9). Também é a Base Fixa do Gráfico de Mercados."
                         style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
                                font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
@@ -2234,11 +2258,11 @@ async function carregarConfigLigas() {
         S._tfFundoCor    = cfg.grafico_tf_fundo_cor || '#f87171';
         S.grafCongest   = cfg.grafico_congest    === 'true';
         S.grafMedias    = cfg.grafico_medias     === 'true';
-        if (cfg.grafico_mm1) { S.grafMM1 = parseInt(cfg.grafico_mm1) || 9;  const el = document.getElementById('inp-mm1'); if (el) el.value = S.grafMM1; }
+        if (cfg.grafico_mm1) { S.grafMM1 = parseInt(cfg.grafico_mm1) || 9;  const el = document.getElementById('inp-mm1'); if (el) el.value = S.grafMM1; const bg = document.getElementById('base-grafico'); if (bg) bg.value = S.grafMM1; }
         if (cfg.grafico_mm2) { S.grafMM2 = parseInt(cfg.grafico_mm2) || 21; const el = document.getElementById('inp-mm2'); if (el) el.value = S.grafMM2; }
-        // Base Fixa independente por gráfico — restaura inputs se existirem
-        { const el = document.getElementById('inp-gols-janela'); if (el) el.value = S.grafGolsJanela; }
-        { const el = document.getElementById('inp-linha-janela'); if (el) el.value = S.grafLinhaJanela; }
+        // Base Fixa independente por gráfico — sincroniza selects
+        { const el = document.getElementById('base-gols');  if (el) el.value = S.grafGolsJanela; }
+        { const el = document.getElementById('base-linha'); if (el) el.value = S.grafLinhaJanela; }
         if (cfg.grafico_mm1_cor)       S.grafMM1Cor       = cfg.grafico_mm1_cor;
         if (cfg.grafico_mm2_cor)       S.grafMM2Cor       = cfg.grafico_mm2_cor;
         if (cfg.grafico_mm1_espessura) S.grafMM1Esp       = parseFloat(cfg.grafico_mm1_espessura) || 1.5;
