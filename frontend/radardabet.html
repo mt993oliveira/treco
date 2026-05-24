@@ -4607,9 +4607,22 @@ function renderGrafico() {
     const canvas = document.getElementById('grafico');
     if (!canvas) return;
 
-    // Apenas jogos com placar confirmado
-    const serie = serieFlat(S.horasGrafico, S.jogosGrafico)
-        .filter(j => j.gol_casa != null && j.gol_fora != null);
+    // Todos os jogos com placar, ordenados — base de cálculo com warmup histórico
+    const _parseMsG = p => new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getTime();
+    const _todasG = [...S.partidas]
+        .filter(j => j.gol_casa != null && j.gol_fora != null && j.data_partida)
+        .sort((a, b) => _parseMsG(a) - _parseMsG(b));
+
+    // Série de exibição — controla apenas o eixo X (mesma lógica do Gráfico de Linha)
+    let serie;
+    if (S.jogosGrafico != null) {
+        serie = _todasG.slice(-S.jogosGrafico);
+    } else {
+        const _hG = S.horasGrafico != null ? S.horasGrafico : S.horas;
+        const _cutG = Date.now() + BET365_OFFSET_MS - _hG * 3600000;
+        serie = _todasG.filter(j => _parseMsG(j) >= _cutG);
+    }
+    const _offsetG = _todasG.length - serie.length;
 
     const tituloEl = document.getElementById('g-titulo');
     const ativos   = TODOS_FILTROS.filter(f => S.linhasMercados[f.id] && f.id !== 'equilibrio');
@@ -4644,8 +4657,10 @@ function renderGrafico() {
     const hitsMap = {};
     const pctMap  = {};
     ativos.forEach(f => {
-        hitsMap[f.id] = serie.map(j => checa(j, f.id) ? 1 : 0);
-        pctMap[f.id]  = rolPct(hitsMap[f.id], n1);
+        const hitsAll = _todasG.map(j => checa(j, f.id) ? 1 : 0);
+        const pctAll  = rolPct(hitsAll, n1);
+        hitsMap[f.id] = hitsAll.slice(_offsetG);
+        pctMap[f.id]  = pctAll.slice(_offsetG);
     });
 
     _MKTGRAF_SERIE = serie;
@@ -5222,30 +5237,42 @@ function renderGraficoGols() {
         if (_orp) { try { _orp.destroy(); } catch(_){} }
     };
 
-    // Série flat de jogos individuais com placar registrado
-    const serieTotal = serieFlat(S.horasGols, S.jogosGols);
-    const serie = serieTotal.filter(j => j.gol_casa != null && j.gol_fora != null);
+    // Todos os jogos com placar, ordenados — base de cálculo com warmup histórico
+    const _parseMsGols = p => new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getTime();
+    const _todasGols = [...S.partidas]
+        .filter(j => j.gol_casa != null && j.gol_fora != null && j.data_partida)
+        .sort((a, b) => _parseMsGols(a) - _parseMsGols(b));
+
+    // Série de exibição — controla apenas o eixo X
+    let serie;
+    if (S.jogosGols != null) {
+        serie = _todasGols.slice(-S.jogosGols);
+    } else {
+        const _cutGols = Date.now() + BET365_OFFSET_MS - _hGols * 3600000;
+        serie = _todasGols.filter(j => _parseMsGols(j) >= _cutGols);
+    }
+    const _offsetGols = _todasGols.length - serie.length;
 
     if (!serie.length) {
         _destruirGols();
         const t = document.getElementById('g-gols-titulo');
-        if (t) t.textContent = `⚽ Sem dados com placar (${_hGols}H · ${serieTotal.length} jogos sem score)`;
+        if (t) t.textContent = `⚽ Sem dados com placar para o período`;
         return;
     }
     _GOLS_SERIE = serie;
 
-    const n = S.grafGolsJanela || 9;
+    const n = S.grafGolsJanela || 20;
 
     _renderPillsGols();
 
-    // Função auxiliar: extrai array de gols por jogo conforme métrica
-    const _extrairGols = id => {
+    // Extrai array de gols de TODOS os jogos (para warmup do rolling)
+    const _extrairGolsAll = id => {
         switch(id) {
-            case 'gols-total': return serie.map(j => j.gol_casa + j.gol_fora);
-            case 'gols-casa':  return serie.map(j => j.gol_casa);
-            case 'gols-fora':  return serie.map(j => j.gol_fora);
-            case 'gols-1t':    return serie.map(j => (j.gol_casa_ht != null ? j.gol_casa_ht : 0) + (j.gol_fora_ht != null ? j.gol_fora_ht : 0));
-            case 'gols-2t':    return serie.map(j => {
+            case 'gols-total': return _todasGols.map(j => j.gol_casa + j.gol_fora);
+            case 'gols-casa':  return _todasGols.map(j => j.gol_casa);
+            case 'gols-fora':  return _todasGols.map(j => j.gol_fora);
+            case 'gols-1t':    return _todasGols.map(j => (j.gol_casa_ht != null ? j.gol_casa_ht : 0) + (j.gol_fora_ht != null ? j.gol_fora_ht : 0));
+            case 'gols-2t':    return _todasGols.map(j => {
                 const ht = (j.gol_casa_ht != null ? j.gol_casa_ht : 0) + (j.gol_fora_ht != null ? j.gol_fora_ht : 0);
                 return Math.max(0, (j.gol_casa + j.gol_fora) - ht);
             });
@@ -5253,7 +5280,7 @@ function renderGraficoGols() {
         }
     };
 
-    const _rollingSum = arr => arr.map((_, i) => {
+    const _rollingSumAll = arr => arr.map((_, i) => {
         const sl = arr.slice(Math.max(0, i - n + 1), i + 1);
         return sl.reduce((a, b) => a + b, 0);
     });
@@ -5269,10 +5296,11 @@ function renderGraficoGols() {
 
     const datasets = [];
 
-    // Séries de gols selecionadas
+    // Séries de gols selecionadas — rolling calculado sobre todos os dados, fatiado para exibição
     ativosGols.forEach(f => {
-        const brutos = _extrairGols(f.id);
-        const rolSum = _rollingSum(brutos);
+        const brutosAll = _extrairGolsAll(f.id);
+        const rolSumAll = _rollingSumAll(brutosAll);
+        const rolSum    = rolSumAll.slice(_offsetGols);
         const cor = f.cor;
         datasets.push({
             type: 'line', label: `${f.label} soma${n}j`,
@@ -5283,27 +5311,28 @@ function renderGraficoGols() {
             _metricId: f.id
         });
 
-        // MM opcional (apenas para a série de gols total, mantém comportamento anterior)
+        // MM — também calculada sobre todos os dados para warmup correto
         if (S.grafGolsMM && f.id === 'gols-total') {
             const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
             const n2 = S.grafMM2 || 21;
-            const rolAvg = rolSum.map((_, i) => {
-                const sl = rolSum.slice(Math.max(0, i - n2 + 1), i + 1);
+            const rolAvgAll = rolSumAll.map((_, i) => {
+                const sl = rolSumAll.slice(Math.max(0, i - n2 + 1), i + 1);
                 return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
             });
             datasets.push({ type:'line', label:`MM${n2}`,
-                data: rolAvg,
+                data: rolAvgAll.slice(_offsetGols),
                 borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
                 borderWidth: S.grafMM2Esp||2, borderDash: _pd(S.grafMM2Dash||'8,4'),
                 pointRadius: 0, tension: 0.4, _isMA: true });
         }
     });
 
-    // Linha de equilíbrio (média da primeira série ativa, ou gols total por padrão)
+    // Linha de equilíbrio — média da série exibida (após warmup)
     if (S.linhasGols['gols-equi'] && ativosGols.length > 0) {
-        const brutos = _extrairGols(ativosGols[0].id);
-        const rolSum = _rollingSum(brutos);
-        const mediaRef = +(rolSum.reduce((a, b) => a + b, 0) / rolSum.length).toFixed(1);
+        const brutosAll  = _extrairGolsAll(ativosGols[0].id);
+        const rolSumAll  = _rollingSumAll(brutosAll);
+        const rolSumDisp = rolSumAll.slice(_offsetGols);
+        const mediaRef   = +(rolSumDisp.reduce((a, b) => a + b, 0) / rolSumDisp.length).toFixed(1);
         datasets.push({ type:'line', label:`Ref ${mediaRef}`,
             data: serie.map(() => mediaRef),
             borderColor: '#1fcc59', backgroundColor:'transparent',
