@@ -1382,6 +1382,7 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-linha-pills" class="acao-btn ativo" onclick="_toggleLinhaPills()" title="Exibir/ocultar a seleção de mercados do Gráfico de Linha">📊 Mercados</button>
                     <button id="btn-linha-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
                     <button id="btn-linha-legendas" class="acao-btn" onclick="toggleLinhaLegendas()"                                title="Suprimir tooltips do gráfico de linha">💬 Legendas</button>
                     <button id="btn-linha-pct"   class="acao-btn" onclick="_linhaToggle('linhaGrafPct','btn-linha-pct')"           title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
@@ -1450,6 +1451,7 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-g-pills" class="acao-btn ativo" onclick="_toggleGrafPills()" title="Exibir/ocultar a seleção de mercados do Gráfico de Mercados">📊 Mercados</button>
                     <button id="btn-g-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
                     <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
                     <button id="btn-g-pct"   class="acao-btn"       onclick="_gToggle('grafPct','btn-g-pct')"            title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
@@ -2264,14 +2266,23 @@ async function carregarConfigLigas() {
         if (cfg.grafico_ponto_flat !== undefined) S.grafPontoFlat = cfg.grafico_ponto_flat !== 'false';
         if (cfg.grafico_pct_cor) S._grafPctCor = cfg.grafico_pct_cor;
         if (cfg.grafico_pct_tamanho) S._grafPctTamanho = parseInt(cfg.grafico_pct_tamanho) || 8;
+        if (cfg.grafico_pills_default !== undefined) {
+            const _pills = cfg.grafico_pills_default !== 'false';
+            S.grafShowPills  = _pills;
+            S.linhaShowPills = _pills;
+        }
         // Sincroniza classes dos botões com o estado carregado
         [['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
          ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med'],
          ['grafPontoFlat','btn-g-flat'],['grafPontoFlat','btn-linha-flat'],
+         ['grafShowPills','btn-g-pills'],['linhaShowPills','btn-linha-pills'],
          ['linhaGrafMM','btn-linha-mm']].forEach(([k,id]) => {
             const b = document.getElementById(id);
             if (b) b.classList.toggle('ativo', !!S[k]);
         });
+        // Aplica visibilidade das pills conforme config
+        { const _pm = document.getElementById('pills-mercados'); if (_pm) _pm.style.display = S.grafShowPills  ? 'flex' : 'none'; }
+        { const _pl = document.getElementById('pills-linha');    if (_pl) _pl.style.display = S.linhaShowPills ? 'flex' : 'none'; }
 
         // Padrões do grid/mosaico — cores e fontes (usados como base; usuário pode sobrescrever em ⚙️ Config)
         { const _gridKeys = ['verdeBg','verdeTxt','vermBg','vermTxt','futuroBg','futuroTxt','futuroBrd',
@@ -2639,6 +2650,8 @@ const S = {
     grafPontoCorSobe: '#4ade80',
     grafPontoCorDesce:'#ef4444',
     grafPontoFlat:    true,
+    grafShowPills:    true,   // exibir pills de mercado no Gráfico de Mercados
+    linhaShowPills:   true,   // exibir pills de mercado no Gráfico de Linha
     mktPillFs:     9,
     mktPillCor:    '#94a3b8',
     mktPillBold:   false,
@@ -3934,6 +3947,8 @@ function _renderPillsMercados() {
         pill.onclick = () => { _togglePillMercado(f.id); };
         container.appendChild(pill);
     });
+    // respeita estado do botão 📊 Mercados
+    container.style.display = S.grafShowPills ? 'flex' : 'none';
 }
 
 function _togglePillMercado(id) {
@@ -4055,6 +4070,8 @@ function _renderPillsLinha() {
         pill.onclick = () => { _togglePillLinha(f.id); };
         container.appendChild(pill);
     });
+    // respeita estado do botão 📊 Mercados
+    container.style.display = S.linhaShowPills ? 'flex' : 'none';
 }
 
 function _togglePillLinha(id) {
@@ -4455,6 +4472,21 @@ function _gToggle(key, btnId) {
     }
     // grafTopoFundo e grafMedias: alteram datasets — precisa recriar
     renderGrafico();
+}
+
+function _toggleGrafPills() {
+    S.grafShowPills = !S.grafShowPills;
+    const btn = document.getElementById('btn-g-pills');
+    if (btn) btn.classList.toggle('ativo', S.grafShowPills);
+    const el = document.getElementById('pills-mercados');
+    if (el) el.style.display = S.grafShowPills ? 'flex' : 'none';
+}
+function _toggleLinhaPills() {
+    S.linhaShowPills = !S.linhaShowPills;
+    const btn = document.getElementById('btn-linha-pills');
+    if (btn) btn.classList.toggle('ativo', S.linhaShowPills);
+    const el = document.getElementById('pills-linha');
+    if (el) el.style.display = S.linhaShowPills ? 'flex' : 'none';
 }
 
 function _togglePontoFlat() {
@@ -8625,6 +8657,7 @@ const _CFG_LABELS = {
     grafico_ponto_sobe_cor:  '📈 Gráfico: cor da bolinha quando sobe',
     grafico_ponto_desce_cor: '📈 Gráfico: cor da bolinha quando desce',
     grafico_ponto_flat:      '● Plano ativado por padrão (exibir bolinhas em pontos sem variação no gráfico)',
+    grafico_pills_default:   '📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados',
     // Mosaico
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
     mosaico_mostrar_data_jogos:  '👁 Mosaico: exibir data (DD/MM) e contagem de jogos',
