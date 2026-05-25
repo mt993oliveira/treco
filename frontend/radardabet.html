@@ -9332,6 +9332,18 @@ async function _carregarOnlineAgora() {
             if (!iso) return '—';
             return new Date(iso).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
         };
+        const fmtAcessoPainel = iso => {
+            if (!iso) return '<span style="color:#334155;font-size:9px">—</span>';
+            const d = new Date(iso);
+            const diffMin = Math.round((Date.now() - d) / 60000);
+            const diffH   = Math.round(diffMin / 60);
+            const diffD   = Math.round(diffH / 24);
+            if (diffMin < 2)       return `<span style="color:#4ade80;font-size:9px">agora</span>`;
+            if (diffMin < 60)      return `<span style="color:#4ade80;font-size:9px">há ${diffMin}min</span>`;
+            if (diffH < 24)        return `<span style="color:#94a3b8;font-size:9px">há ${diffH}h</span>`;
+            if (diffD < 7)         return `<span style="color:#64748b;font-size:9px">há ${diffD}d</span>`;
+            return `<span style="color:#475569;font-size:9px">${d.toLocaleDateString('pt-BR')}</span>`;
+        };
         const TIPO_LABEL = { master: '⭐ Master', admin: '🔑 Admin', user: '👤 Usuário' };
         const TIPO_COR   = { master: '#fbbf24',   admin: '#60a5fa',   user: '#94a3b8' };
         const th = 'padding:7px 8px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b;white-space:nowrap;background:#0c1220';
@@ -9359,6 +9371,7 @@ async function _carregarOnlineAgora() {
                 <td style="${td}"><span style="color:#64748b">${fmt(s.loginTime)}</span></td>
                 <td style="${td}"><span style="color:#e2e8f0">${ago(s.loginTime)}</span></td>
                 <td style="${td}"><span style="color:#64748b">${ago(s.lastSeen)}</span></td>
+                <td style="${td}" title="${s.ultimoAcesso ? new Date(s.ultimoAcesso).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : 'Sem registro'}">${fmtAcessoPainel(s.ultimoAcesso)}</td>
                 <td style="${td}"><span style="${loginsStyle}">${s.loginsHoje||0}</span></td>
                 <td style="${td}" title="Tentativas de login com senha errada na última hora">
                     <span style="${falhasStyle}">${s.falhasUltimaHora||0}${s.falhasUltimaHora > 5 ? ' ⚠️' : ''}</span>
@@ -9386,6 +9399,7 @@ async function _carregarOnlineAgora() {
                     <th style="${th}">HORA LOGIN</th>
                     <th style="${th}">TEMPO ONLINE</th>
                     <th style="${th}">ÚLTIMO PING</th>
+                    <th style="${th}">ÚLTIMO ACESSO</th>
                     <th style="${th}" title="Logins realizados hoje (reseta à meia-noite UTC)">LOGINS HOJE</th>
                     <th style="${th}" title="Tentativas com senha errada na última hora">FALHAS/1H</th>
                     <th style="${th}">AÇÕES</th>

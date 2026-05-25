@@ -1308,17 +1308,30 @@ app.post('/api/usuarios/online-detalhe', requireAuth, async (req, res) => {
             .filter(s => s.lastSeen.getTime() >= limite)
             .sort((a, b) => b.lastSeen - a.lastSeen);
 
+        // Busca UltimoAcesso do banco para todos os usuários ativos de uma vez
+        const ids = ativos.map(s => s.id).filter(Boolean);
+        let ultimoAcessoMap = {};
+        if (ids.length) {
+            try {
+                const idList = ids.map(id => `'${String(id).replace(/'/g,"''")}'`).join(',');
+                const uaRes  = await sql.query(`SELECT Id, UltimoAcesso FROM Usuarios WHERE Id IN (${idList})`);
+                uaRes.recordset.forEach(r => { ultimoAcessoMap[String(r.Id)] = r.UltimoAcesso; });
+            } catch(_) {}
+        }
+
         const enriched = await Promise.all(ativos.map(async s => {
             const geo  = await _geoLookup(s.ip);
             const device = _parseUA(s.userAgent || '');
             const hist = loginHistory.get(s.id) || { countToday: 0 };
             const fails = (loginFailures.get((s.usuario||'').toLowerCase()) || [])
                 .filter(f => Date.now() - f.ts < 60 * 60 * 1000).length;
+            const ua = ultimoAcessoMap[String(s.id)];
             return {
                 id: s.id, usuario: s.usuario, nome: s.nome, tipo: s.tipo,
                 ip: s.ip, userAgent: s.userAgent||'',
                 lastSeen: s.lastSeen.toISOString(),
                 loginTime: s.loginTime ? s.loginTime.toISOString() : null,
+                ultimoAcesso: ua ? new Date(ua).toISOString() : null,
                 geo, device,
                 loginsHoje: hist.countToday || 0,
                 falhasUltimaHora: fails,
