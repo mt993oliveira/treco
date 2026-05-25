@@ -1546,6 +1546,7 @@ const CONFIG_DEFAULTS = [
     { chave:'manutencao_previsao',          valor:'Em breve', tipo:'text', grupo:'sistema',  descricao:'Previsão de retorno (ex: "às 14:00" ou "em 30 min") — deixe vazio para não exibir' },
     { chave:'sessao_timeout_minutos',       valor:'180',   tipo:'number',  grupo:'sistema',  descricao:'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)' },
     { chave:'auto_refresh_segundos',        valor:'120',   tipo:'number',  grupo:'sistema',  descricao:'Intervalo de atualização automática da grade (segundos; 0 = desativar)' },
+    { chave:'auto_reinicio_minutos',        valor:'6',     tipo:'number',  grupo:'sistema',  descricao:'🔄 Reinício automático: minutos sem coleta para fechar Edge + Node e reiniciar tudo (0 = desativado)' },
     { chave:'tour_dias',                    valor:'7',     tipo:'number',  grupo:'sistema',  descricao:'Tour de onboarding: exibir por N dias após a data de licença (0 = desativado para todos)' },
     { chave:'fonte_proximos',               valor:'results',tipo:'text',   grupo:'sistema',  descricao:'Fonte dos próximos jogos: results = página de resultados | none = desativado' },
     { chave:'max_padroes_usuario',          valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'Limite de padrões de gráfico por usuário (1–10)' },

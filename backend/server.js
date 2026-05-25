@@ -1687,9 +1687,10 @@ server.listen(PORT, () => {
         const { dispararAlerta }          = require('./services/alertas');
         const coletor365 = new Bet365Coletor();
 
-        let _coletorTimer  = null;
-        let _alertaEnviado = false;
-        let _ultimaColetaOk = Date.now(); // grace period inicial
+        let _coletorTimer    = null;
+        let _alertaEnviado   = false;
+        let _reinicioAgendado = false;
+        let _ultimaColetaOk  = Date.now(); // grace period inicial
 
         async function _cicloColeta() {
             const inicio = Date.now();
@@ -1699,8 +1700,9 @@ server.listen(PORT, () => {
             // ── Verificar alertas ──────────────────────────────────
             if (coletor365.ultimaColetaSucesso && coletor365.ultimaColetaSucesso > _ultimaColetaOk) {
                 _ultimaColetaOk = coletor365.ultimaColetaSucesso;
-                if (_alertaEnviado) {
-                    _alertaEnviado = false;
+                if (_alertaEnviado || _reinicioAgendado) {
+                    _alertaEnviado    = false;
+                    _reinicioAgendado = false;
                     const pool  = await getDbPool().catch(() => null);
                     const agora = new Date().toLocaleString('pt-BR');
                     dispararAlerta(cfg, pool, '✅ Coletor recuperado',
@@ -1717,6 +1719,32 @@ server.listen(PORT, () => {
                     const erro  = coletor365.ultimoErro ? `\n❌ Erro: ${coletor365.ultimoErro}` : '';
                     dispararAlerta(cfg, pool, '⚠️ Coletor parado',
                         `Sem coleta há ${Math.round(semColeta)} minuto(s).${erro}\n🕐 ${agora}`).catch(() => {});
+                }
+            }
+            // ── Reinício automático ────────────────────────────────
+            if (!_reinicioAgendado) {
+                const reinicioMin = parseInt(cfg.auto_reinicio_minutos) || 0;
+                if (reinicioMin > 0) {
+                    const semColeta = (Date.now() - _ultimaColetaOk) / 60000;
+                    if (semColeta >= reinicioMin) {
+                        _reinicioAgendado = true;
+                        const pool  = await getDbPool().catch(() => null);
+                        const agora = new Date().toLocaleString('pt-BR');
+                        console.log(`\n🔄 [AutoReinicio] Sem coleta há ${Math.round(semColeta)} min — reiniciando tudo...\n`);
+                        dispararAlerta(cfg, pool,
+                            '🔄 Reinício automático disparado',
+                            `Sem coleta há ${Math.round(semColeta)} minuto(s).\nFechando Edge + Node e reiniciando tudo automaticamente.\n🕐 ${agora}`
+                        ).catch(() => {});
+                        // Aguarda alerta ser enviado antes de sair
+                        setTimeout(() => {
+                            const { spawn } = require('child_process');
+                            const batPath = require('path').join(__dirname, '..', 'reiniciar-tudo.bat');
+                            spawn('cmd.exe', ['/c', batPath], { detached: true, stdio: 'ignore' }).unref();
+                            console.log('🔄 [AutoReinicio] reiniciar-tudo.bat disparado — encerrando servidor...');
+                            process.exit(0);
+                        }, 3000);
+                        return; // para o ciclo aqui
+                    }
                 }
             }
             // ──────────────────────────────────────────────────────
