@@ -9480,6 +9480,18 @@ async function _carregarHistoricoAcessos(pagina) {
             if (pg) pg.innerHTML = '';
             return;
         }
+        const fmtAcessoHist = iso => {
+            if (!iso) return '<span style="color:#334155;font-size:9px">Nunca</span>';
+            const d = new Date(iso);
+            const diffMin = Math.round((Date.now() - d) / 60000);
+            const diffH   = Math.round(diffMin / 60);
+            const diffD   = Math.round(diffH / 24);
+            if (diffMin < 2)   return `<span style="color:#4ade80;font-size:9px">agora</span>`;
+            if (diffMin < 60)  return `<span style="color:#4ade80;font-size:9px">há ${diffMin}min</span>`;
+            if (diffH < 24)    return `<span style="color:#94a3b8;font-size:9px">há ${diffH}h</span>`;
+            if (diffD < 7)     return `<span style="color:#64748b;font-size:9px">há ${diffD}d</span>`;
+            return `<span style="color:#475569;font-size:9px">${d.toLocaleDateString('pt-BR')}</span>`;
+        };
         const TIPO_STYLE = {
             login_ok:     { bg:'#0f2c1a', color:'#4ade80', label:'✅ Login OK' },
             login_fail:   { bg:'#2c0f0f', color:'#f87171', label:'❌ Falha Login' },
@@ -9510,6 +9522,7 @@ async function _carregarHistoricoAcessos(pagina) {
                 <td style="${td}"><span style="color:#64748b;font-size:9px;max-width:140px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(h.provedor||'')}">${prov}</span></td>
                 <td style="${td}"><span style="color:#a78bfa;font-size:9px">${dur}</span></td>
                 <td style="${td}"><span style="color:#64748b;font-size:9px">${dt}</span></td>
+                <td style="${td}" title="${h.ultimo_acesso ? new Date(h.ultimo_acesso).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : 'Sem registro'}">${fmtAcessoHist(h.ultimo_acesso)}</td>
             </tr>`;
         }).join('');
         el.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:820px">
@@ -9522,6 +9535,7 @@ async function _carregarHistoricoAcessos(pagina) {
                 <th style="${th}">PROVEDOR</th>
                 <th style="${th}">DURAÇÃO</th>
                 <th style="${th}">DATA/HORA (UTC)</th>
+                <th style="${th}">ÚLTIMO ACESSO</th>
             </tr></thead>
             <tbody>${rows}</tbody>
         </table>`;

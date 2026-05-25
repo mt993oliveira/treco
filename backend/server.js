@@ -1398,9 +1398,13 @@ app.post('/api/usuarios/historico-acessos', requireAuth, async (req, res) => {
         mainReq.input('off', sql.Int, off);
         mainReq.input('pp',  sql.Int, pp);
         const rows = await mainReq.query(`
-            SELECT id, usuario_id, usuario, tipo, ip, user_agent, data_hora, cidade, pais, provedor, duracao_seg
-            FROM HistoricoAcessos ${w}
-            ORDER BY data_hora DESC
+            SELECT h.id, h.usuario_id, h.usuario, h.tipo, h.ip, h.user_agent, h.data_hora,
+                   h.cidade, h.pais, h.provedor, h.duracao_seg,
+                   u.UltimoAcesso AS ultimo_acesso
+            FROM HistoricoAcessos h
+            LEFT JOIN Usuarios u ON u.Id = h.usuario_id
+            ${w}
+            ORDER BY h.data_hora DESC
             OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
         `);
         res.json({ success: true, total, pagina: Number(pagina), porPagina: pp, data: rows.recordset });
