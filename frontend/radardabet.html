@@ -486,6 +486,7 @@
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">TIPO</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">LICENÇA</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">STATUS</th>
+                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">ÚLTIMO ACESSO</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">AÇÕES</th>
                     </tr>
                 </thead>
@@ -9765,7 +9766,7 @@ function _pingSession() {
 
 async function _carregarUsuarios() {
     const tbody = document.getElementById('tbody-usuarios');
-    tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#334155">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#334155">Carregando...</td></tr>';
     try {
         const u = _getUser();
         const r = await fetch('/api/usuarios', {
@@ -9795,11 +9796,27 @@ function filtrarTabelaUsuarios() {
 function _renderTabelaUsuarios(lista) {
     const tbody = document.getElementById('tbody-usuarios');
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#334155">Nenhum usuário encontrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#334155">Nenhum usuário encontrado.</td></tr>';
         return;
     }
     const TIPO_LABEL = { master: '⭐ Master', admin: '🔑 Admin', user: 'Usuário' };
     const fmtData = v => v ? new Date(v).toLocaleDateString('pt-BR') : '—';
+    const fmtAcesso = v => {
+        if (!v) return '<span style="color:#475569;font-size:10px">Nunca</span>';
+        const d = new Date(v);
+        const agora = new Date();
+        const diffMin = Math.round((agora - d) / 60000);
+        const diffH   = Math.round(diffMin / 60);
+        const diffD   = Math.round(diffH / 24);
+        let tempo;
+        if (diffMin < 2)       tempo = '<span style="color:#4ade80;font-size:10px">agora</span>';
+        else if (diffMin < 60) tempo = `<span style="color:#4ade80;font-size:10px">há ${diffMin}min</span>`;
+        else if (diffH < 24)   tempo = `<span style="color:#94a3b8;font-size:10px">há ${diffH}h</span>`;
+        else if (diffD < 7)    tempo = `<span style="color:#64748b;font-size:10px">há ${diffD}d</span>`;
+        else                   tempo = `<span style="color:#475569;font-size:10px">${d.toLocaleDateString('pt-BR')}</span>`;
+        const completo = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+        return `<span title="${completo}">${tempo}</span>`;
+    };
     tbody.innerHTML = lista.map(u => {
         const ativo    = u.Ativo ? '<span style="color:#4ade80;font-weight:700">Ativo</span>' : '<span style="color:#f87171">Inativo</span>';
         const tipo     = `<span style="font-size:10px;color:#94a3b8">${TIPO_LABEL[u.TipoUsuario] || u.TipoUsuario}</span>`;
@@ -9811,6 +9828,7 @@ function _renderTabelaUsuarios(lista) {
             <td style="padding:7px 10px;text-align:center">${tipo}</td>
             <td style="padding:7px 10px;text-align:center;font-size:10px;color:#475569">${licenca}</td>
             <td style="padding:7px 10px;text-align:center">${ativo}</td>
+            <td style="padding:7px 10px;text-align:center">${fmtAcesso(u.UltimoAcesso)}</td>
             <td style="padding:7px 10px;text-align:center;white-space:nowrap">
                 <button onclick="abrirFormUsuario(${u.Id})"
                     style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;

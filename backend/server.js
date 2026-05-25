@@ -748,7 +748,7 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
         }
 
         const result = await sql.query`
-            SELECT Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo
+            SELECT Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso
             FROM Usuarios
             ORDER BY Id DESC
         `;
@@ -1218,6 +1218,10 @@ app.post('/api/usuarios/ping', async (req, res) => {
         ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || existing.ip || '?',
         userAgent: existing.userAgent || req.headers['user-agent'] || '',
     });
+    // Grava último acesso no banco (assíncrono, sem bloquear resposta)
+    connectSQL(getDatabaseConfigFromEnv())
+        .then(() => sql.query`UPDATE Usuarios SET UltimoAcesso = GETUTCDATE() WHERE Id = ${usuarioId}`)
+        .catch(() => {});
     res.json({ ok: true });
 });
 
@@ -1635,6 +1639,13 @@ server.listen(PORT, () => {
                     WHERE TABLE_NAME = 'Usuarios' AND COLUMN_NAME = 'DataFimLicenca'
                 )
                     ALTER TABLE Usuarios ADD DataFimLicenca DATETIME2 NULL
+            `;
+            await sql.query`
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'Usuarios' AND COLUMN_NAME = 'UltimoAcesso'
+                )
+                    ALTER TABLE Usuarios ADD UltimoAcesso DATETIME2 NULL
             `;
         } catch(e) { console.warn('⚠️ Schema Usuarios:', e.message); }
     })();
