@@ -1980,6 +1980,10 @@
                 <input type="radio" id="alerta-graf-linha" name="alerta-graf" value="linha" style="accent-color:#f59e0b">
                 📉 Linha
             </label>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#e2e8f0">
+                <input type="radio" id="alerta-graf-gols" name="alerta-graf" value="gols" style="accent-color:#f59e0b">
+                📊 Gols
+            </label>
         </div>
         <!-- Condições -->
         <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Condições (todas devem ser atendidas)</div>
@@ -10092,7 +10096,7 @@ function _renderListaPadroes(padroes) {
         const _alertaInfo = (() => { try { const f = typeof p.filtros==='string'?JSON.parse(p.filtros||'{}'):(p.filtros||{}); return f.alerta||{}; } catch(e){return {};} })();
         const _alertaAtivo = !!(_alertaInfo.ativo);
         const _alertaGraf  = _alertaInfo.grafico || 'mercados';
-        const _alertaGrafLabel = _alertaAtivo ? (_alertaGraf === 'linha' ? ' 📉' : ' 📈') : '';
+        const _alertaGrafLabel = _alertaAtivo ? (_alertaGraf === 'linha' ? ' 📉' : _alertaGraf === 'gols' ? ' 📊' : ' 📈') : '';
         const acoes = editando ? '' : `
             <button onclick="aplicarPadrao(${p.id})" title="Aplicar este padrão"
                 style="padding:5px 10px;border-radius:5px;background:#1e293b;border:1px solid #334155;
@@ -10100,7 +10104,7 @@ function _renderListaPadroes(padroes) {
             <button onclick="editarNomePadrao(${p.id})" title="Renomear padrão"
                 style="padding:5px 8px;border-radius:5px;background:#1e293b;border:1px solid #334155;
                 color:#94a3b8;font-size:11px;cursor:pointer">✏️</button>
-            <button onclick="abrirAlertaEditor(${p.id})" title="${_alertaAtivo?'Alerta ativo ('+(_alertaGraf==='linha'?'Gráfico de Linha':'Gráfico de Mercados')+') — clique para editar':'Configurar alerta'}"
+            <button onclick="abrirAlertaEditor(${p.id})" title="${_alertaAtivo?'Alerta ativo ('+(_alertaGraf==='linha'?'Gráfico de Linha':_alertaGraf==='gols'?'Gráfico de Gols':'Gráfico de Mercados')+') — clique para editar':'Configurar alerta'}"
                 style="padding:5px 8px;border-radius:5px;background:${_alertaAtivo?'rgba(245,158,11,.12)':'#1e293b'};
                 border:1px solid ${_alertaAtivo?'#f59e0b':'#334155'};
                 color:${_alertaAtivo?'#f59e0b':'#64748b'};font-size:11px;cursor:pointer">⚠️${_alertaGrafLabel}</button>
