@@ -419,7 +419,7 @@ router.get('/historico-tabela', (req, res) => {
  */
 router.get('/sugestoes', async (req, res) => {
     try {
-        const nJogosN    = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 40));
+        const nJogosN    = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 100));
         const ligaFiltro = req.query.liga && req.query.liga !== '' && req.query.liga !== 'all'
             ? ligaParaBanco(req.query.liga) : null;
         const pool = await getDbPool();

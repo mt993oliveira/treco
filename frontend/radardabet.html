@@ -1090,10 +1090,10 @@
                 <select id="fa-njog-sel" onchange="faSet('nJogos', parseInt(this.value))"
                     style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
                     <option value="20">20</option>
-                    <option value="40" selected>40</option>
+                    <option value="40">40</option>
                     <option value="60">60</option>
                     <option value="80">80</option>
-                    <option value="100">100</option>
+                    <option value="100" selected>100</option>
                     <option value="120">120</option>
                     <option value="140">140</option>
                     <option value="160">160</option>
@@ -2227,7 +2227,7 @@ async function carregarConfigLigas() {
 
         // Padrões do frontend
         if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
-        if (cfg.default_dias_analise)    S.fa.nJogos = parseInt(cfg.default_dias_analise) || 40;
+        if (cfg.default_dias_analise)    S.fa.nJogos = parseInt(cfg.default_dias_analise) || 100;
         if (cfg.default_min_amostras)    S.fa.minJogos = parseInt(cfg.default_min_amostras) || 5;
         if (cfg.default_freq_min)        S.fa.minPct = parseInt(cfg.default_freq_min) || 0;
         if (cfg.default_tipo_mercado)    S.fa.tipoMercado = cfg.default_tipo_mercado;
@@ -2755,7 +2755,7 @@ const S = {
 
     // ── Filtros dinâmicos da aba Análise ──
     fa: {
-        nJogos:      40,      // últimos N jogos da liga (padrão 40, sobrescrito pela config)
+        nJogos:      100,     // últimos N jogos da liga (padrão 100, sobrescrito pela config)
         // liga vem de S.ligaAtiva (tabs principais) — não definida aqui
         minJogos:    5,       // mínimo de jogos/amostras
         minPct:      0,       // frequência mínima %
@@ -3299,7 +3299,7 @@ function _faAtualizarStatus() {
     if (!el) return;
     const f = S.fa;
     const partes = [];
-    partes.push(`🎯 ult. ${f.nJogos || 40} jogos`);
+    partes.push(`🎯 ult. ${f.nJogos || 100} jogos`);
     partes.push(`🏆 ${S.ligaAtiva || 'Todas'}`);
     partes.push(`⚽ mín. ${f.minJogos} jogos`);
     if (f.minPct > 0) partes.push(`📊 freq ≥${f.minPct}%`);
@@ -3314,7 +3314,7 @@ let _analiseReqId = 0;
 async function carregarAnalise(forceRender = false) {
     const reqId = ++_analiseReqId;
     try {
-        const nJogos = S.fa.nJogos || 40;
+        const nJogos = S.fa.nJogos || 100;
         const liga   = S.ligaAtiva || '';
 
         const base = new URLSearchParams({ nJogos });
@@ -3660,7 +3660,7 @@ function renderAnaliseDetalhe(liga) {
         </div>
     `;
 
-    const nAtual = S.fa.nJogos || 40;
+    const nAtual = S.fa.nJogos || 100;
     const rows = liga.filtros.slice(0, 11).map((f, i) => {
         const tx = f.tx_ultn;
         const cor = tx >= 65 ? '#4ade80' : tx >= 55 ? '#fbbf24' : tx >= 45 ? '#94a3b8' : '#f87171';
@@ -8204,7 +8204,7 @@ async function carregarEstatisticasAvancadas() {
 function _faInit() {
     // Sincroniza select de JOGOS
     const njogSel = document.getElementById('fa-njog-sel');
-    if (njogSel) njogSel.value = String(S.fa.nJogos || 40);
+    if (njogSel) njogSel.value = String(S.fa.nJogos || 100);
     // Sincroniza botões minJogos
     document.querySelectorAll('[id^="fa-minj-"]').forEach(b => {
         b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-minj-','')) === S.fa.minJogos);
