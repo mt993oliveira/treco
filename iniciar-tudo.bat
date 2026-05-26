@@ -8,6 +8,14 @@ echo   CONTROLFINANCE - BET365 FUTEBOL VIRTUAL
 echo ============================================
 echo.
 
+rem ── Reinicio manual: limpa cooldown de sessao para comecar do zero ──
+rem    (se vier de reiniciar-tudo.bat, BET365_AUTO_RESTART=1 e nao apaga)
+if not "%BET365_AUTO_RESTART%"=="1" (
+    del "%TEMP%\bet365-restart.ts" 2>nul
+    echo [Pre] Cooldown de sessao limpo ^(inicio manual^).
+)
+set BET365_AUTO_RESTART=
+
 echo [0/3] Atualizando codigo do servidor...
 git pull origin master
 echo.

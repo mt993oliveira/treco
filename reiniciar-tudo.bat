@@ -32,7 +32,8 @@ timeout /t 2 /nobreak > nul
 
 echo [4/4] Reiniciando tudo via iniciar-tudo.bat...
 echo.
-start "ControlFinance - Bet365" cmd /k "cd /d C:\PRODUCAO && call iniciar-tudo.bat"
+rem BET365_AUTO_RESTART=1 impede que iniciar-tudo.bat apague o cooldown de sessao
+start "ControlFinance - Bet365" cmd /k "set BET365_AUTO_RESTART=1&& cd /d C:\PRODUCAO && call iniciar-tudo.bat"
 
 echo  Reinicio disparado! Esta janela pode ser fechada.
 timeout /t 5 /nobreak > nul
