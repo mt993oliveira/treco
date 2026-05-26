@@ -738,26 +738,28 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
     try {
         await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
-        // Verificar se o usuário é master ou administrador
-        const userCheck = await sql.query`
-            SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}
-        `;
-        const _chkTipo = (userCheck.recordset[0]?.TipoUsuario || '').toLowerCase();
-        if (!userCheck.recordset.length || (_chkTipo !== 'master' && _chkTipo !== 'administrador' && _chkTipo !== 'admin')) {
-            return res.json({ success: false, message: 'Acesso não autorizado' });
-        }
-
-        const result = await sql.query`
-            SELECT Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso
+        // UMA única query: traz todos os usuários + tipo do requisitante via subquery
+        // Elimina o round-trip extra ao servidor remoto
+        const req2 = sqlConnectionPool.request();
+        req2.input('uid', sql.Int, req.body.usuarioId);
+        const result = await req2.query(`
+            SELECT Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario,
+                   DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso,
+                   (SELECT TipoUsuario FROM Usuarios WHERE Id = @uid) AS _RequesterTipo
             FROM Usuarios
             ORDER BY Id DESC
-        `;
+        `);
+
+        const _chkTipo = ((result.recordset[0] || {})._RequesterTipo || '').toLowerCase();
+        if (!_chkTipo || (_chkTipo !== 'master' && _chkTipo !== 'administrador' && _chkTipo !== 'admin')) {
+            return res.json({ success: false, message: 'Acesso não autorizado' });
+        }
 
         // CORREÇÃO: Garantir que sempre retorne 'data'
         const usuarios = result.recordset || [];
 
-        // Para cada usuário, converter as datas para o formato correto
-        const usuariosFormatados = usuarios.map(usuario => ({
+        // Para cada usuário, converter as datas para o formato correto e remover campo interno
+        const usuariosFormatados = usuarios.map(({ _RequesterTipo, ...usuario }) => ({
             ...usuario,
             DataInicioLicenca: usuario.DataInicioLicenca ? new Date(usuario.DataInicioLicenca).toISOString() : null,
             DataFimLicenca: usuario.DataFimLicenca ? new Date(usuario.DataFimLicenca).toISOString() : null
