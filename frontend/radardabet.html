@@ -1093,12 +1093,12 @@
                     <option value="40">40</option>
                     <option value="60">60</option>
                     <option value="80">80</option>
-                    <option value="100" selected>100</option>
+                    <option value="100">100</option>
                     <option value="120">120</option>
                     <option value="140">140</option>
                     <option value="160">160</option>
                     <option value="180">180</option>
-                    <option value="200">200</option>
+                    <option value="200" selected>200</option>
                     <option value="240">240</option>
                     <option value="280">280</option>
                     <option value="320">320</option>
@@ -2215,7 +2215,7 @@ async function carregarConfigLigas() {
 
         // Padrões do frontend
         if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
-        if (cfg.default_dias_analise)    S.fa.nJogos = parseInt(cfg.default_dias_analise) || 100;
+        if (cfg.default_dias_analise)    S.fa.nJogos = parseInt(cfg.default_dias_analise) || 200;
         if (cfg.default_min_amostras)    S.fa.minJogos = parseInt(cfg.default_min_amostras) || 5;
         if (cfg.default_freq_min)        S.fa.minPct = parseInt(cfg.default_freq_min) || 0;
         if (cfg.default_tipo_mercado)    S.fa.tipoMercado = cfg.default_tipo_mercado;
@@ -2743,7 +2743,7 @@ const S = {
 
     // ── Filtros dinâmicos da aba Análise ──
     fa: {
-        nJogos:      100,     // últimos N jogos da liga (padrão 100, sobrescrito pela config)
+        nJogos:      200,     // últimos N jogos da liga (padrão 200, sobrescrito pela config)
         // liga vem de S.ligaAtiva (tabs principais) — não definida aqui
         minJogos:    5,       // mínimo de jogos/amostras
         minPct:      0,       // frequência mínima %
@@ -3286,7 +3286,7 @@ function _faAtualizarStatus() {
     if (!el) return;
     const f = S.fa;
     const partes = [];
-    partes.push(`🎯 ult. ${f.nJogos || 100} jogos`);
+    partes.push(`🎯 ult. ${f.nJogos || 200} jogos`);
     partes.push(`🏆 ${S.ligaAtiva || 'Todas'}`);
     partes.push(`⚽ mín. ${f.minJogos} jogos`);
     if (f.minPct > 0) partes.push(`📊 freq ≥${f.minPct}%`);
@@ -3302,7 +3302,7 @@ async function carregarSugestoes(forceRender = false) {
         const resUrl = `/api/bet365/analise/resumo${_faParams({ minVE: S.fa.soValueBets ? 0.95 : 0 })}`;
 
         const [rSug, rMkt, rRes] = await Promise.all([
-            fetch(`/api/bet365/sugestoes?nJogos=${S.fa.nJogos || 100}&liga=${encodeURIComponent(S.ligaAtiva || '')}`).then(r => r.json()),
+            fetch(`/api/bet365/sugestoes?nJogos=${S.fa.nJogos || 200}&liga=${encodeURIComponent(S.ligaAtiva || '')}`).then(r => r.json()),
             fetch(mktUrl).then(r => r.json()).catch(() => ({ data: {} })),
             fetch(resUrl).then(r => r.json()).catch(() => ({}))
         ]);
@@ -3315,7 +3315,7 @@ async function carregarSugestoes(forceRender = false) {
         // Atualiza título dos value bets com o filtro atual
         const vbTit = document.getElementById('analise-vb-titulo');
         if (vbTit) {
-            vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (ult. ${S.fa.nJogos || 100} jogos)`;
+            vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (ult. ${S.fa.nJogos || 200} jogos)`;
         }
 
         _faAtualizarStatus();
@@ -3609,7 +3609,7 @@ function renderAnaliseDetalhe(liga) {
         </div>
     `;
 
-    const nAtual = S.fa.nJogos || 100;
+    const nAtual = S.fa.nJogos || 200;
     const rows = liga.filtros.slice(0, 11).map((f, i) => {
         const tx = f.tx_ultn;
         const cor = tx >= 65 ? '#4ade80' : tx >= 55 ? '#fbbf24' : tx >= 45 ? '#94a3b8' : '#f87171';
@@ -3659,7 +3659,7 @@ function renderAnaliseDetalhe(liga) {
 }
 
 async function onRankingNChange(val) {
-    const n = parseInt(val) || 100;
+    const n = parseInt(val) || 200;
     S.fa.nJogos = n;
     // Sincroniza o select principal de JOGOS
     const mainSel = document.getElementById('fa-njog-sel');
@@ -8175,7 +8175,7 @@ async function carregarEstatisticasAvancadas() {
 function _faInit() {
     // Sincroniza select de JOGOS
     const njogSel = document.getElementById('fa-njog-sel');
-    if (njogSel) njogSel.value = String(S.fa.nJogos || 100);
+    if (njogSel) njogSel.value = String(S.fa.nJogos || 200);
     // Sincroniza botões minJogos
     document.querySelectorAll('[id^="fa-minj-"]').forEach(b => {
         b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-minj-','')) === S.fa.minJogos);
@@ -10648,7 +10648,7 @@ async function carregarMercados() {
     try {
         // Liga vem dos tabs principais (S.ligaAtiva), não de MKT.liga
         const ligaAtual = S.ligaAtiva || null;
-        const nJogos = S.fa.nJogos || 100;
+        const nJogos = S.fa.nJogos || 200;
 
         // Mostra "Carregando..." nas seções enquanto busca
         const vbEl = document.getElementById('analise-mkt-value-bets');

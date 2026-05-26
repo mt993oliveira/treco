@@ -405,7 +405,7 @@ router.get('/historico-tabela', (req, res) => {
  */
 router.get('/sugestoes', async (req, res) => {
     try {
-        const nJogosN  = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 100));
+        const nJogosN  = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 200));
         const ligaFiltro = req.query.liga || null;
         const pool     = await getDbPool();
 
@@ -1020,7 +1020,7 @@ router.get('/analise/mercados', async (req, res) => {
     try {
         const {
             liga,
-            nJogos     = 100,
+            nJogos     = 200,
             minJogos   = 3,
             minPct     = 0,
             tipoMercado = '',
@@ -1028,7 +1028,7 @@ router.get('/analise/mercados', async (req, res) => {
             minVE      = 0,
         } = req.query;
 
-        const nJogosN   = Math.min(420, Math.max(20, parseInt(nJogos) || 100));
+        const nJogosN   = Math.min(420, Math.max(20, parseInt(nJogos) || 200));
         const minJogosN = Math.max(1, parseInt(minJogos) || 3);
         const minPctN   = Math.max(0, parseFloat(minPct)  || 0);
         const minVEN    = Math.max(0, parseFloat(minVE)   || 0);
@@ -1149,14 +1149,14 @@ router.get('/analise/tendencias', async (req, res) => {
     try {
         const {
             liga,
-            nJogos       = 100, // alias para nRecente
+            nJogos       = 200, // alias para nRecente
             nRecente,
             minJogosHist = 10,
             minJogosRec  = 5,
             minVariacao  = 10,
         } = req.query;
 
-        const nRecenteN     = Math.max(5, parseInt(nJogos || nRecente) || 100);
+        const nRecenteN     = Math.max(5, parseInt(nJogos || nRecente) || 200);
         const minJogosHistN = Math.max(3,  parseInt(minJogosHist) || 5);
         const minJogosRecN  = Math.max(1,  parseInt(minJogosRec)  || 3);
         const minVariacaoN  = Math.max(0,  parseFloat(minVariacao) || 3);
@@ -1247,8 +1247,8 @@ router.get('/analise/tendencias', async (req, res) => {
  */
 router.get('/analise/sugestoes-avancadas', async (req, res) => {
     try {
-        const { liga, nJogos = 100 } = req.query;
-        const nJogosN  = Math.min(420, Math.max(20, parseInt(nJogos) || 100));
+        const { liga, nJogos = 200 } = req.query;
+        const nJogosN  = Math.min(420, Math.max(20, parseInt(nJogos) || 200));
         const ligaDb   = ligaParaBanco(liga);
         const pool     = await getDbPool();
         const reqEvt   = pool.request();
@@ -1366,14 +1366,14 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
 router.get('/analise/resumo', async (req, res) => {
     try {
         const {
-            nJogos     = 100,
+            nJogos     = 200,
             liga,
             minJogos   = 5,
             minVE      = 0.95,
             soValueBets = '0',
         } = req.query;
 
-        const nJogosN   = Math.min(420, Math.max(20, parseInt(nJogos) || 100));
+        const nJogosN   = Math.min(420, Math.max(20, parseInt(nJogos) || 200));
         const minJogosN = Math.max(1, parseInt(minJogos) || 5);
         const minVEN    = Math.max(0, parseFloat(minVE)  || 0.95);
         const pool      = await getDbPool();
