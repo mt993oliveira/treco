@@ -972,25 +972,32 @@ router.get('/historico-mercados', async (req, res) => {
             // Usa rfMkt.selecao (já confirmado) para escolher a linha correta quando houver múltiplas
             const ftCorMkts = mkts.filter(m => /resultado correto/i.test(m.mercado) && !/intervalo/i.test(m.mercado));
             let ftCorMkt = ftCorMkts[0] || null;
-            if (ftCorMkts.length > 1 && rfMkt) {
-                const winner = (rfMkt.selecao || '').toLowerCase().trim();
-                const casaLow = (j.time_casa || '').toLowerCase().trim();
-                const foraLow = (j.time_fora || '').toLowerCase().trim();
-                let confirmed;
-                if (winner === 'empate') {
-                    confirmed = ftCorMkts.find(m => /^empate/i.test(m.selecao));
-                } else if (casaLow && winner.includes(casaLow)) {
-                    confirmed = ftCorMkts.find(m => {
-                        const sl = (m.selecao || '').toLowerCase().trim();
-                        return sl.startsWith(casaLow);
-                    });
-                } else if (foraLow && winner.includes(foraLow)) {
-                    confirmed = ftCorMkts.find(m => {
-                        const sl = (m.selecao || '').toLowerCase().trim();
-                        return sl.startsWith(foraLow);
-                    });
+            if (ftCorMkts.length > 1) {
+                // Prioridade 1: seleção com odd_paga > 0 — essa é o placar real
+                const pago = ftCorMkts.find(m => m.odd_paga > 0);
+                if (pago) {
+                    ftCorMkt = pago;
+                } else if (rfMkt) {
+                    // Prioridade 2: confirmar via nome do vencedor no "Resultado Final"
+                    const winner = (rfMkt.selecao || '').toLowerCase().trim();
+                    const casaLow = (j.time_casa || '').toLowerCase().trim();
+                    const foraLow = (j.time_fora || '').toLowerCase().trim();
+                    let confirmed;
+                    if (winner === 'empate') {
+                        confirmed = ftCorMkts.find(m => /^empate/i.test(m.selecao));
+                    } else if (casaLow && winner.includes(casaLow)) {
+                        confirmed = ftCorMkts.find(m => {
+                            const sl = (m.selecao || '').toLowerCase().trim();
+                            return sl.startsWith(casaLow);
+                        });
+                    } else if (foraLow && winner.includes(foraLow)) {
+                        confirmed = ftCorMkts.find(m => {
+                            const sl = (m.selecao || '').toLowerCase().trim();
+                            return sl.startsWith(foraLow);
+                        });
+                    }
+                    if (confirmed) ftCorMkt = confirmed;
                 }
-                if (confirmed) ftCorMkt = confirmed;
             }
             if (ftCorMkt) {
                 const sc = parseSelecaoScore(ftCorMkt.selecao);
