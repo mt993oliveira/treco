@@ -237,7 +237,8 @@ class Bet365Coletor {
         this.ultimaColetaSucesso = null;
         this.ultimoErro          = null;
         this._ultimoAlertaLoginTs  = 0; // throttle: evita spam de alertas de login
-        this._ultimoLoginTs        = 0; // timestamp do último login bem-sucedido (anti-duplo-login)
+        this._ultimoLoginTs        = 0;     // timestamp do último login bem-sucedido (anti-duplo-login)
+        this._reinicioAgendado     = false; // evita agendar múltiplos reinícios simultâneos
         this._ultimaColetaProximos = new Map(); // liga → timestamp da última busca de próximos
     }
 
@@ -1564,11 +1565,31 @@ class Bet365Coletor {
                 } else {
                     console.log('   ❌ Não foi possível restaurar a sessão');
                     dispararAlerta(this.cfg, pool,
-                        '❌ Sessão Bet365 expirou — falha no login',
-                        `A tela de login foi detectada mas o auto-login não funcionou.\n⚠️ Intervenção manual necessária: abra o Edge e faça o login.\n🕐 ${agora}`
+                        '❌ Sessão Bet365 expirou — reiniciando tudo',
+                        `Auto-login falhou — fechando Edge + Node e reiniciando tudo automaticamente.\n🔄 O sistema voltará em ~30s.\n🕐 ${agora}`
                     ).catch(() => {});
                 }
             }
+
+            // ── Reinício completo quando auto-login falhou ────────────────────────
+            // Estratégia: tenta in-place primeiro; se sessaoOk=false após todas as
+            // tentativas, dispara reiniciar-tudo.bat e encerra o processo.
+            if (!sessaoOk && !this._reinicioAgendado) {
+                this._reinicioAgendado = true;
+                console.log('   🔄 Reiniciando tudo em 5s (Edge + Node + iniciar-tudo.bat)...');
+                setTimeout(() => {
+                    try {
+                        const { spawn } = require('child_process');
+                        const batPath = require('path').join(__dirname, '..', '..', 'reiniciar-tudo.bat');
+                        spawn('cmd.exe', ['/c', batPath], { detached: true, stdio: 'ignore' }).unref();
+                        console.log('   🔄 reiniciar-tudo.bat disparado — encerrando processo...');
+                    } catch(batErr) {
+                        console.warn('   ⚠️  Erro ao disparar reiniciar-tudo.bat:', batErr.message);
+                    }
+                    process.exit(0);
+                }, 5000);
+            }
+
         } catch(e) {
             console.warn('   ⚠️  _verificarSessao:', e.message);
         }
