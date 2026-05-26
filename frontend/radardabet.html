@@ -950,8 +950,8 @@
         </div>
         <div style="font-size:11px;color:#94a3b8;line-height:1.7;display:flex;flex-direction:column;gap:12px">
             <div>
-                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">📅 PERÍODO (1D · 3D · 7D · 14D · 30D)</div>
-                <div>Define quantos dias de histórico são usados para calcular as estatísticas. <b style="color:#fbbf24">3D</b> = últimos 3 dias de jogos. Períodos menores refletem padrões mais recentes; períodos maiores dão mais confiança estatística.</div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🎯 JOGOS (20 · 40 · 60 · 80 · 100 · … · 420)</div>
+                <div>Define quantos jogos (os mais recentes da liga selecionada) são usados para calcular as estatísticas. <b style="color:#fbbf24">100</b> = últimos 100 jogos da liga. Valores menores refletem padrões mais recentes; valores maiores dão mais confiança estatística.</div>
             </div>
             <div>
                 <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🔢 MÍN. AMOSTRAS (3 · 5 · 10 · 20 · 50)</div>
@@ -1084,16 +1084,27 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:10px 20px;align-items:flex-end">
 
-            <!-- Período -->
+            <!-- Jogos -->
             <div>
-                <div style="font-size:8px;color:#475569;margin-bottom:4px">PERÍODO</div>
-                <div style="display:flex;gap:3px">
-                    <button onclick="faSet('dias',1)"      id="fa-dias-1"    class="fa-btn">1D</button>
-                    <button onclick="faSet('dias',3)"      id="fa-dias-3"    class="fa-btn fa-btn-ativo">3D</button>
-                    <button onclick="faSet('dias',7)"      id="fa-dias-7"    class="fa-btn">7D</button>
-                    <button onclick="faSet('dias',14)"     id="fa-dias-14"   class="fa-btn">14D</button>
-                    <button onclick="faSet('dias',30)"     id="fa-dias-30"   class="fa-btn">30D</button>
-                </div>
+                <div style="font-size:8px;color:#475569;margin-bottom:4px">JOGOS</div>
+                <select id="fa-njog-sel" onchange="faSet('nJogos', parseInt(this.value))"
+                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
+                    <option value="20">20</option>
+                    <option value="40">40</option>
+                    <option value="60">60</option>
+                    <option value="80">80</option>
+                    <option value="100" selected>100</option>
+                    <option value="120">120</option>
+                    <option value="140">140</option>
+                    <option value="160">160</option>
+                    <option value="180">180</option>
+                    <option value="200">200</option>
+                    <option value="240">240</option>
+                    <option value="280">280</option>
+                    <option value="320">320</option>
+                    <option value="360">360</option>
+                    <option value="420">420</option>
+                </select>
             </div>
 
             <!-- Mínimo de amostras -->
@@ -2204,7 +2215,7 @@ async function carregarConfigLigas() {
 
         // Padrões do frontend
         if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
-        if (cfg.default_dias_analise)    S.fa.dias = parseInt(cfg.default_dias_analise) || 3;
+        if (cfg.default_dias_analise)    S.fa.nJogos = parseInt(cfg.default_dias_analise) || 100;
         if (cfg.default_min_amostras)    S.fa.minJogos = parseInt(cfg.default_min_amostras) || 5;
         if (cfg.default_freq_min)        S.fa.minPct = parseInt(cfg.default_freq_min) || 0;
         if (cfg.default_tipo_mercado)    S.fa.tipoMercado = cfg.default_tipo_mercado;
@@ -2732,7 +2743,7 @@ const S = {
 
     // ── Filtros dinâmicos da aba Análise ──
     fa: {
-        dias:        3,       // período: 1,3,7,14,30 (padrão 3D, sobrescrito pela config)
+        nJogos:      100,     // últimos N jogos da liga (padrão 100, sobrescrito pela config)
         // liga vem de S.ligaAtiva (tabs principais) — não definida aqui
         minJogos:    5,       // mínimo de jogos/amostras
         minPct:      0,       // frequência mínima %
@@ -3219,7 +3230,7 @@ function filtrarPartidas() {
 function _faParams(extra = {}) {
     const p = { ...S.fa, ...extra };
     const qs = new URLSearchParams();
-    if (p.dias !== undefined)        qs.set('dias',       p.dias);
+    if (p.nJogos !== undefined)      qs.set('nJogos',     p.nJogos);
     // Liga vem sempre dos tabs principais (S.ligaAtiva), não de S.fa
     if (S.ligaAtiva)                 qs.set('liga',       S.ligaAtiva);
     if (p.minJogos !== undefined)    qs.set('minJogos',   p.minJogos);
@@ -3237,7 +3248,6 @@ function faSet(campo, valor) {
 
     // Atualiza visuais dos botões de grupo
     const grupMap = {
-        dias:      { prefix: 'fa-dias', vals: [1,3,7,14,30,'tudo'] },
         minJogos:  { prefix: 'fa-minj', vals: [3,5,10,20,50] },
         minPct:    { prefix: 'fa-pct',  vals: [0,50,60,70,80] },
         nRecente:  { prefix: 'fa-nrec', vals: [10,20,30,50] },
@@ -3252,10 +3262,13 @@ function faSet(campo, valor) {
 
     _faAtualizarStatus();
 
-    // Sincroniza MKT com o sidebar para que Frequência/Tendências reflitam o mesmo período/tipo
-    if (campo === 'dias') {
-        MKT.dias = (valor === 'tudo') ? 999 : parseInt(valor) || 7;
-        if (S.view === 'analise') carregarMercados();
+    // nJogos: sincroniza ambos os selects e recarrega tudo
+    if (campo === 'nJogos') {
+        const njogSel = document.getElementById('fa-njog-sel');
+        if (njogSel) njogSel.value = String(valor);
+        const rankSel = document.getElementById('ranking-n-sel');
+        if (rankSel) rankSel.value = String(valor);
+        if (S.view === 'analise') { carregarSugestoes(); carregarMercados(); }
     }
     if (campo === 'tipoMercado') {
         // Mapeia S.fa.tipoMercado → MKT.tipo
@@ -3273,7 +3286,7 @@ function _faAtualizarStatus() {
     if (!el) return;
     const f = S.fa;
     const partes = [];
-    partes.push(`📅 ${f.dias === 'tudo' ? 'Todo o histórico' : f.dias + ' dias'}`);
+    partes.push(`🎯 ult. ${f.nJogos || 100} jogos`);
     partes.push(`🏆 ${S.ligaAtiva || 'Todas'}`);
     partes.push(`⚽ mín. ${f.minJogos} jogos`);
     if (f.minPct > 0) partes.push(`📊 freq ≥${f.minPct}%`);
@@ -3288,9 +3301,8 @@ async function carregarSugestoes(forceRender = false) {
         const mktUrl = `/api/bet365/analise/mercados${_faParams()}`;
         const resUrl = `/api/bet365/analise/resumo${_faParams({ minVE: S.fa.soValueBets ? 0.95 : 0 })}`;
 
-        const diasParam = S.fa?.dias ? `&dias=${S.fa.dias}` : '';
         const [rSug, rMkt, rRes] = await Promise.all([
-            fetch(`/api/bet365/sugestoes?n=${S.rankingN}${diasParam}`).then(r => r.json()),
+            fetch(`/api/bet365/sugestoes?nJogos=${S.fa.nJogos || 100}&liga=${encodeURIComponent(S.ligaAtiva || '')}`).then(r => r.json()),
             fetch(mktUrl).then(r => r.json()).catch(() => ({ data: {} })),
             fetch(resUrl).then(r => r.json()).catch(() => ({}))
         ]);
@@ -3300,11 +3312,10 @@ async function carregarSugestoes(forceRender = false) {
         S.mktValueBets = (rRes.value_bets || []);
         S.mktTopSel    = (rRes.top_selecoes || []);
 
-        // Atualiza título dos value bets com o período atual
+        // Atualiza título dos value bets com o filtro atual
         const vbTit = document.getElementById('analise-vb-titulo');
         if (vbTit) {
-            const label = S.fa.dias === 'tudo' ? 'TODO O HISTÓRICO' : `${S.fa.dias} DIAS`;
-            vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (${label})`;
+            vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (ult. ${S.fa.nJogos || 100} jogos)`;
         }
 
         _faAtualizarStatus();
@@ -3598,7 +3609,7 @@ function renderAnaliseDetalhe(liga) {
         </div>
     `;
 
-    const nAtual = S.rankingN;
+    const nAtual = S.fa.nJogos || 100;
     const rows = liga.filtros.slice(0, 11).map((f, i) => {
         const tx = f.tx_ultn;
         const cor = tx >= 65 ? '#4ade80' : tx >= 55 ? '#fbbf24' : tx >= 45 ? '#94a3b8' : '#f87171';
@@ -3630,7 +3641,7 @@ function renderAnaliseDetalhe(liga) {
                 <select id="ranking-n-sel" onchange="onRankingNChange(this.value)"
                     style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;
                            font-size:10px;padding:2px 5px;cursor:pointer">
-                    ${[3,5,10,15,20,30,50].map(v =>
+                    ${[20,40,60,80,100,120,140,160,180,200,240,280,320,360,420].map(v =>
                         `<option value="${v}" ${v === nAtual ? 'selected' : ''}>${v}</option>`
                     ).join('')}
                 </select>
@@ -3648,8 +3659,14 @@ function renderAnaliseDetalhe(liga) {
 }
 
 async function onRankingNChange(val) {
-    S.rankingN = parseInt(val) || 10;
+    const n = parseInt(val) || 100;
+    S.fa.nJogos = n;
+    // Sincroniza o select principal de JOGOS
+    const mainSel = document.getElementById('fa-njog-sel');
+    if (mainSel) mainSel.value = String(n);
+    _faAtualizarStatus();
     await carregarSugestoes();
+    if (S.view === 'analise') carregarMercados();
 }
 
 function statBar(label, value, max, cor, suffix = '') {
@@ -8156,11 +8173,9 @@ async function carregarEstatisticasAvancadas() {
 
 // ── Inicializa status da barra de filtros ────────────────────────────────
 function _faInit() {
-    // Sincroniza botões dias
-    document.querySelectorAll('[id^="fa-dias-"]').forEach(b => {
-        const v = b.id === 'fa-dias-tudo' ? 'tudo' : parseInt(b.id.replace('fa-dias-',''));
-        b.classList.toggle('fa-btn-ativo', S.fa.dias == v);
-    });
+    // Sincroniza select de JOGOS
+    const njogSel = document.getElementById('fa-njog-sel');
+    if (njogSel) njogSel.value = String(S.fa.nJogos || 100);
     // Sincroniza botões minJogos
     document.querySelectorAll('[id^="fa-minj-"]').forEach(b => {
         b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-minj-','')) === S.fa.minJogos);
@@ -10633,7 +10648,7 @@ async function carregarMercados() {
     try {
         // Liga vem dos tabs principais (S.ligaAtiva), não de MKT.liga
         const ligaAtual = S.ligaAtiva || null;
-        const dias = MKT.dias || S.fa.dias || 7;
+        const nJogos = S.fa.nJogos || 100;
 
         // Mostra "Carregando..." nas seções enquanto busca
         const vbEl = document.getElementById('analise-mkt-value-bets');
@@ -10642,15 +10657,15 @@ async function carregarMercados() {
         if (tdEl) tdEl.innerHTML = '<span style="color:#334155">Carregando...</span>';
 
         // Parâmetros comuns
-        const params = new URLSearchParams({ dias });
+        const params = new URLSearchParams({ nJogos });
         if (ligaAtual) params.set('liga', ligaAtual);
 
-        // Tendências: mesmo período + liga, threshold baixo
-        const tendParams = new URLSearchParams({ minJogosHist: 5, minJogosRec: 3, minVariacao: 1, dias });
+        // Tendências: mesmo nJogos + liga, threshold baixo
+        const tendParams = new URLSearchParams({ minJogosHist: 5, minJogosRec: 3, minVariacao: 1, nJogos });
         if (ligaAtual) tendParams.set('liga', ligaAtual);
 
-        // IA Sugestões: mesmo período + liga
-        const iaParams = new URLSearchParams({ dias });
+        // IA Sugestões: mesmo nJogos + liga
+        const iaParams = new URLSearchParams({ nJogos });
         if (ligaAtual) iaParams.set('liga', ligaAtual);
 
         const [resumoRes, mktRes, tendRes, iaRes] = await Promise.all([

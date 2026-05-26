@@ -405,16 +405,15 @@ router.get('/historico-tabela', (req, res) => {
  */
 router.get('/sugestoes', async (req, res) => {
     try {
-        const nParam  = Math.min(100, Math.max(3, parseInt(req.query.n) || 10));
-        const diasN   = req.query.dias === 'tudo' ? null : (parseInt(req.query.dias) || null);
-        const pool    = await getDbPool();
-        const diasWhere = diasN ? `AND data_partida >= DATEADD(DAY, -${diasN}, GETUTCDATE())` : '';
+        const nJogosN  = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 100));
+        const ligaFiltro = req.query.liga || null;
+        const pool     = await getDbPool();
 
-        // Ligas com ao menos 5 jogos distintos (respeitando o período)
+        // Ligas com ao menos 5 jogos distintos
         const ligasResult = await pool.query(`
             SELECT liga, COUNT(DISTINCT evento_id) AS total
             FROM bet365_resultados_mercados
-            WHERE liga IS NOT NULL AND liga <> '' ${diasWhere}
+            WHERE liga IS NOT NULL AND liga <> ''
             GROUP BY liga
             HAVING COUNT(DISTINCT evento_id) >= 5
             ORDER BY total DESC
@@ -423,11 +422,15 @@ router.get('/sugestoes', async (req, res) => {
         const resultado = [];
 
         for (const l of ligasResult.recordset) {
-            // Busca todos os eventos da liga com seus mercados-chave (até 200 eventos)
+            // Filtra por liga se especificada
+            if (ligaFiltro && ligaFiltro !== 'all' && ligaFiltro !== '' && l.liga !== ligaFiltro) continue;
+
+            // Busca os últimos nJogos eventos da liga
             const pResult = await pool.request()
-                .input('liga', sql.NVarChar(200), l.liga)
+                .input('liga',   sql.NVarChar(200), l.liga)
+                .input('nJogos', sql.Int,           nJogosN)
                 .query(`
-                    SELECT TOP 500
+                    SELECT TOP (@nJogos)
                         evento_id, data_partida,
                         MAX(CASE WHEN mercado = 'Resultado Final' THEN selecao END) AS resultado_final,
                         MAX(CASE WHEN time_casa IS NOT NULL THEN time_casa END) AS time_casa,
@@ -440,7 +443,7 @@ router.get('/sugestoes', async (req, res) => {
                         MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under25,
                         MAX(CASE WHEN mercado = 'Ambos Marcam' AND selecao = 'Sim' THEN 1 ELSE 0 END) AS btts
                     FROM bet365_resultados_mercados
-                    WHERE liga = @liga ${diasWhere}
+                    WHERE liga = @liga
                     GROUP BY evento_id, data_partida
                     ORDER BY data_partida DESC
                 `);
@@ -475,7 +478,7 @@ router.get('/sugestoes', async (req, res) => {
 
             const n = partidas.length;
             const filtroStats = FILTROS.map(f => {
-                const nN = Math.min(nParam, n), n5 = Math.min(5,n), n10 = Math.min(10,n), n20 = Math.min(20,n);
+                const nN = Math.min(nJogosN, n), n5 = Math.min(5,n), n10 = Math.min(10,n), n20 = Math.min(20,n);
                 const hGeral = partidas.filter(f.check).length;
                 const hN  = partidas.slice(0, nN).filter(f.check).length;
                 const h5  = partidas.slice(0, n5).filter(f.check).length;
@@ -1017,7 +1020,7 @@ router.get('/analise/mercados', async (req, res) => {
     try {
         const {
             liga,
-            dias       = 7,
+            nJogos     = 100,
             minJogos   = 3,
             minPct     = 0,
             tipoMercado = '',
@@ -1025,24 +1028,37 @@ router.get('/analise/mercados', async (req, res) => {
             minVE      = 0,
         } = req.query;
 
-        const diasNum   = dias === 'tudo' ? 9999 : Math.min(parseInt(dias) || 7, 365);
+        const nJogosN   = Math.min(420, Math.max(20, parseInt(nJogos) || 100));
         const minJogosN = Math.max(1, parseInt(minJogos) || 3);
         const minPctN   = Math.max(0, parseFloat(minPct)  || 0);
         const minVEN    = Math.max(0, parseFloat(minVE)   || 0);
         const pool      = await getDbPool();
         const request   = pool.request()
+            .input('nJogos',    sql.Int,   nJogosN)
             .input('minJogos',  sql.Int,   minJogosN)
             .input('minPct',    sql.Float, minPctN)
             .input('minVE',     sql.Float, minVEN);
 
         const whereParts = [];
-        if (diasNum < 9999) {
-            request.input('dias', sql.Int, diasNum);
-            whereParts.push('m.data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())');
-        }
         if (liga && liga !== 'all') {
             request.input('liga', sql.NVarChar(200), ligaParaBanco(liga));
             whereParts.push('m.liga = @liga');
+            whereParts.push(`m.evento_id IN (
+                SELECT TOP (@nJogos) evento_id
+                FROM bet365_resultados_mercados
+                WHERE liga = @liga
+                GROUP BY evento_id
+                ORDER BY MAX(data_partida) DESC
+            )`);
+        } else {
+            whereParts.push(`m.evento_id IN (
+                SELECT evento_id FROM (
+                    SELECT evento_id,
+                           ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
+                    FROM bet365_resultados_mercados
+                    GROUP BY liga, evento_id
+                ) t WHERE t.rn <= @nJogos
+            )`);
         }
         if (tipoMercado && tipoMercado !== 'Todos') {
             // mapeia rótulos amigáveis para palavras-chave SQL
@@ -1118,7 +1134,7 @@ router.get('/analise/mercados', async (req, res) => {
             });
         }
 
-        res.json({ success: true, dias: diasNum, filtros: { minJogos: minJogosN, minPct: minPctN, tipoMercado, soValueBets }, data: agrupado });
+        res.json({ success: true, nJogos: nJogosN, filtros: { minJogos: minJogosN, minPct: minPctN, tipoMercado, soValueBets }, data: agrupado });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1133,14 +1149,14 @@ router.get('/analise/tendencias', async (req, res) => {
     try {
         const {
             liga,
-            nRecente    = 20,
+            nJogos       = 100, // alias para nRecente
+            nRecente,
             minJogosHist = 10,
             minJogosRec  = 5,
             minVariacao  = 10,
-            dias         = 0,   // 0 = todo o histórico
         } = req.query;
 
-        const nRecenteN     = Math.max(5,  parseInt(nRecente)    || 30);
+        const nRecenteN     = Math.max(5, parseInt(nJogos || nRecente) || 100);
         const minJogosHistN = Math.max(3,  parseInt(minJogosHist) || 5);
         const minJogosRecN  = Math.max(1,  parseInt(minJogosRec)  || 3);
         const minVariacaoN  = Math.max(0,  parseFloat(minVariacao) || 3);
@@ -1231,8 +1247,8 @@ router.get('/analise/tendencias', async (req, res) => {
  */
 router.get('/analise/sugestoes-avancadas', async (req, res) => {
     try {
-        const { liga, dias = 30 } = req.query;
-        const diasN    = parseInt(dias) || 30;
+        const { liga, nJogos = 100 } = req.query;
+        const nJogosN  = Math.min(420, Math.max(20, parseInt(nJogos) || 100));
         const ligaDb   = ligaParaBanco(liga);
         const pool     = await getDbPool();
         const reqEvt   = pool.request();
@@ -1245,11 +1261,30 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
             evtLigaWhere = 'AND league_name = @ligaEvt';
         }
 
-        // Filtro de liga para estatísticas
+        // Filtro de liga para estatísticas + subquery TOP N por liga
         let statsLigaWhere = '';
+        let nJogosStatsWhere;
         if (ligaDb && ligaDb !== 'all') {
-            reqStats.input('ligaSt', sql.NVarChar(200), ligaDb);
+            reqStats.input('ligaSt',    sql.NVarChar(200), ligaDb);
+            reqStats.input('nJogosIA',  sql.Int,           nJogosN);
             statsLigaWhere = 'AND liga = @ligaSt';
+            nJogosStatsWhere = `AND evento_id IN (
+                SELECT TOP (@nJogosIA) evento_id
+                FROM bet365_resultados_mercados
+                WHERE liga = @ligaSt
+                GROUP BY evento_id
+                ORDER BY MAX(data_partida) DESC
+            )`;
+        } else {
+            reqStats.input('nJogosIA',  sql.Int,           nJogosN);
+            nJogosStatsWhere = `AND evento_id IN (
+                SELECT evento_id FROM (
+                    SELECT evento_id,
+                           ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
+                    FROM bet365_resultados_mercados
+                    GROUP BY liga, evento_id
+                ) t WHERE t.rn <= @nJogosIA
+            )`;
         }
 
         // Eventos agendados (filtrados por liga se especificada)
@@ -1265,7 +1300,7 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
             return res.json({ success: true, data: [] });
         }
 
-        // Estatísticas de mercados por liga — denominador correto (window function)
+        // Estatísticas de mercados por liga — últimos N jogos por liga (denominador correto)
         const statsLiga = await reqStats.query(`
             WITH base AS (
                 SELECT liga, mercado, selecao,
@@ -1273,7 +1308,7 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
                     SUM(COUNT(DISTINCT evento_id)) OVER (PARTITION BY liga, mercado) AS total_jogos,
                     AVG(CAST(odd_paga AS FLOAT)) AS odd_f
                 FROM bet365_resultados_mercados
-                WHERE data_partida >= DATEADD(DAY, -${diasN}, GETUTCDATE()) ${statsLigaWhere}
+                WHERE 1=1 ${statsLigaWhere} ${nJogosStatsWhere}
                 GROUP BY liga, mercado, selecao
             )
             SELECT liga, mercado, selecao, vezes, total_jogos,
@@ -1331,27 +1366,45 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
 router.get('/analise/resumo', async (req, res) => {
     try {
         const {
-            dias       = 7,
+            nJogos     = 100,
             liga,
             minJogos   = 5,
             minVE      = 0.95,
             soValueBets = '0',
         } = req.query;
 
-        const diasNum   = dias === 'tudo' ? 9999 : Math.min(parseInt(dias) || 7, 365);
+        const nJogosN   = Math.min(420, Math.max(20, parseInt(nJogos) || 100));
         const minJogosN = Math.max(1, parseInt(minJogos) || 5);
         const minVEN    = Math.max(0, parseFloat(minVE)  || 0.95);
         const pool      = await getDbPool();
 
-        const diasWhere  = diasNum < 9999 ? `AND data_partida >= DATEADD(DAY,-${diasNum},GETUTCDATE())` : '';
         const ligaDb     = ligaParaBanco(liga);
         const ligaWhere  = (ligaDb && ligaDb !== 'all') ? `AND liga = '${ligaDb.replace(/'/g,"''")}'` : '';
+
+        // Subquery: últimos nJogos eventos por liga
+        const nJogosWhere = (ligaDb && ligaDb !== 'all')
+            ? `AND evento_id IN (
+                SELECT TOP (${nJogosN}) evento_id
+                FROM bet365_resultados_mercados
+                WHERE liga = '${ligaDb.replace(/'/g,"''")}'
+                GROUP BY evento_id
+                ORDER BY MAX(data_partida) DESC
+            )`
+            : `AND evento_id IN (
+                SELECT evento_id FROM (
+                    SELECT evento_id,
+                           ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
+                    FROM bet365_resultados_mercados
+                    GROUP BY liga, evento_id
+                ) t WHERE t.rn <= ${nJogosN}
+            )`;
+
         // threshold de VE para value bets (referencia ve_raw do CTE)
         const veThreshold = (soValueBets === '1' || minVEN > 0) ? Math.max(minVEN, 0) : 0.90;
         const vbWhere    = `AND ve_raw >= ${veThreshold}`;
 
         const [vol, porLiga, topMkt, valueBets] = await Promise.all([
-            // Volume geral (filtrado pelo período e liga)
+            // Volume geral (filtrado por nJogos e liga)
             pool.query(`
                 SELECT
                     COUNT(DISTINCT evento_id) AS jogos,
@@ -1360,7 +1413,7 @@ router.get('/analise/resumo', async (req, res) => {
                     MIN(data_partida) AS primeiro_jogo,
                     MAX(data_partida) AS ultimo_jogo
                 FROM bet365_resultados_mercados
-                WHERE 1=1 ${diasWhere} ${ligaWhere}
+                WHERE 1=1 ${ligaWhere} ${nJogosWhere}
             `),
             // Por liga (filtrado)
             pool.query(`
@@ -1368,7 +1421,7 @@ router.get('/analise/resumo', async (req, res) => {
                     COUNT(DISTINCT evento_id) AS jogos,
                     COUNT(*) AS mercados
                 FROM bet365_resultados_mercados
-                WHERE 1=1 ${diasWhere} ${ligaWhere}
+                WHERE 1=1 ${ligaWhere} ${nJogosWhere}
                 GROUP BY liga ORDER BY jogos DESC
             `),
             // Top 10 seleções mais frequentes — denominador correto (window function)
@@ -1379,7 +1432,7 @@ router.get('/analise/resumo', async (req, res) => {
                         SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
                         AVG(CAST(odd_paga AS FLOAT)) AS odd_f
                     FROM bet365_resultados_mercados
-                    WHERE 1=1 ${diasWhere} ${ligaWhere}
+                    WHERE 1=1 ${ligaWhere} ${nJogosWhere}
                     GROUP BY liga, mercado, selecao
                 )
                 SELECT TOP 10 liga, mercado, selecao, vezes, total_jogos,
@@ -1397,7 +1450,7 @@ router.get('/analise/resumo', async (req, res) => {
                         SUM(COUNT(*)) OVER (PARTITION BY liga, mercado) AS total_jogos,
                         AVG(CAST(odd_paga AS FLOAT)) AS odd_f
                     FROM bet365_resultados_mercados
-                    WHERE 1=1 ${diasWhere} ${ligaWhere}
+                    WHERE 1=1 ${ligaWhere} ${nJogosWhere}
                     GROUP BY liga, mercado, selecao
                 ),
                 calc AS (
@@ -1423,7 +1476,7 @@ router.get('/analise/resumo', async (req, res) => {
         res.json({
             success:    true,
             timestamp:  new Date().toISOString(),
-            filtros:    { dias: diasNum, liga: liga || 'all', minJogos: minJogosN, minVE: minVEN },
+            filtros:    { nJogos: nJogosN, liga: liga || 'all', minJogos: minJogosN, minVE: minVEN },
             volume:     vol.recordset[0],
             por_liga:   porLiga.recordset.map(_dbToCanon),
             top_selecoes: topMkt.recordset.map(_dbToCanon),
