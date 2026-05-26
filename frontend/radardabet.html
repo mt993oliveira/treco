@@ -966,8 +966,8 @@
                 <div>Filtra por categoria de aposta: <b>Total de Gols</b> (Over/Under), <b>Resultado Final</b> (1X2), <b>Ambos Marcam</b> (BTTS), <b>Intervalo</b> (placar no HT), <b>Handicap</b>, <b>Resultado Correto</b>, <b>Chance Dupla</b>. <b style="color:#64748b">Todos</b> = exibe tudo.</div>
             </div>
             <div>
-                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🔁 JANELA RECENTE (10J · 20J · 30J · 50J)</div>
-                <div>Define quantos jogos recentes são usados para calcular tendências (seção TENDÊNCIAS). <b style="color:#fbbf24">20J</b> = compara os últimos 20 jogos com o histórico completo para detectar se um mercado está "subindo" ou "caindo".</div>
+                <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🔁 BASE FIXA (20 · 40 · … · 420)</div>
+                <div>Define quantos jogos recentes são usados para calcular tendências (seção TENDÊNCIAS). <b style="color:#fbbf24">20</b> = compara os últimos 20 jogos com o histórico completo para detectar se um mercado está "subindo" ou "caindo".</div>
             </div>
             <div>
                 <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-bottom:3px">💎 SÓ VALUE BETS</div>
@@ -1090,7 +1090,7 @@
                 <select id="fa-njog-sel" onchange="faSet('nJogos', parseInt(this.value))"
                     style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
                     <option value="20">20</option>
-                    <option value="40">40</option>
+                    <option value="40" selected>40</option>
                     <option value="60">60</option>
                     <option value="80">80</option>
                     <option value="100">100</option>
@@ -1098,7 +1098,7 @@
                     <option value="140">140</option>
                     <option value="160">160</option>
                     <option value="180">180</option>
-                    <option value="200" selected>200</option>
+                    <option value="200">200</option>
                     <option value="240">240</option>
                     <option value="280">280</option>
                     <option value="320">320</option>
@@ -1147,15 +1147,27 @@
                 </select>
             </div>
 
-            <!-- Janela recente (tendências/IA) -->
+            <!-- Base fixa (tendências/IA) -->
             <div>
-                <div style="font-size:8px;color:#475569;margin-bottom:4px">JANELA RECENTE</div>
-                <div style="display:flex;gap:3px">
-                    <button onclick="faSet('nRecente',10)" id="fa-nrec-10" class="fa-btn">10J</button>
-                    <button onclick="faSet('nRecente',20)" id="fa-nrec-20" class="fa-btn fa-btn-ativo">20J</button>
-                    <button onclick="faSet('nRecente',30)" id="fa-nrec-30" class="fa-btn">30J</button>
-                    <button onclick="faSet('nRecente',50)" id="fa-nrec-50" class="fa-btn">50J</button>
-                </div>
+                <div style="font-size:8px;color:#475569;margin-bottom:4px">BASE FIXA</div>
+                <select id="fa-nrec-sel" onchange="faSet('nRecente', parseInt(this.value))"
+                    style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
+                    <option value="20" selected>20</option>
+                    <option value="40">40</option>
+                    <option value="60">60</option>
+                    <option value="80">80</option>
+                    <option value="100">100</option>
+                    <option value="120">120</option>
+                    <option value="140">140</option>
+                    <option value="160">160</option>
+                    <option value="180">180</option>
+                    <option value="200">200</option>
+                    <option value="240">240</option>
+                    <option value="280">280</option>
+                    <option value="320">320</option>
+                    <option value="360">360</option>
+                    <option value="420">420</option>
+                </select>
             </div>
 
             <!-- Só Value Bets -->
@@ -2215,7 +2227,7 @@ async function carregarConfigLigas() {
 
         // Padrões do frontend
         if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
-        if (cfg.default_dias_analise)    S.fa.nJogos = parseInt(cfg.default_dias_analise) || 200;
+        if (cfg.default_dias_analise)    S.fa.nJogos = parseInt(cfg.default_dias_analise) || 40;
         if (cfg.default_min_amostras)    S.fa.minJogos = parseInt(cfg.default_min_amostras) || 5;
         if (cfg.default_freq_min)        S.fa.minPct = parseInt(cfg.default_freq_min) || 0;
         if (cfg.default_tipo_mercado)    S.fa.tipoMercado = cfg.default_tipo_mercado;
@@ -2743,7 +2755,7 @@ const S = {
 
     // ── Filtros dinâmicos da aba Análise ──
     fa: {
-        nJogos:      200,     // últimos N jogos da liga (padrão 200, sobrescrito pela config)
+        nJogos:      40,      // últimos N jogos da liga (padrão 40, sobrescrito pela config)
         // liga vem de S.ligaAtiva (tabs principais) — não definida aqui
         minJogos:    5,       // mínimo de jogos/amostras
         minPct:      0,       // frequência mínima %
@@ -3247,7 +3259,6 @@ function faSet(campo, valor) {
     const grupMap = {
         minJogos:  { prefix: 'fa-minj', vals: [3,5,10,20,50] },
         minPct:    { prefix: 'fa-pct',  vals: [0,50,60,70,80] },
-        nRecente:  { prefix: 'fa-nrec', vals: [10,20,30,50] },
     };
     if (grupMap[campo]) {
         const g = grupMap[campo];
@@ -3267,6 +3278,13 @@ function faSet(campo, valor) {
         if (rankSel) rankSel.value = String(valor);
         if (S.view === 'analise') carregarAnalise();
     }
+
+    // nRecente (BASE FIXA): sincroniza select e recarrega tendências
+    if (campo === 'nRecente') {
+        const nrecSel = document.getElementById('fa-nrec-sel');
+        if (nrecSel) nrecSel.value = String(valor);
+        if (S.view === 'analise') carregarAnalise();
+    }
     if (campo === 'tipoMercado') {
         // Mapeia S.fa.tipoMercado → MKT.tipo
         const mapa = { 'Todos':'all', 'Gols':'over', 'Resultado':'Resultado Final',
@@ -3283,13 +3301,13 @@ function _faAtualizarStatus() {
     if (!el) return;
     const f = S.fa;
     const partes = [];
-    partes.push(`🎯 ult. ${f.nJogos || 200} jogos`);
+    partes.push(`🎯 ult. ${f.nJogos || 40} jogos`);
     partes.push(`🏆 ${S.ligaAtiva || 'Todas'}`);
     partes.push(`⚽ mín. ${f.minJogos} jogos`);
     if (f.minPct > 0) partes.push(`📊 freq ≥${f.minPct}%`);
     if (f.tipoMercado && f.tipoMercado !== 'Todos') partes.push(`🎯 ${f.tipoMercado}`);
     if (f.soValueBets) partes.push(`💎 só VALUE BETS`);
-    partes.push(`🔁 janela ${f.nRecente}J`);
+    partes.push(`🔁 base ${f.nRecente}J`);
     el.textContent = partes.join('  ·  ');
 }
 
@@ -3298,7 +3316,7 @@ let _analiseReqId = 0;
 async function carregarAnalise(forceRender = false) {
     const reqId = ++_analiseReqId;
     try {
-        const nJogos = S.fa.nJogos || 200;
+        const nJogos = S.fa.nJogos || 40;
         const liga   = S.ligaAtiva || '';
 
         const base = new URLSearchParams({ nJogos });
@@ -3644,7 +3662,7 @@ function renderAnaliseDetalhe(liga) {
         </div>
     `;
 
-    const nAtual = S.fa.nJogos || 200;
+    const nAtual = S.fa.nJogos || 40;
     const rows = liga.filtros.slice(0, 11).map((f, i) => {
         const tx = f.tx_ultn;
         const cor = tx >= 65 ? '#4ade80' : tx >= 55 ? '#fbbf24' : tx >= 45 ? '#94a3b8' : '#f87171';
@@ -3694,7 +3712,7 @@ function renderAnaliseDetalhe(liga) {
 }
 
 async function onRankingNChange(val) {
-    const n = parseInt(val) || 200;
+    const n = parseInt(val) || 40;
     S.fa.nJogos = n;
     // Sincroniza o select principal de JOGOS
     const mainSel = document.getElementById('fa-njog-sel');
@@ -8209,7 +8227,7 @@ async function carregarEstatisticasAvancadas() {
 function _faInit() {
     // Sincroniza select de JOGOS
     const njogSel = document.getElementById('fa-njog-sel');
-    if (njogSel) njogSel.value = String(S.fa.nJogos || 200);
+    if (njogSel) njogSel.value = String(S.fa.nJogos || 40);
     // Sincroniza botões minJogos
     document.querySelectorAll('[id^="fa-minj-"]').forEach(b => {
         b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-minj-','')) === S.fa.minJogos);
@@ -8218,10 +8236,9 @@ function _faInit() {
     document.querySelectorAll('[id^="fa-pct-"]').forEach(b => {
         b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-pct-','')) === S.fa.minPct);
     });
-    // Sincroniza botões nRecente
-    document.querySelectorAll('[id^="fa-nrec-"]').forEach(b => {
-        b.classList.toggle('fa-btn-ativo', parseInt(b.id.replace('fa-nrec-','')) === S.fa.nRecente);
-    });
+    // Sincroniza select BASE FIXA
+    const nrecSel = document.getElementById('fa-nrec-sel');
+    if (nrecSel) nrecSel.value = String(S.fa.nRecente || 20);
     const tipoSel = document.getElementById('fa-tipo-sel');
     if (tipoSel) tipoSel.value = S.fa.tipoMercado || 'Todos';
     const vbChk = document.getElementById('fa-vb-chk');

@@ -46,6 +46,20 @@ async function getDbPool() {
 
     sqlPool = await sql.connect(config);
     console.log('✅ Pool SQL Bet365 criado');
+
+    // Cria índice composto para acelerar consultas por liga (TOP N por liga)
+    // Não bloqueia — dispara em background e ignora erros se já existir
+    sqlPool.request().query(`
+        IF NOT EXISTS (
+            SELECT 1 FROM sys.indexes
+            WHERE name = 'IX_b365_resmkt_liga_evt_data'
+              AND OBJECT_NAME(object_id) = 'bet365_resultados_mercados'
+        )
+        CREATE INDEX IX_b365_resmkt_liga_evt_data
+            ON bet365_resultados_mercados (liga, data_partida DESC, evento_id)
+    `).then(() => console.log('✅ Índice IX_b365_resmkt_liga_evt_data verificado/criado'))
+      .catch(e => console.warn('⚠️ Índice: ' + e.message));
+
     return sqlPool;
 }
 
@@ -405,31 +419,38 @@ router.get('/historico-tabela', (req, res) => {
  */
 router.get('/sugestoes', async (req, res) => {
     try {
-        const nJogosN    = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 200));
+        const nJogosN    = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 40));
         const ligaFiltro = req.query.liga && req.query.liga !== '' && req.query.liga !== 'all'
-            ? req.query.liga : null;
+            ? ligaParaBanco(req.query.liga) : null;
         const pool = await getDbPool();
 
-        const req1 = pool.request().input('nJogos', sql.Int, nJogosN);
-        let ligaWhere = '';
+        // Passo 1: ligas + total de eventos por liga (uma única query, usa índice)
+        let ligasInfo; // [{ liga, total_liga }]
         if (ligaFiltro) {
-            req1.input('liga', sql.NVarChar(200), ligaFiltro);
-            ligaWhere = 'AND liga = @liga';
-        }
-
-        // Uma única query em vez de N sequenciais: traz todos os eventos de todas as ligas
-        // (ou só da liga filtrada) com ROW_NUMBER para limitar aos últimos nJogos por liga
-        const bulk = await req1.query(`
-            WITH all_evts AS (
-                SELECT liga, evento_id,
-                       ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn,
-                       COUNT(*) OVER (PARTITION BY liga) AS total_liga
+            const r = await pool.request()
+                .input('liga', sql.NVarChar(200), ligaFiltro)
+                .query(`
+                    SELECT liga, COUNT(DISTINCT evento_id) AS total_liga
+                    FROM bet365_resultados_mercados
+                    WHERE liga = @liga
+                    GROUP BY liga
+                `);
+            ligasInfo = r.recordset;
+        } else {
+            const r = await pool.request().query(`
+                SELECT liga, COUNT(DISTINCT evento_id) AS total_liga
                 FROM bet365_resultados_mercados
-                WHERE liga IS NOT NULL AND liga <> '' ${ligaWhere}
-                GROUP BY liga, evento_id
-            )
+                WHERE liga IS NOT NULL AND liga <> ''
+                GROUP BY liga
+            `);
+            ligasInfo = r.recordset;
+        }
+        const totalByLiga = new Map(ligasInfo.map(r => [r.liga, r.total_liga]));
+
+        // Passo 2: consultas paralelas por liga — cada uma usa TOP + índice (liga, data_partida)
+        const PER_LIGA_SQL = `
             SELECT
-                m.liga, m.evento_id, m.data_partida, e.total_liga,
+                @liga AS liga, m.evento_id, m.data_partida,
                 MAX(CASE WHEN m.mercado = 'Resultado Final' THEN m.selecao END)                     AS resultado_final,
                 MAX(CASE WHEN m.time_casa IS NOT NULL THEN m.time_casa END)                         AS time_casa,
                 MAX(CASE WHEN m.time_fora IS NOT NULL THEN m.time_fora END)                         AS time_fora,
@@ -441,17 +462,38 @@ router.get('/sugestoes', async (req, res) => {
                 MAX(CASE WHEN m.mercado LIKE '%2.5%' AND m.selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under25,
                 MAX(CASE WHEN m.mercado = 'Ambos Marcam' AND m.selecao = 'Sim'   THEN 1 ELSE 0 END) AS btts
             FROM bet365_resultados_mercados m
-            INNER JOIN all_evts e
-                ON e.liga = m.liga AND e.evento_id = m.evento_id AND e.rn <= @nJogos
-            GROUP BY m.liga, m.evento_id, m.data_partida, e.total_liga
-            ORDER BY m.liga, m.data_partida DESC
-        `);
+            WHERE m.liga = @liga
+              AND m.evento_id IN (
+                  SELECT TOP (@nJogos) evento_id
+                  FROM bet365_resultados_mercados
+                  WHERE liga = @liga
+                  GROUP BY evento_id
+                  ORDER BY MAX(data_partida) DESC
+              )
+            GROUP BY m.evento_id, m.data_partida
+            ORDER BY m.data_partida DESC
+        `;
 
-        // Agrupa por liga no JS
+        const ligaDados = await Promise.all(
+            ligasInfo.map(({ liga }) =>
+                pool.request()
+                    .input('liga',   sql.NVarChar(200), liga)
+                    .input('nJogos', sql.Int,           nJogosN)
+                    .query(PER_LIGA_SQL)
+                    .then(r => ({ liga, rows: r.recordset }))
+                    .catch(() => ({ liga, rows: [] }))
+            )
+        );
+
+        // Monta byLiga usando os totais já calculados no passo 1
         const byLiga = new Map();
-        for (const row of bulk.recordset) {
-            if (!byLiga.has(row.liga)) byLiga.set(row.liga, { total_liga: row.total_liga, rows: [] });
-            byLiga.get(row.liga).rows.push(row);
+        for (const { liga, rows } of ligaDados) {
+            if (rows.length === 0) continue;
+            const total_liga = totalByLiga.get(liga) || rows.length;
+            byLiga.set(liga, {
+                total_liga,
+                rows: rows.map(r => ({ ...r, liga, total_liga }))
+            });
         }
 
         const FILTROS = [
