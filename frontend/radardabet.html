@@ -2264,7 +2264,8 @@ async function carregarConfigLigas() {
         if (cfg.grafico_ponto_borda)     S.grafPontoBorda   = parseFloat(cfg.grafico_ponto_borda) || 1.5;
         if (cfg.grafico_ponto_sobe_cor)  S.grafPontoCorSobe  = cfg.grafico_ponto_sobe_cor;
         if (cfg.grafico_ponto_desce_cor) S.grafPontoCorDesce = cfg.grafico_ponto_desce_cor;
-        if (cfg.grafico_ponto_flat !== undefined) S.grafPontoFlat = cfg.grafico_ponto_flat !== 'false';
+        if (cfg.grafico_ponto_flat !== undefined)         S.grafPontoFlat        = cfg.grafico_ponto_flat !== 'false';
+        if (cfg.grafico_ponto_flat_visivel !== undefined) S.grafPontoFlatVisivel = cfg.grafico_ponto_flat_visivel !== 'false';
         if (cfg.grafico_pct_cor) S._grafPctCor = cfg.grafico_pct_cor;
         if (cfg.grafico_pct_tamanho) S._grafPctTamanho = parseInt(cfg.grafico_pct_tamanho) || 8;
         if (cfg.grafico_pills_default !== undefined) {
@@ -2284,6 +2285,11 @@ async function carregarConfigLigas() {
         // Aplica visibilidade das pills conforme config
         { const _pm = document.getElementById('pills-mercados'); if (_pm) _pm.style.display = S.grafShowPills  ? 'flex' : 'none'; }
         { const _pl = document.getElementById('pills-linha');    if (_pl) _pl.style.display = S.linhaShowPills ? 'flex' : 'none'; }
+        // Aplica visibilidade do botão ● Plano
+        ['btn-g-flat','btn-linha-flat'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) b.style.display = S.grafPontoFlatVisivel ? '' : 'none';
+        });
 
         // Padrões do grid/mosaico — cores e fontes (usados como base; usuário pode sobrescrever em ⚙️ Config)
         { const _gridKeys = ['verdeBg','verdeTxt','vermBg','vermTxt','futuroBg','futuroTxt','futuroBrd',
@@ -2650,7 +2656,8 @@ const S = {
     grafPontoBorda:   1.5,
     grafPontoCorSobe: '#4ade80',
     grafPontoCorDesce:'#ef4444',
-    grafPontoFlat:    true,
+    grafPontoFlat:         true,
+    grafPontoFlatVisivel:  true,
     grafShowPills:    true,   // exibir pills de mercado no Gráfico de Mercados
     linhaShowPills:   true,   // exibir pills de mercado no Gráfico de Linha
     mktPillFs:     9,
@@ -8657,7 +8664,8 @@ const _CFG_LABELS = {
     grafico_ponto_borda:     '📈 Gráfico: espessura da borda das bolinhas (px)',
     grafico_ponto_sobe_cor:  '📈 Gráfico: cor da bolinha quando sobe',
     grafico_ponto_desce_cor: '📈 Gráfico: cor da bolinha quando desce',
-    grafico_ponto_flat:      '● Plano ativado por padrão (exibir bolinhas em pontos sem variação no gráfico)',
+    grafico_ponto_flat_visivel: '● Plano: exibir o botão nos gráficos de Linha e Mercados',
+    grafico_ponto_flat:         '● Plano: vir habilitado por padrão (ocultar bolinhas sem variação)',
     grafico_pills_default:   '📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados',
     // Mosaico
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
