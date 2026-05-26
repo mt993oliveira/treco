@@ -1576,7 +1576,7 @@ const CONFIG_DEFAULTS = [
     { chave:'liga_super_liga',              valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Super Liga Sul-Americana' },
     // ── Padrões do frontend ──
     { chave:'default_horas_historico',      valor:'6',     tipo:'number',  grupo:'frontend', descricao:'Período padrão da Tabela Histórica (horas)' },
-    { chave:'default_dias_analise',         valor:'3',     tipo:'number',  grupo:'frontend', descricao:'Período padrão dos filtros de Análise (dias)' },
+    { chave:'default_dias_analise',         valor:'100',   tipo:'number',  grupo:'frontend', descricao:'Padrão de jogos para Análise (mín. 20)' },
     { chave:'default_min_amostras',         valor:'5',     tipo:'number',  grupo:'frontend', descricao:'Mínimo de amostras padrão (Análise)' },
     { chave:'default_freq_min',             valor:'0',     tipo:'number',  grupo:'frontend', descricao:'Frequência mínima % padrão (Análise)' },
     { chave:'default_tipo_mercado',         valor:'Todos', tipo:'text',    grupo:'frontend', descricao:'Tipo de mercado padrão (Análise)' },
@@ -1745,6 +1745,16 @@ async function _ensureConfigTable(pool) {
                     WHERE chave=@chave AND (tipo <> @tipo OR grupo <> @grupo)
             `);
     }
+
+    // Migração: default_dias_analise era "dias" (ex: 3), agora é "jogos" (mín 20).
+    // Corrige automaticamente valores antigos < 20 para 100.
+    await pool.request().query(`
+        UPDATE bet365_config
+        SET valor = '100'
+        WHERE chave = 'default_dias_analise'
+          AND TRY_CAST(valor AS INT) IS NOT NULL
+          AND CAST(valor AS INT) < 20
+    `);
 }
 
 // Exporta para uso no coletor
