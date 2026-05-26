@@ -3270,12 +3270,10 @@ function faSet(campo, valor) {
 
     _faAtualizarStatus();
 
-    // nJogos: sincroniza ambos os selects e recarrega tudo
+    // nJogos: sincroniza select JOGOS e recarrega tudo
     if (campo === 'nJogos') {
         const njogSel = document.getElementById('fa-njog-sel');
         if (njogSel) njogSel.value = String(valor);
-        const rankSel = document.getElementById('ranking-n-sel');
-        if (rankSel) rankSel.value = String(valor);
         if (S.view === 'analise') carregarAnalise();
     }
 
@@ -3685,20 +3683,8 @@ function renderAnaliseDetalhe(liga) {
     }).join('');
 
     document.getElementById('detalhe-filtros').innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:9px;font-weight:700;color:#475569">
-                RANKING DE FILTROS <span style="color:#60a5fa">(ult. ${nAtual} jogos)</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px">
-                <span style="font-size:9px;color:#475569">Jogos:</span>
-                <select id="ranking-n-sel" onchange="onRankingNChange(this.value)"
-                    style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;
-                           font-size:10px;padding:2px 5px;cursor:pointer">
-                    ${[20,40,60,80,100,120,140,160,180,200,240,280,320,360,420].map(v =>
-                        `<option value="${v}" ${v === nAtual ? 'selected' : ''}>${v}</option>`
-                    ).join('')}
-                </select>
-            </div>
+        <div style="font-size:9px;font-weight:700;color:#475569;margin-bottom:8px">
+            RANKING DE FILTROS <span style="color:#60a5fa">(ult. ${nAtual} jogos)</span>
         </div>
         <table class="modal-table">
             <thead><tr>
@@ -3711,15 +3697,6 @@ function renderAnaliseDetalhe(liga) {
     `;
 }
 
-async function onRankingNChange(val) {
-    const n = parseInt(val) || 40;
-    S.fa.nJogos = n;
-    // Sincroniza o select principal de JOGOS
-    const mainSel = document.getElementById('fa-njog-sel');
-    if (mainSel) mainSel.value = String(n);
-    _faAtualizarStatus();
-    await carregarAnalise();
-}
 
 function statBar(label, value, max, cor, suffix = '') {
     const pct = Math.min(100, (value / max) * 100);
