@@ -237,6 +237,7 @@ class Bet365Coletor {
         this.ultimaColetaSucesso = null;
         this.ultimoErro          = null;
         this._ultimoAlertaLoginTs  = 0; // throttle: evita spam de alertas de login
+        this._ultimoLoginTs        = 0; // timestamp do último login bem-sucedido (anti-duplo-login)
         this._ultimaColetaProximos = new Map(); // liga → timestamp da última busca de próximos
     }
 
@@ -1000,8 +1001,12 @@ class Bet365Coletor {
             })
         );
 
+        // Deduplica por nome — evita processar a mesma liga duas vezes em caso de DOM duplicado
+        // (pode acontecer após duplo login rápido que deixa a página em estado inconsistente)
+        const ligasUnicas = [...new Map(ligas.map(l => [l.nome, l])).values()];
+
         // Filtra ligas: ignora por nome E respeita config do banco
-        const ligasFiltradas = ligas.filter(l => {
+        const ligasFiltradas = ligasUnicas.filter(l => {
             if (LIGAS_IGNORAR.some(ig => l.nome.toLowerCase().includes(ig))) return false;
             const norm = normalizarNomeLiga(l.nome);
             const key  = LIGA_CONFIG_KEY[norm];
@@ -1411,6 +1416,24 @@ class Bet365Coletor {
         try {
             await pg.bringToFront();
 
+            // ── Proteção anti-duplo-login ─────────────────────────────────────────
+            // Se fizemos login nos últimos 60s, aguarda o botão "Login" sumir (até 15s)
+            // antes de concluir. Evita que chamadas consecutivas de _verificarSessao
+            // dentro do mesmo ciclo disparem um segundo login desnecessário.
+            if (this._ultimoLoginTs && (Date.now() - this._ultimoLoginTs) < 60000) {
+                for (let t = 0; t < 5; t++) {
+                    await this._delay(3000);
+                    const aindaTemLogin = await pg.evaluate(() =>
+                        [...document.querySelectorAll('button, a, [role="button"]')].some(el => {
+                            const txt = (el.textContent || el.innerText || '').trim();
+                            return txt === 'Login' || txt === 'Log In';
+                        })
+                    ).catch(() => true);
+                    if (!aindaTemLogin) return; // botão sumiu — sessão OK
+                }
+                // Se após 15s o botão ainda aparece, deixa continuar normalmente
+            }
+
             // ── Detecta estado da sessão ──────────────────────────────────────────
             const url = pg.url();
             const naPaginaVirtual = url.includes('bet365') && url.includes('AVR');
@@ -1532,6 +1555,7 @@ class Bet365Coletor {
                 this._ultimoAlertaLoginTs = Date.now();
                 const pool = await this.conectarBanco().catch(() => null);
                 if (sessaoOk) {
+                    this._ultimoLoginTs = Date.now(); // marca timestamp para proteção anti-duplo-login
                     console.log('   ✅ Sessão restaurada!');
                     dispararAlerta(this.cfg, pool,
                         '🔐 Sessão Bet365 expirou — restaurada',
