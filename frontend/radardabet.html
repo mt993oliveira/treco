@@ -1378,6 +1378,7 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-linha-cores" class="acao-btn" onclick="_togglePontoCores()" title="Colorir bolinhas: verde = subiu (hit), vermelho = desceu (miss).&#10;Desative para usar a cor da própria linha em todas as bolinhas.">🟢 Cores</button>
                     <button id="btn-linha-pills" class="acao-btn ativo" onclick="_toggleLinhaPills()" title="Exibir/ocultar a seleção de mercados do Gráfico de Linha">📊 Mercados</button>
                     <button id="btn-linha-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
                     <button id="btn-linha-legendas" class="acao-btn" onclick="toggleLinhaLegendas()"                                title="Suprimir tooltips do gráfico de linha">💬 Legendas</button>
@@ -1447,6 +1448,7 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-g-cores" class="acao-btn" onclick="_togglePontoCores()" title="Colorir bolinhas: verde = subiu (hit), vermelho = desceu (miss).&#10;Desative para usar a cor da própria linha em todas as bolinhas.">🟢 Cores</button>
                     <button id="btn-g-pills" class="acao-btn ativo" onclick="_toggleGrafPills()" title="Exibir/ocultar a seleção de mercados do Gráfico de Mercados">📊 Mercados</button>
                     <button id="btn-g-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
                     <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
@@ -2259,8 +2261,10 @@ async function carregarConfigLigas() {
         if (cfg.grafico_ponto_borda)     S.grafPontoBorda   = parseFloat(cfg.grafico_ponto_borda) || 1.5;
         if (cfg.grafico_ponto_sobe_cor)  S.grafPontoCorSobe  = cfg.grafico_ponto_sobe_cor;
         if (cfg.grafico_ponto_desce_cor) S.grafPontoCorDesce = cfg.grafico_ponto_desce_cor;
-        if (cfg.grafico_ponto_flat !== undefined)         S.grafPontoFlat        = cfg.grafico_ponto_flat !== 'false';
-        if (cfg.grafico_ponto_flat_visivel !== undefined) S.grafPontoFlatVisivel = cfg.grafico_ponto_flat_visivel !== 'false';
+        if (cfg.grafico_ponto_flat !== undefined)          S.grafPontoFlat         = cfg.grafico_ponto_flat !== 'false';
+        if (cfg.grafico_ponto_flat_visivel !== undefined)  S.grafPontoFlatVisivel  = cfg.grafico_ponto_flat_visivel !== 'false';
+        if (cfg.grafico_ponto_cores !== undefined)         S.grafPontoCores        = cfg.grafico_ponto_cores !== 'false';
+        if (cfg.grafico_ponto_cores_visivel !== undefined) S.grafPontoCoresVisivel = cfg.grafico_ponto_cores_visivel !== 'false';
         if (cfg.grafico_pct_cor) S._grafPctCor = cfg.grafico_pct_cor;
         if (cfg.grafico_pct_tamanho) S._grafPctTamanho = parseInt(cfg.grafico_pct_tamanho) || 8;
         if (cfg.grafico_pills_default !== undefined) {
@@ -2272,6 +2276,7 @@ async function carregarConfigLigas() {
         [['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
          ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med'],
          ['grafPontoFlat','btn-g-flat'],['grafPontoFlat','btn-linha-flat'],
+         ['grafPontoCores','btn-g-cores'],['grafPontoCores','btn-linha-cores'],
          ['grafShowPills','btn-g-pills'],['linhaShowPills','btn-linha-pills'],
          ['linhaGrafMM','btn-linha-mm']].forEach(([k,id]) => {
             const b = document.getElementById(id);
@@ -2284,6 +2289,11 @@ async function carregarConfigLigas() {
         ['btn-g-flat','btn-linha-flat'].forEach(id => {
             const b = document.getElementById(id);
             if (b) b.style.display = S.grafPontoFlatVisivel ? '' : 'none';
+        });
+        // Aplica visibilidade do botão 🟢 Cores
+        ['btn-g-cores','btn-linha-cores'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) b.style.display = S.grafPontoCoresVisivel ? '' : 'none';
         });
 
         // Padrões do grid/mosaico — cores e fontes (usados como base; usuário pode sobrescrever em ⚙️ Config)
@@ -2653,6 +2663,8 @@ const S = {
     grafPontoCorDesce:'#ef4444',
     grafPontoFlat:         true,
     grafPontoFlatVisivel:  true,
+    grafPontoCores:        false,  // colorir bolinhas verde/vermelho por hit/miss
+    grafPontoCoresVisivel: true,   // exibir o botão 🟢 Cores nas toolbars
     grafShowPills:    true,   // exibir pills de mercado no Gráfico de Mercados
     linhaShowPills:   true,   // exibir pills de mercado no Gráfico de Linha
     mktPillFs:     9,
@@ -4502,6 +4514,16 @@ function _togglePontoFlat() {
     if (S.showLinha) renderGraficoLinha();
 }
 
+function _togglePontoCores() {
+    S.grafPontoCores = !S.grafPontoCores;
+    ['btn-g-cores','btn-linha-cores'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.classList.toggle('ativo', S.grafPontoCores);
+    });
+    renderGrafico();
+    if (S.showLinha) renderGraficoLinha();
+}
+
 // Toggle independente para o Gráfico de Linha (não afeta o Gráfico de Mercado)
 function _linhaToggle(key, btnId) {
     S[key] = !S[key];
@@ -4724,11 +4746,13 @@ function renderGrafico() {
         const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
         const pct  = Math.round(pts.reduce((a,b)=>a+b,0) / serie.length * 100);
 
-        // Cor por ponto: verde = mercado bateu no jogo (hit), vermelho = não bateu (miss)
+        // Cor por ponto: verde = hit, vermelho = miss — ou cor da linha se 🟢 Cores desligado
         let pointRadius  = S.grafPontoRaio || 4;
         const _corSobe  = S.grafPontoCorSobe  || '#4ade80';
         const _corDesce = S.grafPontoCorDesce || '#ef4444';
-        let pointBgColor = pts.map(hit => hit ? _corSobe : _corDesce);
+        let pointBgColor = S.grafPontoCores
+            ? pts.map(hit => hit ? _corSobe : _corDesce)
+            : data.map(() => cor);
 
         // T/F — marca pico máximo e mínimo da curva rolling após warmup
         if (S.grafTopoFundo && data.length > 1) {
@@ -5111,12 +5135,16 @@ function renderGraficoLinha() {
         let pointRadius  = S.grafPontoRaio || 4;
         const _corSobe2  = S.grafPontoCorSobe  || '#4ade80';
         const _corDesce2 = S.grafPontoCorDesce || '#ef4444';
-        let pointBgColor = hitsSlice.map(hit => hit ? _corSobe2 : _corDesce2);
+        let pointBgColor = S.grafPontoCores
+            ? hitsSlice.map(hit => hit ? _corSobe2 : _corDesce2)
+            : pctSlice.map(() => cor);
 
         if (S.linhaGrafTopoFundo && pctSlice.length > 1) {
             const maxIdx = pctSlice.reduce((b, v, i) => v > pctSlice[b] ? i : b, 0);
             const minIdx = pctSlice.reduce((b, v, i) => v < pctSlice[b] ? i : b, 0);
-            const base   = hitsSlice.map(hit => hit ? _corSobe2 : _corDesce2);
+            const base   = S.grafPontoCores
+                ? hitsSlice.map(hit => hit ? _corSobe2 : _corDesce2)
+                : pctSlice.map(() => cor);
             pointRadius  = pctSlice.map((_, i) => (i === maxIdx || i === minIdx) ? (S.grafPontoRaio||4) + 3 : S.grafPontoRaio||4);
             pointBgColor = base.map((c, i) =>
                 i === maxIdx ? (S._tfTopoCor  || '#4ade80') :
@@ -8658,8 +8686,10 @@ const _CFG_LABELS = {
     grafico_ponto_borda:     '📈 Gráfico: espessura da borda das bolinhas (px)',
     grafico_ponto_sobe_cor:  '📈 Gráfico: cor da bolinha quando sobe',
     grafico_ponto_desce_cor: '📈 Gráfico: cor da bolinha quando desce',
-    grafico_ponto_flat_visivel: '● Plano: exibir o botão nos gráficos de Linha e Mercados',
-    grafico_ponto_flat:         '● Plano: vir habilitado por padrão (ocultar bolinhas sem variação)',
+    grafico_ponto_flat_visivel:  '● Plano: exibir o botão nos gráficos de Linha e Mercados',
+    grafico_ponto_flat:          '● Plano: vir habilitado por padrão (ocultar bolinhas sem variação)',
+    grafico_ponto_cores_visivel: '🟢 Cores: exibir o botão de cores (verde/vermelho) nos gráficos de Linha e Mercados',
+    grafico_ponto_cores:         '🟢 Cores: vir habilitado por padrão (colorir bolinhas verde=hit / vermelho=miss)',
     grafico_pills_default:   '📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados',
     // Mosaico
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
