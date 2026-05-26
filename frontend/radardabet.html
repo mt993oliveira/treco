@@ -1982,15 +1982,15 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:8px 12px;background:#1e293b;border-radius:8px">
             <span style="font-size:12px;color:#94a3b8;flex-shrink:0">Gráfico:</span>
             <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#e2e8f0">
-                <input type="radio" id="alerta-graf-mercados" name="alerta-graf" value="mercados" style="accent-color:#f59e0b">
+                <input type="radio" id="alerta-graf-mercados" name="alerta-graf" value="mercados" style="accent-color:#f59e0b" onchange="_renderCondicoesAlerta()">
                 📈 Mercados
             </label>
             <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#e2e8f0">
-                <input type="radio" id="alerta-graf-linha" name="alerta-graf" value="linha" style="accent-color:#f59e0b">
+                <input type="radio" id="alerta-graf-linha" name="alerta-graf" value="linha" style="accent-color:#f59e0b" onchange="_renderCondicoesAlerta()">
                 📉 Linha
             </label>
             <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#e2e8f0">
-                <input type="radio" id="alerta-graf-gols" name="alerta-graf" value="gols" style="accent-color:#f59e0b">
+                <input type="radio" id="alerta-graf-gols" name="alerta-graf" value="gols" style="accent-color:#f59e0b" onchange="_renderCondicoesAlerta()">
                 📊 Gols
             </label>
         </div>
@@ -10300,20 +10300,56 @@ function abrirAlertaEditor(id) {
     document.getElementById('modal-alerta').classList.add('aberto');
 }
 
+// Métricas disponíveis para condições do Gráfico de Gols
+const _GOLS_METRICAS = [
+    { id:'gols-total', label:'⚽ Total (casa+fora)' },
+    { id:'gols-casa',  label:'🏠 Casa' },
+    { id:'gols-fora',  label:'✈️ Fora' },
+    { id:'gols-1t',    label:'1º Tempo' },
+    { id:'gols-2t',    label:'2º Tempo' },
+];
+
+function _grafAlertaAtual() {
+    return document.querySelector('input[name="alerta-graf"]:checked')?.value || 'mercados';
+}
+
 function _renderCondicoesAlerta() {
     const el = document.getElementById('alerta-condicoes-lista');
     if (!el) return;
+    const isGols = _grafAlertaAtual() === 'gols';
     if (!_alertaCondicoes.length) {
         el.innerHTML = '<div style="text-align:center;color:#475569;font-size:12px;padding:10px;margin-bottom:4px">Nenhuma condição. Clique em + para adicionar.</div>';
         return;
     }
-    el.innerHTML = _alertaCondicoes.map((c, i) => `
+    if (isGols) {
+        // Condições de gols: métrica + tipo (média/soma) + operador + valor
+        el.innerHTML = _alertaCondicoes.map((c, i) => `
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;background:#1e293b;border-radius:6px;padding:8px 10px;flex-wrap:wrap">
+            <select onchange="_alertaCondicoes[${i}].metrica=this.value" style="flex:2;min-width:130px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;cursor:pointer">
+                ${_GOLS_METRICAS.map(m=>`<option value="${m.id}"${(c.metrica||'gols-total')===m.id?' selected':''}>${m.label}</option>`).join('')}
+            </select>
+            <select onchange="_alertaCondicoes[${i}].tipo=this.value" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;cursor:pointer" title="Média por jogo ou soma total da janela">
+                <option value="media"${(c.tipo||'media')==='media'?' selected':''}>Média/jogo</option>
+                <option value="soma"${c.tipo==='soma'?' selected':''}>Soma total</option>
+            </select>
+            <select onchange="_alertaCondicoes[${i}].operador=this.value" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;cursor:pointer">
+                <option value=">"${(c.operador||'>')==='>'?' selected':''}>≥</option>
+                <option value="<"${c.operador==='<'?' selected':''}>≤</option>
+            </select>
+            <input type="number" min="0" max="9999" step="0.1" value="${c.valor??2.5}" onchange="_alertaCondicoes[${i}].valor=parseFloat(this.value)||0"
+                style="width:58px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;text-align:center;outline:none">
+            <span style="font-size:11px;color:#64748b;flex-shrink:0">gols</span>
+            <button onclick="_removeCondicaoAlerta(${i})" style="padding:4px 8px;border-radius:4px;background:#0f172a;border:1px solid #334155;color:#f87171;font-size:11px;cursor:pointer;flex-shrink:0">✕</button>
+        </div>`).join('');
+    } else {
+        // Condições de mercado: mercado + operador + valor %
+        el.innerHTML = _alertaCondicoes.map((c, i) => `
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;background:#1e293b;border-radius:6px;padding:8px 10px">
             <select onchange="_alertaCondicoes[${i}].mercado=this.value" style="flex:2;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;cursor:pointer">
                 ${TODOS_FILTROS.filter(f=>f.id!=='equilibrio').map(f=>`<option value="${f.id}"${c.mercado===f.id?' selected':''}>${f.label}</option>`).join('')}
             </select>
             <select onchange="_alertaCondicoes[${i}].operador=this.value" style="flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:11px;padding:3px 5px;cursor:pointer">
-                <option value=">"${c.operador==='>'?' selected':''}>≥</option>
+                <option value=">"${(c.operador||'>')==='>'?' selected':''}>≥</option>
                 <option value="<"${c.operador==='<'?' selected':''}>≤</option>
             </select>
             <input type="number" min="0" max="100" step="1" value="${c.valor??50}" onchange="_alertaCondicoes[${i}].valor=parseFloat(this.value)||50"
@@ -10321,10 +10357,15 @@ function _renderCondicoesAlerta() {
             <span style="font-size:11px;color:#64748b;flex-shrink:0">%</span>
             <button onclick="_removeCondicaoAlerta(${i})" style="padding:4px 8px;border-radius:4px;background:#0f172a;border:1px solid #334155;color:#f87171;font-size:11px;cursor:pointer;flex-shrink:0">✕</button>
         </div>`).join('');
+    }
 }
 
 function _addCondicaoAlerta() {
-    _alertaCondicoes.push({ mercado: (TODOS_FILTROS.find(f=>f.id!=='equilibrio')?.id || 'over2.5'), operador: '>', valor: 50 });
+    if (_grafAlertaAtual() === 'gols') {
+        _alertaCondicoes.push({ metrica: 'gols-total', tipo: 'media', operador: '>', valor: 2.5 });
+    } else {
+        _alertaCondicoes.push({ mercado: (TODOS_FILTROS.find(f=>f.id!=='equilibrio')?.id || 'over2.5'), operador: '>', valor: 50 });
+    }
     _renderCondicoesAlerta();
 }
 
@@ -10404,12 +10445,42 @@ function _verificarAlertas() {
             // Base Fixa: se definida, usa apenas os últimos N jogos dentro da janela
             const _base = parseInt(al.base) || 0;
             if (_base > 0 && jogos.length > _base) jogos = jogos.slice(-_base);
-            const todasOk = al.condicoes.every(c => {
+
+            // Helper: extrai gols de um jogo conforme a métrica
+            const _getGols = (j, metrica) => {
+                const gc = j.gol_casa ?? 0, gf = j.gol_fora ?? 0;
+                const gh = (j.gol_casa_ht ?? 0) + (j.gol_fora_ht ?? 0);
+                if (metrica === 'gols-total') return gc + gf;
+                if (metrica === 'gols-casa')  return gc;
+                if (metrica === 'gols-fora')  return gf;
+                if (metrica === 'gols-1t')    return (j.gol_casa_ht ?? 0) + (j.gol_fora_ht ?? 0);
+                if (metrica === 'gols-2t')    return Math.max(0, (gc + gf) - gh);
+                return 0;
+            };
+
+            // Helper: avalia uma condição de gols sobre uma lista de jogos
+            const _checaGols = (c, jgList) => {
+                const validos = jgList.filter(j => j.gol_casa != null && j.gol_fora != null);
+                if (!validos.length) return false;
+                const soma = validos.reduce((acc, j) => acc + _getGols(j, c.metrica || 'gols-total'), 0);
+                const val  = c.tipo === 'soma' ? soma : soma / validos.length;
+                return (c.operador === '>' || c.operador === '>=') ? val >= c.valor : val <= c.valor;
+            };
+
+            // Helper: avalia uma condição % sobre uma lista de jogos
+            const _checaPct = (c, jgList) => {
                 if (!TODOS_FILTROS.find(x => x.id === c.mercado)) return false;
-                const hits = jogos.filter(j => checa(j, c.mercado));
-                const pct  = Math.round(hits.length / jogos.length * 100);
+                const hits = jgList.filter(j => checa(j, c.mercado));
+                const pct  = Math.round(hits.length / jgList.length * 100);
                 return c.operador === '>' ? pct >= c.valor : pct <= c.valor;
-            });
+            };
+
+            const isGolsAlerta = al.grafico === 'gols';
+            const _checaCond   = isGolsAlerta
+                ? (c, jgList) => _checaGols(c, jgList)
+                : (c, jgList) => _checaPct(c, jgList);
+
+            const todasOk = al.condicoes.every(c => _checaCond(c, jogos));
             if (todasOk) {
                 // Detecta quais ligas individualmente atendem as condições
                 let ligas = [];
@@ -10419,13 +10490,7 @@ function _verificarAlertas() {
                     const todasLigas = [...new Set(jogos.map(j => j.liga).filter(Boolean))];
                     ligas = todasLigas.filter(liga => {
                         const jl = jogos.filter(j => j.liga === liga);
-                        if (!jl.length) return false;
-                        return al.condicoes.every(c => {
-                            if (!TODOS_FILTROS.find(x => x.id === c.mercado)) return false;
-                            const hits = jl.filter(j => checa(j, c.mercado));
-                            const pct  = Math.round(hits.length / jl.length * 100);
-                            return c.operador === '>' ? pct >= c.valor : pct <= c.valor;
-                        });
+                        return jl.length && al.condicoes.every(c => _checaCond(c, jl));
                     });
                     if (!ligas.length) ligas = ['Todas as ligas'];
                 }
