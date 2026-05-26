@@ -6065,10 +6065,12 @@ function renderTabela() {
             const hitEfetivo = isOculto ? (fi?.id === 'over4.5') : hit;
             // Odds pré-jogo (exibidas quando modo Odds está ativo)
             const oddC = parseFloat(j.odd_casa   || 0);
+            const oddE = parseFloat(j.odd_empate || 0);
             const oddF = parseFloat(j.odd_fora   || 0);
             const temOdds = S.showOdds && (oddC > 0 || oddF > 0);
             const fmtOdd  = v => v > 0 ? v.toFixed(2) : '';
             const corOddC = corOdd(oddC);
+            const corOddE = corOdd(oddE);
             const corOddF = corOdd(oddF);
             const nmSlot  = `data-action="slot" data-min="${minuteSlots[ci]}"`;
             const cellContent = S.showNomes
@@ -6076,12 +6078,14 @@ function renderTabela() {
                   `<span data-action="clube" data-clube="${abbrev(j.time_casa)}" style="display:block;font-size:var(--fs-clube);line-height:1.2;color:var(--clube-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_casa)}</span>`+
                   `<span data-action="liga" style="display:block;font-size:var(--fs-ft);font-weight:800;cursor:pointer;line-height:1.3;color:var(--ft-txt)">${score}</span>`+
                   (scoreHT && S.showHT ? `<span data-action="ht-score" data-ht-score="${scoreHT}" style="display:block;font-size:var(--fs-ht);font-weight:600;color:var(--ht-txt);line-height:1.1;text-align:center;cursor:pointer">(${scoreHT})</span>` : '')+
+                  (temOdds && oddE > 0 ? `<span style="display:block;font-size:var(--fs-odd);font-weight:800;color:${corOddE};text-align:center;line-height:1.4;letter-spacing:.02em">=${fmtOdd(oddE)}</span>` : '')+
                   `<span data-action="clube" data-clube="${abbrev(j.time_fora)}" style="display:block;font-size:var(--fs-clube);line-height:1.2;color:var(--clube-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${abbrev(j.time_fora)}</span>`+
                   (temOdds ? `<span style="display:block;font-size:var(--fs-odd);font-weight:800;color:${corOddF};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddF)}</span>` : '')
                 : `<span data-action="liga" style="cursor:pointer;display:block;font-size:var(--fs-ft);line-height:1.25;color:var(--ft-txt)">${score}</span>`+
                   (scoreHT && S.showHT ? `<span data-action="ht-score" data-ht-score="${scoreHT}" style="display:block;font-size:var(--fs-ht);color:var(--ht-txt);line-height:1;text-align:center;cursor:pointer">${scoreHT}</span>` : '')+
                   (temOdds ? `<span style="display:flex;gap:2px;margin-top:1px">`+
                     `<span style="flex:1;text-align:center;font-size:var(--fs-odd);font-weight:700;color:${corOddC}">${fmtOdd(oddC)}</span>`+
+                    (oddE > 0 ? `<span style="flex:1;text-align:center;font-size:var(--fs-odd);font-weight:700;color:${corOddE}">=${fmtOdd(oddE)}</span>` : '')+
                     `<span style="flex:1;text-align:center;font-size:var(--fs-odd);font-weight:700;color:${corOddF}">${fmtOdd(oddF)}</span>`+
                     `</span>` : '');
             const opacityStyle = isEstimado ? 'opacity:0.35;' : isOculto ? 'opacity:0.7;' : '';
