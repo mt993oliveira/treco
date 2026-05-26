@@ -15,24 +15,20 @@
 
         /* Liga tabs */
         .liga-tab {
-            cursor: pointer; padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 700;
+            cursor: pointer; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 700;
             background: rgba(31,204,89,.14); color: #4ade80;
             border: 1px solid rgba(31,204,89,.28); border-bottom: 2px solid rgba(31,204,89,.2);
             transition: all .15s; white-space: nowrap; letter-spacing:.02em;
-            display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0;
+            display: inline-flex; align-items: center; justify-content: center; gap: 9px; flex-shrink: 0;
         }
         .liga-tab.ativo {
             background: rgba(31,204,89,.38); color: #fff;
             border-color: rgba(31,204,89,.7); border-bottom: 3px solid #1fcc59;
-            box-shadow: 0 2px 14px rgba(31,204,89,.35);
+            box-shadow: 0 2px 18px rgba(31,204,89,.4);
             text-shadow: 0 0 8px rgba(31,204,89,.45);
         }
         .liga-tab:hover:not(.ativo) { background: rgba(31,204,89,.24); color: #86efac; border-color: rgba(31,204,89,.45); }
-        .liga-tab .liga-count {
-            font-size: 10px; font-weight: 600; opacity: .75;
-            background: rgba(31,204,89,.15); padding: 1px 6px; border-radius: 9px;
-        }
-        .liga-tab.ativo .liga-count { background: rgba(31,204,89,.25); opacity: 1; }
+        .liga-tab .liga-icon { font-size: 22px; line-height: 1; }
 
         /* Section / filter buttons */
         .secao-btn { cursor: pointer; padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: 600;
@@ -221,7 +217,8 @@
         #header-subtitle  { display: none !important; }
         #header-separator { display: none !important; }
         /* Liga tabs: fonte menor no mobile */
-        .liga-tab { font-size: 11px; padding: 5px 12px; }
+        .liga-tab { font-size: 12px; padding: 7px 14px; }
+        .liga-tab .liga-icon { font-size: 18px; }
         /* User menu: esconde nome, deixa só avatar */
         #user-nome { display: none !important; }
         /* WhatsApp header: só ícone no mobile */
@@ -236,7 +233,8 @@
     }
     @media (max-width: 480px) {
         body { font-size: 12px; }
-        .liga-tab { font-size: 10px; padding: 4px 10px; }
+        .liga-tab { font-size: 11px; padding: 5px 10px; }
+        .liga-tab .liga-icon { font-size: 16px; }
     }
     </style>
 </head>
@@ -3657,6 +3655,16 @@ function statBar(label, value, max, cor, suffix = '') {
 // ============================================================
 // LIGA TABS
 // ============================================================
+
+// Ícone emoji por liga
+const LIGA_ICONS = {
+    'Copa do Mundo':            '🌍',
+    'Euro Cup':                 '🇪🇺',
+    'Premier League':           '⚽',
+    'Express Cup':              '⚡',
+    'Super Liga Sul-Americana': '🌎',
+};
+
 function renderLigas() {
     const c = document.getElementById('liga-tabs');
     c.innerHTML = '';
@@ -3664,8 +3672,9 @@ function renderLigas() {
     const mk = (label, liga, total) => {
         const b = document.createElement('button');
         b.className = 'liga-tab' + (S.ligaAtiva === liga ? ' ativo' : '');
-        b.innerHTML = `${label}${total ? ` <span class="liga-count">${total}</span>` : ''}`;
-        if (total) b.title = `${liga} — ${total} jogos`;
+        const icon = LIGA_ICONS[liga] || '🏆';
+        b.innerHTML = `<span class="liga-icon">${icon}</span><span>${label}</span>`;
+        b.title = total ? `${liga} — ${total} jogos` : liga;
         b.onclick = () => {
             S.ligaAtiva = liga;
             S.partidas  = filtrarPartidas();
