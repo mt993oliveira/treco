@@ -1950,23 +1950,32 @@
                 <input type="checkbox" id="alerta-ativo" style="accent-color:#f59e0b;width:14px;height:14px">
                 Alerta ativo
             </label>
-            <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
-                <span style="font-size:12px;color:#94a3b8">Janela:</span>
-                <select id="alerta-janela" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:12px;padding:3px 8px;cursor:pointer">
-                    <option value="all">Todas</option>
-                    <option disabled>── Jogos ──</option>
-                    <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
-                    <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
-                    <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
-                    <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
-                    <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
-                    <option disabled>── Horas ──</option>
-                    <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
-                    <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
-                    <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
-                    <option value="10">10H</option><option value="11">11H</option><option value="12" selected>12H</option>
-                    <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                </select>
+            <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:12px;color:#94a3b8">Janela:</span>
+                    <select id="alerta-janela" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:12px;padding:3px 8px;cursor:pointer">
+                        <option value="all">Todas</option>
+                        <option disabled>── Jogos ──</option>
+                        <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
+                        <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
+                        <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
+                        <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
+                        <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
+                        <option disabled>── Horas ──</option>
+                        <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
+                        <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
+                        <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
+                        <option value="10">10H</option><option value="11">11H</option><option value="12" selected>12H</option>
+                        <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
+                    </select>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px" title="Base Fixa: quantos jogos (dentro da Janela) usar para calcular o % de acerto. 0 = usa todos os jogos da Janela.">
+                    <span style="font-size:12px;color:#94a3b8">📐 Base:</span>
+                    <input id="alerta-base" type="number" min="0" max="500" value="0"
+                        style="width:54px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:12px;padding:3px 6px;text-align:center;outline:none"
+                        onfocus="this.style.borderColor='#f59e0b'" onblur="this.style.borderColor='#334155'">
+                    <span style="font-size:10px;color:#475569">jogos (0=tudo)</span>
+                </div>
             </div>
         </div>
         <!-- Gráfico de referência -->
@@ -10281,6 +10290,8 @@ function abrirAlertaEditor(id) {
     if (ativoEl) ativoEl.checked = !!al.ativo;
     const janelaEl = document.getElementById('alerta-janela');
     if (janelaEl) janelaEl.value = String(al.janela || '12');
+    const baseEl = document.getElementById('alerta-base');
+    if (baseEl) baseEl.value = String(al.base || 0);
     const grafVal = al.grafico || 'mercados';
     const grafEl = document.getElementById(`alerta-graf-${grafVal}`);
     if (grafEl) grafEl.checked = true;
@@ -10333,6 +10344,7 @@ async function salvarAlertaPadrao() {
     f.alerta = {
         ativo:    !!(document.getElementById('alerta-ativo')?.checked),
         janela:   document.getElementById('alerta-janela')?.value || '12',
+        base:     parseInt(document.getElementById('alerta-base')?.value || '0') || 0,
         grafico:  document.querySelector('input[name="alerta-graf"]:checked')?.value || 'mercados',
         condicoes: _alertaCondicoes
     };
@@ -10389,6 +10401,9 @@ function _verificarAlertas() {
                 });
             }
             if (!jogos.length) continue;
+            // Base Fixa: se definida, usa apenas os últimos N jogos dentro da janela
+            const _base = parseInt(al.base) || 0;
+            if (_base > 0 && jogos.length > _base) jogos = jogos.slice(-_base);
             const todasOk = al.condicoes.every(c => {
                 if (!TODOS_FILTROS.find(x => x.id === c.mercado)) return false;
                 const hits = jogos.filter(j => checa(j, c.mercado));
