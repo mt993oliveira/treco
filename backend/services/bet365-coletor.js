@@ -1421,13 +1421,11 @@ class Bet365Coletor {
             const url = pg.url();
             const naPaginaVirtual = url.includes('bet365') && url.includes('AVR');
 
-            // Cenário A: "Faça Login para Assistir" visível na página virtual
             const temAvisoVirtual = await pg.evaluate(() =>
                 [...document.querySelectorAll('button')].some(b =>
                     (b.textContent || '').trim().includes('Faça Login para Assistir'))
             );
 
-            // Cenário B: botão/link "Login" visível no cabeçalho (usuário deslogado)
             const temBotaoLoginHeader = !temAvisoVirtual && await pg.evaluate(() =>
                 [...document.querySelectorAll('button, a, [role="button"]')].some(el => {
                     const t = (el.textContent || el.innerText || '').trim();
@@ -1440,45 +1438,92 @@ class Bet365Coletor {
             const motivo = temAvisoVirtual ? '"Faça Login para Assistir" detectado'
                 : !naPaginaVirtual         ? `URL fora da página virtual: ${url.substring(0, 60)}`
                                            : 'botão "Login" no cabeçalho detectado';
-            console.log(`   🔐 Sessão expirada — ${motivo}`);
-            this._logAuditoria('sessao_expirada', motivo);
 
-            // ── Estratégia: REINÍCIO IMEDIATO — zero tentativas de formulário ─────
-            // Não clica no botão de Login nem submete credenciais in-place.
-            // Evita o bloqueio da Bet365 por "excesso de tentativas de login".
-            //
-            // Cooldown de 10 min: se já reiniciamos recentemente, aguarda e alerta
-            // para intervenção manual (evita loop infinito quando cookies expiram).
-            const COOLDOWN_MS    = 10 * 60 * 1000;
-            const RESTART_TS_KEY = '__bet365RestartTs'; // salvo em arquivo temp
-            const RESTART_TS_FILE = require('path').join(require('os').tmpdir(), 'bet365-restart.ts');
+            // ── Proteção anti-duplo-login (mesmo processo) ────────────────────────
+            // _verificarSessao é chamada até 3x por ciclo. Se já tentamos login nos
+            // últimos 5 min neste processo, aguarda em vez de tentar de novo.
+            const TENTATIVA_COOLDOWN_MS = 5 * 60 * 1000;
+            if (this._ultimoLoginTs && (Date.now() - this._ultimoLoginTs) < TENTATIVA_COOLDOWN_MS) {
+                const secAtras = Math.round((Date.now() - this._ultimoLoginTs) / 1000);
+                console.log(`   ⏳ Sessão expirada — login em andamento ou aguardando (${secAtras}s)`);
+                return;
+            }
 
-            let ultimoRestart = 0;
+            // ── Cooldown cross-processo: login falhou recentemente? ───────────────
+            // Arquivo gravado quando _loginComCredenciais retorna false.
+            // Limpo pelo iniciar-tudo.bat no início manual.
+            const FALHA_COOLDOWN_MS = 10 * 60 * 1000;
+            const FALHA_TS_FILE = require('path').join(require('os').tmpdir(), 'bet365-login-fail.ts');
+            let ultimaFalha = 0;
             try {
-                const raw = require('fs').readFileSync(RESTART_TS_FILE, 'utf8').trim();
-                ultimoRestart = parseInt(raw) || 0;
+                ultimaFalha = parseInt(require('fs').readFileSync(FALHA_TS_FILE, 'utf8').trim()) || 0;
             } catch(_) {}
 
             const agora = new Date().toLocaleTimeString('pt-BR');
 
-            if (!this._reinicioAgendado && (Date.now() - ultimoRestart) >= COOLDOWN_MS) {
-                // ── Dispara reinício completo ─────────────────────────────────────
-                this._reinicioAgendado = true;
-                console.log('   🔄 Reiniciando tudo em 5s (Edge + Node) — nenhuma tentativa de formulário...');
-                this._logAuditoria('reinicio_automatico', motivo);
+            if ((Date.now() - ultimaFalha) < FALHA_COOLDOWN_MS) {
+                // Login falhou recentemente em outro processo — não tenta de novo
+                const minAtras = Math.round((Date.now() - ultimaFalha) / 60000);
+                console.log(`   ⚠️  Login falhou ${minAtras}min atrás — aguardando intervenção manual`);
+                if (Date.now() - this._ultimoAlertaLoginTs >= FALHA_COOLDOWN_MS) {
+                    this._ultimoAlertaLoginTs = Date.now();
+                    const pool = await this.conectarBanco().catch(() => null);
+                    dispararAlerta(this.cfg, pool,
+                        '❌ Bet365 — login manual necessário',
+                        `Login automático falhou. Acesse o Edge e faça login manualmente.\n🕐 ${agora}`
+                    ).catch(() => {});
+                }
+                return;
+            }
 
-                // Grava timestamp antes de sair (para cooldown na próxima instância)
+            // ── Realiza login com credenciais (1 tentativa por evento) ────────────
+            console.log(`   🔐 Sessão expirada — ${motivo} — realizando login automático...`);
+            this._logAuditoria('sessao_expirada', motivo);
+            this._ultimoLoginTs = Date.now(); // marca tentativa — bloqueia novas por 5 min
+
+            const sessaoOk = await this._loginComCredenciais(pg);
+
+            // ── Após login bem-sucedido, garante retorno à página virtual ─────────
+            if (sessaoOk) {
                 try {
-                    require('fs').writeFileSync(RESTART_TS_FILE, String(Date.now()), 'utf8');
-                } catch(_) {}
+                    const urlPos = pg.url();
+                    if (!urlPos.includes('AVR')) {
+                        console.log('   🔄 Redirecionando para página virtual...');
+                        await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                        await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
+                    }
+                } catch(e) {
+                    console.warn('   ⚠️  Falha ao redirecionar após login:', e.message);
+                }
+            }
 
-                // Alerta Telegram (aguarda antes de encerrar)
+            // ── Notificação Telegram ──────────────────────────────────────────────
+            const throttle = 10 * 60 * 1000;
+            if (Date.now() - this._ultimoAlertaLoginTs >= throttle) {
+                this._ultimoAlertaLoginTs = Date.now();
                 const pool = await this.conectarBanco().catch(() => null);
-                await dispararAlerta(this.cfg, pool,
-                    '🔐 Sessão Bet365 expirada — reiniciando tudo',
-                    `Sessão detectada como expirada (${motivo}).\n🔄 Fechando Edge + Node e reiniciando automaticamente.\n✅ Sistema volta em ~30s sem tentativa de login.\n🕐 ${agora}`
-                ).catch(() => {});
+                if (sessaoOk) {
+                    console.log('   ✅ Sessão restaurada!');
+                    dispararAlerta(this.cfg, pool,
+                        '🔐 Sessão Bet365 expirou — restaurada',
+                        `Login automático realizado com sucesso.\n✅ Coleta continuando normalmente.\n🕐 ${agora}`
+                    ).catch(() => {});
+                } else {
+                    console.log('   ❌ Login falhou — reiniciando tudo...');
+                    dispararAlerta(this.cfg, pool,
+                        '❌ Sessão Bet365 — login falhou, reiniciando',
+                        `Login com credenciais falhou.\n🔄 Reiniciando Edge + Node automaticamente.\n🕐 ${agora}`
+                    ).catch(() => {});
+                }
+            }
 
+            // ── Login falhou → grava cooldown + reinicia tudo ─────────────────────
+            if (!sessaoOk && !this._reinicioAgendado) {
+                this._reinicioAgendado = true;
+                try {
+                    require('fs').writeFileSync(FALHA_TS_FILE, String(Date.now()), 'utf8');
+                } catch(_) {}
+                console.log('   🔄 Reiniciando tudo em 5s (Edge + Node)...');
                 setTimeout(() => {
                     try {
                         const { spawn } = require('child_process');
@@ -1490,24 +1535,7 @@ class Bet365Coletor {
                     }
                     process.exit(0);
                 }, 5000);
-
-            } else if (!this._reinicioAgendado) {
-                // ── Cooldown ativo: sessão ainda expirada após reinício recente ───
-                // Não reinicia de novo — alerta para intervenção manual.
-                const minAtras = Math.round((Date.now() - ultimoRestart) / 60000);
-                console.log(`   ⚠️  Sessão ainda expirada ${minAtras}min após reinício — aguardando intervenção manual`);
-
-                const throttle = 10 * 60 * 1000;
-                if (Date.now() - this._ultimoAlertaLoginTs >= throttle) {
-                    this._ultimoAlertaLoginTs = Date.now();
-                    const pool = await this.conectarBanco().catch(() => null);
-                    dispararAlerta(this.cfg, pool,
-                        '❌ Bet365 — login manual necessário',
-                        `Após reinício automático, a sessão ainda está expirada.\n⚠️ Acesse o Edge e faça login manualmente na Bet365.\n🕐 ${agora}`
-                    ).catch(() => {});
-                }
             }
-            // Se _reinicioAgendado=true: reinício já foi agendado neste processo, aguarda exit()
 
         } catch(e) {
             console.warn('   ⚠️  _verificarSessao:', e.message);
