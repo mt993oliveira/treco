@@ -2985,7 +2985,7 @@ function setView(v) {
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
     if (v === 'historico')   { carregarHistorico(); }
-    if (v === 'analise')     { renderAnalise(); carregarMercados(); }
+    if (v === 'analise')     { renderAnalise(); carregarAnalise(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); _bfInit(); }
 }
@@ -3124,13 +3124,10 @@ function setSubViewPeriodo(subview, val) {
 // LOAD DATA
 // ============================================================
 async function carregarTudo() {
-    // carregarHistorico() precisa terminar antes de carregarMercados()
-    // porque só ele define S.ligaAtiva (usado como filtro de liga nos endpoints de análise)
-    await Promise.all([
-        carregarHistorico(),
-        carregarSugestoes(),
-    ]);
-    await carregarMercados();
+    // carregarHistorico() precisa terminar antes de carregarAnalise()
+    // porque só ele define S.ligaAtiva (usado como filtro nos endpoints de análise)
+    await carregarHistorico();
+    await carregarAnalise();
 }
 
 // ============================================================
@@ -3268,7 +3265,7 @@ function faSet(campo, valor) {
         if (njogSel) njogSel.value = String(valor);
         const rankSel = document.getElementById('ranking-n-sel');
         if (rankSel) rankSel.value = String(valor);
-        if (S.view === 'analise') { carregarSugestoes(); carregarMercados(); }
+        if (S.view === 'analise') carregarAnalise();
     }
     if (campo === 'tipoMercado') {
         // Mapeia S.fa.tipoMercado → MKT.tipo
@@ -3276,7 +3273,7 @@ function faSet(campo, valor) {
                        'Ambas':'Ambos Marcam', 'Intervalo':'Intervalo Resultado',
                        'Correto':'Resultado Correto', 'Chance':'Chance Dupla' };
         MKT.tipo = mapa[valor] || 'all';
-        if (S.view === 'analise') carregarMercados();
+        if (S.view === 'analise') carregarAnalise();
     }
 }
 
@@ -3296,34 +3293,72 @@ function _faAtualizarStatus() {
     el.textContent = partes.join('  ·  ');
 }
 
-async function carregarSugestoes(forceRender = false) {
+// ── Carrega TODA a aba Análise de uma vez: 5 endpoints em paralelo ────────
+let _analiseReqId = 0;
+async function carregarAnalise(forceRender = false) {
+    const reqId = ++_analiseReqId;
     try {
-        const mktUrl = `/api/bet365/analise/mercados${_faParams()}`;
-        const resUrl = `/api/bet365/analise/resumo${_faParams({ minVE: S.fa.soValueBets ? 0.95 : 0 })}`;
+        const nJogos = S.fa.nJogos || 200;
+        const liga   = S.ligaAtiva || '';
 
-        const [rSug, rMkt, rRes] = await Promise.all([
-            fetch(`/api/bet365/sugestoes?nJogos=${S.fa.nJogos || 200}&liga=${encodeURIComponent(S.ligaAtiva || '')}`).then(r => r.json()),
-            fetch(mktUrl).then(r => r.json()).catch(() => ({ data: {} })),
-            fetch(resUrl).then(r => r.json()).catch(() => ({}))
+        const base = new URLSearchParams({ nJogos });
+        if (liga) base.set('liga', liga);
+
+        // Params para mercados (inclui filtros de tipo/frequência)
+        const mktP = new URLSearchParams(base);
+        mktP.set('minJogos', S.fa.minJogos || 3);
+        if (S.fa.minPct > 0) mktP.set('minPct', S.fa.minPct);
+        if (S.fa.tipoMercado && S.fa.tipoMercado !== 'Todos') mktP.set('tipoMercado', S.fa.tipoMercado);
+        if (S.fa.soValueBets) mktP.set('soValueBets', '1');
+        if (S.fa.minVE > 0)  mktP.set('minVE', S.fa.minVE);
+
+        // Params para resumo (value bets)
+        const resP = new URLSearchParams(base);
+        resP.set('minJogos', S.fa.minJogos || 5);
+        if (S.fa.soValueBets) resP.set('soValueBets', '1');
+        if (S.fa.minVE > 0)  resP.set('minVE', S.fa.minVE);
+
+        // Params para tendências (janela recente independente)
+        const tendP = new URLSearchParams({ nJogos: S.fa.nRecente || 20, minJogosHist: 5, minJogosRec: 3, minVariacao: 1 });
+        if (liga) tendP.set('liga', liga);
+
+        const [rSug, rMkt, rRes, rTend, rIA] = await Promise.all([
+            fetch(`/api/bet365/sugestoes?${base}`).then(r => r.json()).catch(() => ({ success: false, data: [] })),
+            fetch(`/api/bet365/analise/mercados?${mktP}`).then(r => r.json()).catch(() => ({ data: {} })),
+            fetch(`/api/bet365/analise/resumo?${resP}`).then(r => r.json()).catch(() => ({})),
+            fetch(`/api/bet365/analise/tendencias?${tendP}`).then(r => r.json()).catch(() => ({ data: [] })),
+            fetch(`/api/bet365/analise/sugestoes-avancadas?${base}`).then(r => r.json()).catch(() => ({ data: [] }))
         ]);
-        if (!rSug.success) return;
-        S.sugestoes    = rSug.data || [];
-        S.mktDados     = rMkt.data || {};
-        S.mktValueBets = (rRes.value_bets || []);
-        S.mktTopSel    = (rRes.top_selecoes || []);
 
-        // Atualiza título dos value bets com o filtro atual
+        if (reqId !== _analiseReqId) return; // resposta obsoleta
+
+        if (rSug.success) S.sugestoes = rSug.data || [];
+        S.mktDados     = rMkt.data || {};
+        S.mktValueBets = rRes.value_bets    || [];
+        S.mktTopSel    = rRes.top_selecoes  || [];
+        MKT.dados      = { resumo: rRes, mercados: rMkt, tendencias: rTend, ia: rIA };
+
         const vbTit = document.getElementById('analise-vb-titulo');
-        if (vbTit) {
-            vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (ult. ${S.fa.nJogos || 200} jogos)`;
-        }
+        if (vbTit) vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (ult. ${nJogos} jogos)`;
 
         _faAtualizarStatus();
-        if (S.view === 'analise') {
+
+        if (S.view === 'analise' || forceRender) {
             renderAnalise();
+            renderMktResumo(rRes);
+            renderMktValueBets(rRes, 'analise-mkt');
+            renderMktTendencias(rTend, 'analise-mkt');
+            renderMktGrafico(rMkt, 'analise-mkt', 'chart');
+            renderMktSugestoesIA(rIA, 'analise-mkt');
         }
-    } catch {}
+    } catch(e) {
+        if (reqId !== _analiseReqId) return;
+        console.error('Erro carregarAnalise:', e);
+    }
 }
+// Aliases retrocompatíveis
+async function carregarSugestoes(forceRender = false) { return carregarAnalise(forceRender); }
+async function carregarMercados()                      { return carregarAnalise(); }
 
 // ============================================================
 // MERCADOS DIVERSIFICADOS — seleciona 1 melhor por categoria de mercado
@@ -3665,8 +3700,7 @@ async function onRankingNChange(val) {
     const mainSel = document.getElementById('fa-njog-sel');
     if (mainSel) mainSel.value = String(n);
     _faAtualizarStatus();
-    await carregarSugestoes();
-    if (S.view === 'analise') carregarMercados();
+    await carregarAnalise();
 }
 
 function statBar(label, value, max, cor, suffix = '') {
@@ -3712,7 +3746,7 @@ function renderLigas() {
             b.classList.add('ativo');
             renderTabela(); _renderAllCharts();
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
-            if (S.view === 'analise') { _faAtualizarStatus(); carregarSugestoes(true); carregarMercados(); }
+            if (S.view === 'analise') { _faAtualizarStatus(); carregarAnalise(true); }
         };
         c.appendChild(b);
     };
@@ -10641,55 +10675,7 @@ function setMktFiltro(chave, valor) {
     carregarMercados();
 }
 
-let _mktReqId = 0;
-
-async function carregarMercados() {
-    const reqId = ++_mktReqId;
-    try {
-        // Liga vem dos tabs principais (S.ligaAtiva), não de MKT.liga
-        const ligaAtual = S.ligaAtiva || null;
-        const nJogos = S.fa.nJogos || 200;
-
-        // Mostra "Carregando..." nas seções enquanto busca
-        const vbEl = document.getElementById('analise-mkt-value-bets');
-        const tdEl = document.getElementById('analise-mkt-tendencias');
-        if (vbEl) vbEl.innerHTML = '<span style="color:#334155">Carregando...</span>';
-        if (tdEl) tdEl.innerHTML = '<span style="color:#334155">Carregando...</span>';
-
-        // Parâmetros comuns
-        const params = new URLSearchParams({ nJogos });
-        if (ligaAtual) params.set('liga', ligaAtual);
-
-        // Tendências: mesmo nJogos + liga, threshold baixo
-        const tendParams = new URLSearchParams({ minJogosHist: 5, minJogosRec: 3, minVariacao: 1, nJogos });
-        if (ligaAtual) tendParams.set('liga', ligaAtual);
-
-        // IA Sugestões: mesmo nJogos + liga
-        const iaParams = new URLSearchParams({ nJogos });
-        if (ligaAtual) iaParams.set('liga', ligaAtual);
-
-        const [resumoRes, mktRes, tendRes, iaRes] = await Promise.all([
-            fetch('/api/bet365/analise/resumo?' + params).then(r => r.json()),
-            fetch('/api/bet365/analise/mercados?' + params).then(r => r.json()),
-            fetch('/api/bet365/analise/tendencias?' + tendParams).then(r => r.json()),
-            fetch('/api/bet365/analise/sugestoes-avancadas?' + iaParams).then(r => r.json())
-        ]);
-
-        // Descarta resposta se uma requisição mais recente já foi disparada
-        if (reqId !== _mktReqId) return;
-
-        MKT.dados = { resumo: resumoRes, mercados: mktRes, tendencias: tendRes, ia: iaRes };
-        // Popula seções na aba Análise
-        renderMktResumo(resumoRes);
-        renderMktValueBets(resumoRes, 'analise-mkt');
-        renderMktTendencias(tendRes, 'analise-mkt');
-        renderMktGrafico(mktRes, 'analise-mkt', 'chart');
-        renderMktSugestoesIA(iaRes, 'analise-mkt');
-    } catch(e) {
-        if (reqId !== _mktReqId) return;
-        console.error('Erro carregarMercados:', e);
-    }
-}
+// carregarMercados() agora é alias de carregarAnalise() — definido acima
 
 function renderMktResumo(res) {
     const v = res.volume || {};

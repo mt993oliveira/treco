@@ -405,50 +405,72 @@ router.get('/historico-tabela', (req, res) => {
  */
 router.get('/sugestoes', async (req, res) => {
     try {
-        const nJogosN  = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 200));
-        const ligaFiltro = req.query.liga || null;
-        const pool     = await getDbPool();
+        const nJogosN    = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 200));
+        const ligaFiltro = req.query.liga && req.query.liga !== '' && req.query.liga !== 'all'
+            ? req.query.liga : null;
+        const pool = await getDbPool();
 
-        // Ligas com ao menos 5 jogos distintos
-        const ligasResult = await pool.query(`
-            SELECT liga, COUNT(DISTINCT evento_id) AS total
-            FROM bet365_resultados_mercados
-            WHERE liga IS NOT NULL AND liga <> ''
-            GROUP BY liga
-            HAVING COUNT(DISTINCT evento_id) >= 5
-            ORDER BY total DESC
+        const req1 = pool.request().input('nJogos', sql.Int, nJogosN);
+        let ligaWhere = '';
+        if (ligaFiltro) {
+            req1.input('liga', sql.NVarChar(200), ligaFiltro);
+            ligaWhere = 'AND liga = @liga';
+        }
+
+        // Uma única query em vez de N sequenciais: traz todos os eventos de todas as ligas
+        // (ou só da liga filtrada) com ROW_NUMBER para limitar aos últimos nJogos por liga
+        const bulk = await req1.query(`
+            WITH all_evts AS (
+                SELECT liga, evento_id,
+                       ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn,
+                       COUNT(*) OVER (PARTITION BY liga) AS total_liga
+                FROM bet365_resultados_mercados
+                WHERE liga IS NOT NULL AND liga <> '' ${ligaWhere}
+                GROUP BY liga, evento_id
+            )
+            SELECT
+                m.liga, m.evento_id, m.data_partida, e.total_liga,
+                MAX(CASE WHEN m.mercado = 'Resultado Final' THEN m.selecao END)                     AS resultado_final,
+                MAX(CASE WHEN m.time_casa IS NOT NULL THEN m.time_casa END)                         AS time_casa,
+                MAX(CASE WHEN m.time_fora IS NOT NULL THEN m.time_fora END)                         AS time_fora,
+                MAX(CASE WHEN m.mercado LIKE '%0.5%' AND m.selecao LIKE 'Mais%'  THEN 1 ELSE 0 END) AS over05,
+                MAX(CASE WHEN m.mercado LIKE '%1.5%' AND m.selecao LIKE 'Mais%'  THEN 1 ELSE 0 END) AS over15,
+                MAX(CASE WHEN m.mercado LIKE '%2.5%' AND m.selecao LIKE 'Mais%'  THEN 1 ELSE 0 END) AS over25,
+                MAX(CASE WHEN m.mercado LIKE '%3.5%' AND m.selecao LIKE 'Mais%'  THEN 1 ELSE 0 END) AS over35,
+                MAX(CASE WHEN m.mercado LIKE '%1.5%' AND m.selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under15,
+                MAX(CASE WHEN m.mercado LIKE '%2.5%' AND m.selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under25,
+                MAX(CASE WHEN m.mercado = 'Ambos Marcam' AND m.selecao = 'Sim'   THEN 1 ELSE 0 END) AS btts
+            FROM bet365_resultados_mercados m
+            INNER JOIN all_evts e
+                ON e.liga = m.liga AND e.evento_id = m.evento_id AND e.rn <= @nJogos
+            GROUP BY m.liga, m.evento_id, m.data_partida, e.total_liga
+            ORDER BY m.liga, m.data_partida DESC
         `);
 
+        // Agrupa por liga no JS
+        const byLiga = new Map();
+        for (const row of bulk.recordset) {
+            if (!byLiga.has(row.liga)) byLiga.set(row.liga, { total_liga: row.total_liga, rows: [] });
+            byLiga.get(row.liga).rows.push(row);
+        }
+
+        const FILTROS = [
+            { id: 'over0.5',   label: 'Mais de 0.5',     check: j => j.over05 },
+            { id: 'over1.5',   label: 'Mais de 1.5',     check: j => j.over15 },
+            { id: 'over2.5',   label: 'Mais de 2.5',     check: j => j.over25 },
+            { id: 'over3.5',   label: 'Mais de 3.5',     check: j => j.over35 },
+            { id: 'under1.5',  label: 'Menos de 1.5',    check: j => j.under15 },
+            { id: 'under2.5',  label: 'Menos de 2.5',    check: j => j.under25 },
+            { id: 'ambas',     label: 'Ambas Marcam',     check: j => j.btts },
+            { id: 'ft_casa',   label: 'Casa Vence',       check: j => j.resultado === 'CASA' },
+            { id: 'ft_empate', label: 'Empate',           check: j => j.resultado === 'EMPATE' },
+            { id: 'ft_fora',   label: 'Fora Vence',       check: j => j.resultado === 'FORA' },
+            { id: 'btts_o25',  label: 'BTTS + Mais 2.5', check: j => j.btts && j.over25 },
+        ];
+
         const resultado = [];
-
-        for (const l of ligasResult.recordset) {
-            // Filtra por liga se especificada
-            if (ligaFiltro && ligaFiltro !== 'all' && ligaFiltro !== '' && l.liga !== ligaFiltro) continue;
-
-            // Busca os últimos nJogos eventos da liga
-            const pResult = await pool.request()
-                .input('liga',   sql.NVarChar(200), l.liga)
-                .input('nJogos', sql.Int,           nJogosN)
-                .query(`
-                    SELECT TOP (@nJogos)
-                        evento_id, data_partida,
-                        MAX(CASE WHEN mercado = 'Resultado Final' THEN selecao END) AS resultado_final,
-                        MAX(CASE WHEN time_casa IS NOT NULL THEN time_casa END) AS time_casa,
-                        MAX(CASE WHEN time_fora IS NOT NULL THEN time_fora END) AS time_fora,
-                        MAX(CASE WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over05,
-                        MAX(CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over15,
-                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over25,
-                        MAX(CASE WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over35,
-                        MAX(CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under15,
-                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under25,
-                        MAX(CASE WHEN mercado = 'Ambos Marcam' AND selecao = 'Sim' THEN 1 ELSE 0 END) AS btts
-                    FROM bet365_resultados_mercados
-                    WHERE liga = @liga
-                    GROUP BY evento_id, data_partida
-                    ORDER BY data_partida DESC
-                `);
-
-            const partidas = pResult.recordset.map(p => ({
+        for (const [ligaNome, { total_liga, rows }] of byLiga) {
+            const partidas = rows.map(p => ({
                 over05:  p.over05  === 1,
                 over15:  p.over15  === 1,
                 over25:  p.over25  === 1,
@@ -459,22 +481,7 @@ router.get('/sugestoes', async (req, res) => {
                 resultado: p.resultado_final === p.time_casa ? 'CASA'
                          : p.resultado_final === p.time_fora ? 'FORA' : 'EMPATE',
             }));
-
             if (partidas.length < 5) continue;
-
-            const FILTROS = [
-                { id: 'over0.5',   label: 'Mais de 0.5',  check: j => j.over05 },
-                { id: 'over1.5',   label: 'Mais de 1.5',  check: j => j.over15 },
-                { id: 'over2.5',   label: 'Mais de 2.5',  check: j => j.over25 },
-                { id: 'over3.5',   label: 'Mais de 3.5',  check: j => j.over35 },
-                { id: 'under1.5',  label: 'Menos de 1.5', check: j => j.under15 },
-                { id: 'under2.5',  label: 'Menos de 2.5', check: j => j.under25 },
-                { id: 'ambas',     label: 'Ambas Marcam', check: j => j.btts },
-                { id: 'ft_casa',   label: 'Casa Vence',   check: j => j.resultado === 'CASA' },
-                { id: 'ft_empate', label: 'Empate',       check: j => j.resultado === 'EMPATE' },
-                { id: 'ft_fora',   label: 'Fora Vence',   check: j => j.resultado === 'FORA' },
-                { id: 'btts_o25',  label: 'BTTS + Mais 2.5', check: j => j.btts && j.over25 },
-            ];
 
             const n = partidas.length;
             const filtroStats = FILTROS.map(f => {
@@ -502,10 +509,8 @@ router.get('/sugestoes', async (req, res) => {
                     amostras: n
                 };
             });
-
             filtroStats.sort((a, b) => b.tx_ultn - a.tx_ultn);
 
-            // Stats derivadas de mercados
             const pctCasa   = +(partidas.filter(p => p.resultado === 'CASA').length   / n * 100).toFixed(1);
             const pctEmpate = +(partidas.filter(p => p.resultado === 'EMPATE').length / n * 100).toFixed(1);
             const pctFora   = +(partidas.filter(p => p.resultado === 'FORA').length   / n * 100).toFixed(1);
@@ -517,7 +522,7 @@ router.get('/sugestoes', async (req, res) => {
             ).toFixed(2);
 
             resultado.push({
-                liga: l.liga, total: l.total, amostras: n,
+                liga: ligaNome, total: total_liga, amostras: n,
                 stats: { mediaGols, pctCasa, pctEmpate, pctFora, pctAmbas, pctO15, pctO25 },
                 filtros: filtroStats, melhor: filtroStats[0] || null,
             });
