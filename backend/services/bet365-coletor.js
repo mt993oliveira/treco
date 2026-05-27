@@ -1597,24 +1597,41 @@ class Bet365Coletor {
 
             await this._delay(5000);
 
-            // ── Detecta modal "confirme os seus dados" (e-mail + data de nascimento) ─
+            // ── Detecta modal "confirme os seus dados" por estrutura DOM ─────────────
+            // (mais confiável que innerText — não depende de encoding/acento)
             const modalConfirmacao = await pg.evaluate(() => {
-                const texto = (document.body?.innerText || '').toLowerCase();
-                return (texto.includes('confirme os seus dados') || texto.includes('confirme alguns dados'))
-                    && (texto.includes('data de nascimento') || texto.includes('e-mail') || texto.includes('email'));
+                const visibleSelects = [...document.querySelectorAll('select')].filter(s => {
+                    const r = s.getBoundingClientRect();
+                    return r.width > 0 && r.height > 0;
+                });
+                const temDiaMesAno = visibleSelects.some(s => {
+                    const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
+                    return ph === 'dia' || ph === 'mes' || ph === 'ano';
+                });
+                const temInputEmail = !!document.querySelector('input[type="email"]')
+                    || !![...document.querySelectorAll('input[type="text"],input:not([type])')].find(i =>
+                        (i.placeholder || '').toLowerCase().includes('mail'));
+                return temDiaMesAno || temInputEmail;
             });
             if (modalConfirmacao) {
                 console.log('   🔒 Modal "Confirme seus dados" detectado — preenchendo e-mail e data de nascimento...');
                 this._logAuditoria('verificacao_confirmacao_dados', 'Modal confirme seus dados detectado', usuario);
                 const preencheu = await this._preencherConfirmacaoDados(pg, emailVerif || usuario, dataNasc);
                 if (preencheu) {
-                    await this._delay(5000);
-                    const ok = await pg.evaluate(() =>
-                        ![...document.querySelectorAll('button')].some(b =>
-                            (b.textContent || '').trim().includes('Faça Login para Assistir'))
-                    );
-                    if (ok) return true;
-                    console.log('   ❌ Confirmação preenchida mas login ainda não passou');
+                    await this._delay(6000);
+                    // Modal resolvido = selects Dia/Mês/Ano desapareceram
+                    const modalSumiu = await pg.evaluate(() => {
+                        const visibleSelects = [...document.querySelectorAll('select')].filter(s => {
+                            const r = s.getBoundingClientRect();
+                            return r.width > 0 && r.height > 0;
+                        });
+                        return !visibleSelects.some(s => {
+                            const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
+                            return ph === 'dia' || ph === 'mes' || ph === 'ano';
+                        });
+                    });
+                    if (modalSumiu) { console.log('   ✅ Confirmação aceita!'); return true; }
+                    console.log('   ❌ Modal ainda aberto após confirmação');
                 } else {
                     console.log('   ❌ Não foi possível preencher confirmação — sem data de nascimento no .env?');
                 }
@@ -1624,12 +1641,27 @@ class Bet365Coletor {
             // Detecta pedido de verificação genérica (SMS, captcha)
             const pedindoVerificacao = await pg.evaluate(() => {
                 const texto = (document.body?.innerText || '').toLowerCase();
-                return texto.includes('verificação') || texto.includes('verification')
-                    || texto.includes('confirme') || texto.includes('confirm your')
+                return texto.includes('verifica') || texto.includes('verification')
                     || texto.includes('sms') || texto.includes('código de segurança');
             });
             if (pedindoVerificacao) {
                 console.log('   ⚠️  Conta exige verificação (SMS/email) — pulando para próxima...');
+                return 'verificacao';
+            }
+
+            // Verifica se modal de Dia/Mês/Ano ainda está visível (false positive guard)
+            const modalAindaAberto = await pg.evaluate(() => {
+                const visibleSelects = [...document.querySelectorAll('select')].filter(s => {
+                    const r = s.getBoundingClientRect();
+                    return r.width > 0 && r.height > 0;
+                });
+                return visibleSelects.some(s => {
+                    const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
+                    return ph === 'dia' || ph === 'mes' || ph === 'ano';
+                });
+            });
+            if (modalAindaAberto) {
+                console.log('   ⚠️  Modal de confirmação ainda aberto — login incompleto');
                 return 'verificacao';
             }
 
@@ -1646,12 +1678,20 @@ class Bet365Coletor {
 
     async _preencherConfirmacaoDados(pg, email, dataNasc) {
         try {
-            // Preenche e-mail
-            const inputEmail = await pg.$('input[type="email"], input[placeholder*="e-mail" i], input[placeholder*="email" i]');
+            // Preenche e-mail (suporta type="email" e type="text" com placeholder)
+            const inputEmail = await pg.$([
+                'input[type="email"]',
+                'input[placeholder*="e-mail" i]',
+                'input[placeholder*="email" i]',
+                'input[placeholder*="mail" i]',
+                'input[type="text"]',   // fallback genérico (Bet365 React pode usar type=text)
+            ].join(', '));
             if (inputEmail) {
                 await inputEmail.click({ clickCount: 3 });
-                await inputEmail.type(email, { delay: 50 });
+                await this._delay(300);
+                await inputEmail.type(email, { delay: 80 });
                 console.log(`   ✉️  E-mail preenchido: ${email}`);
+                await this._delay(500);
             } else {
                 console.log('   ⚠️  Campo de e-mail não encontrado');
             }
@@ -1708,10 +1748,11 @@ class Bet365Coletor {
             }, dia, mes, ano);
 
             console.log(`   📅 Data de nascimento preenchida: ${dia}/${mes}/${ano}`);
-            await this._delay(500);
+            await this._delay(800);
 
-            // Clica em Login para confirmar
-            const clicou = await this._clicarBotaoPorTexto(pg, 'Login', true);
+            // Clica em Login do modal (prioriza botão dentro de form ou submit)
+            const clicou = await this._clicarBotaoSubmitModal(pg)
+                || await this._clicarBotaoPorTexto(pg, 'Login', true);
             if (!clicou) console.log('   ⚠️  Botão Login não encontrado após confirmação');
             return clicou;
         } catch(e) {
