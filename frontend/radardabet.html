@@ -8774,6 +8774,9 @@ const _CFG_LABELS = {
     grafico_ponto_cores:         '🟢 Cores: vir habilitado por padrão (colorir bolinhas verde=hit / vermelho=miss)',
     grafico_pills_default:   '📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados',
     // Mosaico
+    backoff_ligas_ativo:        '⏸️ Backoff automático — pausar tentativas quando ligas não aparecem',
+    backoff_ligas_threshold:    '⏸️ Backoff: falhas consecutivas para ativar pausa',
+    backoff_ligas_espera_min:   '⏸️ Backoff: minutos de espera após atingir o limite',
     mosaico_hora_largura:       '📐 Mosaico: largura mínima da coluna HORA (px)',
     mosaico_mostrar_data_jogos:  '👁 Mosaico: exibir data (DD/MM) e contagem de jogos',
     mosaico_hora_fonte_hh:      '📐 Mosaico: tamanho da fonte da hora HH (px)',
@@ -9005,6 +9008,24 @@ async function _loadConfigSistema() {
                         style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <div style="font-size:10px;color:#475569;margin-top:4px">Quantos cliques em "Ver Mais" por liga ao coletar resultados. Mais cliques = mais jogos históricos, porém ciclo mais lento (1–50) · padrão: 10</div>
+                </div>`;
+            }
+            if (d.chave === 'backoff_ligas_threshold') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">⏸️ BACKOFF — FALHAS PARA ATIVAR PAUSA</label>
+                    <input type="number" id="cfg-backoff_ligas_threshold" value="${d.valor}" min="2" max="30"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Após N falhas consecutivas de "Ligas não aparecem", o coletor entra em pausa (2–30) · padrão: 5</div>
+                </div>`;
+            }
+            if (d.chave === 'backoff_ligas_espera_min') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">⏸️ BACKOFF — MINUTOS DE ESPERA</label>
+                    <input type="number" id="cfg-backoff_ligas_espera_min" value="${d.valor}" min="5" max="60"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Tempo de pausa quando o limite de falhas é atingido (5–60 min) · padrão: 15</div>
                 </div>`;
             }
             return `<div style="margin-bottom:14px">

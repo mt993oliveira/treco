@@ -1663,6 +1663,9 @@ const CONFIG_DEFAULTS = [
     { chave:'max_value_bets',               valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'Máximo de sugestões exibidas em 💰 Value Bets (1–20)' },
     { chave:'max_tendencias',               valor:'8',     tipo:'number',  grupo:'sistema',  descricao:'Máximo de itens exibidos em 📈 Tendências (1–20)' },
     { chave:'max_ver_mais_clicks',          valor:'10',    tipo:'number',  grupo:'sistema',  descricao:'Cliques em "Ver Mais" ao coletar resultados (mais cliques = mais jogos históricos por ciclo)' },
+    { chave:'backoff_ligas_ativo',          valor:'true',  tipo:'boolean', grupo:'sistema',  descricao:'⏸️ Backoff automático — pausar tentativas quando ligas não aparecem N vezes seguidas' },
+    { chave:'backoff_ligas_threshold',      valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'⏸️ Backoff: nº de falhas consecutivas "Ligas não aparecem" para ativar a pausa' },
+    { chave:'backoff_ligas_espera_min',     valor:'15',    tipo:'number',  grupo:'sistema',  descricao:'⏸️ Backoff: minutos de espera ao atingir o limite de falhas' },
     { chave:'grafico_mercados_master_only', valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'📈 Gráfico de Mercados: exibir somente para o usuário MASTER' },
     // ── Alertas ──
     { chave:'alerta_ativado',               valor:'true',  tipo:'boolean', grupo:'alertas',  descricao:'Ativar sistema de alertas (Telegram + e-mail)' },

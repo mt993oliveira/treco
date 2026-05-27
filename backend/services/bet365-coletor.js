@@ -240,6 +240,8 @@ class Bet365Coletor {
         this._ultimoLoginTs        = 0;     // timestamp do último login bem-sucedido (anti-duplo-login)
         this._reinicioAgendado     = false; // evita agendar múltiplos reinícios simultâneos
         this._ultimaColetaProximos = new Map(); // liga → timestamp da última busca de próximos
+        this._ligasFalhadasConsec    = 0;   // contador de falhas consecutivas "Ligas não apareceram"
+        this._proximaColetaPermitida = 0;   // backoff: timestamp mínimo para próxima tentativa
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1715,6 +1717,14 @@ class Bet365Coletor {
         this._coletas++;
         await this._loadConfig();
 
+        // ── Backoff de ligas: pula ciclo se estamos em período de espera ─────────
+        if (this._cfgBool('backoff_ligas_ativo', true) && this._proximaColetaPermitida > Date.now()) {
+            const restanteMin = Math.ceil((this._proximaColetaPermitida - Date.now()) / 60000);
+            console.log(`⏸️  Bet365 - Backoff ativo: aguardando ${restanteMin}min (${this._ligasFalhadasConsec} falhas consecutivas de ligas)`);
+            this.coletando = false;
+            return;
+        }
+
         const inicio = new Date();
         console.log(`\n============================================`);
         console.log(`🔄 Bet365 - Coleta #${this._coletas} - ${inicio.toLocaleTimeString('pt-BR')}`);
@@ -1765,6 +1775,10 @@ class Bet365Coletor {
                 throw new Error('Ligas não apareceram após login + 2 recarregamentos — intervenção manual necessária');
             }
 
+            // Ligas OK — reset do backoff
+            this._ligasFalhadasConsec    = 0;
+            this._proximaColetaPermitida = 0;
+
             // ── PASSO 3: Verificação final de sessão após ligas carregarem ─────────
             await this._verificarSessao(this.page);
 
@@ -1789,6 +1803,26 @@ class Bet365Coletor {
             this.ultimoErro = err.message;
             console.error(`❌ Bet365 - Erro: ${err.message}`);
             await this._logColeta(inicio, 'ERRO', null, err.message);
+
+            // ── Backoff de ligas ──────────────────────────────────────────────────
+            if (err.message.includes('Ligas não apareceram')) {
+                this._ligasFalhadasConsec++;
+                if (this._cfgBool('backoff_ligas_ativo', true)) {
+                    const threshold = this._cfgNum('backoff_ligas_threshold', 5);
+                    const esperaMin = this._cfgNum('backoff_ligas_espera_min', 15);
+                    if (this._ligasFalhadasConsec >= threshold) {
+                        this._proximaColetaPermitida = Date.now() + esperaMin * 60 * 1000;
+                        const agora = new Date().toLocaleTimeString('pt-BR');
+                        console.log(`⏸️  Bet365 - Backoff: ${this._ligasFalhadasConsec} falhas consecutivas → pausando ${esperaMin}min`);
+                        this.conectarBanco().then(pool => {
+                            dispararAlerta(this.cfg, pool,
+                                `⏸️ Bet365 — backoff ${esperaMin}min`,
+                                `Ligas não apareceram ${this._ligasFalhadasConsec}× seguidas.\nPróxima tentativa em ${esperaMin}min.\n🕐 ${agora}`
+                            ).catch(() => {});
+                        }).catch(() => {});
+                    }
+                }
+            }
 
             // Se perdeu conexão com o Edge, reseta
             if (err.message.includes('Session closed') || err.message.includes('Target closed') ||
