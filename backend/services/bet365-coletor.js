@@ -1672,22 +1672,35 @@ class Bet365Coletor {
 
             // Encontra os 3 selects por texto do primeiro option (Dia / Mês / Ano)
             await pg.evaluate((dia, mes, ano) => {
+                const MESES_PT = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
                 const selects = [...document.querySelectorAll('select')].filter(s => {
                     const r = s.getBoundingClientRect();
                     return r.width > 0 && r.height > 0;
                 });
                 for (const sel of selects) {
                     const placeholder = (sel.options[0]?.text || '').trim().toLowerCase();
-                    let valor = null;
-                    if (placeholder === 'dia')                       valor = dia;
-                    else if (placeholder === 'mês' || placeholder === 'mes') valor = mes;
-                    else if (placeholder === 'ano')                  valor = ano;
-                    if (!valor) continue;
-                    // Tenta valor numérico direto; se não existir, tenta zero-padded
-                    const opcoes = [...sel.options].map(o => o.value);
-                    const valorFinal = opcoes.includes(valor) ? valor
-                        : opcoes.includes(valor.padStart(2, '0')) ? valor.padStart(2, '0')
-                        : valor;
+                    let numerico = null;
+                    if (placeholder === 'dia')                            numerico = dia;
+                    else if (placeholder === 'mês' || placeholder === 'mes') numerico = mes;
+                    else if (placeholder === 'ano')                       numerico = ano;
+                    if (!numerico) continue;
+
+                    const opcoes = [...sel.options].map(o => ({ v: o.value, t: o.text.trim() }));
+
+                    // Tenta: valor numérico → zero-padded → nome do mês em português → texto parcial
+                    const candidatos = [numerico, numerico.padStart(2, '0')];
+                    if (placeholder === 'mês' || placeholder === 'mes') {
+                        const nomeMes = MESES_PT[parseInt(numerico)] || '';
+                        if (nomeMes) candidatos.push(nomeMes, nomeMes.substring(0, 3));
+                    }
+                    let valorFinal = null;
+                    for (const c of candidatos) {
+                        const found = opcoes.find(o => o.v === c || o.t.toLowerCase().startsWith(c.toLowerCase()));
+                        if (found) { valorFinal = found.v; break; }
+                    }
+                    if (!valorFinal) continue;
+
                     sel.value = valorFinal;
                     sel.dispatchEvent(new Event('change', { bubbles: true }));
                     sel.dispatchEvent(new Event('input',  { bubbles: true }));
