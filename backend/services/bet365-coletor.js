@@ -1546,19 +1546,28 @@ class Bet365Coletor {
 
     _listarContas() {
         // Suporta lista via BET365_CONTAS=user1:pass1,user2:pass2,...
+        // BET365_EMAILS_VERIFICACAO=email1,email2   (e-mails para modal "Confirme seus dados")
+        // BET365_DATAS_NASC=DD/MM/YYYY,DD/MM/YYYY  (datas de nascimento, mesma ordem)
         // Fallback para BET365_USERNAME/BET365_PASSWORD (compatibilidade)
-        const lista = (process.env.BET365_CONTAS || '').trim();
+        const datas  = (process.env.BET365_DATAS_NASC          || '').split(',').map(s => s.trim()).filter(Boolean);
+        const emails = (process.env.BET365_EMAILS_VERIFICACAO  || '').split(',').map(s => s.trim()).filter(Boolean);
+        const lista  = (process.env.BET365_CONTAS || '').trim();
         if (lista) {
             return lista.split(',')
-                .map(c => { const [u, ...rest] = c.trim().split(':'); return [u, rest.join(':')]; })
+                .map((c, i) => {
+                    const [u, ...rest] = c.trim().split(':');
+                    const emailVerif = emails[i] || (u.includes('@') ? u : null);
+                    return [u, rest.join(':'), datas[i] || null, emailVerif];
+                })
                 .filter(([u, s]) => u && s);
         }
         const u = (process.env.BET365_USERNAME || '').trim();
         const s = (process.env.BET365_PASSWORD || '').trim();
-        return (u && s) ? [[u, s]] : [];
+        const emailVerif = emails[0] || (u.includes('@') ? u : null);
+        return (u && s) ? [[u, s, datas[0] || null, emailVerif]] : [];
     }
 
-    async _tentarLoginComPar(pg, usuario, senha) {
+    async _tentarLoginComPar(pg, usuario, senha, dataNasc = null, emailVerif = null) {
         try {
             // Se não há campos de input visíveis, o modal pode não estar aberto —
             // tenta abrir clicando no botão "Login" do cabeçalho primeiro
@@ -1588,11 +1597,35 @@ class Bet365Coletor {
 
             await this._delay(5000);
 
-            // Detecta pedido de verificação (SMS, email, captcha)
+            // ── Detecta modal "confirme os seus dados" (e-mail + data de nascimento) ─
+            const modalConfirmacao = await pg.evaluate(() => {
+                const texto = (document.body?.innerText || '').toLowerCase();
+                return (texto.includes('confirme os seus dados') || texto.includes('confirme alguns dados'))
+                    && (texto.includes('data de nascimento') || texto.includes('e-mail') || texto.includes('email'));
+            });
+            if (modalConfirmacao) {
+                console.log('   🔒 Modal "Confirme seus dados" detectado — preenchendo e-mail e data de nascimento...');
+                this._logAuditoria('verificacao_confirmacao_dados', 'Modal confirme seus dados detectado', usuario);
+                const preencheu = await this._preencherConfirmacaoDados(pg, emailVerif || usuario, dataNasc);
+                if (preencheu) {
+                    await this._delay(5000);
+                    const ok = await pg.evaluate(() =>
+                        ![...document.querySelectorAll('button')].some(b =>
+                            (b.textContent || '').trim().includes('Faça Login para Assistir'))
+                    );
+                    if (ok) return true;
+                    console.log('   ❌ Confirmação preenchida mas login ainda não passou');
+                } else {
+                    console.log('   ❌ Não foi possível preencher confirmação — sem data de nascimento no .env?');
+                }
+                return 'verificacao';
+            }
+
+            // Detecta pedido de verificação genérica (SMS, captcha)
             const pedindoVerificacao = await pg.evaluate(() => {
                 const texto = (document.body?.innerText || '').toLowerCase();
                 return texto.includes('verificação') || texto.includes('verification')
-                    || texto.includes('confirme seu') || texto.includes('confirm your')
+                    || texto.includes('confirme') || texto.includes('confirm your')
                     || texto.includes('sms') || texto.includes('código de segurança');
             });
             if (pedindoVerificacao) {
@@ -1611,6 +1644,69 @@ class Bet365Coletor {
         }
     }
 
+    async _preencherConfirmacaoDados(pg, email, dataNasc) {
+        try {
+            // Preenche e-mail
+            const inputEmail = await pg.$('input[type="email"], input[placeholder*="e-mail" i], input[placeholder*="email" i]');
+            if (inputEmail) {
+                await inputEmail.click({ clickCount: 3 });
+                await inputEmail.type(email, { delay: 50 });
+                console.log(`   ✉️  E-mail preenchido: ${email}`);
+            } else {
+                console.log('   ⚠️  Campo de e-mail não encontrado');
+            }
+
+            // Preenche data de nascimento (se fornecida no .env)
+            if (!dataNasc) {
+                console.log('   ⚠️  BET365_DATAS_NASC não configurado — não é possível preencher data');
+                return false;
+            }
+            const parts = dataNasc.split(/[\/\-\.]/);
+            if (parts.length < 3) {
+                console.log(`   ⚠️  Formato inválido de data: ${dataNasc} (esperado DD/MM/YYYY)`);
+                return false;
+            }
+            const dia = String(parseInt(parts[0]));
+            const mes = String(parseInt(parts[1]));
+            const ano = String(parseInt(parts[2]));
+
+            // Encontra os 3 selects por texto do primeiro option (Dia / Mês / Ano)
+            await pg.evaluate((dia, mes, ano) => {
+                const selects = [...document.querySelectorAll('select')].filter(s => {
+                    const r = s.getBoundingClientRect();
+                    return r.width > 0 && r.height > 0;
+                });
+                for (const sel of selects) {
+                    const placeholder = (sel.options[0]?.text || '').trim().toLowerCase();
+                    let valor = null;
+                    if (placeholder === 'dia')                       valor = dia;
+                    else if (placeholder === 'mês' || placeholder === 'mes') valor = mes;
+                    else if (placeholder === 'ano')                  valor = ano;
+                    if (!valor) continue;
+                    // Tenta valor numérico direto; se não existir, tenta zero-padded
+                    const opcoes = [...sel.options].map(o => o.value);
+                    const valorFinal = opcoes.includes(valor) ? valor
+                        : opcoes.includes(valor.padStart(2, '0')) ? valor.padStart(2, '0')
+                        : valor;
+                    sel.value = valorFinal;
+                    sel.dispatchEvent(new Event('change', { bubbles: true }));
+                    sel.dispatchEvent(new Event('input',  { bubbles: true }));
+                }
+            }, dia, mes, ano);
+
+            console.log(`   📅 Data de nascimento preenchida: ${dia}/${mes}/${ano}`);
+            await this._delay(500);
+
+            // Clica em Login para confirmar
+            const clicou = await this._clicarBotaoPorTexto(pg, 'Login', true);
+            if (!clicou) console.log('   ⚠️  Botão Login não encontrado após confirmação');
+            return clicou;
+        } catch(e) {
+            console.log('   ❌ Erro em _preencherConfirmacaoDados:', e.message);
+            return false;
+        }
+    }
+
     async _loginComCredenciais(pg) {
         const contas = this._listarContas();
         if (contas.length === 0) {
@@ -1619,12 +1715,12 @@ class Bet365Coletor {
         }
 
         for (let i = 0; i < contas.length; i++) {
-            const [usuario, senha] = contas[i];
+            const [usuario, senha, dataNasc, emailVerif] = contas[i];
             const label = contas.length > 1 ? ` [conta ${i + 1}/${contas.length}]` : '';
             console.log(`   🔑 Tentando login${label}: ${usuario}`);
             this._logAuditoria('login_tentativa', `Tentando login${label}`, usuario);
 
-            const resultado = await this._tentarLoginComPar(pg, usuario, senha);
+            const resultado = await this._tentarLoginComPar(pg, usuario, senha, dataNasc, emailVerif);
             if (resultado === true) {
                 console.log(`   ✅ Login bem-sucedido${label}!`);
                 this._logAuditoria('login_ok', `Login bem-sucedido${label}`, usuario);
