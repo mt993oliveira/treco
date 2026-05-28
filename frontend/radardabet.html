@@ -211,6 +211,25 @@
     .wa-header-btn:hover { background: rgba(37,211,102,.22); }
     .wa-header-btn svg   { flex-shrink: 0; }
 
+    /* Badge de licença no header */
+    #licenca-badge {
+        display: none; align-items: center; gap: 8px; flex-shrink: 0;
+        border-radius: 6px; padding: 5px 12px; white-space: nowrap;
+        background: rgba(31,204,89,.10); border: 1px solid rgba(31,204,89,.25);
+    }
+    #licenca-badge .lic-label {
+        font-size: 9px; color: #94a3b8; font-weight: 600;
+        letter-spacing: .06em; text-transform: uppercase; line-height: 1;
+    }
+    #licenca-badge .lic-data {
+        font-size: 15px; font-weight: 800; color: #1fcc59; line-height: 1.1;
+    }
+    @media (max-width: 640px) {
+        #licenca-badge .lic-label { display: none; }
+        #licenca-badge .lic-data  { font-size: 12px; }
+        #licenca-badge { padding: 5px 8px; }
+    }
+
     /* ── RESPONSIVIDADE ───────────────────────────── */
     @media (max-width: 768px) {
         /* Header: oculta texto "FUTEBOL VIRTUAL" e comprime status */
@@ -248,6 +267,14 @@
             <img src="/img/radardabet-logo.svg" alt="Radar da Bet" style="height:36px;object-fit:contain;flex-shrink:0">
             <span id="header-separator" style="color:#1e293b">|</span>
             <span id="header-subtitle" style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
+        </div>
+
+        <!-- Badge de licença do usuário -->
+        <div id="licenca-badge" title="Período de licença">
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+                <span class="lic-label">Licença até</span>
+                <span class="lic-data" id="licenca-data">—</span>
+            </div>
         </div>
 
         <!-- WhatsApp Admin -->
@@ -8551,6 +8578,32 @@ function _initUserMenu() {
     // Label do tipo no dropdown
     document.getElementById('dd-tipo').textContent =
         _isMasterType ? '⭐ Master' : _isAdminType ? '👑 Administrador' : 'Usuário';
+
+    // Badge de licença no header
+    const _badgeEl  = document.getElementById('licenca-badge');
+    const _dataEl   = document.getElementById('licenca-data');
+    if (_badgeEl && _dataEl) {
+        if (_isMasterUser || !u.DataFimLicenca) {
+            _badgeEl.style.display = 'none';
+        } else {
+            const _parts = u.DataFimLicenca.split('T')[0].split('-');
+            const _fim   = new Date(parseInt(_parts[0]), parseInt(_parts[1]) - 1, parseInt(_parts[2]));
+            const _hoje  = new Date(); _hoje.setHours(0, 0, 0, 0);
+            const _dias  = Math.ceil((_fim - _hoje) / 86400000);
+            _dataEl.textContent = _fim.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            let _cor, _bg, _brd;
+            if (_dias < 0)        { _cor = '#f87171'; _bg = 'rgba(248,113,113,.10)'; _brd = 'rgba(248,113,113,.25)'; }
+            else if (_dias <= 7)  { _cor = '#f97316'; _bg = 'rgba(249,115,22,.10)';  _brd = 'rgba(249,115,22,.25)'; }
+            else                  { _cor = '#1fcc59'; _bg = 'rgba(31,204,89,.10)';   _brd = 'rgba(31,204,89,.25)'; }
+            _dataEl.style.color        = _cor;
+            _badgeEl.style.background  = _bg;
+            _badgeEl.style.borderColor = _brd;
+            _badgeEl.style.display     = 'flex';
+            if (_dias < 0)       _badgeEl.title = 'Licença expirada';
+            else if (_dias <= 7) _badgeEl.title = `Licença expira em ${_dias} dia(s)!`;
+            else                 _badgeEl.title = `Licença válida por mais ${_dias} dia(s)`;
+        }
+    }
 
     // Gerenciar Usuários e Online — master e administrador
     if (_isMasterType || _isAdminType) {
