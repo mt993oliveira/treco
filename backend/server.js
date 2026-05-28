@@ -1854,15 +1854,58 @@ server.listen(PORT, () => {
             const uptime = process.uptime(), mem = process.memoryUsage(), agora = Date.now();
             const semColeta = coletor365.ultimaColetaSucesso ? Math.round((agora - coletor365.ultimaColetaSucesso) / 1000) : null;
             const fu = s => { const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60); return d>0?`${d}d ${h}h ${m}m`:h>0?`${h}h ${m}m ${sc}s`:`${m}m ${sc}s`; };
+            const _c2Vivo = _c2Proc && !_c2Proc.killed && _c2Proc.exitCode === null;
             res.json({
                 servidor: { uptime_fmt: fu(Math.round(uptime)), hora: new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}), memoria_mb: Math.round(mem.rss/1024/1024), heap_mb: Math.round(mem.heapUsed/1024/1024) },
                 coletor:  { coletando: coletor365.coletando, total_coletas: coletor365._coletas, ultima_sucesso: coletor365.ultimaColetaSucesso ? new Date(coletor365.ultimaColetaSucesso).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : null, seg_sem_coleta: semColeta, ultimo_erro: coletor365.ultimoErro||null, alerta_disparado: _alertaEnviado },
-                coletor2: { rodando: false }
+                coletor2: { rodando: !!_c2Vivo }
             });
         });
 
         console.log(`\n📡 Bet365 - Agendador iniciado (intervalo dinâmico via config DB)\n`);
         _cicloColeta();
+
+        // ── Watchdog Coletor 2 (Odds pré-jogo) — apenas em modo LOCAL ────
+        // Só executa quando o Edge está acessível na porta 9222 (máquina local).
+        // No VPS, o Edge não existe → a verificação falha silenciosamente e o
+        // watchdog nunca tenta spawnar o processo.
+        let _c2Proc        = null;
+        let _c2UltimoStart = 0;
+
+        function _edgeAcessivel() {
+            return new Promise(resolve => {
+                const req = http.get('http://127.0.0.1:9222/json/version', res => {
+                    res.resume();
+                    resolve(true);
+                });
+                req.on('error', () => resolve(false));
+                req.setTimeout(2000, () => { req.destroy(); resolve(false); });
+            });
+        }
+
+        async function _watchdogColetor2() {
+            try {
+                if (!await _edgeAcessivel()) return; // VPS ou Edge não aberto — ignora
+                const _pool  = await getDbPool();
+                const _r     = await _pool.request().query(`SELECT valor FROM bet365_config WHERE chave = 'coletor2_ativo'`);
+                const _ativo = _r.recordset[0]?.valor !== 'false';
+                const _vivo  = _c2Proc && !_c2Proc.killed && _c2Proc.exitCode === null;
+                if (_ativo && !_vivo) {
+                    if (Date.now() - _c2UltimoStart < 90000) return;
+                    console.log('[Watchdog C2] coletor2_ativo=true e processo inativo → relançando Coletor 2...');
+                    _c2UltimoStart = Date.now();
+                    const { spawn } = require('child_process');
+                    const _script  = require('path').join(__dirname, 'services', 'bet365-coletor-odds.js');
+                    _c2Proc = spawn('node', ['-r', 'dotenv/config', _script],
+                        { cwd: require('path').join(__dirname, '..'), detached: false, stdio: ['ignore','pipe','pipe'] });
+                    _c2Proc.stdout.on('data', d => process.stdout.write(`[C2] ${d}`));
+                    _c2Proc.stderr.on('data', d => process.stderr.write(`[C2] ${d}`));
+                    _c2Proc.on('exit', code => { console.log(`[Watchdog C2] Encerrou (código ${code})`); _c2Proc = null; });
+                }
+            } catch(_) { /* DB indisponível — tenta no próximo ciclo */ }
+        }
+        setInterval(_watchdogColetor2, 60000);
+        // ─────────────────────────────────────────────────────────────────
 
         process.on('SIGINT',  async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
         process.on('SIGTERM', async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
