@@ -135,8 +135,8 @@ async function conectarEdge() {
         console.log(`   ℹ️  [Odds] Apenas ${avrPages.length} aba(s) AVR — abrindo segunda aba automaticamente...`);
         const novaPg = await browser.newPage();
         await novaPg.goto(URL_SOCCER, { waitUntil: 'load', timeout: 60000 });
-        // Aguarda a página renderizar (7s para a Bet365 carregar completamente)
-        await new Promise(r => setTimeout(r, 7000));
+        // Aguarda a página renderizar (20s para a Bet365 SPA carregar completamente)
+        await new Promise(r => setTimeout(r, 20000));
         // Re-verifica
         pages    = await browser.pages();
         avrPages = pages.filter(p => {
@@ -362,10 +362,11 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
 async function hardRefresh(pg) {
     try {
         await pg.setCacheEnabled(false);
-        await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+        await pg.reload({ waitUntil: 'load', timeout: 60000 });
         await pg.setCacheEnabled(true);
-        await new Promise(r => setTimeout(r, DELAY_REFRESH_MS));
-        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 15000 });
+        // 8s após load completo — SPA precisa de tempo para renderizar os componentes virtuais
+        await new Promise(r => setTimeout(r, 8000));
+        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 35000 });
         return true;
     } catch(err) {
         await pg.setCacheEnabled(true).catch(() => {});
