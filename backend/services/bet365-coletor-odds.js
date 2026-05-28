@@ -6,7 +6,7 @@
  * mercado Fulltime Result ANTES do jogo começar e salvar em
  * bet365_eventos (campos odd_casa, odd_empate, odd_fora).
  *
- * Roda continuamente em ciclos automáticos (padrão: 90s).
+ * Roda continuamente em ciclos automáticos (padrão: 180s).
  * Porta Edge: 9222 (mesma do Coletor 1, aba separada — não interfere)
  *
  * Fluxo por ciclo:
@@ -30,7 +30,7 @@ dotenv.config();
 const DEBUG_PORT   = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9222;
 const URL_SOCCER        = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR     = [];
-const INTERVALO_MS      = parseInt(process.env.BET365_ODDS_INTERVALO_MS)      || 90000;
+const INTERVALO_MS      = parseInt(process.env.BET365_ODDS_INTERVALO_MS)      || 180000;
 const DELAY_HORARIO_MS  = parseInt(process.env.BET365_ODDS_DELAY_HORARIO_MS)  || 2000;
 const DELAY_LIGA_MS     = parseInt(process.env.BET365_ODDS_DELAY_LIGA_MS)     || 2500;
 const DELAY_REFRESH_MS  = parseInt(process.env.BET365_ODDS_DELAY_REFRESH_MS)  || 3500;
@@ -244,6 +244,19 @@ async function lerTodasAsOdds(pg, ligaNorm) {
                 continue;
             }
 
+            // Aguarda confirmação visual: botão selecionado ganha classe -selected (borda amarela)
+            try {
+                await pg.waitForFunction((texto) => {
+                    const sel = document.querySelector('.vr-EventTimesNavBarButton-selected');
+                    if (!sel) return false;
+                    const t = sel.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim()
+                              || sel.textContent.trim();
+                    return t === texto;
+                }, { timeout: 3000 }, horarioAlvo);
+            } catch(_) {
+                console.log(`   ⚠️  [${ligaNorm}] "${horarioAlvo}" — clique não confirmado (sem borda amarela), continuando mesmo assim`);
+            }
+
             // Delay humano após clicar no horário — aleatório para não ser previsível
             await randomDelay(1500, 3200);
 
@@ -359,6 +372,18 @@ async function ciclo(pg) {
         await randomDelay(2500, 4500);
     }
 
+    // Verificação de sessão: detecta logout ou redirect para login
+    const sessaoOk = await pg.evaluate(() => {
+        const temLigas    = document.querySelectorAll('.vrl-MeetingsHeaderButton').length > 0;
+        const semLoginBtn = !document.querySelector('[class*="hm-Login"], [class*="LoginButton"]');
+        return temLigas || semLoginBtn;
+    }).catch(() => false);
+    if (!sessaoOk) {
+        console.log('   ❌ [Odds] Sessão possivelmente expirada — tentando navegar para a página...');
+        await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await randomDelay(3000, 5000);
+    }
+
     // Aguarda ligas aparecerem
     try {
         await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 12000 });
@@ -448,8 +473,11 @@ async function ciclo(pg) {
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
 
-        // SEM hard refresh após cada liga — apenas segue para a próxima aba
-        // Um humano simplesmente clica na próxima liga; o SPA atualiza o conteúdo
+        // Hard refresh após cada liga (exceto a última) — estado limpo antes da próxima aba
+        if (i < ligasFiltradas.length - 1) {
+            console.log(`   🔄 [Odds] Hard refresh pós-liga ${i + 1}/${ligasFiltradas.length}...`);
+            await hardRefreshComRetry(pg);
+        }
     }
 
     console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
