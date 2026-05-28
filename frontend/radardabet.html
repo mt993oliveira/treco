@@ -2312,6 +2312,21 @@ async function carregarConfigLigas() {
         if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || 200; }
         if (cfg.default_jogos_parimpar) { S.horasParImpar = null; S.jogosParImpar = parseInt(cfg.default_jogos_parimpar) || 200; }
         if (cfg.default_jogos_mosaico)  { S.horasMosaico  = null; S.jogosMosaico  = parseInt(cfg.default_jogos_mosaico)  || 200; }
+        // Atualiza label da opção padrão em cada select com o valor real configurado
+        {
+            const _cfgLabel = [
+                ['periodo-grafico',  S.jogosGrafico],
+                ['periodo-gols',     S.jogosGols],
+                ['periodo-linha',    S.jogosLinha],
+                ['periodo-parimpar', S.jogosParImpar],
+                ['periodo-mosaico',  S.jogosMosaico],
+            ];
+            _cfgLabel.forEach(([id, val]) => {
+                const sel = document.getElementById(id);
+                const opt = sel?.querySelector('option[value=""]');
+                if (opt && val) opt.textContent = `${val} Jogos ★`;
+            });
+        }
         if (cfg.default_dias_analise)    { const _v = parseInt(cfg.default_dias_analise) || 100; S.fa.nJogos = _v >= 20 ? _v : 100; }
         if (cfg.default_min_amostras)    S.fa.minJogos = parseInt(cfg.default_min_amostras) || 5;
         if (cfg.default_freq_min)        S.fa.minPct = parseInt(cfg.default_freq_min) || 0;
