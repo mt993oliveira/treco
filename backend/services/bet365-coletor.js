@@ -1419,6 +1419,50 @@ class Bet365Coletor {
         try {
             await pg.bringToFront();
 
+            // ── Detecta modal "confirme os seus dados" ANTES de qualquer outra checagem ──
+            // O modal aparece na página AVR após login; o cabeçalho ainda mostra "Login"
+            // (falso positivo) — sem este bloco, _verificarSessao tentaria fazer login
+            // com credenciais de novo em cima do modal já aberto.
+            const modalConfirmacaoAtivo = await pg.evaluate(() => {
+                const vs = [...document.querySelectorAll('select')].filter(s => {
+                    const r = s.getBoundingClientRect();
+                    return r.width > 0 && r.height > 0;
+                });
+                return vs.some(s => {
+                    const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
+                    return ph === 'dia' || ph === 'mes' || ph === 'ano';
+                });
+            }).catch(() => false);
+
+            if (modalConfirmacaoAtivo) {
+                console.log('   🔒 Modal "Confirme seus dados" detectado na página — preenchendo...');
+                this._logAuditoria('modal_confirmacao_avr', 'Modal confirme seus dados na página AVR');
+                const contas = this._listarContas();
+                for (const [, , dataNasc, emailVerif] of contas) {
+                    if (!emailVerif || !dataNasc) continue;
+                    const preencheu = await this._preencherConfirmacaoDados(pg, emailVerif, dataNasc);
+                    if (!preencheu) continue;
+                    await this._delay(6000);
+                    const sumiu = await pg.evaluate(() => {
+                        const vs2 = [...document.querySelectorAll('select')].filter(s => {
+                            const r = s.getBoundingClientRect();
+                            return r.width > 0 && r.height > 0;
+                        });
+                        return !vs2.some(s => {
+                            const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
+                            return ph === 'dia' || ph === 'mes' || ph === 'ano';
+                        });
+                    }).catch(() => false);
+                    if (sumiu) {
+                        console.log('   ✅ Modal de confirmação resolvido — sessão ativa!');
+                        this._logAuditoria('modal_confirmacao_ok', 'Modal preenchido com sucesso', emailVerif);
+                        this._ultimoLoginTs = null; // limpa cooldown para permitir login normal se necessário
+                        return;
+                    }
+                }
+                console.log('   ⚠️  Não conseguiu resolver modal de confirmação — prosseguindo verificação normal...');
+            }
+
             // ── Detecta estado da sessão ──────────────────────────────────────────
             const url = pg.url();
             const naPaginaVirtual = url.includes('bet365') && url.includes('AVR');
