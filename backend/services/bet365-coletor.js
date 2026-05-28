@@ -1420,19 +1420,11 @@ class Bet365Coletor {
             await pg.bringToFront();
 
             // ── Detecta modal "confirme os seus dados" ANTES de qualquer outra checagem ──
-            // O modal aparece na página AVR após login; o cabeçalho ainda mostra "Login"
-            // (falso positivo) — sem este bloco, _verificarSessao tentaria fazer login
-            // com credenciais de novo em cima do modal já aberto.
-            const modalConfirmacaoAtivo = await pg.evaluate(() => {
-                const vs = [...document.querySelectorAll('select')].filter(s => {
-                    const r = s.getBoundingClientRect();
-                    return r.width > 0 && r.height > 0;
-                });
-                return vs.some(s => {
-                    const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
-                    return ph === 'dia' || ph === 'mes' || ph === 'ano';
-                });
-            }).catch(() => false);
+            // Usa .nui-ModalContainer (classe fixa do HTML da Bet365) — mais confiável
+            // que getBoundingClientRect ou comparação de texto de options.
+            const modalConfirmacaoAtivo = await pg.evaluate(() =>
+                !!document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+            ).catch(() => false);
 
             if (modalConfirmacaoAtivo) {
                 console.log('   🔒 Modal "Confirme seus dados" detectado na página — preenchendo...');
@@ -1443,20 +1435,13 @@ class Bet365Coletor {
                     const preencheu = await this._preencherConfirmacaoDados(pg, emailVerif, dataNasc);
                     if (!preencheu) continue;
                     await this._delay(6000);
-                    const sumiu = await pg.evaluate(() => {
-                        const vs2 = [...document.querySelectorAll('select')].filter(s => {
-                            const r = s.getBoundingClientRect();
-                            return r.width > 0 && r.height > 0;
-                        });
-                        return !vs2.some(s => {
-                            const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
-                            return ph === 'dia' || ph === 'mes' || ph === 'ano';
-                        });
-                    }).catch(() => false);
+                    const sumiu = await pg.evaluate(() =>
+                        !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+                    ).catch(() => true);
                     if (sumiu) {
                         console.log('   ✅ Modal de confirmação resolvido — sessão ativa!');
                         this._logAuditoria('modal_confirmacao_ok', 'Modal preenchido com sucesso', emailVerif);
-                        this._ultimoLoginTs = null; // limpa cooldown para permitir login normal se necessário
+                        this._ultimoLoginTs = null;
                         return;
                     }
                 }
@@ -1641,39 +1626,19 @@ class Bet365Coletor {
 
             await this._delay(5000);
 
-            // ── Detecta modal "confirme os seus dados" por estrutura DOM ─────────────
-            // (mais confiável que innerText — não depende de encoding/acento)
-            const modalConfirmacao = await pg.evaluate(() => {
-                const visibleSelects = [...document.querySelectorAll('select')].filter(s => {
-                    const r = s.getBoundingClientRect();
-                    return r.width > 0 && r.height > 0;
-                });
-                const temDiaMesAno = visibleSelects.some(s => {
-                    const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
-                    return ph === 'dia' || ph === 'mes' || ph === 'ano';
-                });
-                const temInputEmail = !!document.querySelector('input[type="email"]')
-                    || !![...document.querySelectorAll('input[type="text"],input:not([type])')].find(i =>
-                        (i.placeholder || '').toLowerCase().includes('mail'));
-                return temDiaMesAno || temInputEmail;
-            });
+            // ── Detecta modal "confirme os seus dados" por .nui-ModalContainer ──────
+            const modalConfirmacao = await pg.evaluate(() =>
+                !!document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+            );
             if (modalConfirmacao) {
                 console.log('   🔒 Modal "Confirme seus dados" detectado — preenchendo e-mail e data de nascimento...');
                 this._logAuditoria('verificacao_confirmacao_dados', 'Modal confirme seus dados detectado', usuario);
                 const preencheu = await this._preencherConfirmacaoDados(pg, emailVerif || usuario, dataNasc);
                 if (preencheu) {
                     await this._delay(6000);
-                    // Modal resolvido = selects Dia/Mês/Ano desapareceram
-                    const modalSumiu = await pg.evaluate(() => {
-                        const visibleSelects = [...document.querySelectorAll('select')].filter(s => {
-                            const r = s.getBoundingClientRect();
-                            return r.width > 0 && r.height > 0;
-                        });
-                        return !visibleSelects.some(s => {
-                            const ph = (s.options[0]?.text || '').trim().toLowerCase().replace(/ê/g, 'e');
-                            return ph === 'dia' || ph === 'mes' || ph === 'ano';
-                        });
-                    });
+                    const modalSumiu = await pg.evaluate(() =>
+                        !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+                    ).catch(() => true);
                     if (modalSumiu) { console.log('   ✅ Confirmação aceita!'); return true; }
                     console.log('   ❌ Modal ainda aberto após confirmação');
                 } else {
@@ -1693,7 +1658,7 @@ class Bet365Coletor {
                 return 'verificacao';
             }
 
-            // Verifica se modal de Dia/Mês/Ano ainda está visível (false positive guard)
+            // Verifica se modal ainda está visível (false positive guard)
             const modalAindaAberto = await pg.evaluate(() => {
                 const visibleSelects = [...document.querySelectorAll('select')].filter(s => {
                     const r = s.getBoundingClientRect();
