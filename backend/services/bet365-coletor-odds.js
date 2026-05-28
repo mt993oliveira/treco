@@ -393,11 +393,24 @@ async function ciclo(pg) {
         await randomDelay(3000, 5000);
     }
 
-    // Aguarda ligas aparecerem
+    // Aguarda ligas aparecerem — tenta 10s, se não achar faz hard refresh e tenta mais 35s
+    let _ligasVisiveis = false;
     try {
-        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 12000 });
-    } catch(_) {
-        console.log('   ⚠️ [Odds] Ligas não encontradas — pulando ciclo');
+        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 10000 });
+        _ligasVisiveis = true;
+    } catch(_) {}
+
+    if (!_ligasVisiveis) {
+        console.log('   🔄 [Odds] Ligas não carregaram — hard refresh e aguardando próximo ciclo...');
+        await hardRefreshComRetry(pg);
+        try {
+            await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 35000 });
+            _ligasVisiveis = true;
+        } catch(_) {}
+    }
+
+    if (!_ligasVisiveis) {
+        console.log('   ⚠️ [Odds] Ligas não encontradas após refresh — pulando ciclo');
         return { oddsOk: 0 };
     }
 
