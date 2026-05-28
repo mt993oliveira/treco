@@ -1446,9 +1446,12 @@ class Bet365Coletor {
                     const preencheu = await this._preencherConfirmacaoDados(frameModal, emailVerif, dataNasc);
                     if (!preencheu) continue;
                     await this._delay(this._cfgNum('delay_confirmacao_modal_ms', 6000));
-                    const sumiu = await frameModal.evaluate(() =>
-                        !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
-                    ).catch(() => true);
+                    let sumiu = true;
+                    try {
+                        sumiu = await frameModal.evaluate(() =>
+                            !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+                        );
+                    } catch(_) { sumiu = true; } // frame detachado = modal fechou = sucesso
                     if (sumiu) {
                         console.log('   ✅ Modal de confirmação resolvido — sessão ativa!');
                         this._logAuditoria('modal_confirmacao_ok', 'Modal preenchido com sucesso', emailVerif);
@@ -1658,9 +1661,12 @@ class Bet365Coletor {
                 const preencheu = await this._preencherConfirmacaoDados(frameModalPos, emailVerif || usuario, dataNasc);
                 if (preencheu) {
                     await this._delay(this._cfgNum('delay_confirmacao_modal_ms', 6000));
-                    const modalSumiu = await frameModalPos.evaluate(() =>
-                        !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
-                    ).catch(() => true);
+                    let modalSumiu = true;
+                    try {
+                        modalSumiu = await frameModalPos.evaluate(() =>
+                            !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+                        );
+                    } catch(_) { modalSumiu = true; } // frame detachado = modal fechou = sucesso
                     if (modalSumiu) { console.log('   ✅ Confirmação aceita!'); return true; }
                     console.log('   ❌ Modal ainda aberto após confirmação');
                 } else {
@@ -1770,16 +1776,26 @@ class Bet365Coletor {
 
             // ── Botão Login dentro do nui-ModalContainer ───────────────────────────
             // O botão não tem type="submit" nem está em <form>; busca pelo texto dentro do modal
-            const clicou = await pg.evaluate(() => {
-                const modal = document.querySelector('.nui-ModalContainer');
-                if (!modal) return false;
-                const btn = [...modal.querySelectorAll('button')].find(b =>
-                    (b.textContent || '').trim() === 'Login'
-                );
-                if (!btn) return false;
-                btn.click();
-                return true;
-            });
+            let clicou = false;
+            try {
+                clicou = await pg.evaluate(() => {
+                    const modal = document.querySelector('.nui-ModalContainer');
+                    if (!modal) return false;
+                    const btn = [...modal.querySelectorAll('button')].find(b =>
+                        (b.textContent || '').trim() === 'Login'
+                    );
+                    if (!btn) return false;
+                    btn.click();
+                    return true;
+                });
+            } catch(eClick) {
+                // Frame detachado após o clique = modal fechou = login aceito
+                if (eClick.message.includes('detached') || eClick.message.includes('Target closed')) {
+                    console.log('   ✅ Modal fechado após clique (frame detachado — login aceito)');
+                    return true;
+                }
+                throw eClick;
+            }
             if (!clicou) console.log('   ⚠️  Botão Login não encontrado dentro do nui-ModalContainer');
             return clicou;
         } catch(e) {
