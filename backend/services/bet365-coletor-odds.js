@@ -473,11 +473,9 @@ async function run() {
                 const db  = await getPool();
                 const res = await db.request().query(`SELECT valor FROM bet365_config WHERE chave = 'coletor2_ativo'`);
                 if (res.recordset[0]?.valor === 'false') {
-                    console.log(`   ⏸️  [Odds] Coletor 2 pausado nas configurações do sistema.`);
-                    // Fecha a aba se estiver aberta (libera o browser)
+                    console.log(`   ⏸️  [Odds] Coletor 2 pausado nas configurações do sistema — encerrando processo.`);
                     if (pg) { try { await pg.close(); } catch(_){} pg = null; }
-                    await new Promise(r => setTimeout(r, INTERVALO_MS));
-                    continue;
+                    process.exit(0);
                 }
             } catch(e) {
                 // DB indisponível — não tenta abrir aba, aguarda próximo ciclo
