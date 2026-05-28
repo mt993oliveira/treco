@@ -1415,27 +1415,38 @@ class Bet365Coletor {
         } catch { return false; }
     }
 
+    // Itera TODOS os frames da página (inclusive iframes) procurando o modal de confirmação.
+    // O Bet365 renderiza o modal num iframe separado (mdl-ModalManager_ModalContainer-iframenoheight),
+    // por isso pg.evaluate() no frame principal nunca o enxerga.
+    async _encontrarFrameModal(pg) {
+        for (const frame of pg.frames()) {
+            try {
+                const tem = await frame.evaluate(() =>
+                    !!document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+                );
+                if (tem) return frame;
+            } catch (_) {}
+        }
+        return null;
+    }
+
     async _verificarSessao(pg) {
         try {
             await pg.bringToFront();
 
-            // ── Detecta modal "confirme os seus dados" ANTES de qualquer outra checagem ──
-            // Usa .nui-ModalContainer (classe fixa do HTML da Bet365) — mais confiável
-            // que getBoundingClientRect ou comparação de texto de options.
-            const modalConfirmacaoAtivo = await pg.evaluate(() =>
-                !!document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
-            ).catch(() => false);
+            // ── Detecta modal "confirme os seus dados" em qualquer frame ─────────────
+            const frameModal = await this._encontrarFrameModal(pg);
 
-            if (modalConfirmacaoAtivo) {
-                console.log('   🔒 Modal "Confirme seus dados" detectado na página — preenchendo...');
+            if (frameModal) {
+                console.log('   🔒 Modal "Confirme seus dados" detectado — preenchendo...');
                 this._logAuditoria('modal_confirmacao_avr', 'Modal confirme seus dados na página AVR');
                 const contas = this._listarContas();
                 for (const [, , dataNasc, emailVerif] of contas) {
                     if (!emailVerif || !dataNasc) continue;
-                    const preencheu = await this._preencherConfirmacaoDados(pg, emailVerif, dataNasc);
+                    const preencheu = await this._preencherConfirmacaoDados(frameModal, emailVerif, dataNasc);
                     if (!preencheu) continue;
                     await this._delay(6000);
-                    const sumiu = await pg.evaluate(() =>
+                    const sumiu = await frameModal.evaluate(() =>
                         !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
                     ).catch(() => true);
                     if (sumiu) {
@@ -1626,17 +1637,15 @@ class Bet365Coletor {
 
             await this._delay(5000);
 
-            // ── Detecta modal "confirme os seus dados" por .nui-ModalContainer ──────
-            const modalConfirmacao = await pg.evaluate(() =>
-                !!document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
-            );
-            if (modalConfirmacao) {
+            // ── Detecta modal "confirme os seus dados" em qualquer frame ─────────────
+            const frameModalPos = await this._encontrarFrameModal(pg);
+            if (frameModalPos) {
                 console.log('   🔒 Modal "Confirme seus dados" detectado — preenchendo e-mail e data de nascimento...');
                 this._logAuditoria('verificacao_confirmacao_dados', 'Modal confirme seus dados detectado', usuario);
-                const preencheu = await this._preencherConfirmacaoDados(pg, emailVerif || usuario, dataNasc);
+                const preencheu = await this._preencherConfirmacaoDados(frameModalPos, emailVerif || usuario, dataNasc);
                 if (preencheu) {
                     await this._delay(6000);
-                    const modalSumiu = await pg.evaluate(() =>
+                    const modalSumiu = await frameModalPos.evaluate(() =>
                         !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
                     ).catch(() => true);
                     if (modalSumiu) { console.log('   ✅ Confirmação aceita!'); return true; }
