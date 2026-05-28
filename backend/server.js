@@ -1904,7 +1904,11 @@ server.listen(PORT, () => {
                 }
             } catch(_) { /* DB indisponível — tenta no próximo ciclo */ }
         }
-        setInterval(_watchdogColetor2, 60000);
+        // Aguarda 3 minutos antes da primeira verificação — dá tempo do Coletor 1 fazer login
+        setTimeout(() => {
+            _watchdogColetor2();
+            setInterval(_watchdogColetor2, 60000);
+        }, 180000);
         // ─────────────────────────────────────────────────────────────────
 
         process.on('SIGINT',  async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
