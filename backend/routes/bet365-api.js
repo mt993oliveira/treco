@@ -1570,6 +1570,11 @@ const CONFIG_DEFAULTS = [
     // ── Auto-login (sessão expirada) ──
     { chave:'delay_modal_login_ms',         valor:'2500',  tipo:'number',  grupo:'coleta', descricao:'Delay aguardando modal de login aparecer após clicar "Faça Login para Assistir" (ms)' },
     { chave:'delay_pos_login_ms',           valor:'4000',  tipo:'number',  grupo:'coleta', descricao:'Delay após clicar em Login para aguardar restauração da sessão (ms)' },
+    // ── Delays de preenchimento do modal "Confirme seus dados" ──
+    { chave:'delay_credenciais_ms',         valor:'5000',  tipo:'number',  grupo:'coleta', descricao:'⏱️ Login: aguardar (ms) após submeter credenciais antes de verificar resultado' },
+    { chave:'delay_confirmacao_modal_ms',   valor:'6000',  tipo:'number',  grupo:'coleta', descricao:'⏱️ Modal confirmação: aguardar (ms) após preencher para verificar se fechou' },
+    { chave:'delay_email_ms',               valor:'400',   tipo:'number',  grupo:'coleta', descricao:'⏱️ Modal confirmação: aguardar (ms) após preencher e-mail' },
+    { chave:'delay_data_nasc_ms',           valor:'800',   tipo:'number',  grupo:'coleta', descricao:'⏱️ Modal confirmação: aguardar (ms) após preencher data de nascimento' },
     // ── Backfill (coletor histórico) ──
     { chave:'hist_delay_clique_ms',         valor:'1000',  tipo:'number',  grupo:'coleta', descricao:'Backfill: delay após cada clique em jogo no coletor histórico (ms)' },
     { chave:'hist_max_cliques',             valor:'3',     tipo:'number',  grupo:'coleta', descricao:'Backfill: máximo de tentativas de clique por jogo' },
@@ -1588,6 +1593,12 @@ const CONFIG_DEFAULTS = [
     { chave:'default_freq_min',             valor:'0',     tipo:'number',  grupo:'frontend', descricao:'Frequência mínima % padrão (Análise)' },
     { chave:'default_tipo_mercado',         valor:'Todos', tipo:'text',    grupo:'frontend', descricao:'Tipo de mercado padrão (Análise)' },
     { chave:'default_janela_recente',       valor:'20',    tipo:'number',  grupo:'frontend', descricao:'Janela recente padrão (Análise)' },
+    // ── Período padrão dos gráficos (em jogos) ──
+    { chave:'default_jogos_grafico',        valor:'200',   tipo:'number',  grupo:'frontend', descricao:'📊 Padrão de jogos — Gráfico de Mercados' },
+    { chave:'default_jogos_gols',           valor:'200',   tipo:'number',  grupo:'frontend', descricao:'⚽ Padrão de jogos — Gráfico de Gols' },
+    { chave:'default_jogos_linha',          valor:'200',   tipo:'number',  grupo:'frontend', descricao:'📈 Padrão de jogos — Gráfico de Linha' },
+    { chave:'default_jogos_parimpar',       valor:'200',   tipo:'number',  grupo:'frontend', descricao:'🔢 Padrão de jogos — Gráfico Par e Ímpar' },
+    { chave:'default_jogos_mosaico',        valor:'200',   tipo:'number',  grupo:'frontend', descricao:'🗂️ Padrão de jogos — Grade (Mosaico)' },
     // ── Botões padrão da grade ──
     { chave:'default_exibir_clubes',        valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'🏷️ Exibir Clubes ativado por padrão na grade' },
     { chave:'default_exibir_odds',          valor:'false', tipo:'boolean', grupo:'frontend', descricao:'💹 Exibir Odds ativado por padrão na grade' },

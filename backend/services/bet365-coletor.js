@@ -1445,7 +1445,7 @@ class Bet365Coletor {
                     if (!emailVerif || !dataNasc) continue;
                     const preencheu = await this._preencherConfirmacaoDados(frameModal, emailVerif, dataNasc);
                     if (!preencheu) continue;
-                    await this._delay(6000);
+                    await this._delay(this._cfgNum('delay_confirmacao_modal_ms', 6000));
                     const sumiu = await frameModal.evaluate(() =>
                         !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
                     ).catch(() => true);
@@ -1635,7 +1635,7 @@ class Bet365Coletor {
                 || await this._clicarBotaoPorTexto(pg, 'Login', true);
             if (!clicou) { console.log('   ❌ Botão Login não encontrado'); return false; }
 
-            await this._delay(5000);
+            await this._delay(this._cfgNum('delay_credenciais_ms', 5000));
 
             // ── Detecta modal "confirme os seus dados" em qualquer frame ─────────────
             const frameModalPos = await this._encontrarFrameModal(pg);
@@ -1644,7 +1644,7 @@ class Bet365Coletor {
                 this._logAuditoria('verificacao_confirmacao_dados', 'Modal confirme seus dados detectado', usuario);
                 const preencheu = await this._preencherConfirmacaoDados(frameModalPos, emailVerif || usuario, dataNasc);
                 if (preencheu) {
-                    await this._delay(6000);
+                    await this._delay(this._cfgNum('delay_confirmacao_modal_ms', 6000));
                     const modalSumiu = await frameModalPos.evaluate(() =>
                         !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
                     ).catch(() => true);
@@ -1726,7 +1726,7 @@ class Bet365Coletor {
                 return true;
             }, email);
             console.log(emailOk ? `   ✉️  E-mail preenchido: ${email}` : '   ⚠️  Campo de e-mail não encontrado');
-            await this._delay(400);
+            await this._delay(this._cfgNum('delay_email_ms', 400));
 
             // ── Data de nascimento: aria-label exato do HTML da Bet365 ─────────────
             // <select aria-label="Dia"> value="01"–"31"
@@ -1753,7 +1753,7 @@ class Bet365Coletor {
                 };
             }, valDia, valMes, valAno);
             console.log(`   📅 Data ${valDia}/${valMes}/${valAno} — dia:${dataOk.dia} mês:${dataOk.mes} ano:${dataOk.ano}`);
-            await this._delay(800);
+            await this._delay(this._cfgNum('delay_data_nasc_ms', 800));
 
             // ── Botão Login dentro do nui-ModalContainer ───────────────────────────
             // O botão não tem type="submit" nem está em <form>; busca pelo texto dentro do modal

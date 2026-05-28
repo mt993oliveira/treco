@@ -2227,6 +2227,12 @@ async function carregarConfigLigas() {
 
         // Padrões do frontend
         if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
+        // Período padrão dos gráficos (em jogos — sobrescreve horas quando configurado)
+        if (cfg.default_jogos_grafico)  { S.horasGrafico  = null; S.jogosGrafico  = parseInt(cfg.default_jogos_grafico)  || 200; }
+        if (cfg.default_jogos_gols)     { S.horasGols     = null; S.jogosGols     = parseInt(cfg.default_jogos_gols)     || 200; }
+        if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || 200; }
+        if (cfg.default_jogos_parimpar) { S.horasParImpar = null; S.jogosParImpar = parseInt(cfg.default_jogos_parimpar) || 200; }
+        if (cfg.default_jogos_mosaico)  { S.horasMosaico  = null; S.jogosMosaico  = parseInt(cfg.default_jogos_mosaico)  || 200; }
         if (cfg.default_dias_analise)    { const _v = parseInt(cfg.default_dias_analise) || 100; S.fa.nJogos = _v >= 20 ? _v : 100; }
         if (cfg.default_min_amostras)    S.fa.minJogos = parseInt(cfg.default_min_amostras) || 5;
         if (cfg.default_freq_min)        S.fa.minPct = parseInt(cfg.default_freq_min) || 0;
@@ -8736,7 +8742,18 @@ const _CFG_LABELS = {
     liga_super_liga:            'Super Liga Sul-Americana',
     // Padrões do frontend
     default_horas_historico:    'Período padrão da Tabela Histórica (horas)',
+    default_jogos_grafico:      '📊 Período padrão — Gráfico de Mercados (jogos)',
+    default_jogos_gols:         '⚽ Período padrão — Gráfico de Gols (jogos)',
+    default_jogos_linha:        '📈 Período padrão — Gráfico de Linha (jogos)',
+    default_jogos_parimpar:     '🔢 Período padrão — Gráfico Par e Ímpar (jogos)',
+    default_jogos_mosaico:      '🗂️ Período padrão — Grade / Mosaico (jogos)',
     default_dias_analise:       'Período padrão dos filtros de Análise (dias)',
+    delay_credenciais_ms:       '⏱️ Login: aguardar após submeter credenciais (ms)',
+    delay_confirmacao_modal_ms: '⏱️ Modal confirmação: aguardar para verificar se fechou (ms)',
+    delay_email_ms:             '⏱️ Modal confirmação: aguardar após preencher e-mail (ms)',
+    delay_data_nasc_ms:         '⏱️ Modal confirmação: aguardar após preencher data de nascimento (ms)',
+    delay_modal_login_ms:       '⏱️ Login: aguardar modal de login aparecer (ms)',
+    delay_pos_login_ms:         '⏱️ Login: aguardar restauração da sessão após clicar Login (ms)',
     default_min_amostras:       'Mínimo de amostras padrão (Análise)',
     default_freq_min:           'Frequência mínima % padrão (Análise)',
     default_tipo_mercado:       'Tipo de mercado padrão (Análise)',
@@ -8904,15 +8921,22 @@ async function _loadConfigSistema() {
                         <select id="cfg-${d.chave}" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none">${opts}</select>
                     </div>`;
                 }
+                const JOGOS_OPTS = [20,40,60,80,100,120,140,160,180,200,240,280,320,360,420];
                 const optsMap = {
                     default_horas_historico:  [1,2,3,6,12,24],
                     default_dias_analise:     [1,3,7,14,30],
                     default_min_amostras:     [3,5,10,20,50],
                     default_freq_min:         [0,50,60,70,80],
                     default_janela_recente:   [10,20,30,50],
+                    default_jogos_grafico:    JOGOS_OPTS,
+                    default_jogos_gols:       JOGOS_OPTS,
+                    default_jogos_linha:      JOGOS_OPTS,
+                    default_jogos_parimpar:   JOGOS_OPTS,
+                    default_jogos_mosaico:    JOGOS_OPTS,
                 };
+                const isJogosOpt = d.chave.startsWith('default_jogos_');
                 if (optsMap[d.chave]) {
-                    const opts = optsMap[d.chave].map(o => `<option value="${o}"${parseInt(d.valor)===o?' selected':''}>${o}${d.chave==='default_horas_historico'?'H':d.chave==='default_dias_analise'?'D':d.chave==='default_freq_min'&&o>0?'%':d.chave==='default_janela_recente'?'J':''}</option>`).join('');
+                    const opts = optsMap[d.chave].map(o => `<option value="${o}"${parseInt(d.valor)===o?' selected':''}>${o}${d.chave==='default_horas_historico'?'H':d.chave==='default_dias_analise'?'D':d.chave==='default_freq_min'&&o>0?'%':d.chave==='default_janela_recente'?'J':isJogosOpt?' Jogos':''}</option>`).join('');
                     return `<div style="margin-bottom:12px">
                         <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
                         <select id="cfg-${d.chave}" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none">${opts}</select>
