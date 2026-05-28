@@ -1730,6 +1730,11 @@
         <div id="diag-ultima-coleta" style="color:#64748b;white-space:nowrap">—</div>
         <span style="color:#1e293b">·</span>
         <div id="diag-contagens-strip" style="color:#64748b">—</div>
+        <span style="color:#1e293b">·</span>
+        <div style="display:flex;align-items:center;gap:4px;white-space:nowrap">
+            <span class="sdot idle" id="diag-c2-dot"></span>
+            <span id="diag-c2-txt" style="color:#64748b">Coletor 2 —</span>
+        </div>
         <div style="margin-left:auto;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
             <button class="acao-btn" onclick="carregarDiagnostico()" style="padding:2px 10px;font-size:10px">↻ Atualizar</button>
             <button class="acao-btn" onclick="normalizarDadosPT()" style="background:#0d2d4a;border-color:#1e4d7a;color:#60a5fa;padding:2px 10px;font-size:10px" title="Corrigir mercados e clubes em inglês para português no banco de dados">🔤 Normalizar PT</button>
@@ -7998,10 +8003,21 @@ async function _diagCarregarLogs() {
 
 async function _diagCarregarStats() {
     try {
-        const [diag, stats] = await Promise.all([
+        const [diag, stats, statusColetor] = await Promise.all([
             fetch('/api/bet365/diagnostico').then(r => r.json()),
             fetch('/api/bet365/stats').then(r => r.json()),
+            fetch('/api/status-coletor').then(r => r.json()).catch(() => null),
         ]);
+
+        // Coletor 2 status
+        const _c2dot = document.getElementById('diag-c2-dot');
+        const _c2txt = document.getElementById('diag-c2-txt');
+        if (_c2dot && _c2txt && statusColetor) {
+            const _c2ok = statusColetor.coletor2?.rodando;
+            _c2dot.className = _c2ok ? 'sdot ok' : 'sdot err';
+            _c2txt.textContent = `Coletor 2 ${_c2ok ? 'ativo' : 'inativo'}`;
+            _c2txt.style.color = _c2ok ? '#4ade80' : '#f87171';
+        }
 
         if (diag.success) {
             const d = diag.data;
