@@ -16,6 +16,9 @@ echo [2/4] Fechando todos os processos Node.js (server + coletor-odds + outros).
 taskkill /F /IM node.exe 2>nul
 timeout /t 2 /nobreak > nul
 
+echo [2b] Limpando cooldown de login (permite reconectar imediatamente apos reinicio)...
+del "%TEMP%\bet365-login-fail.ts" 2>nul
+
 echo [3/4] Fechando Edge na porta 9222...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":9222 " 2^>nul') do (
     if not "%%a"=="0" (

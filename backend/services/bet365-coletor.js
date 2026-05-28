@@ -1453,6 +1453,19 @@ class Bet365Coletor {
                         console.log('   ✅ Modal de confirmação resolvido — sessão ativa!');
                         this._logAuditoria('modal_confirmacao_ok', 'Modal preenchido com sucesso', emailVerif);
                         this._ultimoLoginTs = null;
+                        // Após confirmação, Bet365 pode redirecionar para fora do AVR.
+                        // Navega de volta para garantir que o próximo ciclo encontre a página certa.
+                        try {
+                            await this._delay(3000);
+                            const urlPos = pg.url();
+                            if (!urlPos.includes('AVR')) {
+                                console.log('   🔄 Redirecionando para página virtual após confirmação...');
+                                await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                                await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
+                            }
+                        } catch(e) {
+                            console.warn('   ⚠️  Falha ao redirecionar após confirmação:', e.message);
+                        }
                         return;
                     }
                 }
