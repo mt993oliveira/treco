@@ -211,23 +211,34 @@
     .wa-header-btn:hover { background: rgba(37,211,102,.22); }
     .wa-header-btn svg   { flex-shrink: 0; }
 
-    /* Badge de licença no header */
+    /* Badge de licença + tipo no header */
     #licenca-badge {
-        display: none; align-items: center; gap: 8px; flex-shrink: 0;
-        border-radius: 6px; padding: 5px 12px; white-space: nowrap;
-        background: rgba(31,204,89,.10); border: 1px solid rgba(31,204,89,.25);
+        display: none; align-items: center; gap: 0; flex-shrink: 0;
+        border-radius: 6px; overflow: hidden; white-space: nowrap;
+        border: 1px solid #1e293b;
+    }
+    #licenca-badge .lic-bloco {
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 1px; padding: 5px 12px;
+    }
+    #licenca-badge .lic-sep {
+        width: 1px; align-self: stretch; background: #1e293b; flex-shrink: 0;
     }
     #licenca-badge .lic-label {
-        font-size: 9px; color: #94a3b8; font-weight: 600;
-        letter-spacing: .06em; text-transform: uppercase; line-height: 1;
+        font-size: 9px; color: #64748b; font-weight: 600;
+        letter-spacing: .07em; text-transform: uppercase; line-height: 1;
     }
-    #licenca-badge .lic-data {
-        font-size: 15px; font-weight: 800; color: #1fcc59; line-height: 1.1;
+    #licenca-badge .lic-tipo {
+        font-size: 13px; font-weight: 800; line-height: 1.15;
+    }
+    #licenca-badge .lic-periodo {
+        font-size: 13px; font-weight: 700; color: #e2e8f0; line-height: 1.15;
     }
     @media (max-width: 640px) {
-        #licenca-badge .lic-label { display: none; }
-        #licenca-badge .lic-data  { font-size: 12px; }
-        #licenca-badge { padding: 5px 8px; }
+        #licenca-badge .lic-label  { display: none; }
+        #licenca-badge .lic-tipo   { font-size: 11px; }
+        #licenca-badge .lic-periodo{ font-size: 11px; }
+        #licenca-badge .lic-bloco  { padding: 5px 8px; }
     }
 
     /* ── RESPONSIVIDADE ───────────────────────────── */
@@ -269,11 +280,16 @@
             <span id="header-subtitle" style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
         </div>
 
-        <!-- Badge de licença do usuário -->
-        <div id="licenca-badge" title="Período de licença">
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-                <span class="lic-label">Licença até</span>
-                <span class="lic-data" id="licenca-data">—</span>
+        <!-- Badge de tipo + licença do usuário -->
+        <div id="licenca-badge">
+            <div class="lic-bloco" id="lic-bloco-tipo" style="background:rgba(31,204,89,.08)">
+                <span class="lic-label">Perfil</span>
+                <span class="lic-tipo" id="licenca-tipo">—</span>
+            </div>
+            <div class="lic-sep"></div>
+            <div class="lic-bloco" id="lic-bloco-periodo" style="background:rgba(31,204,89,.05)">
+                <span class="lic-label">Licença</span>
+                <span class="lic-periodo" id="licenca-data">—</span>
             </div>
         </div>
 
@@ -8579,29 +8595,52 @@ function _initUserMenu() {
     document.getElementById('dd-tipo').textContent =
         _isMasterType ? '⭐ Master' : _isAdminType ? '👑 Administrador' : 'Usuário';
 
-    // Badge de licença no header
-    const _badgeEl  = document.getElementById('licenca-badge');
-    const _dataEl   = document.getElementById('licenca-data');
-    if (_badgeEl && _dataEl) {
-        if (_isMasterUser || !u.DataFimLicenca) {
+    // Badge de tipo + licença no header
+    const _badgeEl   = document.getElementById('licenca-badge');
+    const _tipoEl    = document.getElementById('licenca-tipo');
+    const _dataEl    = document.getElementById('licenca-data');
+    const _blocoTipo = document.getElementById('lic-bloco-tipo');
+    const _blocoPer  = document.getElementById('lic-bloco-periodo');
+    if (_badgeEl && _tipoEl && _dataEl) {
+        if (_isMasterUser) {
             _badgeEl.style.display = 'none';
         } else {
-            const _parts = u.DataFimLicenca.split('T')[0].split('-');
-            const _fim   = new Date(parseInt(_parts[0]), parseInt(_parts[1]) - 1, parseInt(_parts[2]));
-            const _hoje  = new Date(); _hoje.setHours(0, 0, 0, 0);
-            const _dias  = Math.ceil((_fim - _hoje) / 86400000);
-            _dataEl.textContent = _fim.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            let _cor, _bg, _brd;
-            if (_dias < 0)        { _cor = '#f87171'; _bg = 'rgba(248,113,113,.10)'; _brd = 'rgba(248,113,113,.25)'; }
-            else if (_dias <= 7)  { _cor = '#f97316'; _bg = 'rgba(249,115,22,.10)';  _brd = 'rgba(249,115,22,.25)'; }
-            else                  { _cor = '#1fcc59'; _bg = 'rgba(31,204,89,.10)';   _brd = 'rgba(31,204,89,.25)'; }
-            _dataEl.style.color        = _cor;
-            _badgeEl.style.background  = _bg;
+            // --- Tipo de usuário ---
+            let _tipoLabel, _tipoCor, _tipoBg;
+            if (_isAdminType) {
+                _tipoLabel = '👑 Administrador'; _tipoCor = '#a78bfa'; _tipoBg = 'rgba(167,139,250,.10)';
+            } else {
+                _tipoLabel = '👤 Usuário'; _tipoCor = '#60a5fa'; _tipoBg = 'rgba(96,165,250,.10)';
+            }
+            _tipoEl.textContent   = _tipoLabel;
+            _tipoEl.style.color   = _tipoCor;
+            if (_blocoTipo) _blocoTipo.style.background = _tipoBg;
+
+            // --- Período de licença ---
+            const _fmtD = v => {
+                const p = v.split('T')[0].split('-');
+                return new Date(+p[0], +p[1]-1, +p[2]).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+            };
+            const _ini = u.DataInicioLicenca ? _fmtD(u.DataInicioLicenca) : null;
+            const _fimStr = u.DataFimLicenca  ? _fmtD(u.DataFimLicenca)  : null;
+            _dataEl.textContent = _ini && _fimStr ? `${_ini} – ${_fimStr}` : (_fimStr || '—');
+
+            // Cor do período conforme status
+            let _perCor = '#e2e8f0', _perBg = 'rgba(31,204,89,.05)', _brd = '#1e293b', _title = '';
+            if (u.DataFimLicenca) {
+                const _p = u.DataFimLicenca.split('T')[0].split('-');
+                const _fim  = new Date(+_p[0], +_p[1]-1, +_p[2]);
+                const _hoje = new Date(); _hoje.setHours(0,0,0,0);
+                const _dias = Math.ceil((_fim - _hoje) / 86400000);
+                if (_dias < 0)       { _perCor = '#f87171'; _perBg = 'rgba(248,113,113,.08)'; _brd = 'rgba(248,113,113,.3)'; _title = 'Licença expirada'; }
+                else if (_dias <= 7) { _perCor = '#f97316'; _perBg = 'rgba(249,115,22,.08)';  _brd = 'rgba(249,115,22,.3)';  _title = `Expira em ${_dias} dia(s)!`; }
+                else                 { _perCor = '#1fcc59'; _perBg = 'rgba(31,204,89,.05)';   _brd = '#1e293b';              _title = `Válida por mais ${_dias} dia(s)`; }
+            }
+            _dataEl.style.color = _perCor;
+            if (_blocoPer) _blocoPer.style.background = _perBg;
             _badgeEl.style.borderColor = _brd;
-            _badgeEl.style.display     = 'flex';
-            if (_dias < 0)       _badgeEl.title = 'Licença expirada';
-            else if (_dias <= 7) _badgeEl.title = `Licença expira em ${_dias} dia(s)!`;
-            else                 _badgeEl.title = `Licença válida por mais ${_dias} dia(s)`;
+            _badgeEl.title = _title;
+            _badgeEl.style.display = 'flex';
         }
     }
 
