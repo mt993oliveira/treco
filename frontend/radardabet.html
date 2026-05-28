@@ -10038,22 +10038,19 @@ function _renderTabelaUsuarios(lista) {
             <td style="padding:7px 10px;text-align:center;font-size:10px;color:#475569">${licenca}</td>
             <td style="padding:7px 10px;text-align:center">${ativo}</td>
             <td style="padding:7px 10px;text-align:center">${fmtAcesso(u.UltimoAcesso)}</td>
-            <td style="padding:7px 10px;text-align:center">
-                <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
-                    <button onclick="abrirFormUsuario(${u.Id})"
-                        style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;
-                               padding:3px 10px;font-size:10px;cursor:pointer;width:100%;min-width:70px"
-                        onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">✏️ Editar</button>
-                    ${_getUser()?.TipoUsuario === 'master' ? `
-                    <button onclick="abrirIncrementarIndividual(${u.Id}, '${escHtml(u.NomeCompleto || u.Usuario)}')"
-                        style="background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:4px;
-                               padding:3px 10px;font-size:10px;cursor:pointer;width:100%;min-width:70px"
-                        onmouseover="this.style.background='#1e40af'" onmouseout="this.style.background='#1e3a5f'">📅 +Dias</button>
-                    <button onclick="excluirUsuario(${u.Id}, '${escHtml(u.NomeCompleto || u.Usuario)}')"
-                        style="background:#3b0a0a;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;
-                               padding:3px 10px;font-size:10px;cursor:pointer;width:100%;min-width:70px"
-                        onmouseover="this.style.background='#450a0a'" onmouseout="this.style.background='#3b0a0a'">🗑 Excluir</button>` : ''}
-                </div>
+            <td style="padding:6px 8px;text-align:center;white-space:nowrap">
+                <button onclick="abrirFormUsuario(${u.Id})"
+                    style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;
+                           padding:3px 8px;font-size:10px;cursor:pointer;margin:1px"
+                    onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">✏️</button>${_getUser()?.TipoUsuario === 'master' ? `
+                <button onclick="abrirIncrementarIndividual(${u.Id}, '${escHtml(u.NomeCompleto || u.Usuario)}')"
+                    style="background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:4px;
+                           padding:3px 8px;font-size:10px;cursor:pointer;margin:1px"
+                    onmouseover="this.style.background='#1e40af'" onmouseout="this.style.background='#1e3a5f'" title="Incrementar licença">📅</button>
+                <button onclick="excluirUsuario(${u.Id}, '${escHtml(u.NomeCompleto || u.Usuario)}')"
+                    style="background:#3b0a0a;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;
+                           padding:3px 8px;font-size:10px;cursor:pointer;margin:1px"
+                    onmouseover="this.style.background='#450a0a'" onmouseout="this.style.background='#3b0a0a'" title="Excluir usuário">🗑</button>` : ''}
             </td>
         </tr>`;
     }).join('');
@@ -10699,6 +10696,8 @@ function _verificarAlertas() {
     if (disparados.length) _mostrarNotificacaoAlerta(disparados);
 }
 
+let _alertaAutoFecharTimer = null;
+
 function _mostrarNotificacaoAlerta(alertas) {
     let el = document.getElementById('alerta-notif');
     if (!el) {
@@ -10730,9 +10729,14 @@ function _mostrarNotificacaoAlerta(alertas) {
         }).join('')}
         <div style="font-size:10px;color:#475569;margin-top:6px;text-align:right">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`;
     el.style.display = 'block';
+
+    // Auto-fechar após 3 minutos
+    if (_alertaAutoFecharTimer) clearTimeout(_alertaAutoFecharTimer);
+    _alertaAutoFecharTimer = setTimeout(() => _fecharNotificacaoAlerta(), 3 * 60 * 1000);
 }
 
 function _fecharNotificacaoAlerta() {
+    if (_alertaAutoFecharTimer) { clearTimeout(_alertaAutoFecharTimer); _alertaAutoFecharTimer = null; }
     const el = document.getElementById('alerta-notif');
     if (el) el.style.display = 'none';
 }
