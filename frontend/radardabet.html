@@ -3236,6 +3236,26 @@ async function carregarHistorico() {
 
         S.partidas = filtrarPartidas();
 
+        // Se padrões de jogos exigem mais dados do que foi buscado, expande a janela automaticamente
+        // (mesma lógica de setSubViewPeriodo, mas aplicada ao boot e a qualquer re-fetch)
+        const _jogosMax = Math.max(
+            S.jogosGrafico  || 0,
+            S.jogosGols     || 0,
+            S.jogosLinha    || 0,
+            S.jogosParImpar || 0,
+            S.jogosMosaico  || 0
+        );
+        if (_jogosMax > 0 && S.todasPartidas.length > 0 && S._horasCarregadas > 0) {
+            const _taxa = S.todasPartidas.length / S._horasCarregadas;
+            if (_taxa > 0) {
+                const _horasNec = Math.ceil(_jogosMax / _taxa) + 2;
+                if (_horasNec > S._horasCarregadas && _horasNec <= 168) {
+                    S._horasCarregadas = _horasNec;
+                    return carregarHistorico();
+                }
+            }
+        }
+
         // Quando "Próximos Jogos" está ativo, busca eventos agendados para a grade
         if (S.showProximos) {
             try {
