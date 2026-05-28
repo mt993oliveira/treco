@@ -161,13 +161,16 @@ router.post('/webhook', async (req, res) => {
             .input('email', sql.NVarChar, emailCliente)
             .query(`SELECT Id, DataFimLicenca FROM Usuarios WHERE Email = @email AND Ativo = 1`);
 
-        const dataExpiracao = new Date(Date.now() + PLANO_DIAS * 86400000);
+        let dataExpiracao = new Date(Date.now() + PLANO_DIAS * 86400000); // usado só para novos usuários
         let usuarioId, usuarioLogin;
 
         if (existente.recordset.length > 0) {
-            // Renova licença do usuário existente
-            usuarioId    = existente.recordset[0].Id;
-            const result = await pool.request()
+            // Renova licença: estende a partir do fim atual (se ainda válida) ou de hoje
+            usuarioId = existente.recordset[0].Id;
+            const fimAtual = existente.recordset[0].DataFimLicenca;
+            const base = (fimAtual && new Date(fimAtual) > new Date()) ? new Date(fimAtual) : new Date();
+            const dataExpiracao = new Date(base.getTime() + PLANO_DIAS * 86400000);
+            await pool.request()
                 .input('id',     sql.Int,       usuarioId)
                 .input('expira', sql.DateTime2, dataExpiracao)
                 .query(`UPDATE Usuarios SET DataFimLicenca = @expira WHERE Id = @id`);
@@ -175,7 +178,7 @@ router.post('/webhook', async (req, res) => {
                 .input('id', sql.Int, usuarioId)
                 .query(`SELECT Usuario FROM Usuarios WHERE Id = @id`);
             usuarioLogin = uRow.recordset[0]?.Usuario || '';
-            console.log(`[Kirvano] Licença renovada: ${emailCliente} até ${dataExpiracao.toISOString()}`);
+            console.log(`[Kirvano] Licença renovada: ${emailCliente} até ${dataExpiracao.toISOString()} (base: ${base.toISOString()})`);
         } else {
             // Cria novo usuário
             usuarioLogin = await _gerarLogin(pool, emailCliente);
