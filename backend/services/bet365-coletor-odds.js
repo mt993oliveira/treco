@@ -278,14 +278,30 @@ async function lerTodasAsOdds(pg, ligaNorm) {
                     console.log(`   ❌ [${ligaNorm}] Nav desapareceu — abortando liga`);
                     break;
                 }
+                // Nav voltou — verificar se ainda estamos na liga correta
+                const ligaAposFalha = await pg.evaluate(() =>
+                    [...document.querySelectorAll('.vrl-MeetingsHeaderButton')]
+                        .find(b => [...b.classList].some(c => c.toLowerCase().includes('select') || c.toLowerCase().includes('active')))
+                        ?.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || ''
+                ).catch(() => '');
+                if (ligaAposFalha && ligaAposFalha !== nomeLiga) {
+                    console.log(`   ❌ [${ligaNorm}] Liga mudou para "${ligaAposFalha}" — abortando`);
+                    break;
+                }
                 continue;
             }
             await randomDelay(300, 700);
 
             const odds = await pg.evaluate(lerOddsDOM);
             if (odds.ok) {
-                console.log(`   ✔️  [${ligaNorm}] "${horarioAlvo}" → ${odds.timeCasa} × ${odds.timeFora} C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
-                resultados.push(odds);
+                // Só salva se o horário exibido bate com o que foi clicado
+                // Evita duplicatas quando o clique não registrou e a página mostra jogo anterior
+                if (odds.horario && odds.horario !== horarioAlvo) {
+                    console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — horário exibido (${odds.horario}) diverge, pulando`);
+                } else {
+                    console.log(`   ✔️  [${ligaNorm}] "${horarioAlvo}" → ${odds.timeCasa} × ${odds.timeFora} C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                    resultados.push(odds);
+                }
             } else {
                 console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — ${odds.motivo || JSON.stringify(odds)}`);
             }
@@ -475,6 +491,35 @@ async function ciclo(pg) {
                     ligaAtiva,
                 };
             });
+
+            // Verifica se a liga ativa corresponde à esperada — se não, tenta clicar mais uma vez
+            if (estadoApos.ligaAtiva !== nomeLiga && estadoApos.ligaAtiva !== '?') {
+                console.log(`   🔁 [${ligaNorm}] Liga ativa é "${estadoApos.ligaAtiva}" — reclicando...`);
+                await pg.evaluate((nome) => {
+                    const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+                    for (const tab of tabs) {
+                        if (tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome) {
+                            tab.click(); return true;
+                        }
+                    }
+                    return false;
+                }, nomeLiga);
+                await randomDelay(2500, 4000);
+                // Re-lê estado
+                const re = await pg.evaluate(() => {
+                    const ligaBtns = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')];
+                    const ligaAtiva = ligaBtns.find(b => [...b.classList].some(c =>
+                        c.toLowerCase().includes('select') || c.toLowerCase().includes('active') || c.toLowerCase().includes('current')
+                    ))?.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '?';
+                    return { timeBtns: document.querySelectorAll('.vr-EventTimesNavBarButton').length, ligaAtiva };
+                });
+                if (re.ligaAtiva !== nomeLiga) {
+                    console.log(`   ⏭️  [${ligaNorm}] Não foi possível navegar para a liga — pulando`);
+                    continue;
+                }
+                estadoApos.timeBtns = re.timeBtns;
+                estadoApos.ligaAtiva = re.ligaAtiva;
+            }
 
             if (estadoApos.timeBtns === 0 && estadoApos.pods === 0) {
                 const navOk = estadoApos.ligaAtiva === nomeLiga ? '✅nav' : `❌nav(=${estadoApos.ligaAtiva})`;
