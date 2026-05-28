@@ -1722,82 +1722,78 @@ class Bet365Coletor {
 
     async _preencherConfirmacaoDados(pg, email, dataNasc) {
         try {
-            // Preenche e-mail (suporta type="email" e type="text" com placeholder)
-            const inputEmail = await pg.$([
-                'input[type="email"]',
-                'input[placeholder*="e-mail" i]',
-                'input[placeholder*="email" i]',
-                'input[placeholder*="mail" i]',
-                'input[type="text"]',   // fallback genérico (Bet365 React pode usar type=text)
-            ].join(', '));
-            if (inputEmail) {
-                await inputEmail.click({ clickCount: 3 });
-                await this._delay(300);
-                await inputEmail.type(email, { delay: 80 });
-                console.log(`   ✉️  E-mail preenchido: ${email}`);
-                await this._delay(500);
-            } else {
-                console.log('   ⚠️  Campo de e-mail não encontrado');
-            }
-
-            // Preenche data de nascimento (se fornecida no .env)
             if (!dataNasc) {
-                console.log('   ⚠️  BET365_DATAS_NASC não configurado — não é possível preencher data');
+                console.log('   ⚠️  BET365_DATAS_NASC não configurado — impossível preencher data');
                 return false;
             }
             const parts = dataNasc.split(/[\/\-\.]/);
             if (parts.length < 3) {
-                console.log(`   ⚠️  Formato inválido de data: ${dataNasc} (esperado DD/MM/YYYY)`);
+                console.log(`   ⚠️  Formato inválido: ${dataNasc} (esperado DD/MM/YYYY)`);
                 return false;
             }
-            const dia = String(parseInt(parts[0]));
-            const mes = String(parseInt(parts[1]));
-            const ano = String(parseInt(parts[2]));
+            // Values do HTML: value="07" value="01" value="1990"
+            const valDia = parts[0].padStart(2, '0');
+            const valMes = parts[1].padStart(2, '0');
+            const valAno = parts[2];
 
-            // Encontra os 3 selects por texto do primeiro option (Dia / Mês / Ano)
-            await pg.evaluate((dia, mes, ano) => {
-                const MESES_PT = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-                const selects = [...document.querySelectorAll('select')].filter(s => {
-                    const r = s.getBoundingClientRect();
-                    return r.width > 0 && r.height > 0;
-                });
-                for (const sel of selects) {
-                    const placeholder = (sel.options[0]?.text || '').trim().toLowerCase();
-                    let numerico = null;
-                    if (placeholder === 'dia')                            numerico = dia;
-                    else if (placeholder === 'mês' || placeholder === 'mes') numerico = mes;
-                    else if (placeholder === 'ano')                       numerico = ano;
-                    if (!numerico) continue;
+            // ── E-mail: id="email" (específico do modal Bet365) ────────────────────
+            // Usa setter nativo + evento input para compatibilidade com React
+            const emailOk = await pg.evaluate((emailVal) => {
+                const input = document.querySelector('#email')
+                    || document.querySelector('.nui-ModalContainer input[type="text"]')
+                    || document.querySelector('input[placeholder*="e-mail" i]');
+                if (!input) return false;
+                input.focus();
+                const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+                if (setter) setter.call(input, emailVal);
+                else input.value = emailVal;
+                input.dispatchEvent(new Event('input',  { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                return true;
+            }, email);
+            console.log(emailOk ? `   ✉️  E-mail preenchido: ${email}` : '   ⚠️  Campo de e-mail não encontrado');
+            await this._delay(400);
 
-                    const opcoes = [...sel.options].map(o => ({ v: o.value, t: o.text.trim() }));
-
-                    // Tenta: valor numérico → zero-padded → nome do mês em português → texto parcial
-                    const candidatos = [numerico, numerico.padStart(2, '0')];
-                    if (placeholder === 'mês' || placeholder === 'mes') {
-                        const nomeMes = MESES_PT[parseInt(numerico)] || '';
-                        if (nomeMes) candidatos.push(nomeMes, nomeMes.substring(0, 3));
-                    }
-                    let valorFinal = null;
-                    for (const c of candidatos) {
-                        const found = opcoes.find(o => o.v === c || o.t.toLowerCase().startsWith(c.toLowerCase()));
-                        if (found) { valorFinal = found.v; break; }
-                    }
-                    if (!valorFinal) continue;
-
-                    sel.value = valorFinal;
+            // ── Data de nascimento: aria-label exato do HTML da Bet365 ─────────────
+            // <select aria-label="Dia"> value="01"–"31"
+            // <select aria-label="Mês"> value="01"–"12" (texto Jan/Fev/...)
+            // <select aria-label="Ano"> value="1900"–"2008"
+            const dataOk = await pg.evaluate((dia, mes, ano) => {
+                function setarSelect(sel, value) {
+                    if (!sel) return false;
+                    sel.value = value;
                     sel.dispatchEvent(new Event('change', { bubbles: true }));
                     sel.dispatchEvent(new Event('input',  { bubbles: true }));
+                    return sel.value === value;
                 }
-            }, dia, mes, ano);
-
-            console.log(`   📅 Data de nascimento preenchida: ${dia}/${mes}/${ano}`);
+                const selDia = document.querySelector('select[aria-label="Dia"]');
+                // Mês pode vir com ou sem acento dependendo do encoding
+                const selMes = document.querySelector('select[aria-label="Mês"]')
+                    || document.querySelector('select[aria-label="Mes"]')
+                    || document.querySelector('select[aria-label="Més"]');
+                const selAno = document.querySelector('select[aria-label="Ano"]');
+                return {
+                    dia: setarSelect(selDia, dia),
+                    mes: setarSelect(selMes, mes),
+                    ano: setarSelect(selAno, ano),
+                };
+            }, valDia, valMes, valAno);
+            console.log(`   📅 Data ${valDia}/${valMes}/${valAno} — dia:${dataOk.dia} mês:${dataOk.mes} ano:${dataOk.ano}`);
             await this._delay(800);
 
-            // Clica em Login do modal (prioriza botão dentro de form ou submit)
-            const clicou = await this._clicarBotaoSubmitModal(pg)
-                || await this._clicarBotaoPorTexto(pg, 'Login', true);
-            if (!clicou) console.log('   ⚠️  Botão Login não encontrado após confirmação');
+            // ── Botão Login dentro do nui-ModalContainer ───────────────────────────
+            // O botão não tem type="submit" nem está em <form>; busca pelo texto dentro do modal
+            const clicou = await pg.evaluate(() => {
+                const modal = document.querySelector('.nui-ModalContainer');
+                if (!modal) return false;
+                const btn = [...modal.querySelectorAll('button')].find(b =>
+                    (b.textContent || '').trim() === 'Login'
+                );
+                if (!btn) return false;
+                btn.click();
+                return true;
+            });
+            if (!clicou) console.log('   ⚠️  Botão Login não encontrado dentro do nui-ModalContainer');
             return clicou;
         } catch(e) {
             console.log('   ❌ Erro em _preencherConfirmacaoDados:', e.message);
