@@ -46,6 +46,15 @@ const LIGA_NORMALIZAR = {
     'south american super league': 'Super Liga Sul-Americana',
     'super liga sul-americana':    'Super Liga Sul-Americana',
 };
+
+// Mapeamento: nome normalizado → chave em bet365_config (igual ao Coletor 1)
+const LIGA_CONFIG_KEY = {
+    'World Cup':                'liga_world_cup',
+    'Euro Cup':                 'liga_euro_cup',
+    'Premiership':              'liga_premiership',
+    'Express Cup':              'liga_express_cup',
+    'Super Liga Sul-Americana': 'liga_super_liga',
+};
 function normalizarNomeLiga(nome) {
     return LIGA_NORMALIZAR[(nome || '').toLowerCase().trim()] || nome;
 }
@@ -400,7 +409,21 @@ async function ciclo(pg) {
             .map(el => el.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || '')
             .filter(Boolean)
     );
-    const ligasFiltradas = ligas.filter(l => !LIGAS_IGNORAR.some(ig => l.toLowerCase().includes(ig)));
+
+    // Lê config de ligas habilitadas no banco (⚙️ Configurações do Sistema → 🏆 Ligas)
+    let cfgLigas = {};
+    try {
+        const db   = await getPool();
+        const rows = await db.request().query(`SELECT chave, valor FROM bet365_config`);
+        rows.recordset.forEach(r => { if (r.chave) cfgLigas[r.chave] = r.valor; });
+    } catch(_) { /* se DB falhar, não bloqueia — assume todas ativas */ }
+
+    const ligasFiltradas = ligas.filter(l => {
+        if (LIGAS_IGNORAR.some(ig => l.toLowerCase().includes(ig))) return false;
+        const norm = normalizarNomeLiga(l);
+        const key  = LIGA_CONFIG_KEY[norm];
+        return key ? cfgLigas[key] !== 'false' : true;
+    });
     console.log(`   📋 [Odds] ${ligasFiltradas.length} liga(s): ${ligasFiltradas.join(' | ')}`);
 
     let oddsOk = 0;
