@@ -1023,6 +1023,70 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
     }
 });
 
+// Incrementar licença de um usuário específico (adicionar N dias ao DataFimLicenca)
+app.post('/api/usuarios/incrementar-licenca', requireAuth, async (req, res) => {
+    const { id, dias, sqlConfig } = req.body;
+    if (!id || !dias || isNaN(parseInt(dias)) || parseInt(dias) <= 0) {
+        return res.json({ success: false, message: 'id e dias (> 0) são obrigatórios' });
+    }
+    try {
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
+        const reqCheck = await sql.query`SELECT TipoUsuario, Usuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!reqCheck.recordset[0] || reqCheck.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso não autorizado' });
+        }
+        const d = parseInt(dias);
+        // Se já tem data fim, soma a partir dela; senão usa hoje
+        await sql.query`
+            UPDATE Usuarios
+            SET DataFimLicenca = DATEADD(day, ${d}, ISNULL(DataFimLicenca, CAST(GETDATE() AS DATE)))
+            WHERE Id = ${id}
+        `;
+        const atualizado = await sql.query`SELECT DataFimLicenca FROM Usuarios WHERE Id = ${id}`;
+        const novaData = atualizado.recordset[0]?.DataFimLicenca;
+        const targetRow = await sql.query`SELECT Usuario FROM Usuarios WHERE Id = ${id}`;
+        const targetLogin = targetRow.recordset[0]?.Usuario || `ID:${id}`;
+        const reqLogin = reqCheck.recordset[0].Usuario;
+        await sql.query`
+            INSERT INTO HistoricoUsuarios (UsuarioId, DataAlteracao, Acao)
+            VALUES (${req.body.usuarioId}, GETDATE(), ${`[${reqLogin}] adicionou ${d} dias à licença de "${targetLogin}" → ${novaData ? new Date(novaData).toLocaleDateString('pt-BR') : '?'}`})
+        `;
+        res.json({ success: true, novaData: novaData ? new Date(novaData).toISOString() : null });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
+// Incrementar licença de TODOS os usuários ativos (exceto master)
+app.post('/api/usuarios/incrementar-licenca-todos', requireAuth, async (req, res) => {
+    const { dias, sqlConfig } = req.body;
+    if (!dias || isNaN(parseInt(dias)) || parseInt(dias) <= 0) {
+        return res.json({ success: false, message: 'dias (> 0) é obrigatório' });
+    }
+    try {
+        await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
+        const reqCheck = await sql.query`SELECT TipoUsuario, Usuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!reqCheck.recordset[0] || reqCheck.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso não autorizado' });
+        }
+        const d = parseInt(dias);
+        const result = await sql.query`
+            UPDATE Usuarios
+            SET DataFimLicenca = DATEADD(day, ${d}, ISNULL(DataFimLicenca, CAST(GETDATE() AS DATE)))
+            WHERE Ativo = 1 AND TipoUsuario <> 'master'
+        `;
+        const afetados = result.rowsAffected?.[0] ?? 0;
+        const reqLogin = reqCheck.recordset[0].Usuario;
+        await sql.query`
+            INSERT INTO HistoricoUsuarios (UsuarioId, DataAlteracao, Acao)
+            VALUES (${req.body.usuarioId}, GETDATE(), ${`[${reqLogin}] adicionou ${d} dias à licença de todos os usuários ativos (${afetados} usuários)`})
+        `;
+        res.json({ success: true, afetados });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
 // Rota para excluir usuário
 app.post('/api/usuarios/delete', requireAuth, async (req, res) => {
     const { id, sqlConfig } = req.body;
