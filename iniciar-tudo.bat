@@ -34,9 +34,11 @@ echo  Aguardando Edge carregar a pagina (15s)...
 timeout /t 15 /nobreak > nul
 echo.
 
-echo [2/3] Iniciando servidor principal...
-echo  O Coletor 2 (Odds) sera iniciado automaticamente pelo servidor apos o login do Coletor 1.
+echo [2/3] Coletor 2 (Odds) abrira em 3 minutos, apos login do Coletor 1...
+start "" cmd /c "timeout /t 180 /nobreak > nul && start "Coletor 2 - Odds e Proximos Jogos" cmd /k "cd /d C:\PRODUCAO && node -r dotenv/config backend/services/bet365-coletor-odds.js""
 echo.
+
+echo [3/3] Iniciando servidor principal (Coletor 1)...
 echo  O coletor detectara e fara login automatico se necessario.
 echo.
 npm start

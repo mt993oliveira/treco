@@ -1891,16 +1891,19 @@ server.listen(PORT, () => {
                 const _ativo = _r.recordset[0]?.valor !== 'false';
                 const _vivo  = _c2Proc && !_c2Proc.killed && _c2Proc.exitCode === null;
                 if (_ativo && !_vivo) {
-                    if (Date.now() - _c2UltimoStart < 90000) return;
-                    console.log('[Watchdog C2] coletor2_ativo=true e processo inativo → relançando Coletor 2...');
+                    if (Date.now() - _c2UltimoStart < 300000) return; // anti-spam: 5min entre restarts
+                    console.log('[Watchdog C2] coletor2_ativo=true e processo inativo → abrindo janela Coletor 2...');
                     _c2UltimoStart = Date.now();
                     const { spawn } = require('child_process');
-                    const _script  = require('path').join(__dirname, 'services', 'bet365-coletor-odds.js');
-                    _c2Proc = spawn('node', ['-r', 'dotenv/config', _script],
-                        { cwd: require('path').join(__dirname, '..'), detached: false, stdio: ['ignore','pipe','pipe'] });
-                    _c2Proc.stdout.on('data', d => process.stdout.write(`[C2] ${d}`));
-                    _c2Proc.stderr.on('data', d => process.stderr.write(`[C2] ${d}`));
-                    _c2Proc.on('exit', code => { console.log(`[Watchdog C2] Encerrou (código ${code})`); _c2Proc = null; });
+                    const _dir = require('path').join(__dirname, '..');
+                    // Abre janela CMD visível separada — não interfere no log do Coletor 1
+                    _c2Proc = spawn('cmd.exe',
+                        ['/k', `title Coletor 2 - Odds e Proximos Jogos && cd /d "${_dir}" && node -r dotenv/config backend/services/bet365-coletor-odds.js`],
+                        { detached: true, stdio: 'ignore' }
+                    );
+                    _c2Proc.unref();
+                    // Processo detachado — reseta ref após 10s para watchdog detectar reinício se necessário
+                    setTimeout(() => { _c2Proc = null; }, 10000);
                 }
             } catch(_) { /* DB indisponível — tenta no próximo ciclo */ }
         }
