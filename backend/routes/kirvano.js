@@ -7,7 +7,7 @@ const { getDbPool } = require('./bet365-api');
 const KIRVANO_TOKEN  = 'radarbet_kirvano_2026_xK9mP3qL';
 const PLANO_DIAS     = 30;
 const PLANO_NOME     = 'Mensal';
-const PLANO_VALOR    = 19.90;
+const PLANO_VALOR    = 35.00;
 
 // ── Cria tabelas se não existirem ───────────────────────────────
 async function _ensureTable(pool) {
