@@ -21,12 +21,13 @@ echo [0/3] Atualizando codigo do servidor...
 git pull origin master
 echo.
 
-echo [1/3] Abrindo Edge na pagina do futebol virtual (porta 9222)...
+echo [1/3] Abrindo Edge com 2 abas do futebol virtual (porta 9222)...
 start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --remote-debugging-port=9222 ^
   --no-first-run ^
   --no-default-browser-check ^
   --user-data-dir="C:\Users\Administrador\AppData\Local\Microsoft\Edge\BetColetor" ^
+  "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/" ^
   "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/"
 
 echo.
