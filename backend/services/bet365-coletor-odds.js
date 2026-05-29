@@ -525,6 +525,21 @@ async function ciclo(pg) {
                 estadoApos.ligaAtiva = re.ligaAtiva;
             }
 
+            // Se não achou botões, aguarda mais 8s — pode ser janela entre rodadas abrindo
+            if (estadoApos.timeBtns === 0 && estadoApos.pods === 0) {
+                try {
+                    await pg.waitForSelector('.vr-EventTimesNavBarButton, .gl-MarketGroupPod.gl-MarketGroup', { timeout: 8000 });
+                    const re2 = await pg.evaluate(() => ({
+                        timeBtns: document.querySelectorAll('.vr-EventTimesNavBarButton').length,
+                        pods:     document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length,
+                    }));
+                    estadoApos.timeBtns = re2.timeBtns;
+                    estadoApos.pods     = re2.pods;
+                } catch(_) {
+                    await diagnosticarPagina(pg, ligaNorm, ' sem botões após espera:');
+                }
+            }
+
             if (estadoApos.timeBtns === 0 && estadoApos.pods === 0) {
                 const navOk = estadoApos.ligaAtiva === nomeLiga ? '✅nav' : `❌nav(=${estadoApos.ligaAtiva})`;
                 console.log(`   ⏭️  [${ligaNorm}] Liga inativa | ${navOk}`);
