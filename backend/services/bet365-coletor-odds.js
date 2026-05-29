@@ -467,6 +467,7 @@ async function ciclo(pg) {
     console.log(`   📋 [Odds] ${ligasFiltradas.length} liga(s): ${ligasFiltradas.join(' | ')}`);
 
     let oddsOk = 0;
+    const ligasParaRetry = [];
 
     for (let i = 0; i < ligasFiltradas.length; i++) {
         const nomeLiga = ligasFiltradas[i];
@@ -549,7 +550,8 @@ async function ciclo(pg) {
 
             if (estadoApos.timeBtns === 0 && estadoApos.pods === 0) {
                 const navOk = estadoApos.ligaAtiva === nomeLiga ? '✅nav' : `❌nav(=${estadoApos.ligaAtiva})`;
-                console.log(`   ⏭️  [${ligaNorm}] Liga inativa | ${navOk}`);
+                console.log(`   ⏭️  [${ligaNorm}] Liga inativa | ${navOk} → retry ao final`);
+                if (estadoApos.ligaAtiva === nomeLiga) ligasParaRetry.push({ nomeLiga, ligaNorm });
             } else {
                 try {
                     await pg.waitForSelector(
@@ -576,6 +578,57 @@ async function ciclo(pg) {
         if (i < ligasFiltradas.length - 1) {
             console.log(`   🔄 [Odds] Hard refresh pós-liga ${i + 1}/${ligasFiltradas.length}...`);
             await hardRefreshComRetry(pg);
+        }
+    }
+
+    // Retry de ligas com 0 horários (Copa do Mundo é a mais afetada — está ao vivo quando o ciclo começa,
+    // mas após ~3-4 min coletando as outras ligas, uma nova rodada já estará disponível)
+    if (ligasParaRetry.length > 0) {
+        console.log(`\n   🔁 [Odds] Retry: ${ligasParaRetry.map(l => l.ligaNorm).join(', ')} — aguardando nova rodada...`);
+        await hardRefreshComRetry(pg);
+
+        for (const { nomeLiga, ligaNorm } of ligasParaRetry) {
+            try {
+                const clicou = await pg.evaluate((nome) => {
+                    for (const tab of document.querySelectorAll('.vrl-MeetingsHeaderButton')) {
+                        if (tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome) {
+                            tab.click(); return true;
+                        }
+                    }
+                    return false;
+                }, nomeLiga);
+
+                if (!clicou) { console.warn(`   ⚠️  [${ligaNorm}] Retry: aba não encontrada`); continue; }
+
+                await randomDelay(2000, 4000);
+
+                const est = await pg.evaluate(() => ({
+                    timeBtns: document.querySelectorAll('.vr-EventTimesNavBarButton').length,
+                    pods:     document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup').length,
+                }));
+
+                if (est.timeBtns === 0 && est.pods === 0) {
+                    console.log(`   ⏭️  [${ligaNorm}] Retry: ainda sem horários`);
+                    continue;
+                }
+
+                try {
+                    await pg.waitForSelector(
+                        '.gl-MarketGroupPod.gl-MarketGroup, .svc-MarketGroup_RaceOff',
+                        { timeout: 8000 }
+                    );
+                } catch(_) {}
+
+                const todasOdds = await lerTodasAsOdds(pg, ligaNorm, nomeLiga);
+                if (todasOdds.length > 0) {
+                    oddsOk += todasOdds.length;
+                    console.log(`   ✅ [${ligaNorm}] Retry: ${todasOdds.length} jogo(s) coletado(s)`);
+                } else {
+                    console.log(`   ⏭️  [${ligaNorm}] Retry: sem odds disponíveis`);
+                }
+            } catch(err) {
+                console.warn(`   ⚠️  [${ligaNorm}] Retry: Erro: ${err.message}`);
+            }
         }
     }
 
