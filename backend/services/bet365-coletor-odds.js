@@ -134,10 +134,18 @@ async function conectarEdge() {
     if (avrPages.length < 2) {
         console.log(`   ℹ️  [Odds] Apenas ${avrPages.length} aba(s) AVR — abrindo segunda aba automaticamente...`);
         const novaPg = await browser.newPage();
-        await novaPg.bringToFront(); // traz para frente ANTES do goto — Chromium throttla JS em aba de fundo
+        await novaPg.bringToFront();
         await novaPg.goto(URL_SOCCER, { waitUntil: 'load', timeout: 60000 });
-        // Aguarda a página renderizar (20s para a Bet365 SPA carregar completamente)
         await new Promise(r => setTimeout(r, 20000));
+
+        // Verifica se SPA ficou na URL correta; se não, navega via JS (Bet365 às vezes redireciona)
+        const urlApos = novaPg.url();
+        if (!urlApos.includes('AVR')) {
+            console.log(`   🔄 [Odds] URL pós-goto: ${urlApos.substring(0, 60)} — tentando via location.href...`);
+            await novaPg.evaluate((url) => { location.href = url; }, URL_SOCCER);
+            await new Promise(r => setTimeout(r, 15000));
+        }
+
         // Re-verifica
         pages    = await browser.pages();
         avrPages = pages.filter(p => {
@@ -222,7 +230,7 @@ function lerOddsDOM() {
 }
 
 // ── Itera TODOS os botões de horário e coleta odds de cada jogo ─
-async function lerTodasAsOdds(pg, ligaNorm) {
+async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
     const resultados = [];
 
     // Coleta os textos dos botões ANTES de qualquer clique
@@ -276,16 +284,32 @@ async function lerTodasAsOdds(pg, ligaNorm) {
                 await diagnosticarPagina(pg, ligaNorm, ` "${horarioAlvo}" sem pods:`);
                 try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 8000 }); }
                 catch(_2) {
-                    console.log(`   ❌ [${ligaNorm}] Nav desapareceu — abortando liga`);
-                    break;
+                    // Nav sumiu — jogo entrou ao vivo. Recarrega e volta à liga para coletar horários restantes.
+                    console.log(`   🔄 [${ligaNorm}] Nav sumiu (jogo ao vivo) — recarregando para continuar...`);
+                    const navRefresh = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+                    await pg.evaluate(() => location.reload(true));
+                    await navRefresh;
+                    await new Promise(r => setTimeout(r, 5000));
+                    const voltou = await pg.evaluate((nome) => {
+                        const btn = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].find(b =>
+                            b.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome
+                        );
+                        if (btn) { btn.click(); return true; }
+                        return false;
+                    }, nomeLigaOriginal).catch(() => false);
+                    if (!voltou) { console.log(`   ❌ [${ligaNorm}] Liga não encontrada após reload`); break; }
+                    await new Promise(r => setTimeout(r, 3000));
+                    try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 8000 }); }
+                    catch(_3) { console.log(`   ❌ [${ligaNorm}] Nav não voltou após reload`); break; }
+                    continue; // continua com próximo horário
                 }
-                // Nav voltou — verificar se ainda estamos na liga correta
+                // Nav voltou sem reload — verificar liga
                 const ligaAposFalha = await pg.evaluate(() =>
                     [...document.querySelectorAll('.vrl-MeetingsHeaderButton')]
                         .find(b => [...b.classList].some(c => c.toLowerCase().includes('select') || c.toLowerCase().includes('active')))
                         ?.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || ''
                 ).catch(() => '');
-                if (ligaAposFalha && ligaAposFalha !== nomeLiga) {
+                if (ligaAposFalha && ligaAposFalha !== nomeLigaOriginal) {
                     console.log(`   ❌ [${ligaNorm}] Liga mudou para "${ligaAposFalha}" — abortando`);
                     break;
                 }
@@ -552,7 +576,7 @@ async function ciclo(pg) {
                     await diagnosticarPagina(pg, ligaNorm, ' pods não carregaram:');
                 }
 
-                const todasOdds = await lerTodasAsOdds(pg, ligaNorm);
+                const todasOdds = await lerTodasAsOdds(pg, ligaNorm, nomeLiga);
                 if (todasOdds.length === 0) {
                     console.log(`   ⏭️  [${ligaNorm}] — sem odds disponíveis`);
                 } else {
