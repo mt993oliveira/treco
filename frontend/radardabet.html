@@ -4458,6 +4458,24 @@ function gruposDeJogos(n) {
         if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(ms), jogos: [] });
         byHour.get(key).jogos.push(p);
     });
+    // Slot da hora atual e da próxima hora quando há eventos agendados — igual ao modo horas
+    if (S.showProximos && (S.eventosAgendados || []).length > 0) {
+        const _agoraB365 = Date.now() + 3600000;
+        const curHourMs = utcHourStart(new Date(_agoraB365));
+        const curKey    = horaKey(new Date(curHourMs));
+        if (!byHour.has(curKey)) byHour.set(curKey, { key: curKey, hora: new Date(curHourMs), jogos: [] });
+        const nextHourMs  = utcHourStart(new Date(_agoraB365 + 3600000));
+        const nextHourEnd = nextHourMs + 3600000;
+        const temNaProxHora = (S.eventosAgendados).some(ev => {
+            if (!ev.horario || normalizarLiga(ev.liga) !== S.ligaAtiva) return false;
+            const t = new Date(ev.horario).getTime();
+            return t >= nextHourMs && t < nextHourEnd;
+        });
+        if (temNaProxHora) {
+            const key = horaKey(new Date(nextHourMs));
+            if (!byHour.has(key)) byHour.set(key, { key, hora: new Date(nextHourMs), jogos: [] });
+        }
+    }
     return [...byHour.values()].sort((a, b) => a.hora - b.hora);
 }
 
