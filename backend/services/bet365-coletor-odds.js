@@ -647,6 +647,7 @@ async function run() {
         console.log(`🔄 [Odds] Ciclo #${cicloNum} - ${agora}`);
         console.log(`============================================`);
 
+        const inicioCiclo = Date.now();
         try {
             // Verifica se coletor 2 está ativo nas configurações do sistema
             try {
@@ -679,9 +680,10 @@ async function run() {
 
         // Intervalo com jitter aleatório (INTERVALO_MS + até 60s extra)
         // Evita que o coletor tenha um "pulso" previsível e detectável
-        const jitter = Math.floor(Math.random() * 60000);
-        const espera = INTERVALO_MS + jitter;
-        console.log(`   ⏳ [Odds] Próximo ciclo em ${Math.round(espera / 1000)}s`);
+        const jitter     = Math.floor(Math.random() * 60000);
+        const espera     = INTERVALO_MS + jitter;
+        const coletaSeg  = Math.round((Date.now() - inicioCiclo) / 1000);
+        console.log(`   ⏱️  [Odds] próximo ciclo em ${Math.round(espera / 1000)}s (configurado: ${Math.round(INTERVALO_MS / 1000)}s, coleta levou: ${coletaSeg}s)`);
         await new Promise(r => setTimeout(r, espera));
     }
 }
