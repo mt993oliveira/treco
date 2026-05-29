@@ -2013,11 +2013,11 @@ server.listen(PORT, () => {
                     BET365_HIST_HORA_FIM:   horaFimStr,
                     BET365_HIST_LIGAS:      ligasComLacuna.join(','),
                 };
-                const proc = spawn('node', ['-r', 'dotenv/config', 'backend/services/bet365-coletor-historico.js'], {
-                    cwd: _bfDir, env: _bfEnv, stdio: ['ignore', 'pipe', 'pipe'],
+                // Abre janela CMD visível separada (fecha ao terminar) — não mistura log com Coletor 1
+                const _bfCmd = `title Coletor 3 - Backfill ${horaIniStr} && cd /d "${_bfDir}" && node -r dotenv/config backend/services/bet365-coletor-historico.js`;
+                const proc = spawn('cmd.exe', ['/c', _bfCmd], {
+                    detached: true, env: _bfEnv, stdio: 'ignore',
                 });
-                proc.stdout.on('data', d => process.stdout.write(d.toString()));
-                proc.stderr.on('data', d => process.stderr.write(d.toString()));
                 proc.on('exit', code => {
                     const duracaoS = Math.round((Date.now() - _bfInicioMs) / 1000);
                     console.log(`   📚 [Backfill Auto] Concluído em ${duracaoS}s (código: ${code})`);
