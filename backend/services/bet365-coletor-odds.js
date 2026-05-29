@@ -229,23 +229,51 @@ function lerOddsDOM() {
     return { ok: true, suspended, horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
 }
 
+// ── Hard refresh + volta à liga (reutilizado entre jogos) ────
+async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
+    const navP = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+    await pg.evaluate(() => location.reload(true));
+    await navP;
+    await new Promise(r => setTimeout(r, 5000));
+    const voltou = await pg.evaluate((nome) => {
+        const btn = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].find(b =>
+            b.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome
+        );
+        if (btn) { btn.click(); return true; }
+        return false;
+    }, nomeLigaOriginal).catch(() => false);
+    if (!voltou) { console.log(`   ❌ [${ligaNorm}] Liga não encontrada após refresh`); return false; }
+    await new Promise(r => setTimeout(r, 3000));
+    try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 8000 }); }
+    catch(_) { console.log(`   ❌ [${ligaNorm}] Nav não voltou após refresh`); return false; }
+    return true;
+}
+
 // ── Itera TODOS os botões de horário e coleta odds de cada jogo ─
+// Hard refresh antes de cada jogo (exceto o primeiro) — garante estado limpo.
 async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
     const resultados = [];
 
-    // Coleta os textos dos botões ANTES de qualquer clique
-    // O DOM pode se reconstruir após cada clique — usar texto é mais robusto que índice
-    const horarios = await pg.evaluate(() =>
+    const lerHorarios = () => pg.evaluate(() =>
         [...document.querySelectorAll('.vr-EventTimesNavBarButton')]
             .map(b => b.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || b.textContent.trim())
             .filter(Boolean)
     );
+
+    const horarios = await lerHorarios();
     console.log(`   🕐 [${ligaNorm}] ${horarios.length} horário(s): ${horarios.join(' | ')}`);
     if (horarios.length === 0) return resultados;
 
-    for (const horarioAlvo of horarios) {
+    for (let idx = 0; idx < horarios.length; idx++) {
+        const horarioAlvo = horarios[idx];
         try {
-            // Clica pelo TEXTO do botão — não quebra quando o DOM se reorganiza
+            // Hard refresh antes de cada jogo (exceto o primeiro)
+            if (idx > 0) {
+                const ok = await _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal);
+                if (!ok) break;
+            }
+
+            // Clica pelo texto do botão
             const clicou = await pg.evaluate((texto) => {
                 const btn = [...document.querySelectorAll('.vr-EventTimesNavBarButton')].find(b => {
                     const t = b.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || b.textContent.trim();
@@ -258,68 +286,21 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
             }, horarioAlvo);
 
             if (!clicou) {
-                console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — botão sumiu do DOM (jogo já passou?)`);
+                console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — jogo já ao vivo (não encontrado após refresh)`);
                 continue;
             }
 
-            // Aguarda confirmação visual: botão selecionado ganha classe -selected
-            try {
-                await pg.waitForFunction((texto) => {
-                    const sel = document.querySelector('.vr-EventTimesNavBarButton-selected');
-                    if (!sel) return false;
-                    const t = sel.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim()
-                              || sel.textContent.trim();
-                    return t === texto;
-                }, { timeout: 3000 }, horarioAlvo);
-            } catch(_) {
-                // Sem seleção confirmada — pode ser jogo ao vivo (normal) ou clique falho; continua
-            }
-
-            // Delay humano após clicar no horário — aleatório para não ser previsível
-            await randomDelay(1500, 3200);
+            await randomDelay(1500, 3000);
 
             try {
                 await pg.waitForSelector('.gl-MarketGroupPod.gl-MarketGroup', { timeout: 6000 });
             } catch(_) {
                 await diagnosticarPagina(pg, ligaNorm, ` "${horarioAlvo}" sem pods:`);
-                try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 8000 }); }
-                catch(_2) {
-                    // Nav sumiu — jogo entrou ao vivo. Recarrega e volta à liga para coletar horários restantes.
-                    console.log(`   🔄 [${ligaNorm}] Nav sumiu (jogo ao vivo) — recarregando para continuar...`);
-                    const navRefresh = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
-                    await pg.evaluate(() => location.reload(true));
-                    await navRefresh;
-                    await new Promise(r => setTimeout(r, 5000));
-                    const voltou = await pg.evaluate((nome) => {
-                        const btn = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].find(b =>
-                            b.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome
-                        );
-                        if (btn) { btn.click(); return true; }
-                        return false;
-                    }, nomeLigaOriginal).catch(() => false);
-                    if (!voltou) { console.log(`   ❌ [${ligaNorm}] Liga não encontrada após reload`); break; }
-                    await new Promise(r => setTimeout(r, 3000));
-                    try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 8000 }); }
-                    catch(_3) { console.log(`   ❌ [${ligaNorm}] Nav não voltou após reload`); break; }
-                    continue; // continua com próximo horário
-                }
-                // Nav voltou sem reload — verificar liga
-                const ligaAposFalha = await pg.evaluate(() =>
-                    [...document.querySelectorAll('.vrl-MeetingsHeaderButton')]
-                        .find(b => [...b.classList].some(c => c.toLowerCase().includes('select') || c.toLowerCase().includes('active')))
-                        ?.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() || ''
-                ).catch(() => '');
-                if (ligaAposFalha && ligaAposFalha !== nomeLigaOriginal) {
-                    console.log(`   ❌ [${ligaNorm}] Liga mudou para "${ligaAposFalha}" — abortando`);
-                    break;
-                }
-                continue;
+                continue; // próximo jogo terá seu próprio refresh
             }
-            await randomDelay(300, 700);
 
             const odds = await pg.evaluate(lerOddsDOM);
             if (odds.ok) {
-                // Só salva se o horário exibido bate com o que foi clicado
                 if (odds.horario && odds.horario !== horarioAlvo) {
                     console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — horário exibido (${odds.horario}) diverge, pulando`);
                 } else {
