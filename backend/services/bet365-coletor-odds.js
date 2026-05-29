@@ -320,11 +320,14 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
             const odds = await pg.evaluate(lerOddsDOM);
             if (odds.ok) {
                 // Só salva se o horário exibido bate com o que foi clicado
-                // Evita duplicatas quando o clique não registrou e a página mostra jogo anterior
                 if (odds.horario && odds.horario !== horarioAlvo) {
                     console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — horário exibido (${odds.horario}) diverge, pulando`);
                 } else {
-                    console.log(`   ✔️  [${ligaNorm}] "${horarioAlvo}" → ${odds.timeCasa} × ${odds.timeFora} C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                    const icon  = odds.suspended ? '📌' : '💰';
+                    const label = odds.suspended ? '[race-off]' : '[próximo]';
+                    await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
+                                       odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
+                    console.log(`   ${icon} [${ligaNorm}] ${odds.horario} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} ${label} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
                     resultados.push(odds);
                 }
             } else {
@@ -580,15 +583,7 @@ async function ciclo(pg) {
                 if (todasOdds.length === 0) {
                     console.log(`   ⏭️  [${ligaNorm}] — sem odds disponíveis`);
                 } else {
-                    for (const odds of todasOdds) {
-                        await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
-                                           odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
-                        const icon   = odds.suspended ? '📌' : '💰';
-                        const label  = odds.suspended ? ' [race-off]' : ' [próximo]';
-                        const clubes = ` ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)}`;
-                        console.log(`   ${icon} [${ligaNorm}] ${odds.horario}${clubes}${label} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
-                        oddsOk++;
-                    }
+                    oddsOk += todasOdds.length;
                 }
             }
 
