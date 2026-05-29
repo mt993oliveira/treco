@@ -3323,9 +3323,15 @@ async function carregarHistorico() {
             S.jogosMosaico  || 0
         );
         if (_jogosMax > 0 && S.todasPartidas.length > 0 && S._horasCarregadas > 0) {
-            const _taxa = S.todasPartidas.length / S._horasCarregadas;
+            // Usa taxa da liga ativa quando possível — mais preciso que a taxa total.
+            // Inclui buffer de warmup (grafMM1) para que o rolling não comece do zero.
+            const _warmup   = S.grafMM1 || 20;
+            const _ligaJogs = S.ligaAtiva ? S.todasPartidas.filter(p => p.liga === S.ligaAtiva).length : 0;
+            const _taxa     = (_ligaJogs > 0)
+                ? _ligaJogs / S._horasCarregadas
+                : S.todasPartidas.length / S._horasCarregadas;
             if (_taxa > 0) {
-                const _horasNec = Math.ceil(_jogosMax / _taxa) + 2;
+                const _horasNec = Math.ceil((_jogosMax + _warmup) / _taxa) + 2;
                 if (_horasNec > S._horasCarregadas && _horasNec <= 168) {
                     S._horasCarregadas = _horasNec;
                     return carregarHistorico();
@@ -3865,6 +3871,20 @@ function renderLigas() {
             S.partidas  = filtrarPartidas();
             document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
             b.classList.add('ativo');
+            // Verifica se há dados suficientes para warmup desta liga.
+            // Usa taxa da liga ativa (não do total) + buffer de warmup (grafMM1).
+            const _jMaxLiga = Math.max(S.jogosGrafico||0, S.jogosGols||0, S.jogosLinha||0, S.jogosParImpar||0);
+            if (_jMaxLiga > 0 && S.partidas.length > 0 && S._horasCarregadas > 0) {
+                const _taxaLiga  = S.partidas.length / S._horasCarregadas;
+                const _warmup    = S.grafMM1 || 20;
+                const _horasNec  = Math.ceil((_jMaxLiga + _warmup) / _taxaLiga) + 2;
+                if (_horasNec > S._horasCarregadas && _horasNec <= 168) {
+                    S._horasCarregadas = _horasNec;
+                    carregarHistorico();
+                    if (S.view === 'analise') { _faAtualizarStatus(); carregarAnalise(true); }
+                    return;
+                }
+            }
             renderTabela(); _renderAllCharts();
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
             if (S.view === 'analise') { _faAtualizarStatus(); carregarAnalise(true); }
