@@ -1914,6 +1914,126 @@ server.listen(PORT, () => {
         }, 180000);
         // ─────────────────────────────────────────────────────────────────
 
+        // ── Backfill automático (Coletor 3) ──────────────────────────────────
+        // A cada minuto verifica se chegou o minuto configurado (coletor3_minuto_execucao).
+        // Se sim, confere lacunas na hora anterior e aciona o historico.js só se necessário.
+        let _backfillUltimaHora = -1;
+        let _backfillRodando    = false;
+
+        async function _autoBackfill() {
+            if (_backfillRodando) return;
+            try {
+                if (!await _edgeAcessivel()) return;
+
+                const pool = await getDbPool();
+                const cfgR = await pool.request().query(
+                    `SELECT chave, valor FROM bet365_config WHERE chave IN ('coletor3_ativo','coletor3_minuto_execucao')`
+                );
+                const cfg = {};
+                cfgR.recordset.forEach(r => { cfg[r.chave] = r.valor; });
+                if (cfg.coletor3_ativo !== 'true') return;
+
+                const minutoAlvo = Math.max(0, Math.min(59, parseInt(cfg.coletor3_minuto_execucao) || 5));
+                const agora      = new Date(Date.now() + 3600000); // Bet365 BST = UTC+1
+                const minAtual   = agora.getUTCMinutes();
+                const horaAtual  = agora.getUTCHours();
+
+                if (minAtual !== minutoAlvo) return;
+                if (_backfillUltimaHora === horaAtual) return; // já rodou nesta hora
+                _backfillUltimaHora = horaAtual;
+
+                // Hora anterior a ser verificada
+                const horaAnterior = (horaAtual + 23) % 24;
+                const horaIniStr   = `${String(horaAnterior).padStart(2,'0')}:00`;
+                const horaFimStr   = `${String(horaAnterior).padStart(2,'0')}:59`;
+
+                // Data para extra.bet365: madrugada BST (00–05) usa sessão do "dia anterior"
+                const bst = new Date(Date.now() + 3600000);
+                let dataExtra;
+                if (horaAnterior < 6) {
+                    const d = new Date(bst);
+                    d.setUTCDate(d.getUTCDate() - 1);
+                    dataExtra = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+                } else {
+                    dataExtra = `${bst.getUTCFullYear()}-${String(bst.getUTCMonth()+1).padStart(2,'0')}-${String(bst.getUTCDate()).padStart(2,'0')}`;
+                }
+
+                // Conta resultados por liga na hora anterior — detecta lacunas
+                const LIGAS_ESPERADO = {
+                    'World Cup': 20, 'Euro Cup': 20, 'Premiership': 20,
+                    'Super Liga Sul-Americana': 20, 'Express Cup': 55,
+                };
+                const LIGA_CFG_KEY = {
+                    'World Cup':'liga_world_cup','Euro Cup':'liga_euro_cup',
+                    'Premiership':'liga_premiership','Express Cup':'liga_express_cup',
+                    'Super Liga Sul-Americana':'liga_super_liga',
+                };
+                const cfgAll = {};
+                (await pool.request().query(`SELECT chave, valor FROM bet365_config`))
+                    .recordset.forEach(r => { cfgAll[r.chave] = r.valor; });
+
+                const ligasComLacuna = [];
+                for (const [liga, esperado] of Object.entries(LIGAS_ESPERADO)) {
+                    const key = LIGA_CFG_KEY[liga];
+                    if (key && cfgAll[key] === 'false') continue;
+                    const r = await pool.request()
+                        .input('liga', sql.NVarChar(200), liga)
+                        .input('hora', sql.Int, horaAnterior)
+                        .query(`
+                            SELECT COUNT(DISTINCT evento_id) AS qtd
+                            FROM bet365_resultados_mercados
+                            WHERE liga = @liga
+                              AND DATEPART(HOUR, data_partida) = @hora
+                              AND data_partida >= DATEADD(HOUR, -3, GETUTCDATE())
+                        `);
+                    const qtd     = r.recordset[0]?.qtd || 0;
+                    const minimo  = liga === 'Express Cup' ? 45 : 16; // tolera ~20% de perda
+                    if (qtd < minimo) {
+                        ligasComLacuna.push(liga);
+                        console.log(`   📚 [Backfill] [${liga}] ${qtd}/${esperado} resultados na hora ${horaIniStr} → backfill`);
+                    }
+                }
+
+                if (ligasComLacuna.length === 0) {
+                    console.log(`   📚 [Backfill] Hora ${horaIniStr}: dados completos, sem backfill necessário`);
+                    return;
+                }
+
+                _backfillRodando = true;
+                console.log(`\n📚 [Backfill Auto] Iniciando para: ${ligasComLacuna.join(', ')} | ${horaIniStr}–${horaFimStr}`);
+
+                const { spawn } = require('child_process');
+                const _bfDir = require('path').join(__dirname, '..');
+                const _bfEnv = {
+                    ...process.env,
+                    BET365_HIST_DEBUG_PORT: String(parseInt(process.env.BET365_DEBUG_PORT) || 9222),
+                    BET365_HIST_DATA:       dataExtra,
+                    BET365_HIST_HORA_INI:   horaIniStr,
+                    BET365_HIST_HORA_FIM:   horaFimStr,
+                    BET365_HIST_LIGAS:      ligasComLacuna.join(','),
+                };
+                const proc = spawn('node', ['-r', 'dotenv/config', 'backend/services/bet365-coletor-historico.js'], {
+                    cwd: _bfDir, env: _bfEnv, stdio: ['ignore', 'pipe', 'pipe'],
+                });
+                proc.stdout.on('data', d => process.stdout.write(d.toString()));
+                proc.stderr.on('data', d => process.stderr.write(d.toString()));
+                proc.on('exit', code => {
+                    console.log(`   📚 [Backfill Auto] Concluído (código: ${code})`);
+                    _backfillRodando = false;
+                });
+                proc.on('error', e => {
+                    console.error(`   ❌ [Backfill Auto] Erro ao iniciar processo: ${e.message}`);
+                    _backfillRodando = false;
+                });
+
+            } catch(e) {
+                console.warn(`   ⚠️  [Backfill Auto] Erro: ${e.message}`);
+                _backfillRodando = false;
+            }
+        }
+        setInterval(_autoBackfill, 60000);
+        // ─────────────────────────────────────────────────────────────────────
+
         process.on('SIGINT',  async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
         process.on('SIGTERM', async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
     }

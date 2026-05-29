@@ -1659,8 +1659,9 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_pct_tamanho',     valor:'8',       tipo:'number',  grupo:'grafico', descricao:'% Gráfico: tamanho da fonte da porcentagem (px)' },
     { chave:'grafico_pills_default',   valor:'true',    tipo:'boolean', grupo:'grafico', descricao:'📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados' },
     // ── Coletores ──
-    { chave:'coletor2_ativo', valor:'true',  tipo:'boolean', grupo:'sistema', descricao:'⚡ Coletor 2 (Odds pré-jogo) — ativar/pausar coleta automática de odds' },
-    { chave:'coletor3_ativo', valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📚 Coletor 3 (Histórico) — ativar/pausar backfill de dados históricos' },
+    { chave:'coletor2_ativo',           valor:'true',  tipo:'boolean', grupo:'sistema', descricao:'⚡ Coletor 2 (Odds pré-jogo) — ativar/pausar coleta automática de odds' },
+    { chave:'coletor3_ativo',           valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📚 Coletor 3 (Backfill Auto) — verificar e preencher lacunas automaticamente ao final de cada hora' },
+    { chave:'coletor3_minuto_execucao', valor:'5',     tipo:'number',  grupo:'sistema', descricao:'📚 Coletor 3: minuto de cada hora para verificar lacunas (0–59, padrão: 5)' },
     // ── Sistema ──
     { chave:'manutencao_ativa',             valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'Ativar modo manutenção — bloqueia acesso de usuários não-Master' },
     { chave:'manutencao_mensagem',          valor:'Estamos realizando melhorias no sistema. Voltamos em breve!', tipo:'text', grupo:'sistema', descricao:'Mensagem exibida na tela de manutenção' },
