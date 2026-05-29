@@ -262,7 +262,7 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                 continue;
             }
 
-            // Aguarda confirmação visual: botão selecionado ganha classe -selected (borda amarela)
+            // Aguarda confirmação visual: botão selecionado ganha classe -selected
             try {
                 await pg.waitForFunction((texto) => {
                     const sel = document.querySelector('.vr-EventTimesNavBarButton-selected');
@@ -272,7 +272,7 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                     return t === texto;
                 }, { timeout: 3000 }, horarioAlvo);
             } catch(_) {
-                console.log(`   ⚠️  [${ligaNorm}] "${horarioAlvo}" — clique não confirmado (sem borda amarela), continuando mesmo assim`);
+                // Sem seleção confirmada — pode ser jogo ao vivo (normal) ou clique falho; continua
             }
 
             // Delay humano após clicar no horário — aleatório para não ser previsível
