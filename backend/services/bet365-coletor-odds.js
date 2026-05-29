@@ -360,19 +360,18 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
 }
 
 // ── Hard refresh e aguarda ligas ────────────────────────────
+// Usa location.reload(true) via evaluate — idêntico ao Ctrl+F5 do browser,
+// mesmo mecanismo que o Coletor 1 usa e que funciona com a SPA da Bet365.
 async function hardRefresh(pg) {
     try {
-        await pg.bringToFront(); // ANTES do goto — Chromium throttla JS em aba de fundo
-        await pg.setCacheEnabled(false);
-        // goto() em vez de reload() — SPA da Bet365 não restaura o estado do futebol virtual num reload
-        await pg.goto(URL_SOCCER, { waitUntil: 'load', timeout: 60000 });
-        await pg.setCacheEnabled(true);
-        // 10s após load completo — SPA precisa de tempo para renderizar os componentes virtuais
-        await new Promise(r => setTimeout(r, 10000));
-        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 45000 });
+        await pg.bringToFront();
+        const navPromise = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+        await pg.evaluate(() => location.reload(true));
+        await navPromise;
+        await new Promise(r => setTimeout(r, 8000));
+        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
         return true;
     } catch(err) {
-        await pg.setCacheEnabled(true).catch(() => {});
         console.warn(`   ⚠️  [Odds] Refresh falhou: ${err.message}`);
         return false;
     }
