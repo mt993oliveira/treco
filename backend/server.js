@@ -2000,6 +2000,7 @@ server.listen(PORT, () => {
                 }
 
                 _backfillRodando = true;
+                const _bfInicioMs = Date.now();
                 console.log(`\n📚 [Backfill Auto] Iniciando para: ${ligasComLacuna.join(', ')} | ${horaIniStr}–${horaFimStr}`);
 
                 const { spawn } = require('child_process');
@@ -2018,7 +2019,8 @@ server.listen(PORT, () => {
                 proc.stdout.on('data', d => process.stdout.write(d.toString()));
                 proc.stderr.on('data', d => process.stderr.write(d.toString()));
                 proc.on('exit', code => {
-                    console.log(`   📚 [Backfill Auto] Concluído (código: ${code})`);
+                    const duracaoS = Math.round((Date.now() - _bfInicioMs) / 1000);
+                    console.log(`   📚 [Backfill Auto] Concluído em ${duracaoS}s (código: ${code})`);
                     _backfillRodando = false;
                 });
                 proc.on('error', e => {

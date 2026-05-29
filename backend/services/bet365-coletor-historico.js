@@ -60,8 +60,9 @@ const LIMPAR_BACKFILL = process.env.BET365_HIST_LIMPAR === '1';
 const HORA_VIRADA_DIA = 6;
 
 // Delay e máx. tentativas de clique — sobrescritos pelo valor em bet365_config
-let DELAY_CLIQUE_MS = 1000;
-let MAX_CLIQUES     = 3;
+let DELAY_CLIQUE_MS    = 1000;
+let MAX_CLIQUES        = 3;
+let RETRY_DELAY_MS     = 600000; // 10 min — pausa antes de retentar jogos que falharam (rate limit Bet365)
 
 // ── Normalização (igual ao coletor principal) ────────────────
 const LIGA_NORMALIZAR = {
@@ -158,38 +159,192 @@ const LIGA_CONFIG_KEY = {
     'Super Liga Sul-Americana': 'liga_super_liga',
 };
 
-function construirUrlExtra(ligaNorm, dataAlvo, modo) {
-    const ligaInfo = LIGA_COMP_EXTRA[ligaNorm];
-    if (!ligaInfo) return null;
-    const [yyyy, mmN, dd] = dataAlvo.split('-').map(Number);
-    const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                      'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    const displayDate = `${dd}-${dd} ${MESES_PT[mmN-1]} ${yyyy}`;
-    const b64 = s => Buffer.from(s).toString('base64');
-    const qParams = [
-        b64('2'), b64('146'), b64('Futebol%20Virtual'),
-        b64(dataAlvo), b64(dataAlvo), b64('0'), b64('0'),
-        b64(displayDate), b64('0'),
-        b64(encodeURIComponent(ligaInfo.compNome)),
-        b64(ligaInfo.compId), b64('0'), '',
-        b64(modo || 'result'),
-        b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
-        '', b64('0'), b64('0'),
-    ].join('|');
-    return `https://extra.bet365.bet.br/results/br?q=${qParams}`;
+// Helper: hover sobre elemento (com pequeno offset aleatório) e clica — parecer humano
+async function _clicarEl(pg, el) {
+    try {
+        const box = await el.boundingBox();
+        if (box) {
+            const x = box.x + box.width  * (0.25 + Math.random() * 0.5);
+            const y = box.y + box.height * (0.25 + Math.random() * 0.5);
+            await pg.mouse.move(x, y, { steps: 3 + Math.floor(Math.random() * 4) });
+            await delay(80 + Math.floor(Math.random() * 160));
+            await pg.mouse.click(x, y);
+        } else {
+            await el.click();
+        }
+    } catch(_) { await el.click(); }
+}
+
+// Helper: procura elemento por texto (lista de seletores CSS) e clica via mouse
+async function _clicarPorTexto(pg, sels, texto) {
+    for (const sel of sels) {
+        const els = await pg.$$(sel);
+        for (const el of els) {
+            const txt = await pg.evaluate(e => e.textContent.trim(), el).catch(() => '');
+            if (txt.toLowerCase().includes(texto.toLowerCase())) {
+                await _clicarEl(pg, el);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Navega como humano: home → Encontrar um Resultado → Futebol Virtual → data → competição
+async function navegarParaLiga(novaPg, ligaNorm, ligaInfo, dataAlvo) {
+    console.log(`   🖱️  [${ligaNorm}] Navegação humana → ${dataAlvo} / ${ligaInfo.compNome}`);
+
+    // 1. Página inicial de resultados
+    await novaPg.goto('https://extra.bet365.bet.br/results/br?li=1', { waitUntil: 'networkidle2', timeout: 30000 });
+    await delayHumano(1500);
+
+    // 2. Clica "Encontrar um Resultado"
+    const btnEncontrar = await novaPg.waitForSelector('.home-page__search-button', { timeout: 10000 });
+    await _clicarEl(novaPg, btnEncontrar);
+    await delayHumano(1200);
+
+    // 3. Selecionar esporte "Futebol Virtual"
+    let esporteOk = false;
+
+    // Tenta clique direto via data-sportid="146"
+    const fvDireto = await novaPg.$('[data-sportid="146"] button, [data-sportid="146"]');
+    if (fvDireto) {
+        await _clicarEl(novaPg, fvDireto);
+        esporteOk = true;
+    }
+
+    if (!esporteOk) {
+        // Ativa campo de busca clicando em "Procurar" (se existir)
+        const procEl = await novaPg.evaluate(() => {
+            const found = [...document.querySelectorAll('button,a,span,div')]
+                .find(b => /^procurar$|^pesquisar$|^buscar$/i.test(b.textContent.trim()));
+            return found ? found.className : null;
+        });
+        if (procEl) {
+            const procHandle = await novaPg.$(`.${procEl.trim().split(' ')[0]}`);
+            if (procHandle) { await _clicarEl(novaPg, procHandle); await delayHumano(600); }
+        }
+
+        // Preenche campo de busca com digitação humana
+        const inputSel = '.results-modal__search-input, input[type="search"], input[type="text"]';
+        try { await novaPg.waitForSelector(inputSel, { timeout: 4000 }); } catch(_) {}
+        const inputEl = await novaPg.$(inputSel);
+        if (inputEl) {
+            await _clicarEl(novaPg, inputEl);
+            await novaPg.keyboard.type('Futebol Virtual', { delay: 70 + Math.floor(Math.random() * 50) });
+            await delayHumano(900);
+        }
+
+        // Clica no resultado "Futebol Virtual"
+        esporteOk = await _clicarPorTexto(novaPg,
+            ['[data-sportid="146"]','.results-modal__sports-entry',
+             '.results-modal__search-result','li','button'],
+            'Futebol Virtual');
+    }
+
+    if (!esporteOk) throw new Error('[navegarParaLiga] "Futebol Virtual" não encontrado no modal de esportes');
+    await delayHumano(1200);
+
+    // 4. Selecionar data no calendário
+    const [yyyy, mm, dd] = dataAlvo.split('-').map(Number);
+    const DIAS_EN  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MESES_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const MESES_PT = {'Janeiro':1,'Fevereiro':2,'Março':3,'Abril':4,'Maio':5,'Junho':6,
+                      'Julho':7,'Agosto':8,'Setembro':9,'Outubro':10,'Novembro':11,'Dezembro':12};
+    const dataObj  = new Date(Date.UTC(yyyy, mm-1, dd));
+    const ariaLabel = `${DIAS_EN[dataObj.getUTCDay()]} ${MESES_EN[mm-1]} ${dd} ${yyyy}`;
+
+    await novaPg.waitForSelector('.date-picker__day, .date-picker__time-frame', { timeout: 10000 });
+    await delayHumano(600);
+
+    // Navega até o mês correto (até 24 meses atrás)
+    for (let tentMes = 0; tentMes < 24; tentMes++) {
+        const diaEl = await novaPg.$(`button.date-picker__day[aria-label="${ariaLabel}"]`);
+        if (diaEl) break;
+
+        const { mesAtual, anoAtual } = await novaPg.evaluate((mPT) => {
+            const el = document.querySelector('.date-picker__month,[class*="month-title"],[class*="month"]');
+            if (!el) return { mesAtual: null, anoAtual: null };
+            const m = el.textContent.trim().match(/(\w+)\s+(\d{4})/);
+            if (!m) return { mesAtual: null, anoAtual: null };
+            return { mesAtual: mPT[m[1]] || null, anoAtual: parseInt(m[2]) };
+        }, MESES_PT);
+
+        if (anoAtual && mesAtual && (anoAtual < yyyy || (anoAtual === yyyy && mesAtual < mm))) break;
+
+        const prevEl = await novaPg.$('.date-picker__navigation-prev,.date-picker__prev');
+        if (!prevEl) break;
+        await _clicarEl(novaPg, prevEl);
+        await delayHumano(500);
+    }
+
+    // Clica no dia — "Data de"
+    async function _encontrarDia() {
+        const el = await novaPg.$(`button.date-picker__day[aria-label="${ariaLabel}"]`);
+        if (el) return el;
+        // Fallback por número do dia
+        const todos = await novaPg.$$('button.date-picker__day,.date-picker__day');
+        for (const d of todos) {
+            const txt = await novaPg.evaluate(e => e.textContent.trim(), d).catch(() => '');
+            const dis = await novaPg.evaluate(e =>
+                e.disabled || e.classList.contains('date-picker__day--disabled'), d).catch(() => true);
+            if (txt === String(dd) && !dis) return d;
+        }
+        return null;
+    }
+
+    const diaDeEl = await _encontrarDia();
+    if (!diaDeEl) throw new Error(`[navegarParaLiga] Dia ${dd}/${mm}/${yyyy} não encontrado no calendário`);
+    await _clicarEl(novaPg, diaDeEl);
+    await delayHumano(500);
+
+    // Clica no mesmo dia — "Data até"
+    const diaAteEl = await _encontrarDia();
+    if (diaAteEl) { await _clicarEl(novaPg, diaAteEl); await delayHumano(500); }
+
+    // Confirma a data
+    let confirmBtn = await novaPg.$('.date-picker__confirm');
+    if (!confirmBtn) {
+        const btns = await novaPg.$$('button');
+        for (const btn of btns) {
+            const txt = await novaPg.evaluate(e => e.textContent.trim(), btn).catch(() => '');
+            if (/confirmar|atualizar/i.test(txt)) { confirmBtn = btn; break; }
+        }
+    }
+    if (confirmBtn) { await _clicarEl(novaPg, confirmBtn); }
+    else console.warn(`   ⚠️  [${ligaNorm}] Botão confirmar data não encontrado`);
+    await delayHumano(1500);
+
+    // 5. Selecionar competição na lista
+    await novaPg.waitForFunction(() => {
+        return !!document.querySelector(
+            '[data-state="competition"],.results-state__competition-list,.results-state__entry');
+    }, { timeout: 12000 }).catch(() => {});
+    await delayHumano(600);
+
+    const compOk = await _clicarPorTexto(novaPg,
+        ['.results-state__competition','.results-state__entry','.results-state__link','li','button','a'],
+        ligaInfo.compNome);
+
+    if (!compOk) throw new Error(`[navegarParaLiga] Competição "${ligaInfo.compNome}" não encontrada na lista`);
+    await delayHumano(1500);
+
+    // 6. Aguarda lista de jogos
+    try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
+    return true;
 }
 
 async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
-    const url = construirUrlExtra(ligaNorm, dataAlvo, 'result');
-    if (!url) { console.warn(`   ⚠️  [${ligaNorm}] Sem compId`); return 0; }
-    console.log(`   🌐 [${ligaNorm}] ${url}`);
+    const ligaInfo = LIGA_COMP_EXTRA[ligaNorm];
+    if (!ligaInfo) { console.warn(`   ⚠️  [${ligaNorm}] Sem compId`); return 0; }
 
     let novaPg = null;
+    let urlListaJogos = null;
     try {
         novaPg = await browser.newPage();
         await novaPg.setCacheEnabled(false);
-        await novaPg.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-        try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
+        await navegarParaLiga(novaPg, ligaNorm, ligaInfo, dataAlvo);
+        urlListaJogos = await novaPg.url();
         await delay(1500);
 
         // Rola até o final para forçar carregamento lazy de todos os jogos
@@ -250,6 +405,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
         if (jogosParaClicar.length === 0) return 0;
 
         const resultados = [];
+        const jogosFalhados = [];
 
         for (const jogo of jogosParaClicar) {
             try {
@@ -259,7 +415,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                         const btn = document.querySelectorAll('button.point-result__fixture')[idx];
                         if (btn) { btn.scrollIntoView({ block: 'center' }); btn.click(); }
                     }, jogo.idx);
-                    await delay(DELAY_CLIQUE_MS);
+                    await delayHumano(DELAY_CLIQUE_MS);
                     const abriu = await novaPg.evaluate(() => {
                         const inner = document.querySelector('.fixture-page__inner');
                         return inner && !inner.classList.contains('fixture-page__inner--hidden');
@@ -344,8 +500,8 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                 await delay(300);
 
             } catch(err) {
-                console.warn(`   ⚠️  [${ligaNorm}] ${jogo.horario} ${jogo.timeCasa}: ${err.message}`);
-                resultados.push({ ...jogo, golCasa: null, golFora: null, placar: null, mercados: [] });
+                console.warn(`   ⚠️  [${ligaNorm}] ${jogo.horario} ${jogo.timeCasa}: ${err.message.slice(0,80)} — agendando retry`);
+                jogosFalhados.push(jogo);
                 try {
                     await novaPg.evaluate(() => {
                         const btn = document.querySelector('.fixture-page-header__back-button');
@@ -353,6 +509,103 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                     });
                     await delay(600);
                 } catch(_) {}
+            }
+        }
+
+        // ── Retry: jogos que falharam no loop principal ──────────────────
+        if (jogosFalhados.length > 0) {
+            const retryMin = Math.round(RETRY_DELAY_MS / 60000);
+            console.log(`\n   ⏸️  [${ligaNorm}] ${jogosFalhados.length} jogo(s) falharam — aguardando ${retryMin}min (rate limit Bet365) e retentando...`);
+            await delay(RETRY_DELAY_MS);
+            // Recarrega lista — usa URL capturada ou refaz navegação humana
+            if (urlListaJogos) {
+                await novaPg.goto(urlListaJogos, { waitUntil: 'networkidle2', timeout: 30000 });
+                try { await novaPg.waitForSelector('button.point-result__fixture', { timeout: 15000 }); } catch(_) {}
+            } else {
+                await navegarParaLiga(novaPg, ligaNorm, ligaInfo, dataAlvo);
+            }
+            await delay(1500);
+            await novaPg.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+            await delay(1000);
+            await novaPg.evaluate(() => window.scrollTo(0, 0));
+            await delay(500);
+            console.log(`   🔁 [${ligaNorm}] Retentando ${jogosFalhados.length} jogo(s)...`);
+            for (const jogo of jogosFalhados) {
+                try {
+                    for (let tentClique = 1; tentClique <= MAX_CLIQUES; tentClique++) {
+                        await novaPg.evaluate((idx) => {
+                            const btn = document.querySelectorAll('button.point-result__fixture')[idx];
+                            if (btn) { btn.scrollIntoView({ block: 'center' }); btn.click(); }
+                        }, jogo.idx);
+                        await delay(DELAY_CLIQUE_MS);
+                        const abriu = await novaPg.evaluate(() => {
+                            const inner = document.querySelector('.fixture-page__inner');
+                            return inner && !inner.classList.contains('fixture-page__inner--hidden');
+                        }).catch(() => false);
+                        if (abriu) break;
+                    }
+                    await novaPg.waitForFunction(() => {
+                        const inner = document.querySelector('.fixture-page__inner');
+                        return inner && !inner.classList.contains('fixture-page__inner--hidden');
+                    }, { timeout: 15000 });
+                    await novaPg.waitForFunction(() => {
+                        return document.querySelectorAll('.market-search__link-variables-row').length > 0;
+                    }, { timeout: 12000 }).catch(() => {});
+                    await delay(800);
+                    const dadosJogo = await novaPg.evaluate((timeCasaArg) => {
+                        const mercadosGanhadores = [];
+                        let golCasa = null, golFora = null, placar = null;
+                        const links = document.querySelectorAll('.market-search__link');
+                        for (const link of links) {
+                            const nameEl = link.querySelector('.market-search__link-name');
+                            if (!nameEl) continue;
+                            const nomeMercado = nameEl.textContent.trim();
+                            const rows = link.querySelectorAll('.market-search__link-variables-row');
+                            for (const row of rows) {
+                                const selNome  = row.querySelector('.market-search__link-variables-name')?.textContent.trim();
+                                const selValor = row.querySelector('.market-search__link-variables-value')?.textContent.trim();
+                                if (!selNome || selValor !== 'Won') continue;
+                                mercadosGanhadores.push({ mercado: nomeMercado, selecao: selNome, odd: 0 });
+                                if (nomeMercado === 'Resultado Correto') {
+                                    const sm = selNome.match(/(\d+)-(\d+)/);
+                                    if (sm) {
+                                        const g1 = parseInt(sm[1]); const g2 = parseInt(sm[2]);
+                                        if (selNome.startsWith('Empate') || selNome.startsWith('Draw')) {
+                                            golCasa = g1; golFora = g2;
+                                        } else {
+                                            const homeWon = selNome.toLowerCase().startsWith(timeCasaArg.toLowerCase());
+                                            if (homeWon) { golCasa = g1; golFora = g2; }
+                                            else         { golCasa = g2; golFora = g1; }
+                                        }
+                                        placar = `${golCasa}-${golFora}`;
+                                    }
+                                }
+                            }
+                        }
+                        return { mercadosGanhadores, golCasa, golFora, placar };
+                    }, jogo.timeCasa);
+                    console.log(`   ✓ [retry] ${jogo.horario} ${jogo.timeCasa}×${jogo.timeFora} → ${dadosJogo.placar || '?'} | ${dadosJogo.mercadosGanhadores.length} mercados`);
+                    resultados.push({ ...jogo, golCasa: dadosJogo.golCasa, golFora: dadosJogo.golFora, placar: dadosJogo.placar, mercados: dadosJogo.mercadosGanhadores });
+                    await novaPg.evaluate(() => {
+                        const btn = document.querySelector('.fixture-page-header__back-button');
+                        if (btn) btn.click();
+                    });
+                    await novaPg.waitForFunction(() => {
+                        const inner = document.querySelector('.result-page__inner');
+                        return inner && !inner.classList.contains('result-page__inner--hidden');
+                    }, { timeout: 10000 });
+                    await delay(300);
+                } catch(err) {
+                    console.warn(`   ❌ [${ligaNorm}] [retry] ${jogo.horario} ${jogo.timeCasa}: falhou novamente — pulando`);
+                    resultados.push({ ...jogo, golCasa: null, golFora: null, placar: null, mercados: [] });
+                    try {
+                        await novaPg.evaluate(() => {
+                            const btn = document.querySelector('.fixture-page-header__back-button');
+                            if (btn) btn.click();
+                        });
+                        await delay(600);
+                    } catch(_) {}
+                }
             }
         }
 
@@ -443,6 +696,8 @@ async function conectarEdge() {
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+// Delay com jitter ±30% para parecer mais humano
+function delayHumano(ms) { return delay(ms * (0.7 + Math.random() * 0.6)); }
 
 // ── Salva resultados no banco ────────────────────────────────
 async function salvarResultados(ligaNorm, resultados, dataAlvo) {
@@ -618,7 +873,8 @@ async function run() {
         if (puladas > 0) console.log(`   ⚙️  ${puladas} liga(s) desabilitada(s) no Sistema — ignoradas`);
         if (cfg['hist_delay_clique_ms']) DELAY_CLIQUE_MS = parseInt(cfg['hist_delay_clique_ms']) || 1000;
         if (cfg['hist_max_cliques'])     MAX_CLIQUES     = parseInt(cfg['hist_max_cliques'])     || 3;
-        console.log(`   ⚙️  Clique: até ${MAX_CLIQUES}x com ${DELAY_CLIQUE_MS}ms de delay`);
+        if (cfg['hist_retry_delay_ms'])  RETRY_DELAY_MS  = parseInt(cfg['hist_retry_delay_ms'])  || 600000;
+        console.log(`   ⚙️  Clique: até ${MAX_CLIQUES}x com ${DELAY_CLIQUE_MS}ms de delay | retry após ${Math.round(RETRY_DELAY_MS/60000)}min`);
     } catch(e) {
         console.warn(`   ⚠️  Não foi possível carregar config do banco: ${e.message}`);
     }
