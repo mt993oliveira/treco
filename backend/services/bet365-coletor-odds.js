@@ -134,8 +134,8 @@ async function conectarEdge() {
     if (avrPages.length < 2) {
         console.log(`   ℹ️  [Odds] Apenas ${avrPages.length} aba(s) AVR — abrindo segunda aba automaticamente...`);
         const novaPg = await browser.newPage();
+        await novaPg.bringToFront(); // traz para frente ANTES do goto — Chromium throttla JS em aba de fundo
         await novaPg.goto(URL_SOCCER, { waitUntil: 'load', timeout: 60000 });
-        await novaPg.bringToFront(); // tab em background tem JS throttled — traz para frente antes de esperar
         // Aguarda a página renderizar (20s para a Bet365 SPA carregar completamente)
         await new Promise(r => setTimeout(r, 20000));
         // Re-verifica
@@ -362,14 +362,14 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
 // ── Hard refresh e aguarda ligas ────────────────────────────
 async function hardRefresh(pg) {
     try {
+        await pg.bringToFront(); // ANTES do goto — Chromium throttla JS em aba de fundo
         await pg.setCacheEnabled(false);
         // goto() em vez de reload() — SPA da Bet365 não restaura o estado do futebol virtual num reload
         await pg.goto(URL_SOCCER, { waitUntil: 'load', timeout: 60000 });
         await pg.setCacheEnabled(true);
-        await pg.bringToFront();
-        // 8s após load completo — SPA precisa de tempo para renderizar os componentes virtuais
-        await new Promise(r => setTimeout(r, 8000));
-        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 35000 });
+        // 10s após load completo — SPA precisa de tempo para renderizar os componentes virtuais
+        await new Promise(r => setTimeout(r, 10000));
+        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 45000 });
         return true;
     } catch(err) {
         await pg.setCacheEnabled(true).catch(() => {});
