@@ -1912,9 +1912,8 @@ server.listen(PORT, () => {
                 _c2Rodando = true;
                 console.log(`\n📊 [Coletor 2] Disparando coleta de odds — minuto ${_minAtual}...`);
                 const { spawn } = require('child_process');
-                const _dir  = require('path').join(__dirname, '..');
-                const _c2Cmd = `title Coletor 2 - Odds e Proximos Jogos && cd /d "${_dir}" && node -r dotenv/config backend/services/bet365-coletor-odds.js`;
-                const proc = spawn('cmd.exe', ['/c', _c2Cmd],
+                const _batC2 = require('path').join(__dirname, '..', 'start-coletor2-auto.bat');
+                const proc = spawn('cmd.exe', ['/c', _batC2],
                     { detached: true, stdio: 'ignore', env: process.env }
                 );
                 proc.on('exit', code => {
