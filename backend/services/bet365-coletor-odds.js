@@ -663,7 +663,7 @@ async function run() {
     } catch(err) {
         console.error(`   ❌ [Odds] Erro: ${err.message}`);
     } finally {
-        if (pg)      await pg.close().catch(() => {});
+        // Não fecha a aba — ela fica aberta para a próxima coleta reutilizar
         if (browser) await browser.disconnect().catch(() => {});
     }
 
