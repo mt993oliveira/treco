@@ -9271,6 +9271,24 @@ async function _loadConfigSistema() {
                     <div style="font-size:10px;color:#475569;margin-top:4px">Tempo de pausa quando o limite de falhas é atingido (5–60 min) · padrão: 15</div>
                 </div>`;
             }
+            if (d.chave === 'coletor2_minutos') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">📊 COLETOR 2 — MINUTOS DA HORA PARA DISPARAR</label>
+                    <input type="text" id="cfg-coletor2_minutos" value="${escHtml(d.valor)}"
+                        placeholder="Ex: 03,18,33,48"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <div style="font-size:10px;color:#475569;margin-top:4px">Minutos separados por vírgula (0–59) · ex: 03,18,33,48 = 4×/hora · vazio = desativado</div>
+                </div>`;
+            }
+            if (d.tipo === 'text') {
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                    <input type="text" id="cfg-${d.chave}" value="${escHtml(d.valor)}"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>`;
+            }
             return `<div style="margin-bottom:14px">
                 <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
                 <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="0"
