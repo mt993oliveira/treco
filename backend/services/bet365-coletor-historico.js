@@ -159,20 +159,30 @@ const LIGA_CONFIG_KEY = {
     'Super Liga Sul-Americana': 'liga_super_liga',
 };
 
-// Helper: hover sobre elemento (com pequeno offset aleatório) e clica — parecer humano
+// Helper: scroll into view, move mouse com offset aleatório e clica — parecer humano
 async function _clicarEl(pg, el) {
     try {
-        const box = await el.boundingBox();
+        // Scroll para trazer o elemento para a viewport antes de pegar bounding box
+        await pg.evaluate(e => {
+            if (e) e.scrollIntoView({ behavior: 'instant', block: 'center' });
+        }, el).catch(() => {});
+        await delay(150 + Math.floor(Math.random() * 150));
+
+        const box = await el.boundingBox().catch(() => null);
         if (box) {
             const x = box.x + box.width  * (0.25 + Math.random() * 0.5);
             const y = box.y + box.height * (0.25 + Math.random() * 0.5);
             await pg.mouse.move(x, y, { steps: 3 + Math.floor(Math.random() * 4) });
-            await delay(80 + Math.floor(Math.random() * 160));
+            await delay(80 + Math.floor(Math.random() * 120));
             await pg.mouse.click(x, y);
         } else {
-            await el.click();
+            // Elemento sem layout visível: JS click via evaluate como fallback
+            await pg.evaluate(e => { if (e) e.click(); }, el);
         }
-    } catch(_) { await el.click(); }
+    } catch(_) {
+        // Último fallback: JS click direto
+        try { await pg.evaluate(e => { if (e) e.click(); }, el); } catch(_2) {}
+    }
 }
 
 // Helper: procura elemento por texto (lista de seletores CSS) e clica via mouse
