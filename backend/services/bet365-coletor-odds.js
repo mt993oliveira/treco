@@ -231,10 +231,10 @@ function lerOddsDOM() {
 
 // ── Hard refresh + volta à liga (reutilizado entre jogos) ────
 async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
-    const navP = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+    const navP = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
     await pg.evaluate(() => location.reload(true));
     await navP;
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 7000));
     const voltou = await pg.evaluate((nome) => {
         const btn = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].find(b =>
             b.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome
@@ -243,8 +243,8 @@ async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
         return false;
     }, nomeLigaOriginal).catch(() => false);
     if (!voltou) { console.log(`   ❌ [${ligaNorm}] Liga não encontrada após refresh`); return false; }
-    await new Promise(r => setTimeout(r, 3000));
-    try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 8000 }); }
+    await new Promise(r => setTimeout(r, 4000));
+    try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 15000 }); }
     catch(_) { console.log(`   ❌ [${ligaNorm}] Nav não voltou após refresh`); return false; }
     return true;
 }
@@ -269,8 +269,16 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
         try {
             // Hard refresh antes de cada jogo (exceto o primeiro)
             if (idx > 0) {
-                const ok = await _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal);
-                if (!ok) break;
+                let ok = await _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal);
+                if (!ok) {
+                    console.log(`   🔄 [${ligaNorm}] "${horarioAlvo}" — retry refresh...`);
+                    await new Promise(r => setTimeout(r, 3000));
+                    ok = await _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal);
+                }
+                if (!ok) {
+                    console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — nav falhou 2x, pulando jogo`);
+                    continue;
+                }
             }
 
             // Clica pelo texto do botão
