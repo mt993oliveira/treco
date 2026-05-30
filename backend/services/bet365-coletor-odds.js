@@ -645,6 +645,8 @@ async function run() {
 
     let browser = null, pg = null;
     const inicio = Date.now();
+    // Aguarda 8s para o Coletor 1 terminar qualquer refresh em andamento
+    await new Promise(r => setTimeout(r, 8000));
     try {
         const conn = await conectarEdge();
         browser = conn.browser;
