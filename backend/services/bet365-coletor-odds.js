@@ -732,7 +732,7 @@ async function run() {
     let browser = null, pg = null;
     const inicio = Date.now();
     // Aguarda intervalo aleatório para o Coletor 1 terminar qualquer refresh em andamento
-    await randomDelay(6000, 12000);
+    await randomDelay(8000, 14000);
     try {
         const conn = await conectarEdge();
         browser = conn.browser;
