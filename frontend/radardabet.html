@@ -4500,10 +4500,12 @@ function gruposDeJogos(n) {
 }
 
 function grupos(horasOverride, jogosOverride) {
-    if (jogosOverride != null) return gruposDeJogos(jogosOverride);
     const agora  = new Date(Date.now() + BET365_OFFSET_MS);
     const byHour = new Map();
-    const _horas = horasOverride != null ? horasOverride : S.horas;
+    // jogos → horas: 20 jogos/hora — ancora os slots ao tempo atual (igual ao modo horas)
+    const _horas = jogosOverride != null
+        ? Math.ceil(jogosOverride / 20)
+        : (horasOverride != null ? horasOverride : S.horas);
 
     // 1. Cria PRIMEIRO os slots exatos: _horas passados
     for (let h = 0; h < _horas; h++) {
