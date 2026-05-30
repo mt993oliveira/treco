@@ -1891,7 +1891,7 @@ server.listen(PORT, () => {
                 const _pool = await getDbPool();
                 const _cfgR = await _pool.request().query(`
                     SELECT chave, valor FROM bet365_config
-                    WHERE chave IN ('coletor2_ativo','coletor2_minutos')
+                    WHERE chave IN ('coletor2_ativo','coletor2_minutos','coletor2_janela_visivel')
                 `);
                 const _cfg = {};
                 _cfgR.recordset.forEach(r => { _cfg[r.chave] = r.valor; });
@@ -1910,12 +1910,22 @@ server.listen(PORT, () => {
                 _c2UltimoMin = _minAtual;
 
                 _c2Rodando = true;
-                console.log(`\n📊 [Coletor 2] Disparando coleta de odds — minuto ${_minAtual}...`);
+                const _janelaVisivel = _cfg['coletor2_janela_visivel'] !== 'false';
+                console.log(`\n📊 [Coletor 2] Disparando coleta de odds — minuto ${_minAtual}${_janelaVisivel ? '' : ' (2º plano)'}...`);
                 const { spawn } = require('child_process');
-                const _batC2 = require('path').join(__dirname, '..', 'start-coletor2-auto.bat');
-                const proc = spawn('cmd.exe', ['/c', _batC2],
-                    { detached: true, stdio: 'ignore', env: process.env }
-                );
+                const _dir2 = require('path').join(__dirname, '..');
+                let proc;
+                if (_janelaVisivel) {
+                    const _batC2 = require('path').join(_dir2, 'start-coletor2-auto.bat');
+                    proc = spawn('cmd.exe', ['/c', _batC2],
+                        { detached: true, stdio: 'ignore', env: process.env }
+                    );
+                } else {
+                    proc = spawn(process.execPath,
+                        ['--require', 'dotenv/config', 'backend/services/bet365-coletor-odds.js'],
+                        { cwd: _dir2, detached: true, stdio: 'ignore', env: process.env }
+                    );
+                }
                 proc.on('exit', code => {
                     console.log(`   📊 [Coletor 2] Coleta concluída (código: ${code})`);
                     _c2Rodando = false;
