@@ -75,6 +75,15 @@ function randomDelay(minMs, maxMs) {
     return new Promise(r => setTimeout(r, minMs + Math.random() * (maxMs - minMs)));
 }
 
+// ── Detecta erros fatais de sessão CDP ───────────────────────
+function isFatalError(err) {
+    const msg = err?.message || '';
+    return msg.includes('Session closed') ||
+           msg.includes('detached Frame') ||
+           msg.includes('Target closed') ||
+           (msg.includes('Protocol error') && (msg.includes('Session') || msg.includes('Target')));
+}
+
 // ── Hash / ID ────────────────────────────────────────────────
 function _hash(str) {
     let h = 0x811c9dc5;
@@ -323,6 +332,10 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                 console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — ${odds.motivo || JSON.stringify(odds)}`);
             }
         } catch(e) {
+            if (isFatalError(e)) {
+                console.warn(`   ⚠️  [Odds] Erro fatal no horário "${horarioAlvo}" — abortando liga: ${e.message}`);
+                throw e;
+            }
             console.warn(`   ⚠️  [Odds] Erro no horário "${horarioAlvo}": ${e.message}`);
         }
     }
@@ -388,6 +401,7 @@ async function hardRefresh(pg) {
         await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
         return true;
     } catch(err) {
+        if (isFatalError(err)) throw err;
         console.warn(`   ⚠️  [Odds] Refresh falhou: ${err.message}`);
         return false;
     }
@@ -396,15 +410,28 @@ async function hardRefresh(pg) {
 // ── Hard refresh com até 3 tentativas (igual ao Coletor 1) ───
 async function hardRefreshComRetry(pg) {
     for (let r = 1; r <= 3; r++) {
-        const ok = await hardRefresh(pg);
-        if (ok) return true;
+        try {
+            const ok = await hardRefresh(pg);
+            if (ok) return true;
+        } catch(err) {
+            if (isFatalError(err)) throw err;
+        }
         console.log(`   ⚠️  [Odds] Refresh tentativa ${r}/3 falhou`);
     }
     return false;
 }
 
+// ── Reconecta ao Edge e obtém nova aba AVR ───────────────────
+async function reconectarEdge(browserAtual, ligaCtx) {
+    console.log(`   🔄 [${ligaCtx}] Sessão perdida — reconectando ao Edge...`);
+    await browserAtual.disconnect().catch(() => {});
+    const conn = await conectarEdge();
+    console.log(`   ✅ [Odds] Reconectado`);
+    return conn;
+}
+
 // ── Ciclo principal ──────────────────────────────────────────
-async function ciclo(pg) {
+async function ciclo(browser, pg) {
     await pg.bringToFront();
 
     // Verificação suave: garante que estamos na página correta
@@ -476,6 +503,7 @@ async function ciclo(pg) {
 
     let oddsOk = 0;
     const ligasParaRetry = [];
+    let reconectou = false;
 
     for (let i = 0; i < ligasFiltradas.length; i++) {
         const nomeLiga = ligasFiltradas[i];
@@ -579,13 +607,45 @@ async function ciclo(pg) {
             }
 
         } catch(err) {
+            if (isFatalError(err)) {
+                if (reconectou) {
+                    console.warn(`   ❌ [Odds] Sessão perdida novamente após reconexão — abortando ciclo`);
+                    return { browser, pg, oddsOk };
+                }
+                try {
+                    ({ browser, pg } = await reconectarEdge(browser, ligaNorm));
+                    reconectou = true;
+                    i--;  // retenta esta liga na próxima iteração
+                } catch(e2) {
+                    console.warn(`   ❌ [Odds] Reconexão falhou: ${e2.message} — abortando ciclo`);
+                    return { browser, pg, oddsOk };
+                }
+                continue;
+            }
             console.warn(`   ⚠️  [${ligaNorm}] Erro: ${err.message}`);
         }
 
         // Hard refresh após cada liga (exceto a última) — estado limpo antes da próxima aba
         if (i < ligasFiltradas.length - 1) {
             console.log(`   🔄 [Odds] Hard refresh pós-liga ${i + 1}/${ligasFiltradas.length}...`);
-            await hardRefreshComRetry(pg);
+            try {
+                await hardRefreshComRetry(pg);
+            } catch(err) {
+                if (isFatalError(err)) {
+                    if (reconectou) {
+                        console.warn(`   ❌ [Odds] Sessão perdida novamente após reconexão — abortando ciclo`);
+                        return { browser, pg, oddsOk };
+                    }
+                    try {
+                        ({ browser, pg } = await reconectarEdge(browser, 'Odds'));
+                        reconectou = true;
+                        console.log(`   ✅ [Odds] Reconectado — continuando com próxima liga`);
+                    } catch(e2) {
+                        console.warn(`   ❌ [Odds] Reconexão falhou: ${e2.message} — abortando ciclo`);
+                        return { browser, pg, oddsOk };
+                    }
+                }
+            }
         }
     }
 
@@ -593,7 +653,25 @@ async function ciclo(pg) {
     // mas após ~3-4 min coletando as outras ligas, uma nova rodada já estará disponível)
     if (ligasParaRetry.length > 0) {
         console.log(`\n   🔁 [Odds] Retry: ${ligasParaRetry.map(l => l.ligaNorm).join(', ')} — aguardando nova rodada...`);
-        await hardRefreshComRetry(pg);
+        try {
+            await hardRefreshComRetry(pg);
+        } catch(err) {
+            if (isFatalError(err)) {
+                if (reconectou) {
+                    console.warn(`   ❌ [Odds] Sessão perdida no retry — abortando`);
+                    console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
+                    return { browser, pg, oddsOk };
+                }
+                try {
+                    ({ browser, pg } = await reconectarEdge(browser, 'Retry'));
+                    reconectou = true;
+                } catch(e2) {
+                    console.warn(`   ❌ [Odds] Reconexão falhou: ${e2.message}`);
+                    console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
+                    return { browser, pg, oddsOk };
+                }
+            }
+        }
 
         for (const { nomeLiga, ligaNorm } of ligasParaRetry) {
             try {
@@ -641,7 +719,7 @@ async function ciclo(pg) {
     }
 
     console.log(`   ✅ [Odds] Ciclo concluído — odds: ${oddsOk}`);
-    return { oddsOk };
+    return { browser, pg, oddsOk };
 }
 
 // ── Entry point ──────────────────────────────────────────────
@@ -659,7 +737,8 @@ async function run() {
         const conn = await conectarEdge();
         browser = conn.browser;
         pg      = conn.pg;
-        await ciclo(pg);
+        const result = await ciclo(browser, pg);
+        browser = result.browser;
     } catch(err) {
         console.error(`   ❌ [Odds] Erro: ${err.message}`);
     } finally {
