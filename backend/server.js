@@ -1921,10 +1921,13 @@ server.listen(PORT, () => {
                         { detached: true, stdio: 'ignore', env: process.env }
                     );
                 } else {
+                    const _logC2 = require('path').join(_dir2, 'coletor2-debug.log');
+                    const _logFd = require('fs').openSync(_logC2, 'w');
                     proc = spawn(process.execPath,
                         ['--require', 'dotenv/config', 'backend/services/bet365-coletor-odds.js'],
-                        { cwd: _dir2, detached: true, stdio: 'ignore', env: process.env }
+                        { cwd: _dir2, detached: true, stdio: ['ignore', _logFd, _logFd], env: process.env }
                     );
+                    require('fs').closeSync(_logFd);
                 }
                 proc.on('exit', code => {
                     console.log(`   📊 [Coletor 2] Coleta concluída (código: ${code})`);
