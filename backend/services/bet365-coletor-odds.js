@@ -638,54 +638,30 @@ async function ciclo(pg) {
 
 // ── Entry point ──────────────────────────────────────────────
 async function run() {
-    let browser = null, pg = null, cicloNum = 0;
+    const agora = new Date().toLocaleTimeString('pt-BR');
+    console.log(`\n============================================`);
+    console.log(`🔄 [Odds] Iniciando coleta — ${agora}`);
+    console.log(`============================================`);
 
-    while (true) {
-        cicloNum++;
-        const agora = new Date().toLocaleTimeString('pt-BR');
-        console.log(`\n============================================`);
-        console.log(`🔄 [Odds] Ciclo #${cicloNum} - ${agora}`);
-        console.log(`============================================`);
-
-        const inicioCiclo = Date.now();
-        try {
-            // Verifica se coletor 2 está ativo nas configurações do sistema
-            try {
-                const db  = await getPool();
-                const res = await db.request().query(`SELECT valor FROM bet365_config WHERE chave = 'coletor2_ativo'`);
-                if (res.recordset[0]?.valor === 'false') {
-                    console.log(`   ⏸️  [Odds] Coletor 2 pausado nas configurações do sistema — encerrando processo.`);
-                    if (pg) { try { await pg.close(); } catch(_){} pg = null; }
-                    process.exit(0);
-                }
-            } catch(e) {
-                // DB indisponível — não tenta abrir aba, aguarda próximo ciclo
-                console.log(`   ⚠️  [Odds] DB indisponível para verificar config (${e.message}) — aguardando...`);
-                await new Promise(r => setTimeout(r, INTERVALO_MS));
-                continue;
-            }
-
-            if (!pg || pg.isClosed()) {
-                if (pg && !pg.isClosed()) await pg.close().catch(() => {});
-                const conn = await conectarEdge();
-                browser = conn.browser;
-                pg      = conn.pg;
-            }
-            await ciclo(pg);
-        } catch(err) {
-            console.error(`   ❌ [Odds] Erro no ciclo: ${err.message}`);
-            if (pg && !pg.isClosed()) await pg.close().catch(() => {});
-            pg = null;
-        }
-
-        // Intervalo com jitter aleatório (INTERVALO_MS + até 60s extra)
-        // Evita que o coletor tenha um "pulso" previsível e detectável
-        const jitter     = Math.floor(Math.random() * 60000);
-        const espera     = INTERVALO_MS + jitter;
-        const coletaSeg  = Math.round((Date.now() - inicioCiclo) / 1000);
-        console.log(`   ⏱️  [Odds] próximo ciclo em ${Math.round(espera / 1000)}s (configurado: ${Math.round(INTERVALO_MS / 1000)}s, coleta levou: ${coletaSeg}s)`);
-        await new Promise(r => setTimeout(r, espera));
+    let browser = null, pg = null;
+    const inicio = Date.now();
+    try {
+        const conn = await conectarEdge();
+        browser = conn.browser;
+        pg      = conn.pg;
+        await ciclo(pg);
+    } catch(err) {
+        console.error(`   ❌ [Odds] Erro: ${err.message}`);
+    } finally {
+        if (pg)      await pg.close().catch(() => {});
+        if (browser) await browser.disconnect().catch(() => {});
     }
+
+    const duracaoS = Math.round((Date.now() - inicio) / 1000);
+    console.log(`============================================`);
+    console.log(`✅ [Odds] Coleta concluída em ${duracaoS}s — encerrando`);
+    console.log(`============================================`);
+    process.exit(0);
 }
 
 run().catch(e => { console.error('❌ [Odds] Fatal:', e.message); process.exit(1); });

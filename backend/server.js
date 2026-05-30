@@ -1865,12 +1865,13 @@ server.listen(PORT, () => {
         console.log(`\n📡 Bet365 - Agendador iniciado (intervalo dinâmico via config DB)\n`);
         _cicloColeta();
 
-        // ── Watchdog Coletor 2 (Odds pré-jogo) — apenas em modo LOCAL ────
-        // Só executa quando o Edge está acessível na porta 9222 (máquina local).
-        // No VPS, o Edge não existe → a verificação falha silenciosamente e o
-        // watchdog nunca tenta spawnar o processo.
-        let _c2Proc        = null;
-        let _c2UltimoStart = 0;
+        // ── Coletor 2 — Odds pré-jogo (agendado por minutos configurados) ──
+        // Só executa localmente (Edge acessível na porta 9222).
+        // Configuração: coletor2_ativo=true e coletor2_minutos="03,18,33,48"
+        // A cada minuto verificado, se o minuto atual estiver na lista, abre
+        // janela CMD separada com /c (fecha ao terminar) para uma rodada de coleta.
+        let _c2Rodando   = false;
+        let _c2UltimoMin = -1;
 
         function _edgeAcessivel() {
             return new Promise(resolve => {
@@ -1883,34 +1884,56 @@ server.listen(PORT, () => {
             });
         }
 
-        async function _watchdogColetor2() {
+        async function _autoColetorOdds() {
+            if (_c2Rodando) return;
             try {
-                if (!await _edgeAcessivel()) return; // VPS ou Edge não aberto — ignora
-                const _pool  = await getDbPool();
-                const _r     = await _pool.request().query(`SELECT valor FROM bet365_config WHERE chave = 'coletor2_ativo'`);
-                const _ativo = _r.recordset[0]?.valor !== 'false';
-                const _vivo  = _c2Proc && !_c2Proc.killed && _c2Proc.exitCode === null;
-                if (_ativo && !_vivo) {
-                    if (Date.now() - _c2UltimoStart < 300000) return; // anti-spam: 5min entre restarts
-                    console.log('[Watchdog C2] coletor2_ativo=true e processo inativo → abrindo janela Coletor 2...');
-                    _c2UltimoStart = Date.now();
-                    const { spawn } = require('child_process');
-                    const _dir = require('path').join(__dirname, '..');
-                    // Abre janela CMD visível separada — não interfere no log do Coletor 1
-                    _c2Proc = spawn('cmd.exe',
-                        ['/k', `title Coletor 2 - Odds e Proximos Jogos && cd /d "${_dir}" && node -r dotenv/config backend/services/bet365-coletor-odds.js`],
-                        { detached: true, stdio: 'ignore' }
-                    );
-                    _c2Proc.unref();
-                    // Processo detachado — reseta ref após 10s para watchdog detectar reinício se necessário
-                    setTimeout(() => { _c2Proc = null; }, 10000);
-                }
-            } catch(_) { /* DB indisponível — tenta no próximo ciclo */ }
+                if (!await _edgeAcessivel()) return;
+                const _pool = await getDbPool();
+                const _cfgR = await _pool.request().query(`
+                    SELECT chave, valor FROM bet365_config
+                    WHERE chave IN ('coletor2_ativo','coletor2_minutos')
+                `);
+                const _cfg = {};
+                _cfgR.recordset.forEach(r => { _cfg[r.chave] = r.valor; });
+
+                if (_cfg['coletor2_ativo'] === 'false') return;
+
+                const _minutosStr = _cfg['coletor2_minutos'] || '';
+                const _minutos = _minutosStr.split(',')
+                    .map(m => parseInt(m.trim()))
+                    .filter(m => !isNaN(m) && m >= 0 && m <= 59);
+                if (_minutos.length === 0) return;
+
+                const _minAtual = new Date().getUTCMinutes();
+                if (!_minutos.includes(_minAtual)) return;
+                if (_c2UltimoMin === _minAtual) return; // já disparou neste minuto
+                _c2UltimoMin = _minAtual;
+
+                _c2Rodando = true;
+                console.log(`\n📊 [Coletor 2] Disparando coleta de odds — minuto ${_minAtual}...`);
+                const { spawn } = require('child_process');
+                const _dir = require('path').join(__dirname, '..');
+                const proc = spawn('cmd.exe',
+                    ['/c', `title Coletor 2 - Odds e Proximos Jogos && cd /d "${_dir}" && node -r dotenv/config backend/services/bet365-coletor-odds.js`],
+                    { detached: true, stdio: 'ignore' }
+                );
+                proc.on('exit', code => {
+                    console.log(`   📊 [Coletor 2] Coleta concluída (código: ${code})`);
+                    _c2Rodando = false;
+                });
+                proc.on('error', e => {
+                    console.error(`   ❌ [Coletor 2] Erro ao iniciar: ${e.message}`);
+                    _c2Rodando = false;
+                });
+            } catch(e) {
+                console.warn(`   ⚠️  [Coletor 2] Erro: ${e.message}`);
+                _c2Rodando = false;
+            }
         }
-        // Aguarda 3 minutos antes da primeira verificação — dá tempo do Coletor 1 fazer login
+        // Aguarda 3 min antes da primeira verificação — dá tempo do Coletor 1 fazer login
         setTimeout(() => {
-            _watchdogColetor2();
-            setInterval(_watchdogColetor2, 60000);
+            _autoColetorOdds();
+            setInterval(_autoColetorOdds, 60000);
         }, 180000);
         // ─────────────────────────────────────────────────────────────────
 
