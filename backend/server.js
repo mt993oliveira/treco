@@ -1912,12 +1912,15 @@ server.listen(PORT, () => {
                 _c2Rodando = true;
                 console.log(`\n📊 [Coletor 2] Disparando coleta de odds — minuto ${_minAtual}...`);
                 const { spawn } = require('child_process');
-                const _dir = require('path').join(__dirname, '..');
+                const _fs   = require('fs');
+                const _dir  = require('path').join(__dirname, '..');
                 const _logC2 = require('path').join(_dir, 'coletor2-debug.log');
-                const proc = spawn('cmd.exe',
-                    ['/c', `title Coletor 2 - Odds e Proximos Jogos && cd /d "${_dir}" && node -r dotenv/config backend/services/bet365-coletor-odds.js > "${_logC2}" 2>&1`],
-                    { detached: true, stdio: 'ignore' }
+                const _logFd = _fs.openSync(_logC2, 'w');
+                const proc = spawn(process.execPath,
+                    ['--require', 'dotenv/config', 'backend/services/bet365-coletor-odds.js'],
+                    { cwd: _dir, detached: true, stdio: ['ignore', _logFd, _logFd], env: process.env }
                 );
+                _fs.closeSync(_logFd);
                 proc.on('exit', code => {
                     console.log(`   📊 [Coletor 2] Coleta concluída (código: ${code})`);
                     _c2Rodando = false;
