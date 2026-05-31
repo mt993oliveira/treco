@@ -1625,12 +1625,64 @@ const { WebSocketServer } = require('ws');
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
+// ── Chat: garante tabela no banco ───────────────────────────
+async function _garantirTabelaChat() {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await sql.query`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='chat_mensagens' AND xtype='U')
+            CREATE TABLE chat_mensagens (
+                id           INT IDENTITY(1,1) PRIMARY KEY,
+                usuario_id   INT,
+                usuario_nome NVARCHAR(100),
+                mensagem     NVARCHAR(1000),
+                criado_em    DATETIME2 DEFAULT GETUTCDATE()
+            )`;
+        console.log('✅ Tabela chat_mensagens OK');
+    } catch(e) { console.warn('⚠️  chat_mensagens:', e.message); }
+}
+_garantirTabelaChat();
+
+// ── Chat: histórico das últimas 24h ─────────────────────────
+app.get('/api/chat/historico', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const r = await sql.query`
+            SELECT TOP 200 id, usuario_id, usuario_nome, mensagem, criado_em
+            FROM chat_mensagens
+            WHERE criado_em >= DATEADD(HOUR, -24, GETUTCDATE())
+            ORDER BY criado_em ASC`;
+        res.json({ success: true, mensagens: r.recordset });
+    } catch(e) { res.json({ success: false, error: e.message }); }
+});
+
 // WebSocket Server
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', (ws) => {
     console.log('🔌 WebSocket cliente conectado');
     ws.send(JSON.stringify({ tipo: 'conectado', timestamp: new Date().toISOString() }));
+
+    ws.on('message', async (raw) => {
+        try {
+            const m = JSON.parse(raw.toString());
+            if (m.tipo === 'chat' && m.mensagem && m.mensagem.trim()) {
+                const texto = m.mensagem.trim().substring(0, 500);
+                const nome  = (m.usuario_nome || 'Anônimo').substring(0, 100);
+                const uid   = m.usuario_id ? parseInt(m.usuario_id) : null;
+                const agora = new Date().toISOString();
+
+                try {
+                    await connectSQL(getDatabaseConfigFromEnv());
+                    await sql.query`
+                        INSERT INTO chat_mensagens (usuario_id, usuario_nome, mensagem)
+                        VALUES (${uid}, ${nome}, ${texto})`;
+                } catch(e) { console.warn('chat save:', e.message); }
+
+                global.wsBroadcast({ tipo:'chat', usuario_nome:nome, usuario_id:uid, mensagem:texto, criado_em:agora });
+            }
+        } catch(_) {}
+    });
 
     ws.on('close', () => console.log('🔌 WebSocket cliente desconectado'));
     ws.on('error', (err) => console.error('WebSocket erro:', err.message));

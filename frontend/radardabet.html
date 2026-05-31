@@ -266,6 +266,48 @@
         .liga-tab { font-size: 11px; padding: 5px 10px; }
         .liga-tab .liga-icon { font-size: 16px; }
     }
+        /* ── Chat ao Vivo ─────────────────────────────────────── */
+        #chat-panel {
+            position:fixed; bottom:0; right:16px; width:300px; height:420px;
+            background:var(--bg-page,#0f172a); border:1px solid var(--border-subtle,#1e293b);
+            border-bottom:none; border-radius:10px 10px 0 0;
+            display:flex; flex-direction:column; z-index:400;
+            box-shadow:0 -4px 24px rgba(0,0,0,.5);
+            transition:transform .2s ease;
+        }
+        #chat-panel.fechado { transform:translateY(100%); }
+        #chat-header {
+            padding:8px 12px; background:var(--bg-card,#1e293b);
+            border-radius:10px 10px 0 0; display:flex; align-items:center;
+            gap:8px; cursor:pointer; user-select:none; flex-shrink:0;
+            border-bottom:1px solid var(--border-subtle,#1e293b);
+        }
+        #chat-msgs {
+            flex:1; overflow-y:auto; padding:8px; display:flex;
+            flex-direction:column; gap:6px; scrollbar-width:thin;
+        }
+        .chat-msg { display:flex; flex-direction:column; gap:1px; }
+        .chat-msg-header { display:flex; align-items:baseline; gap:5px; }
+        .chat-msg-nome { font-size:10px; font-weight:700; color:#1fcc59; }
+        .chat-msg-nome.self { color:#60a5fa; }
+        .chat-msg-hora { font-size:9px; color:#475569; }
+        .chat-msg-texto { font-size:11px; color:#e2e8f0; line-height:1.4; word-break:break-word; }
+        .chat-msg-system { font-size:10px; color:#475569; text-align:center; font-style:italic; }
+        #chat-input-row {
+            display:flex; gap:6px; padding:8px;
+            border-top:1px solid var(--border-subtle,#1e293b); flex-shrink:0;
+        }
+        #chat-input {
+            flex:1; background:var(--bg-card,#1e293b); border:1px solid var(--border-color,#334155);
+            border-radius:6px; padding:6px 8px; color:#e2e8f0; font-size:11px;
+            outline:none; resize:none; height:32px; font-family:inherit;
+        }
+        #chat-input:focus { border-color:#1fcc59; }
+        #chat-send {
+            padding:0 12px; background:#1fcc59; border:none; border-radius:6px;
+            color:#000; font-size:11px; font-weight:700; cursor:pointer; flex-shrink:0;
+        }
+        #chat-send:hover { background:#16a34a; }
     </style>
     <style id="theme-vars">
         :root {
@@ -656,6 +698,34 @@
                  box-shadow:0 8px 24px rgba(0,0,0,.7);z-index:300;min-width:170px">
                 <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.05em">TEMA DA INTERFACE</div>
                 <div id="theme-options"></div>
+            </div>
+        </div>
+
+        <!-- Chat ao Vivo -->
+        <button id="chat-btn" onclick="toggleChat()" title="Chat ao vivo"
+            style="display:flex;align-items:center;gap:5px;padding:5px 10px;height:32px;
+                   background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
+                   font-size:11px;font-weight:700;color:#94a3b8;transition:background .15s;white-space:nowrap;position:relative"
+            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
+            <span style="font-size:14px">💬</span> Chat
+            <span id="chat-badge" style="display:none;position:absolute;top:-4px;right:-4px;
+                background:#ef4444;color:#fff;font-size:8px;font-weight:700;
+                border-radius:8px;padding:1px 4px;min-width:14px;text-align:center"></span>
+        </button>
+
+        <!-- Painel de Chat -->
+        <div id="chat-panel" class="fechado">
+            <div id="chat-header" onclick="toggleChat()">
+                <span style="font-size:14px">💬</span>
+                <span style="font-size:12px;font-weight:700;color:#e2e8f0;flex:1">Chat ao Vivo</span>
+                <span id="chat-online" style="font-size:10px;color:#1fcc59"></span>
+                <span style="font-size:10px;color:#475569">▼</span>
+            </div>
+            <div id="chat-msgs"></div>
+            <div id="chat-input-row">
+                <textarea id="chat-input" placeholder="Digite uma mensagem..." maxlength="500"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatEnviar()}"></textarea>
+                <button id="chat-send" onclick="chatEnviar()">Enviar</button>
             </div>
         </div>
 
@@ -2654,6 +2724,7 @@ async function carregarConfigLigas() {
 
         const cfg = {};
         data.data.forEach(d => { cfg[d.chave] = d.valor; });
+        S._cfgRaw = cfg;
 
         // Ligas habilitadas
         const habilitadas = new Set();
@@ -8757,6 +8828,7 @@ function conectarWS() {
     try {
         const prot = location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(`${prot}//${location.host}/ws`);
+        _ws = ws;
         ws.onopen = () => {
             _wsConectado = true;
             if (S.view === 'diagnostico') _diagAtualizarWS();
@@ -8769,10 +8841,18 @@ function conectarWS() {
                     else setTimeout(carregarHistorico, 1000);
                     if (S.view === 'diagnostico') setTimeout(carregarDiagnostico, 2500);
                 }
+                if (m.tipo === 'chat') {
+                    _chatAdicionarMsg(m, true);
+                    if (!_chatAberto) {
+                        _chatNaoLidas++;
+                        _chatAtualizarBadge();
+                    }
+                }
             } catch {}
         };
         ws.onclose = () => {
             _wsConectado = false;
+            _ws = null;
             if (S.view === 'diagnostico') _diagAtualizarWS();
             setTimeout(conectarWS, 12000);
         };
@@ -9451,6 +9531,7 @@ const _CFG_LABELS = {
     show_secao_tendencias:      'Exibir: 📈 Tendências',
     show_secao_frequencia:      'Exibir: 📊 Frequência dos Mercados',
     show_secao_desempenho:      'Exibir: 🏆 Desempenho por Liga',
+    chat_notificacao:           '💬 Chat: exibir badge de notificação quando há mensagens novas',
     show_subview_gols:          'Exibir botão/seção: ⚽ Gráfico de Gols',
     show_subview_grafico:       'Exibir botão/seção: 📈 Gráfico de Mercados',
     show_subview_linha:         'Exibir botão/seção: 📉 Gráfico de Linha',
@@ -11400,6 +11481,95 @@ function _verificarManutencao() {
 // ============================================================
 // INIT
 // ============================================================
+// ── Chat ao Vivo ─────────────────────────────────────────────
+let _chatAberto   = false;
+let _chatNaoLidas = 0;
+let _ws           = null;  // referência global ao WebSocket
+
+function toggleChat() {
+    _chatAberto = !_chatAberto;
+    const panel = document.getElementById('chat-panel');
+    if (!panel) return;
+    panel.classList.toggle('fechado', !_chatAberto);
+    if (_chatAberto) {
+        _chatNaoLidas = 0;
+        _chatAtualizarBadge();
+        setTimeout(() => {
+            const msgs = document.getElementById('chat-msgs');
+            if (msgs) msgs.scrollTop = msgs.scrollHeight;
+            document.getElementById('chat-input')?.focus();
+        }, 50);
+        if (!document.getElementById('chat-msgs').children.length) _chatCarregarHistorico();
+    }
+}
+
+async function _chatCarregarHistorico() {
+    try {
+        const r   = await fetch('/api/chat/historico');
+        const d   = await r.json();
+        if (!d.success) return;
+        const msgs = document.getElementById('chat-msgs');
+        if (!msgs) return;
+        msgs.innerHTML = '';
+        if (d.mensagens.length === 0) {
+            msgs.innerHTML = '<div class="chat-msg-system">Nenhuma mensagem nas últimas 24h</div>';
+            return;
+        }
+        d.mensagens.forEach(m => _chatAdicionarMsg(m, false));
+        msgs.scrollTop = msgs.scrollHeight;
+    } catch(_) {}
+}
+
+function _chatAdicionarMsg(m, scroll = true) {
+    const msgs = document.getElementById('chat-msgs');
+    if (!msgs) return;
+    const eu    = _getUser();
+    const isSelf = eu && m.usuario_id && String(m.usuario_id) === String(eu.Id);
+    const hora  = m.criado_em ? new Date(m.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+    const div   = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = `
+        <div class="chat-msg-header">
+            <span class="chat-msg-nome${isSelf?' self':''}">${_chatEsc(m.usuario_nome||'Anônimo')}</span>
+            <span class="chat-msg-hora">${hora}</span>
+        </div>
+        <div class="chat-msg-texto">${_chatEsc(m.mensagem)}</div>`;
+    msgs.appendChild(div);
+    if (scroll) msgs.scrollTop = msgs.scrollHeight;
+}
+
+function _chatEsc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function _chatAtualizarBadge() {
+    const badge = document.getElementById('chat-badge');
+    if (!badge) return;
+    const cfg = S._cfgRaw?.chat_notificacao;
+    const notifAtiva = cfg === 'true' || cfg === true;
+    if (!notifAtiva || _chatNaoLidas === 0 || _chatAberto) {
+        badge.style.display = 'none';
+    } else {
+        badge.style.display = 'inline-block';
+        badge.textContent = _chatNaoLidas > 9 ? '9+' : _chatNaoLidas;
+    }
+}
+
+function chatEnviar() {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    const texto = input.value.trim();
+    if (!texto || !_ws || _ws.readyState !== 1) return;
+    const u = _getUser();
+    _ws.send(JSON.stringify({
+        tipo: 'chat',
+        mensagem: texto,
+        usuario_nome: u?.NomeCompleto || u?.Usuario || 'Anônimo',
+        usuario_id:   u?.Id || null,
+    }));
+    input.value = '';
+}
+
 // ── Gerenciador de Temas ─────────────────────────────────────
 const TEMAS = [
     { grupo: 'ESCUROS' },
