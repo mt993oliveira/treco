@@ -436,13 +436,14 @@
         [data-theme]:not([data-theme="dark"]) [style*="background:rgb(6, 8, 16)"]
             { background: var(--bg-base) !important; }
 
-        [data-theme]:not([data-theme="dark"]) [style*="background:#0a0f1e"],
-        [data-theme]:not([data-theme="dark"]) [style*="background: #0a0f1e"],
-        [data-theme]:not([data-theme="dark"]) [style*="background:#070e1c"],
-        [data-theme]:not([data-theme="dark"]) [style*="background: #070e1c"],
-        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(10, 15, 30)"],
-        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(7, 14, 28)"]
-            { background: var(--bg-header) !important; }
+        /* header fica escuro via regra própria — os demais (#0a0f1e / #070e1c) ficam claros */
+        [data-theme]:not([data-theme="dark"]) [style*="background:#0a0f1e"]:not(header),
+        [data-theme]:not([data-theme="dark"]) [style*="background: #0a0f1e"]:not(header),
+        [data-theme]:not([data-theme="dark"]) [style*="background:#070e1c"]:not(header),
+        [data-theme]:not([data-theme="dark"]) [style*="background: #070e1c"]:not(header),
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(10, 15, 30)"]:not(header),
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(7, 14, 28)"]:not(header)
+            { background: var(--bg-page) !important; }
 
         [data-theme]:not([data-theme="dark"]) [style*="background:#0c1220"],
         [data-theme]:not([data-theme="dark"]) [style*="background: #0c1220"],
