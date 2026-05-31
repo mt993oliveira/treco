@@ -11375,6 +11375,9 @@ function aplicarTema(id) {
         el.classList.toggle('ativo', el.dataset.tema === id)
     );
     _atualizarCoresCharts(id);
+    const tema = TEMAS.find(t => t.id === id);
+    const btn = document.getElementById('theme-btn');
+    if (btn && tema) btn.innerHTML = `<span style="font-size:14px">🎨</span> ${tema.nome}`;
 }
 
 function toggleThemePicker() {
