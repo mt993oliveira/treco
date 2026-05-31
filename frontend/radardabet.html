@@ -333,19 +333,82 @@
             --bg-header: #131d2b; --bg-th:     #192030;
             --bg-td-l:   #1e2d40; --bg-vazio:  #1a2332;
         }
+        /* ── Médios extras ───────────────────────────────── */
+        [data-theme="charcoal"] {
+            --bg-base:   #1e1e1e; --bg-page:   #282828;
+            --bg-card:   #333333; --bg-border: #4a4a4a;
+            --bg-header: #141414; --bg-th:     #202020;
+            --bg-td-l:   #282828; --bg-vazio:  #1e1e1e;
+        }
+        [data-theme="dusk"] {
+            --bg-base:   #1e1a28; --bg-page:   #271f35;
+            --bg-card:   #32284a; --bg-border: #453860;
+            --bg-header: #160f20; --bg-th:     #1f1730;
+            --bg-td-l:   #271f35; --bg-vazio:  #1e1a28;
+        }
+        [data-theme="ocean"] {
+            --bg-base:   #0f2030; --bg-page:   #152a3d;
+            --bg-card:   #1d3850; --bg-border: #2a4f6e;
+            --bg-header: #0a1825; --bg-th:     #102030;
+            --bg-td-l:   #152a3d; --bg-vazio:  #0f2030;
+        }
+        /* ── Claros ──────────────────────────────────────── */
         [data-theme="light"] {
             --bg-base:   #e8edf5; --bg-page:   #f5f7fb;
             --bg-card:   #dde4ef; --bg-border: #b8c4d8;
             --bg-header: #0a0f1e; --bg-th:     #d0d9e8;
             --bg-td-l:   #f5f7fb; --bg-vazio:  #e8edf5;
         }
-        [data-theme="light"] body  { color: #1e293b !important; }
-        [data-theme="light"] .tabela-hist th { color: #334155 !important; }
-        [data-theme="light"] .tabela-hist td.td-l { color: #475569 !important; }
-        [data-theme="light"] .secao-btn  { color: #334155 !important; }
-        [data-theme="light"] .acao-btn   { color: #1e293b !important; }
-        [data-theme="light"] .stat-pill  { color: #475569 !important; }
-        [data-theme="light"] .stat-pill b { color: #1e293b !important; }
+        [data-theme="light-blue"] {
+            --bg-base:   #e0eeff; --bg-page:   #f0f7ff;
+            --bg-card:   #c8ddf5; --bg-border: #96b8e0;
+            --bg-header: #0a0f1e; --bg-th:     #c0d5ee;
+            --bg-td-l:   #f0f7ff; --bg-vazio:  #e0eeff;
+        }
+        [data-theme="mint"] {
+            --bg-base:   #ddf5eb; --bg-page:   #f0faf5;
+            --bg-card:   #c0e8d4; --bg-border: #88ccaa;
+            --bg-header: #0a0f1e; --bg-th:     #b8e0cc;
+            --bg-td-l:   #f0faf5; --bg-vazio:  #ddf5eb;
+        }
+        [data-theme="rose"] {
+            --bg-base:   #f5e8ef; --bg-page:   #fdf4f8;
+            --bg-card:   #e8ccd8; --bg-border: #cc9ab8;
+            --bg-header: #0a0f1e; --bg-th:     #e0c0d4;
+            --bg-td-l:   #fdf4f8; --bg-vazio:  #f5e8ef;
+        }
+        [data-theme="cream"] {
+            --bg-base:   #f5f0e0; --bg-page:   #fdfbf4;
+            --bg-card:   #ece4cc; --bg-border: #ccc090;
+            --bg-header: #0a0f1e; --bg-th:     #e4d8b8;
+            --bg-td-l:   #fdfbf4; --bg-vazio:  #f5f0e0;
+        }
+        /* texto para todos os temas claros */
+        [data-theme="light"],
+        [data-theme="light-blue"],
+        [data-theme="mint"],
+        [data-theme="rose"],
+        [data-theme="cream"] {
+            color-scheme: light;
+        }
+        [data-theme="light"] body, [data-theme="light-blue"] body,
+        [data-theme="mint"] body,  [data-theme="rose"] body,
+        [data-theme="cream"] body  { color: #1e293b !important; }
+        [data-theme="light"] .tabela-hist th, [data-theme="light-blue"] .tabela-hist th,
+        [data-theme="mint"] .tabela-hist th,  [data-theme="rose"] .tabela-hist th,
+        [data-theme="cream"] .tabela-hist th  { color: #334155 !important; }
+        [data-theme="light"] .tabela-hist td.td-l, [data-theme="light-blue"] .tabela-hist td.td-l,
+        [data-theme="mint"] .tabela-hist td.td-l,  [data-theme="rose"] .tabela-hist td.td-l,
+        [data-theme="cream"] .tabela-hist td.td-l  { color: #475569 !important; }
+        [data-theme="light"] .secao-btn, [data-theme="light-blue"] .secao-btn,
+        [data-theme="mint"] .secao-btn,  [data-theme="rose"] .secao-btn,
+        [data-theme="cream"] .secao-btn  { color: #334155 !important; }
+        [data-theme="light"] .acao-btn, [data-theme="light-blue"] .acao-btn,
+        [data-theme="mint"] .acao-btn,  [data-theme="rose"] .acao-btn,
+        [data-theme="cream"] .acao-btn  { color: #1e293b !important; }
+        [data-theme="light"] .stat-pill b, [data-theme="light-blue"] .stat-pill b,
+        [data-theme="mint"] .stat-pill b,  [data-theme="rose"] .stat-pill b,
+        [data-theme="cream"] .stat-pill b { color: #1e293b !important; }
         /* Picker */
         .tema-option { width:100%;background:none;border:1px solid transparent;border-radius:6px;
             padding:6px 8px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;transition:all .15s; }
@@ -11100,17 +11163,24 @@ function _verificarManutencao() {
 // ============================================================
 // ── Gerenciador de Temas ─────────────────────────────────────
 const TEMAS = [
-    // ── Escuros ────────────────────────────────────────────
+    { grupo: 'ESCUROS' },
     { id:'dark',        nome:'🌑 Dark',        base:'#060810', card:'#1e293b', accent:'#1fcc59' },
     { id:'carbon',      nome:'⚫ Carbon',       base:'#000000', card:'#141414', accent:'#22c55e' },
     { id:'deep-blue',   nome:'🔵 Deep Blue',   base:'#020b18', card:'#0a2240', accent:'#3b82f6' },
     { id:'dark-purple', nome:'🟣 Dark Purple',  base:'#080612', card:'#1a1535', accent:'#a855f7' },
     { id:'forest',      nome:'🌲 Forest',       base:'#030d07', card:'#0d2218', accent:'#10b981' },
-    // ── Médios ─────────────────────────────────────────────
+    { grupo: 'MÉDIOS' },
     { id:'slate',       nome:'🩶 Slate',        base:'#1a2030', card:'#2d3a50', accent:'#60a5fa' },
     { id:'steel',       nome:'🔷 Steel',        base:'#1a2332', card:'#253550', accent:'#38bdf8' },
-    // ── Claro ──────────────────────────────────────────────
+    { id:'charcoal',    nome:'🫙 Charcoal',     base:'#1e1e1e', card:'#333333', accent:'#a3a3a3' },
+    { id:'dusk',        nome:'🌆 Dusk',         base:'#1e1a28', card:'#32284a', accent:'#c084fc' },
+    { id:'ocean',       nome:'🌊 Ocean',        base:'#0f2030', card:'#1d3850', accent:'#22d3ee' },
+    { grupo: 'CLAROS' },
     { id:'light',       nome:'☀️ Light',        base:'#e8edf5', card:'#dde4ef', accent:'#0ea5e9' },
+    { id:'light-blue',  nome:'🔹 Light Blue',   base:'#e0eeff', card:'#c8ddf5', accent:'#3b82f6' },
+    { id:'mint',        nome:'🌿 Mint',         base:'#ddf5eb', card:'#c0e8d4', accent:'#10b981' },
+    { id:'rose',        nome:'🌸 Rose',         base:'#f5e8ef', card:'#e8ccd8', accent:'#ec4899' },
+    { id:'cream',       nome:'🌾 Cream',        base:'#f5f0e0', card:'#ece4cc', accent:'#d97706' },
 ];
 
 function aplicarTema(id) {
@@ -11136,13 +11206,20 @@ function _initThemePicker() {
     const wrap = document.getElementById('theme-options');
     if (!wrap) return;
     TEMAS.forEach(t => {
+        if (t.grupo) {
+            const sep = document.createElement('div');
+            sep.style.cssText = 'font-size:9px;font-weight:700;color:#475569;letter-spacing:.08em;padding:6px 2px 3px;margin-top:2px;border-top:1px solid #1e293b';
+            sep.textContent = t.grupo;
+            wrap.appendChild(sep);
+            return;
+        }
         const btn = document.createElement('button');
         btn.className = 'tema-option';
         btn.dataset.tema = t.id;
         btn.onclick = () => aplicarTema(t.id);
         btn.innerHTML = `<span class="tema-swatch">
-            <span style="background:${t.base}"></span>
-            <span style="background:${t.card}"></span>
+            <span style="background:${t.base};border:1px solid #ffffff20"></span>
+            <span style="background:${t.card};border:1px solid #ffffff20"></span>
             <span style="background:${t.accent}"></span>
         </span><span style="font-size:12px;color:#e2e8f0;font-weight:600">${t.nome}</span>`;
         wrap.appendChild(btn);
