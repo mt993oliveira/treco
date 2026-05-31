@@ -267,6 +267,68 @@
         .liga-tab .liga-icon { font-size: 16px; }
     }
     </style>
+    <style id="theme-vars">
+        :root {
+            --bg-base:   #060810;
+            --bg-page:   #0f172a;
+            --bg-card:   #1e293b;
+            --bg-border: #334155;
+            --bg-header: #0a0f1e;
+            --bg-th:     #0c1220;
+            --bg-td-l:   #0f172a;
+            --bg-vazio:  #060810;
+        }
+        /* Overrides estruturais via CSS vars */
+        body                              { background: var(--bg-base)   !important; }
+        .liga-card                        { background: var(--bg-page)   !important; border-color: var(--bg-card) !important; }
+        .secao-btn                        { background: var(--bg-card)   !important; border-color: var(--bg-border) !important; }
+        .acao-btn                         { background: var(--bg-card)   !important; border-color: var(--bg-border) !important; }
+        .stat-pill                        { background: var(--bg-card)   !important; }
+        .tabela-hist th                   { background: var(--bg-th)     !important; border-color: var(--bg-card)   !important; }
+        .tabela-hist td                   { border-color: var(--bg-th)   !important; }
+        .tabela-hist td.td-l,
+        .tabela-hist td.td-pct,
+        .tabela-hist td.td-g              { background: var(--bg-td-l)   !important; }
+        .tabela-hist tfoot td             { background: var(--bg-th)     !important; }
+        .c-vazio                          { background: var(--bg-vazio)  !important; }
+        [data-theme] header               { background: var(--bg-header) !important; border-bottom-color: var(--bg-card) !important; }
+        [data-theme] #user-dropdown,
+        [data-theme] #theme-dropdown      { background: var(--bg-page)   !important; border-color: var(--bg-card) !important; }
+        [data-theme] #user-menu-btn       { background: var(--bg-card)   !important; border-color: var(--bg-border) !important; }
+
+        /* ── Temas ──────────────────────────────────────── */
+        [data-theme="deep-blue"] {
+            --bg-base:   #020b18; --bg-page:   #051525;
+            --bg-card:   #0a2240; --bg-border: #1a3a60;
+            --bg-header: #030e1f; --bg-th:     #03101c;
+            --bg-td-l:   #051525; --bg-vazio:  #020b18;
+        }
+        [data-theme="dark-purple"] {
+            --bg-base:   #080612; --bg-page:   #100d22;
+            --bg-card:   #1a1535; --bg-border: #2d2450;
+            --bg-header: #060410; --bg-th:     #070512;
+            --bg-td-l:   #100d22; --bg-vazio:  #080612;
+        }
+        [data-theme="carbon"] {
+            --bg-base:   #000000; --bg-page:   #0a0a0a;
+            --bg-card:   #141414; --bg-border: #2a2a2a;
+            --bg-header: #000000; --bg-th:     #080808;
+            --bg-td-l:   #0a0a0a; --bg-vazio:  #000000;
+        }
+        [data-theme="forest"] {
+            --bg-base:   #030d07; --bg-page:   #071512;
+            --bg-card:   #0d2218; --bg-border: #1a3d2a;
+            --bg-header: #020b05; --bg-th:     #040f08;
+            --bg-td-l:   #071512; --bg-vazio:  #030d07;
+        }
+        /* Picker */
+        .tema-option { width:100%;background:none;border:1px solid transparent;border-radius:6px;
+            padding:6px 8px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;transition:all .15s; }
+        .tema-option:hover { background:#1e293b !important; }
+        .tema-option.ativo { border-color:#334155 !important; background:#1e293b !important; }
+        .tema-swatch { display:flex;gap:3px;flex-shrink:0; }
+        .tema-swatch span { width:10px;height:10px;border-radius:50%; }
+    </style>
 </head>
 <body>
 
@@ -304,6 +366,23 @@
             <div class="lic-bloco" id="lic-bloco-periodo" style="background:rgba(31,204,89,.05)">
                 <span class="lic-label">Licença</span>
                 <span class="lic-periodo" id="licenca-data">—</span>
+            </div>
+        </div>
+
+        <!-- Theme Picker -->
+        <div style="position:relative;flex-shrink:0">
+            <button id="theme-btn" onclick="toggleThemePicker()" title="Escolher tema da interface"
+                style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;
+                       background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
+                       font-size:16px;transition:background .15s"
+                onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
+                🎨
+            </button>
+            <div id="theme-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 6px);
+                 background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 10px 8px;
+                 box-shadow:0 8px 24px rgba(0,0,0,.7);z-index:300;min-width:170px">
+                <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.05em">TEMA DA INTERFACE</div>
+                <div id="theme-options"></div>
             </div>
         </div>
 
@@ -10994,8 +11073,55 @@ function _verificarManutencao() {
 // ============================================================
 // INIT
 // ============================================================
+// ── Gerenciador de Temas ─────────────────────────────────────
+const TEMAS = [
+    { id:'dark',        nome:'🌑 Dark',        base:'#060810', card:'#1e293b', accent:'#1fcc59' },
+    { id:'deep-blue',   nome:'🔵 Deep Blue',   base:'#020b18', card:'#0a2240', accent:'#3b82f6' },
+    { id:'dark-purple', nome:'🟣 Dark Purple',  base:'#080612', card:'#1a1535', accent:'#a855f7' },
+    { id:'carbon',      nome:'⚫ Carbon',       base:'#000000', card:'#141414', accent:'#22c55e' },
+    { id:'forest',      nome:'🌲 Forest',       base:'#030d07', card:'#0d2218', accent:'#10b981' },
+];
+
+function aplicarTema(id) {
+    document.documentElement.setAttribute('data-theme', id);
+    localStorage.setItem('rdbt_tema', id);
+    document.querySelectorAll('.tema-option').forEach(el =>
+        el.classList.toggle('ativo', el.dataset.tema === id)
+    );
+}
+
+function toggleThemePicker() {
+    const d = document.getElementById('theme-dropdown');
+    if (!d) return;
+    const aberto = d.style.display !== 'none';
+    d.style.display = aberto ? 'none' : 'block';
+    if (!aberto) {
+        const fechar = e => { if (!d.contains(e.target) && e.target.id !== 'theme-btn') { d.style.display='none'; document.removeEventListener('click', fechar); } };
+        setTimeout(() => document.addEventListener('click', fechar), 0);
+    }
+}
+
+function _initThemePicker() {
+    const wrap = document.getElementById('theme-options');
+    if (!wrap) return;
+    TEMAS.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'tema-option';
+        btn.dataset.tema = t.id;
+        btn.onclick = () => aplicarTema(t.id);
+        btn.innerHTML = `<span class="tema-swatch">
+            <span style="background:${t.base}"></span>
+            <span style="background:${t.card}"></span>
+            <span style="background:${t.accent}"></span>
+        </span><span style="font-size:12px;color:#e2e8f0;font-weight:600">${t.nome}</span>`;
+        wrap.appendChild(btn);
+    });
+    aplicarTema(localStorage.getItem('rdbt_tema') || 'dark');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     _initUserMenu();
+    _initThemePicker();
     _faInit();
     carregarConfigLigas().then(async () => {
         _faInit();
