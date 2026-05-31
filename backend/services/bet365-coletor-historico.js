@@ -126,6 +126,29 @@ function normalizarNomeSelecao(sel) {
     return sel;
 }
 
+function _formatarJogo(jogo, ligaNorm) {
+    const placarOculto = jogo.golCasa === null || jogo.golFora === null
+        || isNaN(jogo.golCasa) || isNaN(jogo.golFora);
+    return {
+        liga:      ligaNorm,
+        horario:   jogo.horario,
+        timeCasa:  normalizarNomeTime(jogo.timeCasa),
+        timeFora:  normalizarNomeTime(jogo.timeFora),
+        placar:    placarOculto ? 'OCULTO' : `${jogo.golCasa}-${jogo.golFora}`,
+        golCasa:   placarOculto ? 0 : jogo.golCasa,
+        golFora:   placarOculto ? 0 : jogo.golFora,
+        resultado: placarOculto ? 'OCULTO'
+            : jogo.golCasa > jogo.golFora ? 'CASA'
+            : jogo.golFora > jogo.golCasa ? 'FORA' : 'EMPATE',
+        mercados:  (jogo.mercados || []).map(m => ({
+            mercado: normalizarNomeMercado(m.mercado),
+            selecao: normalizarNomeSelecao(m.selecao),
+            odd:     0,
+        })),
+        placarOculto,
+    };
+}
+
 // ── Hash / ID (igual ao coletor principal) ───────────────────
 function _hash(str) {
     let h = 0x811c9dc5;
@@ -416,6 +439,7 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
 
         const resultados = [];
         const jogosFalhados = [];
+        let totalSalvos = 0;
 
         for (const jogo of jogosParaClicar) {
             try {
@@ -497,6 +521,13 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                     placar:   dadosJogo.placar,
                     mercados: dadosJogo.mercadosGanhadores,
                 });
+
+                // Salva imediatamente antes de ir para o próximo jogo
+                const n = await salvarResultados(ligaNorm,
+                    [_formatarJogo({ ...jogo, golCasa: dadosJogo.golCasa, golFora: dadosJogo.golFora, mercados: dadosJogo.mercadosGanhadores }, ligaNorm)],
+                    dataAlvo);
+                totalSalvos += n;
+                if (n > 0) console.log(`   💾 [${ligaNorm}] ${jogo.horario} ${jogo.timeCasa}×${jogo.timeFora} salvo`);
 
                 // Volta para a lista de partidas
                 await novaPg.evaluate(() => {
@@ -596,6 +627,11 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
                     }, jogo.timeCasa);
                     console.log(`   ✓ [retry] ${jogo.horario} ${jogo.timeCasa}×${jogo.timeFora} → ${dadosJogo.placar || '?'} | ${dadosJogo.mercadosGanhadores.length} mercados`);
                     resultados.push({ ...jogo, golCasa: dadosJogo.golCasa, golFora: dadosJogo.golFora, placar: dadosJogo.placar, mercados: dadosJogo.mercadosGanhadores });
+                    const nr = await salvarResultados(ligaNorm,
+                        [_formatarJogo({ ...jogo, golCasa: dadosJogo.golCasa, golFora: dadosJogo.golFora, mercados: dadosJogo.mercadosGanhadores }, ligaNorm)],
+                        dataAlvo);
+                    totalSalvos += nr;
+                    if (nr > 0) console.log(`   💾 [${ligaNorm}] [retry] ${jogo.horario} ${jogo.timeCasa}×${jogo.timeFora} salvo`);
                     await novaPg.evaluate(() => {
                         const btn = document.querySelector('.fixture-page-header__back-button');
                         if (btn) btn.click();
@@ -621,33 +657,8 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
 
         const comPlacar = resultados.filter(j => j.placar).length;
         const ex = resultados.slice(0,3).map(j=>`${j.horario} ${j.timeCasa}×${j.timeFora} (${j.placar||'?'})`);
-        console.log(`   → ${resultados.length} jogos | ${comPlacar} com placar | ex: ${ex.join(' | ')}`);
-
-        const jogosFormatados = resultados.map(j => {
-            const placarOculto = j.golCasa === null || j.golFora === null || isNaN(j.golCasa) || isNaN(j.golFora);
-            return {
-                liga:      ligaNorm,
-                horario:   j.horario,
-                timeCasa:  normalizarNomeTime(j.timeCasa),
-                timeFora:  normalizarNomeTime(j.timeFora),
-                placar:    placarOculto ? 'OCULTO' : `${j.golCasa}-${j.golFora}`,
-                golCasa:   placarOculto ? 0 : j.golCasa,
-                golFora:   placarOculto ? 0 : j.golFora,
-                resultado: placarOculto ? 'OCULTO'
-                    : j.golCasa > j.golFora ? 'CASA'
-                    : j.golFora > j.golCasa ? 'FORA' : 'EMPATE',
-                mercados: (j.mercados || []).map(m => ({
-                    mercado: normalizarNomeMercado(m.mercado),
-                    selecao: normalizarNomeSelecao(m.selecao),
-                    odd:     0,
-                })),
-                placarOculto,
-            };
-        });
-
-        const salvos = await salvarResultados(ligaNorm, jogosFormatados, dataAlvo);
-        console.log(`   💾 [${ligaNorm}] ${salvos} resultado(s) salvos`);
-        return salvos;
+        console.log(`   → ${resultados.length} jogos | ${comPlacar} com placar | ${totalSalvos} salvos | ex: ${ex.join(' | ')}`);
+        return totalSalvos;
 
     } catch(err) {
         console.error(`   ❌ [${ligaNorm}] Erro coletarViaExtra: ${err.message}`);
