@@ -321,6 +321,31 @@
             --bg-header: #020b05; --bg-th:     #040f08;
             --bg-td-l:   #071512; --bg-vazio:  #030d07;
         }
+        [data-theme="slate"] {
+            --bg-base:   #1a2030; --bg-page:   #232c3d;
+            --bg-card:   #2d3a50; --bg-border: #3d4f68;
+            --bg-header: #141b28; --bg-th:     #1e2838;
+            --bg-td-l:   #232c3d; --bg-vazio:  #1a2030;
+        }
+        [data-theme="steel"] {
+            --bg-base:   #1a2332; --bg-page:   #1e2d40;
+            --bg-card:   #253550; --bg-border: #304260;
+            --bg-header: #131d2b; --bg-th:     #192030;
+            --bg-td-l:   #1e2d40; --bg-vazio:  #1a2332;
+        }
+        [data-theme="light"] {
+            --bg-base:   #e8edf5; --bg-page:   #f5f7fb;
+            --bg-card:   #dde4ef; --bg-border: #b8c4d8;
+            --bg-header: #0a0f1e; --bg-th:     #d0d9e8;
+            --bg-td-l:   #f5f7fb; --bg-vazio:  #e8edf5;
+        }
+        [data-theme="light"] body  { color: #1e293b !important; }
+        [data-theme="light"] .tabela-hist th { color: #334155 !important; }
+        [data-theme="light"] .tabela-hist td.td-l { color: #475569 !important; }
+        [data-theme="light"] .secao-btn  { color: #334155 !important; }
+        [data-theme="light"] .acao-btn   { color: #1e293b !important; }
+        [data-theme="light"] .stat-pill  { color: #475569 !important; }
+        [data-theme="light"] .stat-pill b { color: #1e293b !important; }
         /* Picker */
         .tema-option { width:100%;background:none;border:1px solid transparent;border-radius:6px;
             padding:6px 8px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;transition:all .15s; }
@@ -372,11 +397,11 @@
         <!-- Theme Picker -->
         <div style="position:relative;flex-shrink:0">
             <button id="theme-btn" onclick="toggleThemePicker()" title="Escolher tema da interface"
-                style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;
+                style="display:flex;align-items:center;gap:5px;padding:5px 10px;height:32px;
                        background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
-                       font-size:16px;transition:background .15s"
+                       font-size:11px;font-weight:700;color:#94a3b8;transition:background .15s;white-space:nowrap"
                 onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
-                🎨
+                <span style="font-size:14px">🎨</span> Temas
             </button>
             <div id="theme-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 6px);
                  background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 10px 8px;
@@ -11075,11 +11100,17 @@ function _verificarManutencao() {
 // ============================================================
 // ── Gerenciador de Temas ─────────────────────────────────────
 const TEMAS = [
+    // ── Escuros ────────────────────────────────────────────
     { id:'dark',        nome:'🌑 Dark',        base:'#060810', card:'#1e293b', accent:'#1fcc59' },
+    { id:'carbon',      nome:'⚫ Carbon',       base:'#000000', card:'#141414', accent:'#22c55e' },
     { id:'deep-blue',   nome:'🔵 Deep Blue',   base:'#020b18', card:'#0a2240', accent:'#3b82f6' },
     { id:'dark-purple', nome:'🟣 Dark Purple',  base:'#080612', card:'#1a1535', accent:'#a855f7' },
-    { id:'carbon',      nome:'⚫ Carbon',       base:'#000000', card:'#141414', accent:'#22c55e' },
     { id:'forest',      nome:'🌲 Forest',       base:'#030d07', card:'#0d2218', accent:'#10b981' },
+    // ── Médios ─────────────────────────────────────────────
+    { id:'slate',       nome:'🩶 Slate',        base:'#1a2030', card:'#2d3a50', accent:'#60a5fa' },
+    { id:'steel',       nome:'🔷 Steel',        base:'#1a2332', card:'#253550', accent:'#38bdf8' },
+    // ── Claro ──────────────────────────────────────────────
+    { id:'light',       nome:'☀️ Light',        base:'#e8edf5', card:'#dde4ef', accent:'#0ea5e9' },
 ];
 
 function aplicarTema(id) {
