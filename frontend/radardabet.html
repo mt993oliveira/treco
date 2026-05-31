@@ -2610,6 +2610,9 @@ const TODOS_FILTROS = [
     { id:'impar-ft', label:'Ímpar',cor:'#fb7185', desc:'Total de gols ímpar (1, 3, 5…)' },
     // Referência
     { id:'equilibrio',   label:'Equilíbrio', cor:'#64748b', dashed:true },
+    // Médias Móveis selecionáveis — calculadas sobre o filtro primário
+    { id:'mm9',  label:'MM9',  cor:'#60a5fa', isMA_sel:true, desc:'Média móvel 9 jogos do filtro principal' },
+    { id:'mm21', label:'MM21', cor:'#fbbf24', isMA_sel:true, desc:'Média móvel 21 jogos do filtro principal' },
 ];
 
 // Compatibilidade legada — mantém FILTROS para renderTabela (S.filtro/secao)
@@ -4268,6 +4271,7 @@ const GRUPOS_LEGENDA = [
     { label: 'Resultado 2T',  ids: ['st-over1.5','st-under1.5','st-ambas','st-ambas-nao','st-gols-0','st-gols-1','st-gols-2','st-gols-3p'] },
     { label: 'Especial',      ids: ['esp-btts-o25','esp-btts-u25','esp-casa-o15','esp-fora-o15','equilibrio'] },
     { label: 'Par/Ímpar',    ids: ['par-ft','impar-ft'] },
+    { label: 'MM',           ids: ['mm9','mm21'] },
 ];
 const _filtroById = id => TODOS_FILTROS.find(f => f.id === id);
 
@@ -5268,7 +5272,7 @@ function renderGrafico() {
     const _offsetG = _todasG.length - serie.length;
 
     const tituloEl = document.getElementById('g-titulo');
-    const ativos   = TODOS_FILTROS.filter(f => S.linhasMercados[f.id] && f.id !== 'equilibrio');
+    const ativos   = TODOS_FILTROS.filter(f => S.linhasMercados[f.id] && f.id !== 'equilibrio' && !f.isMA_sel);
 
     if (!_hoveringChart) _renderPillsMercados();
 
@@ -5380,6 +5384,31 @@ function renderGrafico() {
                 borderDash: _pd(S.grafMM2Dash||'8,4'), pointRadius:0, tension:0.4, _isMA:true });
         }
     });
+
+    // MM9/MM21 como mercados selecionáveis — calculados sobre o filtro primário
+    {
+        const _mmSel = [
+            S.linhasMercados['mm9']  && { n: S.grafMM1||9,  cor: S.grafMM1Cor||'#60a5fa', esp: S.grafMM1Esp||1.5, dash: S.grafMM1Dash||'4,4'  },
+            S.linhasMercados['mm21'] && { n: S.grafMM2||21, cor: S.grafMM2Cor||'#fbbf24', esp: S.grafMM2Esp||2,   dash: S.grafMM2Dash||'8,4'  },
+        ].filter(Boolean);
+        if (_mmSel.length > 0) {
+            const _pdmm = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
+            const _primDs = datasets.find(d => d._filtroId === S.filtro) || datasets.find(d => d._filtroId && !d._isMA);
+            if (_primDs) {
+                const _base = _primDs.data;
+                _mmSel.forEach(mm => {
+                    const rolAvg = _base.map((_,i) => {
+                        const sl = _base.slice(Math.max(0,i-mm.n+1), i+1);
+                        return +(sl.reduce((a,b)=>a+b,0)/sl.length).toFixed(1);
+                    });
+                    datasets.push({ type:'line', label:`MM${mm.n}`, data: rolAvg,
+                        borderColor: mm.cor, backgroundColor:'transparent',
+                        borderWidth: mm.esp, borderDash: _pdmm(mm.dash),
+                        pointRadius:0, tension:0.4, _isMA:true });
+                });
+            }
+        }
+    }
 
     const labels = serie.map(p => {
         if (!p.data_partida) return '';
