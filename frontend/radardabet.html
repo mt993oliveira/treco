@@ -426,39 +426,54 @@
             --border-subtle:  #b8c4d8;
         }
 
-        /* ── Backgrounds inline → var() (todos os temas exceto dark) ── */
+        /* ── Backgrounds inline → var() ─────────────────────────────────
+           Hex: estado inicial do HTML
+           RGB: após JS tocar element.style (browser re-serializa hex→RGB)
+           ─────────────────────────────────────────────────────────────── */
         [data-theme]:not([data-theme="dark"]) [style*="background:#060810"],
-        [data-theme]:not([data-theme="dark"]) [style*="background: #060810"]
+        [data-theme]:not([data-theme="dark"]) [style*="background: #060810"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(6, 8, 16)"],
+        [data-theme]:not([data-theme="dark"]) [style*="background:rgb(6, 8, 16)"]
             { background: var(--bg-base) !important; }
 
         [data-theme]:not([data-theme="dark"]) [style*="background:#0a0f1e"],
         [data-theme]:not([data-theme="dark"]) [style*="background: #0a0f1e"],
         [data-theme]:not([data-theme="dark"]) [style*="background:#070e1c"],
-        [data-theme]:not([data-theme="dark"]) [style*="background: #070e1c"]
+        [data-theme]:not([data-theme="dark"]) [style*="background: #070e1c"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(10, 15, 30)"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(7, 14, 28)"]
             { background: var(--bg-header) !important; }
 
         [data-theme]:not([data-theme="dark"]) [style*="background:#0c1220"],
         [data-theme]:not([data-theme="dark"]) [style*="background: #0c1220"],
         [data-theme]:not([data-theme="dark"]) [style*="background:#0d1421"],
-        [data-theme]:not([data-theme="dark"]) [style*="background: #0d1421"]
+        [data-theme]:not([data-theme="dark"]) [style*="background: #0d1421"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(12, 18, 32)"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(13, 20, 33)"]
             { background: var(--bg-th) !important; }
 
         [data-theme]:not([data-theme="dark"]) [style*="background:#0f172a"]:not(.c-verde):not(.c-verm):not(.c-futuro),
         [data-theme]:not([data-theme="dark"]) [style*="background: #0f172a"]:not(.c-verde):not(.c-verm):not(.c-futuro),
-        [data-theme]:not([data-theme="dark"]) [style*="background-color:#0f172a"]:not(.c-verde):not(.c-verm)
+        [data-theme]:not([data-theme="dark"]) [style*="background-color:#0f172a"]:not(.c-verde):not(.c-verm),
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(15, 23, 42)"]:not(.c-verde):not(.c-verm):not(.c-futuro),
+        [data-theme]:not([data-theme="dark"]) [style*="background-color: rgb(15, 23, 42)"]:not(.c-verde):not(.c-verm)
             { background: var(--bg-page) !important; }
 
         [data-theme]:not([data-theme="dark"]) [style*="background:#1e293b"]:not(.c-verde):not(.c-verm),
         [data-theme]:not([data-theme="dark"]) [style*="background: #1e293b"]:not(.c-verde):not(.c-verm),
-        [data-theme]:not([data-theme="dark"]) [style*="background-color:#1e293b"]
+        [data-theme]:not([data-theme="dark"]) [style*="background-color:#1e293b"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(30, 41, 59)"]:not(.c-verde):not(.c-verm),
+        [data-theme]:not([data-theme="dark"]) [style*="background-color: rgb(30, 41, 59)"]
             { background: var(--bg-card) !important; }
 
-        /* ── Borders inline ──────────────────────────────────────────── */
+        /* ── Borders inline (hex + RGB) ──────────────────────────────── */
         [data-theme]:not([data-theme="dark"]) [style*="border:1px solid #1e293b"],
-        [data-theme]:not([data-theme="dark"]) [style*="border: 1px solid #1e293b"]
+        [data-theme]:not([data-theme="dark"]) [style*="border: 1px solid #1e293b"],
+        [data-theme]:not([data-theme="dark"]) [style*="border-color: rgb(30, 41, 59)"]
             { border-color: var(--border-subtle) !important; }
         [data-theme]:not([data-theme="dark"]) [style*="border:1px solid #334155"],
-        [data-theme]:not([data-theme="dark"]) [style*="border: 1px solid #334155"]
+        [data-theme]:not([data-theme="dark"]) [style*="border: 1px solid #334155"],
+        [data-theme]:not([data-theme="dark"]) [style*="border-color: rgb(51, 65, 85)"]
             { border-color: var(--border-color) !important; }
         [data-theme]:not([data-theme="dark"]) [style*="border-bottom:1px solid #1e293b"],
         [data-theme]:not([data-theme="dark"]) [style*="border-bottom: 1px solid #1e293b"]
@@ -469,26 +484,62 @@
         [data-theme]:not([data-theme="dark"]) [style*="border-top: 1px solid #0f172a"]
             { border-top-color: var(--border-subtle) !important; }
 
-        /* ── Texto inline (só temas claros) ──────────────────────────── */
+        /* ── Subview buttons — seletor direto por ID (garantido) ─────── */
+        [data-theme]:not([data-theme="dark"]) #sub-btn-gols,
+        [data-theme]:not([data-theme="dark"]) #sub-btn-linha,
+        [data-theme]:not([data-theme="dark"]) #sub-btn-grafico,
+        [data-theme]:not([data-theme="dark"]) #sub-btn-parimpar,
+        [data-theme]:not([data-theme="dark"]) #sub-btn-mosaico
+            { background: var(--bg-card) !important; border-color: var(--border-subtle) !important; }
+
+        /* ── Texto inline hex + RGB (só temas claros) ────────────────── */
         [data-theme="light"] [style*="color:#e2e8f0"],[data-theme="light-blue"] [style*="color:#e2e8f0"],
         [data-theme="mint"]  [style*="color:#e2e8f0"],[data-theme="rose"]       [style*="color:#e2e8f0"],
-        [data-theme="cream"] [style*="color:#e2e8f0"] { color: var(--text-primary) !important; }
+        [data-theme="cream"] [style*="color:#e2e8f0"],
+        [data-theme="light"] [style*="color: rgb(226, 232, 240)"],[data-theme="light-blue"] [style*="color: rgb(226, 232, 240)"],
+        [data-theme="mint"]  [style*="color: rgb(226, 232, 240)"],[data-theme="rose"]       [style*="color: rgb(226, 232, 240)"],
+        [data-theme="cream"] [style*="color: rgb(226, 232, 240)"] { color: var(--text-primary) !important; }
 
         [data-theme="light"] [style*="color:#94a3b8"],[data-theme="light-blue"] [style*="color:#94a3b8"],
         [data-theme="mint"]  [style*="color:#94a3b8"],[data-theme="rose"]       [style*="color:#94a3b8"],
-        [data-theme="cream"] [style*="color:#94a3b8"] { color: var(--text-secondary) !important; }
+        [data-theme="cream"] [style*="color:#94a3b8"],
+        [data-theme="light"] [style*="color: rgb(148, 163, 184)"],[data-theme="light-blue"] [style*="color: rgb(148, 163, 184)"],
+        [data-theme="mint"]  [style*="color: rgb(148, 163, 184)"],[data-theme="rose"]       [style*="color: rgb(148, 163, 184)"],
+        [data-theme="cream"] [style*="color: rgb(148, 163, 184)"] { color: var(--text-secondary) !important; }
 
         [data-theme="light"] [style*="color:#475569"],[data-theme="light-blue"] [style*="color:#475569"],
         [data-theme="mint"]  [style*="color:#475569"],[data-theme="rose"]       [style*="color:#475569"],
-        [data-theme="cream"] [style*="color:#475569"] { color: var(--text-tertiary) !important; }
+        [data-theme="cream"] [style*="color:#475569"],
+        [data-theme="light"] [style*="color: rgb(71, 85, 105)"],[data-theme="light-blue"] [style*="color: rgb(71, 85, 105)"],
+        [data-theme="mint"]  [style*="color: rgb(71, 85, 105)"] ,[data-theme="rose"]       [style*="color: rgb(71, 85, 105)"],
+        [data-theme="cream"] [style*="color: rgb(71, 85, 105)"] { color: var(--text-tertiary) !important; }
 
         [data-theme="light"] [style*="color:#64748b"],[data-theme="light-blue"] [style*="color:#64748b"],
         [data-theme="mint"]  [style*="color:#64748b"],[data-theme="rose"]       [style*="color:#64748b"],
-        [data-theme="cream"] [style*="color:#64748b"] { color: var(--text-tertiary) !important; }
+        [data-theme="cream"] [style*="color:#64748b"],
+        [data-theme="light"] [style*="color: rgb(100, 116, 139)"],[data-theme="light-blue"] [style*="color: rgb(100, 116, 139)"],
+        [data-theme="mint"]  [style*="color: rgb(100, 116, 139)"],[data-theme="rose"]       [style*="color: rgb(100, 116, 139)"],
+        [data-theme="cream"] [style*="color: rgb(100, 116, 139)"] { color: var(--text-tertiary) !important; }
 
         [data-theme="light"] [style*="color:#334155"],[data-theme="light-blue"] [style*="color:#334155"],
         [data-theme="mint"]  [style*="color:#334155"],[data-theme="rose"]       [style*="color:#334155"],
-        [data-theme="cream"] [style*="color:#334155"] { color: var(--border-color) !important; }
+        [data-theme="cream"] [style*="color:#334155"],
+        [data-theme="light"] [style*="color: rgb(51, 65, 85)"],[data-theme="light-blue"] [style*="color: rgb(51, 65, 85)"],
+        [data-theme="mint"]  [style*="color: rgb(51, 65, 85)"] ,[data-theme="rose"]       [style*="color: rgb(51, 65, 85)"],
+        [data-theme="cream"] [style*="color: rgb(51, 65, 85)"] { color: var(--border-color) !important; }
+
+        /* temas claros — sub-btn texto legível */
+        [data-theme="light"] #sub-btn-gols,[data-theme="light-blue"] #sub-btn-gols,
+        [data-theme="mint"]  #sub-btn-gols,[data-theme="rose"]       #sub-btn-gols,[data-theme="cream"] #sub-btn-gols,
+        [data-theme="light"] #sub-btn-linha,[data-theme="light-blue"] #sub-btn-linha,
+        [data-theme="mint"]  #sub-btn-linha,[data-theme="rose"]       #sub-btn-linha,[data-theme="cream"] #sub-btn-linha,
+        [data-theme="light"] #sub-btn-grafico,[data-theme="light-blue"] #sub-btn-grafico,
+        [data-theme="mint"]  #sub-btn-grafico,[data-theme="rose"]       #sub-btn-grafico,[data-theme="cream"] #sub-btn-grafico,
+        [data-theme="light"] #sub-btn-parimpar,[data-theme="light-blue"] #sub-btn-parimpar,
+        [data-theme="mint"]  #sub-btn-parimpar,[data-theme="rose"]       #sub-btn-parimpar,[data-theme="cream"] #sub-btn-parimpar,
+        [data-theme="light"] #sub-btn-mosaico,[data-theme="light-blue"] #sub-btn-mosaico,
+        [data-theme="mint"]  #sub-btn-mosaico,[data-theme="rose"]       #sub-btn-mosaico,[data-theme="cream"] #sub-btn-mosaico
+            { color: var(--text-secondary) !important; }
 
         /* ── Inputs, selects, textareas ──────────────────────────────── */
         [data-theme]:not([data-theme="dark"]) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
