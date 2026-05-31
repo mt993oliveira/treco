@@ -486,6 +486,16 @@
         [data-theme]:not([data-theme="dark"]) [style*="border-top: 1px solid #0f172a"]
             { border-top-color: var(--border-subtle) !important; }
 
+        /* ── View-btn (Tabela Histórica, Análise, Clubes…) ─────────────── */
+        [data-theme]:not([data-theme="dark"]) .view-btn {
+            background: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+        [data-theme="light"] .view-btn,[data-theme="light-blue"] .view-btn,
+        [data-theme="mint"]  .view-btn,[data-theme="rose"]       .view-btn,
+        [data-theme="cream"] .view-btn { color: var(--text-tertiary) !important; }
+        [data-theme]:not([data-theme="dark"]) .view-btn:hover:not(.ativo) { background: var(--bg-border) !important; }
+
         /* ── Subview buttons — seletor direto por ID (garantido) ─────── */
         [data-theme]:not([data-theme="dark"]) #sub-btn-gols,
         [data-theme]:not([data-theme="dark"]) #sub-btn-linha,
