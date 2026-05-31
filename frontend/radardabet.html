@@ -5670,7 +5670,7 @@ function renderGraficoLinha() {
 
     const JANELA   = S.grafLinhaJanela || 20; // base fixa configurável pelo usuário (padrão: 20)
     const tituloEl = document.getElementById('g-linha-titulo');
-    const ativos   = TODOS_FILTROS.filter(f => S.linhasLinha[f.id] && f.id !== 'equilibrio');
+    const ativos   = TODOS_FILTROS.filter(f => S.linhasLinha[f.id] && f.id !== 'equilibrio' && !f.isMA_sel);
 
     if (!_hoveringChart) _renderPillsLinha();
 
@@ -5796,6 +5796,31 @@ function renderGraficoLinha() {
                 borderDash: _pd(S.grafMM2Dash||'8,4'), pointRadius:0, tension:0.4, _isMA:true });
         }
     });
+
+    // MM9/MM21 como mercados selecionáveis no Gráfico de Linha
+    {
+        const _mmSel = [
+            S.linhasLinha['mm9']  && { n: S.grafMM1||9,  cor: S.grafMM1Cor||'#60a5fa', esp: S.grafMM1Esp||1.5, dash: S.grafMM1Dash||'4,4' },
+            S.linhasLinha['mm21'] && { n: S.grafMM2||21, cor: S.grafMM2Cor||'#fbbf24', esp: S.grafMM2Esp||2,   dash: S.grafMM2Dash||'8,4' },
+        ].filter(Boolean);
+        if (_mmSel.length > 0) {
+            const _pdmm = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
+            const _primDs = datasets.find(d => d._filtroId === S.filtro) || datasets.find(d => d._filtroId && !d._isMA);
+            if (_primDs) {
+                const _base = _primDs.data;
+                _mmSel.forEach(mm => {
+                    const rolAvg = _base.map((_,i) => {
+                        const sl = _base.slice(Math.max(0,i-mm.n+1), i+1);
+                        return +(sl.reduce((a,b)=>a+b,0)/sl.length).toFixed(1);
+                    });
+                    datasets.push({ type:'line', label:`MM${mm.n}`, data: rolAvg,
+                        borderColor: mm.cor, backgroundColor:'transparent',
+                        borderWidth: mm.esp, borderDash: _pdmm(mm.dash),
+                        pointRadius:0, tension:0.4, _isMA:true });
+                });
+            }
+        }
+    }
 
     const labels = serieDisplay.map(p => {
         if (!p.data_partida) return '';
