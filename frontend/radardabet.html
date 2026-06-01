@@ -5907,9 +5907,7 @@ function renderGraficoLinha() {
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
 
-    if (tituloEl) tituloEl.textContent =
-        ativos.map(f => f.label).join(' · ') +
-        ` — ${serieDisplay.length} jogos · janela ${JANELA}J (±5%)`;
+    if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ');
 
     _LINHA_SERIE        = serieDisplay;
     _LINHA_HITS         = hitsMapDisplay;
@@ -6144,7 +6142,7 @@ function renderGraficoGols() {
     const yMin = Math.max(0, Math.floor(Math.min(...todasSeries) / 5) * 5 - 5);
     const yMax = Math.ceil(Math.max(...todasSeries) / 5) * 5 + 5;
 
-    if (tituloEl) tituloEl.textContent = `⚽ ${serie.length} jogos · ${totalG} gols totais · soma ${n}j`;
+    if (tituloEl) tituloEl.textContent = '⚽ Gols por Jogo';
 
     _destruirGols();
     try { S._graficoGols = new Chart(canvasEl.getContext('2d'), {
