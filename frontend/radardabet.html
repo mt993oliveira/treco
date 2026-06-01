@@ -9231,7 +9231,14 @@ function _initUserMenu() {
             _badgeEl.title = _title;
             _badgeEl.style.display = 'flex';
             const _btnRenov = document.getElementById('btn-renovar-licenca');
-            if (_btnRenov) _btnRenov.style.display = 'flex';
+            if (_btnRenov) {
+                _btnRenov.style.display = 'flex';
+                if (_dias <= 7) {
+                    _btnRenov.style.background    = 'rgba(239,68,68,.15)';
+                    _btnRenov.style.borderColor   = 'rgba(239,68,68,.5)';
+                    _btnRenov.style.color         = '#f87171';
+                }
+            }
         }
     }
 
