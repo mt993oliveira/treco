@@ -1915,7 +1915,6 @@
                     <button id="btn-linha-pct"   class="acao-btn" onclick="_linhaToggle('linhaGrafPct','btn-linha-pct')"           title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
                     <button id="btn-linha-tf"    class="acao-btn" onclick="_linhaToggle('linhaGrafTopoFundo','btn-linha-tf')"       title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-linha-cong"  class="acao-btn" onclick="_linhaToggle('linhaGrafCongest','btn-linha-cong')"       title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
-                    <button id="btn-linha-mm"    class="acao-btn" onclick="_linhaToggle('linhaGrafMM','btn-linha-mm')"               title="Média Móvel — sobrepõe uma linha suavizada sobre cada curva ativa.&#10;&#10;Quando a curva principal está ACIMA da MM o mercado está aquecido; ABAIXO indica resfriamento.&#10;&#10;O período é o mesmo da MM Longa configurado no Gráfico de Mercados (campo ao lado do botão 📈 MM).">📈 MM</button>
                     <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button class="acao-btn" onclick="resetZoomLinha()" title="Resetar zoom (Ctrl+Roda para zoom, Shift+arrastar para pan)">↺ Zoom</button>
                     <button id="btn-caneta-linha" class="acao-btn" onclick="toggleCanetaLinha()" title="Ativar/desativar desenho no gráfico de linha">✏️ Caneta</button>
@@ -1985,7 +1984,6 @@
                     <button id="btn-g-pct"   class="acao-btn"       onclick="_gToggle('grafPct','btn-g-pct')"            title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
                     <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')"      title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"      title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
-                    <button id="btn-g-med"   class="acao-btn"       onclick="_gToggle('grafMedias','btn-g-med')"        title="Média Móvel — sobrepõe uma linha suavizada sobre cada curva ativa.&#10;&#10;Use como referência de tendência: quando a curva principal está ACIMA da MM o mercado está aquecido (acima da média); ABAIXO indica resfriamento.&#10;&#10;Ajuste o período nos campos ao lado: valor pequeno (ex: 9) = sensível a variações recentes; valor grande (ex: 40-60) = linha estável que representa a média do período.">📈 MM</button>
                     <input id="inp-mm1" type="number" min="2" max="99" value="9"
                         onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;const _bg=document.getElementById('base-grafico');if(_bg)_bg.value=S.grafMM1;renderGrafico();if(S.showParImpar)renderGraficoPar()"
                         title="MM Curta — período em número de jogos (padrão: 9). Também é a Base Fixa do Gráfico de Mercados."
@@ -2847,11 +2845,10 @@ async function carregarConfigLigas() {
         }
         // Sincroniza classes dos botões com o estado carregado
         [['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
-         ['grafCongest','btn-g-cong'],['grafMedias','btn-g-med'],
+         ['grafCongest','btn-g-cong'],
          ['grafPontoFlat','btn-g-flat'],['grafPontoFlat','btn-linha-flat'],
          ['grafPontoCores','btn-g-cores'],['grafPontoCores','btn-linha-cores'],
-         ['grafShowPills','btn-g-pills'],['linhaShowPills','btn-linha-pills'],
-         ['linhaGrafMM','btn-linha-mm']].forEach(([k,id]) => {
+         ['grafShowPills','btn-g-pills'],['linhaShowPills','btn-linha-pills']].forEach(([k,id]) => {
             const b = document.getElementById(id);
             if (b) b.classList.toggle('ativo', !!S[k]);
         });
