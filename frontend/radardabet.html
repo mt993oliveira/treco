@@ -5495,7 +5495,7 @@ function renderGrafico() {
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
 
-    if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ') + ` — ${serie.length} jogos`;
+    if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ');
 
     // Escala Y dinâmica — ajusta à amplitude real dos dados (igual ao Gráfico de Gols)
     const _valsG = datasets.filter(d => !d._isRef && !d._isMA && !d._isEquilibrio).flatMap(d => d.data).filter(v => v != null);
@@ -6270,7 +6270,7 @@ function renderGraficoPar() {
     ];
 
     const tituloEl = document.getElementById('g-par-titulo');
-    if (tituloEl) tituloEl.textContent = `🔢 ${serie.length} jogos · Par: ${totalPar} · Ímpar: ${totalImpar} · soma ${n}j`;
+    if (tituloEl) tituloEl.textContent = '🔢 Par e Ímpar';
 
     _destruirPar();
     try { S._graficoPar = new Chart(canvasEl.getContext('2d'), {
