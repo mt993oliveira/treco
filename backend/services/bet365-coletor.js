@@ -1575,12 +1575,19 @@ class Bet365Coletor {
                 }
             }
 
-            // ── Login falhou → grava cooldown + reinicia tudo ─────────────────────
+            // ── Login falhou → grava cooldown + reinicia tudo (se habilitado) ──────
             if (!sessaoOk && !this._reinicioAgendado) {
                 this._reinicioAgendado = true;
                 try {
                     require('fs').writeFileSync(FALHA_TS_FILE, String(Date.now()), 'utf8');
                 } catch(_) {}
+
+                const autoRestart = this._cfgBool('coletor_auto_restart', true);
+                if (!autoRestart) {
+                    console.log('   ⚠️  Login falhou — auto-restart DESATIVADO (coletor_auto_restart=false). Aguardando intervenção manual.');
+                    return;
+                }
+
                 console.log('   🔄 Reiniciando tudo em 5s (Edge + Node)...');
                 setTimeout(() => {
                     try {
