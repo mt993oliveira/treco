@@ -11113,14 +11113,14 @@ function aplicarPadrao(id, opts = {}) {
         if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
 
         if (!opts.silencioso) {
-            // Aplicação manual: fecha padrões (não abre painel antigo de mercados)
+            // Aplicação manual: fecha padrões e abre Gráfico de Linha
             S.showPadroes  = false;
             S.showMercados = false;
             S.showConfig   = false;
-            S.showGrafico  = true;
-            const sec = document.getElementById('historico-chart-section');
-            if (sec) sec.style.display = 'flex';
-            const btn = document.getElementById('sub-btn-grafico');
+            S.showLinha    = true;
+            const sec = document.getElementById('historico-linha-section');
+            if (sec) sec.style.display = 'block';
+            const btn = document.getElementById('sub-btn-linha');
             if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
         }
 
