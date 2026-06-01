@@ -907,8 +907,12 @@
                         <select id="perfil-tipo"
                             style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
                             onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                            <option value="user">User</option>
-                            <option value="administrador">Administrador</option>
+                            <option value="user">Usuário</option>
+                            <option value="bronze">🥉 Bronze</option>
+                            <option value="prata">🥈 Prata</option>
+                            <option value="gold">🥇 Gold</option>
+                            <option value="premium">💎 Premium</option>
+                            <option value="administrador">👑 Administrador</option>
                         </select>
                     </div>
                 </div>
@@ -1379,8 +1383,12 @@
                     <select id="usr-tipo"
                         style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                        <option value="user">Usuário</option>
-                        <option value="admin">Administrador</option>
+                        <option value="user">👤 Usuário</option>
+                        <option value="bronze">🥉 Bronze</option>
+                        <option value="prata">🥈 Prata</option>
+                        <option value="gold">🥇 Gold</option>
+                        <option value="premium">💎 Premium</option>
+                        <option value="admin">👑 Administrador</option>
                     </select>
                 </div>
                 <div>
@@ -9147,6 +9155,22 @@ function _getUser() {
     try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e) { return null; }
 }
 
+// ── Tipos de usuário — mapeamento centralizado ────────────────
+const _TIPOS_USUARIO = [
+    { valor:'user',          label:'Usuário',       icone:'👤', cor:'#60a5fa',  bg:'rgba(96,165,250,.10)'  },
+    { valor:'bronze',        label:'Bronze',        icone:'🥉', cor:'#cd7f32',  bg:'rgba(205,127,50,.12)'  },
+    { valor:'prata',         label:'Prata',         icone:'🥈', cor:'#94a3b8',  bg:'rgba(148,163,184,.12)' },
+    { valor:'gold',          label:'Gold',          icone:'🥇', cor:'#fbbf24',  bg:'rgba(251,191,36,.12)'  },
+    { valor:'premium',       label:'Premium',       icone:'💎', cor:'#a855f7',  bg:'rgba(168,85,247,.12)'  },
+    { valor:'administrador', label:'Administrador', icone:'👑', cor:'#a78bfa',  bg:'rgba(167,139,250,.10)' },
+    { valor:'admin',         label:'Administrador', icone:'👑', cor:'#a78bfa',  bg:'rgba(167,139,250,.10)' },
+    { valor:'master',        label:'Master',        icone:'⭐', cor:'#1fcc59',  bg:'rgba(31,204,89,.10)'   },
+];
+function _infoTipo(tipo) {
+    const t = (tipo || '').toLowerCase();
+    return _TIPOS_USUARIO.find(x => x.valor === t) || _TIPOS_USUARIO[0];
+}
+
 function _initUserMenu() {
     const u = _getUser();
     if (!u) return;
@@ -9163,8 +9187,8 @@ function _initUserMenu() {
     const _isMasterUser = (u.Usuario || '').toUpperCase() === 'MASTER';
 
     // Label do tipo no dropdown
-    document.getElementById('dd-tipo').textContent =
-        _isMasterType ? '⭐ Master' : _isAdminType ? '👑 Administrador' : 'Usuário';
+    const _ti = _infoTipo(u.TipoUsuario);
+    document.getElementById('dd-tipo').textContent = `${_ti.icone} ${_ti.label}`;
 
     // Badge de tipo + licença no header
     const _badgeEl   = document.getElementById('licenca-badge');
@@ -9177,12 +9201,8 @@ function _initUserMenu() {
             _badgeEl.style.display = 'none';
         } else {
             // --- Tipo de usuário ---
-            let _tipoLabel, _tipoCor, _tipoBg;
-            if (_isAdminType) {
-                _tipoLabel = '👑 Administrador'; _tipoCor = '#a78bfa'; _tipoBg = 'rgba(167,139,250,.10)';
-            } else {
-                _tipoLabel = '👤 Usuário'; _tipoCor = '#60a5fa'; _tipoBg = 'rgba(96,165,250,.10)';
-            }
+            const _tiInfo = _infoTipo(u.TipoUsuario);
+            const _tipoLabel = `${_tiInfo.icone} ${_tiInfo.label}`, _tipoCor = _tiInfo.cor, _tipoBg = _tiInfo.bg;
             _tipoEl.textContent   = _tipoLabel;
             _tipoEl.style.color   = _tipoCor;
             if (_blocoTipo) _blocoTipo.style.background = _tipoBg;
@@ -9306,9 +9326,13 @@ function abrirPerfil() {
 
         // Tipo — master vê a opção "master", admin não vê
         const sel = document.getElementById('perfil-tipo');
-        sel.innerHTML = '<option value="user">User</option>' +
-                        '<option value="administrador">Administrador</option>' +
-                        (_isMasterUser ? '<option value="master">Master</option>' : '');
+        sel.innerHTML = '<option value="user">👤 Usuário</option>' +
+                        '<option value="bronze">🥉 Bronze</option>' +
+                        '<option value="prata">🥈 Prata</option>' +
+                        '<option value="gold">🥇 Gold</option>' +
+                        '<option value="premium">💎 Premium</option>' +
+                        '<option value="administrador">👑 Administrador</option>' +
+                        (_isMasterUser ? '<option value="master">⭐ Master</option>' : '');
         sel.value = _tipo || 'user';
     } else {
         adminSec.style.display = 'none';
@@ -10232,7 +10256,7 @@ async function _carregarOnlineAgora() {
             if (diffD < 7)         return `<span style="color:#64748b;font-size:9px">há ${diffD}d</span>`;
             return `<span style="color:#475569;font-size:9px">${d.toLocaleDateString('pt-BR')}</span>`;
         };
-        const TIPO_LABEL = { master: '⭐ Master', admin: '🔑 Admin', user: '👤 Usuário' };
+        const TIPO_LABEL = { master:'⭐ Master', administrador:'👑 Admin', admin:'👑 Admin', user:'👤 Usuário', bronze:'🥉 Bronze', prata:'🥈 Prata', gold:'🥇 Gold', premium:'💎 Premium' };
         const TIPO_COR   = { master: '#fbbf24',   admin: '#60a5fa',   user: '#94a3b8' };
         const th = 'padding:7px 8px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b;white-space:nowrap;background:#0c1220';
         const td = 'padding:6px 8px;border-bottom:1px solid #0d1421;vertical-align:middle;font-size:10px';
@@ -10715,7 +10739,7 @@ function _renderTabelaUsuarios(lista) {
         tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#334155">Nenhum usuário encontrado.</td></tr>';
         return;
     }
-    const TIPO_LABEL = { master: '⭐ Master', admin: '🔑 Admin', user: 'Usuário' };
+    const TIPO_LABEL = { master:'⭐ Master', administrador:'👑 Admin', admin:'👑 Admin', user:'👤 Usuário', bronze:'🥉 Bronze', prata:'🥈 Prata', gold:'🥇 Gold', premium:'💎 Premium' };
     const fmtData = v => v ? new Date(v).toLocaleDateString('pt-BR') : '—';
     const fmtAcesso = v => {
         if (!v) return '<span style="color:#475569;font-size:10px">Nunca</span>';
