@@ -657,6 +657,9 @@
             <span id="header-subtitle" style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
         </div>
 
+        <!-- Extras do header (ocultáveis) -->
+        <div id="header-extras" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+
         <!-- Botão renovar licença -->
         <a id="btn-renovar-licenca" href="https://pay.kirvano.com/9e3317f5-bfb4-41fe-b202-6b492bbae6fe"
            target="_blank" rel="noopener noreferrer"
@@ -739,6 +742,15 @@
             </svg>
             <span>Admin</span>
         </a>
+
+        </div><!-- /header-extras -->
+
+        <!-- Botão ocultar/exibir extras do header -->
+        <button id="header-toggle-btn" onclick="toggleHeaderExtras()" title="Ocultar/exibir informações"
+            style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;
+                   background:#1e293b;border:1px solid #334155;border-radius:4px;cursor:pointer;
+                   font-size:12px;color:#475569;flex-shrink:0;transition:background .15s;padding:0"
+            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹</button>
 
         <!-- User menu -->
         <div style="position:relative;flex-shrink:0" id="user-menu-wrap">
@@ -9262,6 +9274,24 @@ function toggleUserMenu() {
     const dd = document.getElementById('user-dropdown');
     dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
 }
+
+function toggleHeaderExtras() {
+    const extras = document.getElementById('header-extras');
+    const btn    = document.getElementById('header-toggle-btn');
+    const oculto = extras.style.display === 'none';
+    extras.style.display = oculto ? 'flex' : 'none';
+    btn.textContent = oculto ? '‹' : '›';
+    localStorage.setItem('headerExtrasOculto', oculto ? '0' : '1');
+}
+
+(function initHeaderExtras() {
+    if (localStorage.getItem('headerExtrasOculto') === '1') {
+        const extras = document.getElementById('header-extras');
+        const btn    = document.getElementById('header-toggle-btn');
+        if (extras) extras.style.display = 'none';
+        if (btn)    btn.textContent = '›';
+    }
+}());
 
 // Fecha dropdown ao clicar fora
 document.addEventListener('click', e => {
