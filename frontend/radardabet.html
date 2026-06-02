@@ -3034,9 +3034,11 @@ async function _aplicarConfigFrontend() {
          ['historico-parimpar-section', 'sub-btn-parimpar', 'showParImpar', 'default_open_parimpar'],
         ].forEach(([secId, btnId, showKey, cfgKey]) => {
             if (c[cfgKey] === undefined) return;
+            const btn = document.getElementById(btnId);
+            // Se _visSubview já ocultou o botão (subview desabilitada), não reabre a seção
+            if (btn && btn.style.display === 'none') return;
             S[showKey] = c[cfgKey] === 'true';
             const sec = document.getElementById(secId);
-            const btn = document.getElementById(btnId);
             if (sec) sec.style.display = S[showKey] ? '' : 'none';
             if (btn) {
                 btn.style.borderColor = S[showKey] ? '#1fcc59' : '';
