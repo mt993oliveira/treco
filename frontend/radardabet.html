@@ -2922,6 +2922,20 @@ async function carregarConfigLigas() {
             }
         }
 
+        // Controla visibilidade do botão "📋 Padrões" por tipo de usuário
+        {
+            const _u = _getUser();
+            const _tipo = (_u?.TipoUsuario || '').toLowerCase();
+            const _isElevated = _tipo === 'master' || _tipo === 'admin' || _tipo === 'administrador';
+            const _cfgMap = { bronze: cfg.padroes_visivel_bronze, prata: cfg.padroes_visivel_prata, gold: cfg.padroes_visivel_gold, premium: cfg.padroes_visivel_premium };
+            const _show = _isElevated || (_cfgMap[_tipo] === 'true');
+            const _btnP = document.getElementById('view-padroes');
+            if (_btnP) {
+                _btnP.style.display = _show ? '' : 'none';
+                if (!_show && S.showPadroes) { S.showPadroes = false; renderFiltros(); }
+            }
+        }
+
         // Aplica visibilidade das seções
         S._cfgSecoes = cfg;
         _aplicarConfigFrontend();
@@ -6820,6 +6834,8 @@ function toggleMercados() {
 }
 
 function togglePadroes() {
+    const _btnP = document.getElementById('view-padroes');
+    if (_btnP && _btnP.style.display === 'none') return;
     S.showPadroes = !S.showPadroes;
     if (S.showPadroes) { S.showMercados = false; S.showConfig = false; }
     renderFiltros();
@@ -9351,6 +9367,10 @@ const _CFG_LABELS = {
     default_so_value_bets:      'Apenas value bets por padrão (Análise)',
     default_legendas:           '💬 Legendas (suprimir tooltips) ativado por padrão no gráfico',
     analise_liberar_user:       '📊 Liberar "Análise & Sugestões" para usuários tipo User',
+    padroes_visivel_bronze:     '📋 Padrões: exibir para 🥉 Bronze',
+    padroes_visivel_prata:      '📋 Padrões: exibir para 🥈 Prata',
+    padroes_visivel_gold:       '📋 Padrões: exibir para 🥇 Gold',
+    padroes_visivel_premium:    '📋 Padrões: exibir para 💎 Premium',
     // Gráfico
     grafico_altura:      '📐 Altura do painel do gráfico (px)',
     grafico_gols_altura: '📐 Altura do painel do gráfico de gols (px)',
