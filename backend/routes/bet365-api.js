@@ -1597,7 +1597,7 @@ const CONFIG_DEFAULTS = [
     { chave:'default_jogos_grafico',        valor:'200',   tipo:'number',  grupo:'frontend', descricao:'📊 Padrão de jogos — Gráfico de Mercados' },
     { chave:'default_jogos_gols',           valor:'200',   tipo:'number',  grupo:'frontend', descricao:'⚽ Padrão de jogos — Gráfico de Gols' },
     { chave:'default_jogos_linha',          valor:'200',   tipo:'number',  grupo:'frontend', descricao:'📈 Padrão de jogos — Gráfico de Linha' },
-    { chave:'default_jogos_parimpar',       valor:'200',   tipo:'number',  grupo:'frontend', descricao:'🔢 Padrão de jogos — Gráfico Par e Ímpar' },
+
     { chave:'default_jogos_mosaico',        valor:'200',   tipo:'number',  grupo:'frontend', descricao:'🗂️ Padrão de jogos — Grade (Mosaico)' },
     // ── Botões padrão da grade ──
     { chave:'default_exibir_clubes',        valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'🏷️ Exibir Clubes ativado por padrão na grade' },
@@ -1694,13 +1694,13 @@ const CONFIG_DEFAULTS = [
     { chave:'show_subview_gols',            valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: ⚽ Gráfico de Gols' },
     { chave:'show_subview_grafico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 📈 Gráfico de Mercados' },
     { chave:'show_subview_linha',           valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 📉 Gráfico de Linha' },
-    { chave:'show_subview_parimpar',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 🔢 Gráfico de Par e Ímpar' },
+
     { chave:'show_subview_mosaico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 🏁 Menu Mosaico' },
     { chave:'default_open_grafico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 📈 Gráfico de Mercados' },
     { chave:'default_open_mosaico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🏁 Menu Mosaico' },
     { chave:'default_open_gols',            valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: ⚽ Gráfico de Gols' },
     { chave:'default_open_linha',           valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 📉 Gráfico de Linha' },
-    { chave:'default_open_parimpar',        valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🔢 Gráfico de Par e Ímpar' },
+
     { chave:'default_open_mercados',        valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🎯 Mercados' },
     // ── Grade/Mosaico — cores e fontes padrão (sobrescrevem os valores embutidos no código) ──
     { chave:'grid_selScoreBg', valor:'#422006',  tipo:'color',  grupo:'grid', descricao:'🎯 Seleção Resultado: fundo' },

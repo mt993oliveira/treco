@@ -562,7 +562,6 @@
         [data-theme]:not([data-theme="dark"]) #sub-btn-gols,
         [data-theme]:not([data-theme="dark"]) #sub-btn-linha,
         [data-theme]:not([data-theme="dark"]) #sub-btn-grafico,
-        [data-theme]:not([data-theme="dark"]) #sub-btn-parimpar,
         [data-theme]:not([data-theme="dark"]) #sub-btn-mosaico
             { background: var(--bg-card) !important; border-color: var(--border-subtle) !important; }
 
@@ -609,8 +608,7 @@
         [data-theme="mint"]  #sub-btn-linha,[data-theme="rose"]       #sub-btn-linha,[data-theme="cream"] #sub-btn-linha,
         [data-theme="light"] #sub-btn-grafico,[data-theme="light-blue"] #sub-btn-grafico,
         [data-theme="mint"]  #sub-btn-grafico,[data-theme="rose"]       #sub-btn-grafico,[data-theme="cream"] #sub-btn-grafico,
-        [data-theme="light"] #sub-btn-parimpar,[data-theme="light-blue"] #sub-btn-parimpar,
-        [data-theme="mint"]  #sub-btn-parimpar,[data-theme="rose"]       #sub-btn-parimpar,[data-theme="cream"] #sub-btn-parimpar,
+
         [data-theme="light"] #sub-btn-mosaico,[data-theme="light-blue"] #sub-btn-mosaico,
         [data-theme="mint"]  #sub-btn-mosaico,[data-theme="rose"]       #sub-btn-mosaico,[data-theme="cream"] #sub-btn-mosaico
             { color: var(--text-secondary) !important; }
@@ -1802,7 +1800,7 @@
         </div>
     </div>
 
-    <!-- Toggle: Gráfico de Gols | Gráfico de Mercados | Gráfico de Par e Ímpar | Menu Mosaico -->
+    <!-- Toggle: Gráfico de Gols | Gráfico de Mercados | Menu Mosaico -->
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <button id="sub-btn-gols" onclick="setSubView('gols')"
             style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
@@ -1824,12 +1822,7 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Gráfico de Mercados
         </button>
-        <button id="sub-btn-parimpar" onclick="setSubView('parimpar')"
-            style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
-            border-radius:7px;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;gap:4px;transition:border-color .2s,color .2s">
-            🔢 Gráfico de Par e Ímpar
-        </button>
+
         <button id="sub-btn-mosaico" onclick="setSubView('mosaico')"
             style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
             border-radius:7px;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;
@@ -1978,7 +1971,7 @@
                             <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
                         </select>
                         <span style="font-size:10px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 8px;white-space:nowrap;cursor:default" title="Base Fixa — janela de jogos para o cálculo rolling principal">📐 Base</span>
-                        <select id="base-grafico" onchange="S.grafMM1=parseInt(this.value);const _imm=document.getElementById('inp-mm1');if(_imm)_imm.value=S.grafMM1;renderGrafico();if(S.showParImpar)renderGraficoPar()" title="Base Fixa — quantidade de jogos da janela rolling para o Gráfico de Mercados"
+                        <select id="base-grafico" onchange="S.grafMM1=parseInt(this.value);const _imm=document.getElementById('inp-mm1');if(_imm)_imm.value=S.grafMM1;renderGrafico()" title="Base Fixa — quantidade de jogos da janela rolling para o Gráfico de Mercados"
                             style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
                             <option value="20" selected>20 Jogos</option><option value="40">40 Jogos</option><option value="60">60 Jogos</option>
                             <option value="80">80 Jogos</option><option value="100">100 Jogos</option><option value="120">120 Jogos</option>
@@ -1997,13 +1990,13 @@
                     <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')"      title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
                     <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"      title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <input id="inp-mm1" type="number" min="2" max="99" value="9"
-                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;const _bg=document.getElementById('base-grafico');if(_bg)_bg.value=S.grafMM1;renderGrafico();if(S.showParImpar)renderGraficoPar()"
+                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;const _bg=document.getElementById('base-grafico');if(_bg)_bg.value=S.grafMM1;renderGrafico()"
                         title="MM Curta — período em número de jogos (padrão: 9). Também é a Base Fixa do Gráfico de Mercados."
                         style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
                                font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <input id="inp-mm2" type="number" min="2" max="200" value="21"
-                        onchange="S.grafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.grafMM2;renderGrafico();if(S.showGols)renderGraficoGols();if(S.showParImpar)renderGraficoPar()"
+                        onchange="S.grafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.grafMM2;renderGrafico();if(S.showGols)renderGraficoGols()"
                         title="MM Longa — período em número de jogos (padrão: 21).&#10;&#10;Linha mais estável que representa a média do período. Valor alto (ex: 40-60 jogos ≈ 2-3 horas) transforma a MM em referência central: a curva principal oscila em torno dela, deixando claro quando o mercado está acima ou abaixo do normal."
                         style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
                                font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
@@ -2035,38 +2028,6 @@
         </div>
     </div>
 
-    <!-- 🔢 Gráfico de Par e Ímpar -->
-    <div id="historico-parimpar-section" style="display:none;margin-bottom:10px">
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
-                <div style="display:flex;align-items:center;gap:8px">
-                    <div style="font-size:10px;font-weight:700;color:#64748b" id="g-par-titulo">🔢 Par e Ímpar — % Acumulado</div>
-                    <div style="display:flex;align-items:center;gap:4px">
-                        <span id="periodo-badge-parimpar" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
-                        <select id="periodo-parimpar" onchange="setSubViewPeriodo('parimpar',this.value)"
-                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
-                            <option value="">= Config</option>
-                            <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
-                            <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
-                            <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
-                            <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
-                            <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
-                            <option disabled>── Horas ──</option>
-                            <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
-                            <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
-                            <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
-                            <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
-                            <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="display:flex;gap:6px;align-items:center">
-                    <button class="acao-btn" onclick="resetZoomPar()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
-                </div>
-            </div>
-            <div style="position:relative;height:260px"><canvas id="grafico-parimpar"></canvas></div>
-        </div>
-    </div>
 
     <!-- Mosaico (tabela) -->
     <div id="historico-table-section" style="display:block">
@@ -2759,7 +2720,7 @@ async function carregarConfigLigas() {
         if (cfg.default_jogos_grafico)  { S.horasGrafico  = null; S.jogosGrafico  = parseInt(cfg.default_jogos_grafico)  || 200; }
         if (cfg.default_jogos_gols)     { S.horasGols     = null; S.jogosGols     = parseInt(cfg.default_jogos_gols)     || 200; }
         if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || 200; }
-        if (cfg.default_jogos_parimpar) { S.horasParImpar = null; S.jogosParImpar = parseInt(cfg.default_jogos_parimpar) || 200; }
+
         if (cfg.default_jogos_mosaico)  { S.horasMosaico  = null; S.jogosMosaico  = parseInt(cfg.default_jogos_mosaico)  || 200; }
         // Atualiza label da opção padrão em cada select com o valor real configurado
         {
@@ -2767,7 +2728,7 @@ async function carregarConfigLigas() {
                 ['periodo-grafico',  S.jogosGrafico],
                 ['periodo-gols',     S.jogosGols],
                 ['periodo-linha',    S.jogosLinha],
-                ['periodo-parimpar', S.jogosParImpar],
+
                 ['periodo-mosaico',  S.jogosMosaico],
             ];
             _cfgLabel.forEach(([id, val]) => {
@@ -3023,7 +2984,7 @@ async function _aplicarConfigFrontend() {
             }
         }
         _visSubview('historico-linha-section',   'sub-btn-linha',    'show_subview_linha',    'showLinha');
-        _visSubview('historico-parimpar-section','sub-btn-parimpar', 'show_subview_parimpar', 'showParImpar');
+
         _visSubview('historico-table-section',   'sub-btn-mosaico',  'show_subview_mosaico',  'showMosaico');
 
         // Estado inicial (aberto/fechado) — configurável independente do habilitar/desabilitar
@@ -3031,7 +2992,7 @@ async function _aplicarConfigFrontend() {
          ['historico-table-section',    'sub-btn-mosaico',  'showMosaico',  'default_open_mosaico'],
          ['historico-gols-section',     'sub-btn-gols',     'showGols',     'default_open_gols'],
          ['historico-linha-section',    'sub-btn-linha',    'showLinha',    'default_open_linha'],
-         ['historico-parimpar-section', 'sub-btn-parimpar', 'showParImpar', 'default_open_parimpar'],
+
         ].forEach(([secId, btnId, showKey, cfgKey]) => {
             if (c[cfgKey] === undefined) return;
             const btn = document.getElementById(btnId);
@@ -3259,24 +3220,18 @@ const S = {
     mktGrupoCorInativo: '#475569',
     showGols:      false,
     showLinha:     false,
-    showParImpar:  false,
     horasGrafico:  null,
     horasGols:     null,
     jogosGrafico:  null,
     jogosGols:     null,
     jogosLinha:    null,
-    jogosParImpar: null,
     jogosMosaico:  null,
     horasLinha:    null,
-    horasParImpar: null,
     horasMosaico:  null,
     grafGolsMM:    false,
     grafGolsShowGols: true,
-    grafParMM:     false,
-    grafParShowGols:  true,
     _graficoGols:  null,
     _graficoLinha: null,
-    _graficoPar:   null,
     _grafAltura:     300,
     _grafGolsAltura: 260,
     _chartCores:   {},
@@ -3575,18 +3530,18 @@ const _SECAO_DISPLAY = {
     'historico-chart-section':   'flex',
     'historico-gols-section':    'block',
     'historico-linha-section':   'block',
-    'historico-parimpar-section':'block',
+
     'historico-table-section':   'block',
 };
 function setSubView(v) {
     if (v === 'grafico')   S.showGrafico   = !S.showGrafico;
     if (v === 'gols')      S.showGols      = !S.showGols;
     if (v === 'linha')     S.showLinha     = !S.showLinha;
-    if (v === 'parimpar')  S.showParImpar  = !S.showParImpar;
+
     if (v === 'mosaico')   S.showMosaico   = !S.showMosaico;
-    const _secs = { grafico:'historico-chart-section', gols:'historico-gols-section', linha:'historico-linha-section', parimpar:'historico-parimpar-section', mosaico:'historico-table-section' };
-    const _btns = { grafico:'sub-btn-grafico', gols:'sub-btn-gols', linha:'sub-btn-linha', parimpar:'sub-btn-parimpar', mosaico:'sub-btn-mosaico' };
-    const _show = { grafico:S.showGrafico, gols:S.showGols, linha:S.showLinha, parimpar:S.showParImpar, mosaico:S.showMosaico };
+    const _secs = { grafico:'historico-chart-section', gols:'historico-gols-section', linha:'historico-linha-section', mosaico:'historico-table-section' };
+    const _btns = { grafico:'sub-btn-grafico', gols:'sub-btn-gols', linha:'sub-btn-linha', mosaico:'sub-btn-mosaico' };
+    const _show = { grafico:S.showGrafico, gols:S.showGols, linha:S.showLinha, mosaico:S.showMosaico };
     Object.keys(_secs).forEach(k => {
         const sec = document.getElementById(_secs[k]);
         const btn = document.getElementById(_btns[k]);
@@ -3597,7 +3552,7 @@ function setSubView(v) {
     if (v === 'grafico'  && S.showGrafico)  renderGrafico();
     if (v === 'gols'     && S.showGols)     requestAnimationFrame(() => renderGraficoGols());
     if (v === 'linha'    && S.showLinha)    requestAnimationFrame(() => renderGraficoLinha());
-    if (v === 'parimpar' && S.showParImpar) requestAnimationFrame(() => renderGraficoPar());
+
     if (v === 'mosaico'  && S.showMosaico)  renderTabela();
 }
 
@@ -3636,14 +3591,13 @@ function setSubViewPeriodo(subview, val) {
         if (subview === 'grafico')  { S.horasGrafico  = null; S.jogosGrafico  = n; }
         if (subview === 'gols')     { S.horasGols     = null; S.jogosGols     = n; }
         if (subview === 'linha')    { S.horasLinha    = null; S.jogosLinha    = n; }
-        if (subview === 'parimpar') { S.horasParImpar = null; S.jogosParImpar = n; }
+
         if (subview === 'mosaico')  { S.horasMosaico  = null; S.jogosMosaico  = n; }
 
         const render = () => {
             if (subview === 'grafico')  renderGrafico();
             if (subview === 'gols')     renderGraficoGols();
             if (subview === 'linha')    renderGraficoLinha();
-            if (subview === 'parimpar') renderGraficoPar();
             if (subview === 'mosaico')  renderTabela();
         };
 
@@ -3663,14 +3617,13 @@ function setSubViewPeriodo(subview, val) {
     if (subview === 'grafico')  { S.horasGrafico  = h; S.jogosGrafico  = null; }
     if (subview === 'gols')     { S.horasGols     = h; S.jogosGols     = null; }
     if (subview === 'linha')    { S.horasLinha    = h; S.jogosLinha    = null; }
-    if (subview === 'parimpar') { S.horasParImpar = h; S.jogosParImpar = null; }
+
     if (subview === 'mosaico')  { S.horasMosaico  = h; S.jogosMosaico  = null; }
 
     const render = () => {
         if (subview === 'grafico')  renderGrafico();
         if (subview === 'gols')     renderGraficoGols();
         if (subview === 'linha')    renderGraficoLinha();
-        if (subview === 'parimpar') renderGraficoPar();
         if (subview === 'mosaico')  renderTabela();
     };
 
@@ -3764,7 +3717,6 @@ async function carregarHistorico() {
             S.jogosGrafico  || 0,
             S.jogosGols     || 0,
             S.jogosLinha    || 0,
-            S.jogosParImpar || 0,
             S.jogosMosaico  || 0
         );
         if (_jogosMax > 0 && S.todasPartidas.length > 0 && S._horasCarregadas > 0) {
@@ -4318,7 +4270,7 @@ function renderLigas() {
             b.classList.add('ativo');
             // Verifica se há dados suficientes para warmup desta liga.
             // Usa taxa da liga ativa (não do total) + buffer de warmup (grafMM1).
-            const _jMaxLiga = Math.max(S.jogosGrafico||0, S.jogosGols||0, S.jogosLinha||0, S.jogosParImpar||0);
+            const _jMaxLiga = Math.max(S.jogosGrafico||0, S.jogosGols||0, S.jogosLinha||0);
             if (_jMaxLiga > 0 && S.partidas.length > 0 && S._horasCarregadas > 0) {
                 const _taxaLiga  = S.partidas.length / S._horasCarregadas;
                 const _warmup    = S.grafMM1 || 20;
@@ -5157,7 +5109,7 @@ function _gToggle(key, btnId) {
     if (btn) btn.classList.toggle('ativo', S[key]);
 
     if (key.startsWith('grafGols')) { renderGraficoGols(); return; }
-    if (key.startsWith('grafPar'))  { renderGraficoPar();  return; }
+
 
     // grafPct e grafCongest: lidos pelos plugins no momento do draw — só atualiza
     if (key === 'grafPct' || key === 'grafCongest') {
@@ -5998,7 +5950,7 @@ const golsLabelPlugin = {
     afterDatasetsDraw(chart) {
         const cid = chart.canvas?.id;
         if (cid === 'grafico-gols'     && !S.grafGolsShowGols) return;
-        if (cid === 'grafico-parimpar' && !S.grafParShowGols)  return;
+
         const { ctx } = chart;
         chart.data.datasets.forEach((ds, di) => {
             if (ds._isRef || ds._isMA) return;
@@ -6203,138 +6155,12 @@ function renderGraficoGols() {
 // ============================================================
 // GRÁFICO DE PAR E ÍMPAR — linha por jogo com soma rolante
 // ============================================================
-let _PAR_SERIE = [];
-function renderGraficoPar() {
-    const canvasEl = document.getElementById('grafico-parimpar');
-    if (!canvasEl) return;
-
-    const _hPar = S.horasParImpar != null ? S.horasParImpar : S.horas;
-    const _destruirPar = () => {
-        if (S._graficoPar) { try { S._graficoPar.destroy(); } catch(_){} S._graficoPar = null; }
-        const _orp = Chart.getChart(canvasEl);
-        if (_orp) { try { _orp.destroy(); } catch(_){} }
-    };
-
-    const serieTotal = serieFlat(S.horasParImpar, S.jogosParImpar);
-    const serie = serieTotal.filter(j => j.gol_casa != null && j.gol_fora != null);
-
-    if (!serie.length) {
-        _destruirPar();
-        const t = document.getElementById('g-par-titulo');
-        if (t) t.textContent = `🔢 Sem dados com placar (${_hPar}H · ${serieTotal.length} jogos sem score)`;
-        return;
-    }
-    _PAR_SERIE = serie;
-
-    const n      = S.grafMM1 || 9;
-    const parJ   = serie.map(j => (j.gol_casa + j.gol_fora) % 2 === 0 ? 1 : 0);
-    const imparJ = parJ.map(v => 1 - v);
-
-    const totalPar   = parJ.reduce((a, b) => a + b, 0);
-    const totalImpar = imparJ.reduce((a, b) => a + b, 0);
-
-    // Soma rolante (janela de n jogos) — sem divisão
-    const rollingPar = parJ.map((_, i) => {
-        const sl = parJ.slice(Math.max(0, i - n + 1), i + 1);
-        return sl.reduce((a, b) => a + b, 0);
-    });
-    const rollingImpar = imparJ.map((_, i) => {
-        const sl = imparJ.slice(Math.max(0, i - n + 1), i + 1);
-        return sl.reduce((a, b) => a + b, 0);
-    });
-
-    const mediaRefPar   = +(rollingPar.reduce((a, b) => a + b, 0) / rollingPar.length).toFixed(1);
-    const mediaRefImpar = +(rollingImpar.reduce((a, b) => a + b, 0) / rollingImpar.length).toFixed(1);
-
-    const allVals = [...rollingPar, ...rollingImpar];
-    const yMin = Math.max(0, Math.floor(Math.min(...allVals) / 2) * 2 - 1);
-    const yMax = Math.ceil(Math.max(...allVals) / 2) * 2 + 2;
-
-    const corPar   = '#4ade80';
-    const corImpar = '#fb923c';
-
-    const labels = serie.map(p => {
-        if (!p.data_partida) return '';
-        const d = new Date((p.data_partida + '').replace(' ', 'T').replace(/Z?$/, 'Z'));
-        return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
-    });
-
-    const datasets = [
-        { type:'line', label:`Ref Par ${mediaRefPar}`,
-          data: serie.map(() => mediaRefPar),
-          borderColor: corPar, backgroundColor:'transparent',
-          borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
-        { type:'line', label:`Ref Ímpar ${mediaRefImpar}`,
-          data: serie.map(() => mediaRefImpar),
-          borderColor: corImpar, backgroundColor:'transparent',
-          borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
-        { type:'line', label:`Par (${totalPar})`,
-          data: rollingPar,
-          borderColor: corPar, backgroundColor:'transparent',
-          borderWidth:2, pointRadius:3, pointHoverRadius:6,
-          pointBackgroundColor: corPar, tension:0.2 },
-        { type:'line', label:`Ímpar (${totalImpar})`,
-          data: rollingImpar,
-          borderColor: corImpar, backgroundColor:'transparent',
-          borderWidth:2, pointRadius:3, pointHoverRadius:6,
-          pointBackgroundColor: corImpar, tension:0.2 }
-    ];
-
-    const tituloEl = document.getElementById('g-par-titulo');
-    if (tituloEl) tituloEl.textContent = '🔢 Par e Ímpar';
-
-    _destruirPar();
-    try { S._graficoPar = new Chart(canvasEl.getContext('2d'), {
-        type: 'line',
-        data: { labels, datasets },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: false,
-            interaction: { intersect: false, mode: 'index' },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(15,23,42,0.85)', borderColor: '#334155', borderWidth: 1,
-                    titleColor: '#94a3b8', bodyColor: '#cbd5e1',
-                    filter: item => !item.dataset._isRef,
-                    callbacks: {
-                        title: ctxArr => {
-                            const j = _PAR_SERIE[ctxArr[0].dataIndex];
-                            if (!j) return '';
-                            const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-                            const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                            const ht = (j.gol_casa_ht != null && j.gol_fora_ht != null)
-                                ? `  HT: ${j.gol_casa_ht}-${j.gol_fora_ht}` : j.ht_outro ? '  HT: OUT' : '';
-                            return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}${ht}  (FT: ${j.gol_casa}-${j.gol_fora})`;
-                        },
-                        label: ctx => {
-                            if (ctx.dataset._isRef) return null;
-                            const j = _PAR_SERIE[ctx.dataIndex];
-                            const tot = j ? j.gol_casa + j.gol_fora : '?';
-                            const paridade = tot % 2 === 0 ? '🟢 PAR' : '🟠 ÍMPAR';
-                            const nomeLinha = ctx.datasetIndex === 2 ? 'Par' : 'Ímpar';
-                            return [` ${paridade} · ${tot} gols`, ` ${nomeLinha} (${n}j): ${ctx.raw}`];
-                        }
-                    }
-                },
-                zoom: {
-                    zoom: { wheel:{ enabled:true, modifierKey:'ctrl' }, pinch:{ enabled:true }, mode:'x' },
-                    pan:  { enabled:true, modifierKey:'shift', mode:'x' }
-                }
-            },
-            scales: {
-                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
-            }
-        },
-        plugins: [golsLabelPlugin, verticalLinesPlugin]
-    }); } catch(e) { console.error('renderGraficoPar error:', e); }
-}
 
 // ── Zoom reset ──────────────────────────────────────────────
 function resetZoomGrafico() { try { if (S.grafico?.resetZoom) S.grafico.resetZoom(); } catch(_){} }
 function resetZoomGols()    { try { if (S._graficoGols?.resetZoom) S._graficoGols.resetZoom(); } catch(_){} }
 function resetZoomLinha()   { try { if (S._graficoLinha?.resetZoom) S._graficoLinha.resetZoom(); } catch(_){} }
-function resetZoomPar()     { try { if (S._graficoPar?.resetZoom) S._graficoPar.resetZoom(); } catch(_){} }
+
 
 // ============================================================
 // ÚLTIMOS RESULTADOS — lista simples com nomes + placar
@@ -6443,7 +6269,6 @@ function _renderAllCharts() {
     renderGrafico();
     if (S.showLinha) renderGraficoLinha();
     renderGraficoGols();
-    renderGraficoPar();
 }
 
 // Estilo "NÃO EXIBIR", obrigado! rsrs : score na célula, cor = filtro ativo
@@ -9510,7 +9335,7 @@ const _CFG_LABELS = {
     default_jogos_grafico:      '📊 Período padrão — Gráfico de Mercados (jogos)',
     default_jogos_gols:         '⚽ Período padrão — Gráfico de Gols (jogos)',
     default_jogos_linha:        '📈 Período padrão — Gráfico de Linha (jogos)',
-    default_jogos_parimpar:     '🔢 Período padrão — Gráfico Par e Ímpar (jogos)',
+
     default_jogos_mosaico:      '🗂️ Período padrão — Grade / Mosaico (jogos)',
     default_dias_analise:       'Período padrão dos filtros de Análise (dias)',
     delay_credenciais_ms:       '⏱️ Login: aguardar após submeter credenciais (ms)',
@@ -9594,13 +9419,13 @@ const _CFG_LABELS = {
     show_subview_gols:          'Exibir botão/seção: ⚽ Gráfico de Gols',
     show_subview_grafico:       'Exibir botão/seção: 📈 Gráfico de Mercados',
     show_subview_linha:         'Exibir botão/seção: 📉 Gráfico de Linha',
-    show_subview_parimpar:      'Exibir botão/seção: 🔢 Gráfico de Par e Ímpar',
+
     show_subview_mosaico:       'Exibir botão/seção: 🏁 Menu Mosaico',
     default_open_grafico:       'Aberto por padrão: 📈 Gráfico de Mercados',
     default_open_mosaico:       'Aberto por padrão: 🏁 Menu Mosaico',
     default_open_gols:          'Aberto por padrão: ⚽ Gráfico de Gols',
     default_open_linha:         'Aberto por padrão: 📉 Gráfico de Linha',
-    default_open_parimpar:      'Aberto por padrão: 🔢 Gráfico de Par e Ímpar',
+
     default_open_mercados:      'Aberto por padrão: 🎯 Mercados',
 };
 
@@ -9700,7 +9525,7 @@ async function _loadConfigSistema() {
                     default_jogos_grafico:    JOGOS_OPTS,
                     default_jogos_gols:       JOGOS_OPTS,
                     default_jogos_linha:      JOGOS_OPTS,
-                    default_jogos_parimpar:   JOGOS_OPTS,
+
                     default_jogos_mosaico:    JOGOS_OPTS,
                 };
                 const isJogosOpt = d.chave.startsWith('default_jogos_');
@@ -11160,7 +10985,7 @@ function aplicarPadrao(id, opts = {}) {
             renderGrafico();
             if (S.showLinha)    renderGraficoLinha();
             if (S.showGols)     renderGraficoGols();
-            if (S.showParImpar) renderGraficoPar();
+
         });
     } catch(e) { console.error('Erro ao aplicar padrão', e); }
 }
@@ -11664,8 +11489,6 @@ function _atualizarCoresCharts(temaId) {
             typeof S !== 'undefined' && S.grafico,
             typeof S !== 'undefined' && S._graficoGols,
             typeof S !== 'undefined' && S._graficoLinha,
-            typeof S !== 'undefined' && S._graficoPar,
-            typeof S !== 'undefined' && S._graficoParImpar,
         ].filter(Boolean);
 
         charts.forEach(ch => {
