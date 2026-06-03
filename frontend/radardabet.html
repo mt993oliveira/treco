@@ -2055,7 +2055,7 @@
     <div id="historico-table-section" style="display:block">
     <!-- Table header -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;flex-wrap:wrap;gap:6px">
-        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+        <div id="mosaico-extras" style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
             <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
             <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
             <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
@@ -2069,6 +2069,11 @@
                 style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:110px"></select>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
+            <button id="mosaico-toggle-btn" onclick="toggleMosaicoExtras()" title="Ocultar/exibir opções"
+                style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;
+                       background:#1e293b;border:1px solid #334155;border-radius:5px;cursor:pointer;
+                       font-size:13px;color:#64748b;flex-shrink:0;transition:background .15s;padding:0"
+                onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹</button>
             <span id="periodo-badge-mosaico" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
             <select id="periodo-mosaico" onchange="setSubViewPeriodo('mosaico',this.value)"
                 style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
@@ -9178,6 +9183,24 @@ function toggleUserMenu() {
     const dd = document.getElementById('user-dropdown');
     dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
 }
+
+function toggleMosaicoExtras() {
+    const extras = document.getElementById('mosaico-extras');
+    const btn    = document.getElementById('mosaico-toggle-btn');
+    const oculto = extras.style.display === 'none';
+    extras.style.display = oculto ? 'flex' : 'none';
+    btn.textContent = oculto ? '‹' : '›';
+    localStorage.setItem('mosaicoExtrasOculto', oculto ? '0' : '1');
+}
+
+(function initMosaicoExtras() {
+    if (localStorage.getItem('mosaicoExtrasOculto') === '1') {
+        const extras = document.getElementById('mosaico-extras');
+        const btn    = document.getElementById('mosaico-toggle-btn');
+        if (extras) extras.style.display = 'none';
+        if (btn)    btn.textContent = '›';
+    }
+}());
 
 function toggleHeaderExtras() {
     const extras = document.getElementById('header-extras');
