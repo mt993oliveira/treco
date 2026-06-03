@@ -766,10 +766,10 @@
 
         <!-- Botão ocultar/exibir extras do header -->
         <button id="header-toggle-btn" onclick="toggleHeaderExtras()" title="Ocultar/exibir informações"
-            style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;
+            style="display:flex;align-items:center;justify-content:center;height:32px;padding:0 10px;gap:4px;
                    background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
-                   font-size:16px;color:#94a3b8;flex-shrink:0;transition:background .15s;padding:0"
-            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹</button>
+                   font-size:11px;font-weight:700;color:#94a3b8;flex-shrink:0;transition:background .15s;white-space:nowrap"
+            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
 
         <!-- User menu -->
         <div style="position:relative;flex-shrink:0" id="user-menu-wrap">
@@ -1903,6 +1903,11 @@
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="display:none" id="g-linha-titulo"></div>
                     <div style="display:flex;align-items:center;gap:4px">
+                        <button id="linha-toggle-btn" onclick="toggleLinhaExtras()" title="Ocultar/exibir opções"
+                            style="display:flex;align-items:center;justify-content:center;height:26px;padding:0 8px;gap:4px;
+                                   background:#1e293b;border:1px solid #334155;border-radius:5px;cursor:pointer;
+                                   font-size:11px;font-weight:700;color:#64748b;flex-shrink:0;transition:background .15s;white-space:nowrap"
+                            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
                         <span id="periodo-badge-linha" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
                         <select id="periodo-linha" onchange="setSubViewPeriodo('linha',this.value)"
                             style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
@@ -1930,7 +1935,7 @@
                         </select>
                     </div>
                 </div>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <div id="linha-extras" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                     <button id="btn-linha-marca-dagua" class="acao-btn" onclick="_toggleLinhaMarcaDagua()" title="Marca d'água: mantém as seleções do gráfico de linha fixas ao passar o mouse sobre os mercados">💧 Marca d'água</button>
                     <button id="btn-linha-cores" class="acao-btn" onclick="_togglePontoCores()" title="Colorir bolinhas: verde = subiu (hit), vermelho = desceu (miss).&#10;Desative para usar a cor da própria linha em todas as bolinhas.">🟢 Cores</button>
                     <button id="btn-linha-pills" class="acao-btn ativo" onclick="_toggleLinhaPills()" title="Exibir/ocultar a seleção de mercados do Gráfico de Linha">📊 Mercados</button>
@@ -1985,10 +1990,10 @@
         </div>
         <div style="display:flex;align-items:center;gap:6px">
             <button id="mosaico-toggle-btn" onclick="toggleMosaicoExtras()" title="Ocultar/exibir opções"
-                style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;
+                style="display:flex;align-items:center;justify-content:center;height:26px;padding:0 8px;gap:4px;
                        background:#1e293b;border:1px solid #334155;border-radius:5px;cursor:pointer;
-                       font-size:13px;color:#64748b;flex-shrink:0;transition:background .15s;padding:0"
-                onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹</button>
+                       font-size:11px;font-weight:700;color:#64748b;flex-shrink:0;transition:background .15s;white-space:nowrap"
+                onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
             <span id="periodo-badge-mosaico" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
             <select id="periodo-mosaico" onchange="setSubViewPeriodo('mosaico',this.value)"
                 style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
@@ -8745,7 +8750,7 @@ function toggleMosaicoExtras() {
     const btn    = document.getElementById('mosaico-toggle-btn');
     const oculto = extras.style.display === 'none';
     extras.style.display = oculto ? 'flex' : 'none';
-    btn.textContent = oculto ? '‹' : '›';
+    btn.textContent = oculto ? '‹ Ocultar' : '› Mostrar';
     localStorage.setItem('mosaicoExtrasOculto', oculto ? '0' : '1');
 }
 
@@ -8754,7 +8759,7 @@ function toggleMosaicoExtras() {
         const extras = document.getElementById('mosaico-extras');
         const btn    = document.getElementById('mosaico-toggle-btn');
         if (extras) extras.style.display = 'none';
-        if (btn)    btn.textContent = '›';
+        if (btn)    btn.textContent = '› Mostrar';
     }
 }());
 
@@ -8763,7 +8768,7 @@ function toggleHeaderExtras() {
     const btn    = document.getElementById('header-toggle-btn');
     const oculto = extras.style.display === 'none';
     extras.style.display = oculto ? 'flex' : 'none';
-    btn.textContent = oculto ? '‹' : '›';
+    btn.textContent = oculto ? '‹ Ocultar' : '› Mostrar';
     localStorage.setItem('headerExtrasOculto', oculto ? '0' : '1');
 }
 
@@ -8772,7 +8777,27 @@ function toggleHeaderExtras() {
         const extras = document.getElementById('header-extras');
         const btn    = document.getElementById('header-toggle-btn');
         if (extras) extras.style.display = 'none';
-        if (btn)    btn.textContent = '›';
+        if (btn)    btn.textContent = '› Mostrar';
+    }
+}());
+
+function toggleLinhaExtras() {
+    const extras = document.getElementById('linha-extras');
+    const btn    = document.getElementById('linha-toggle-btn');
+    const oculto = extras.style.display === 'none';
+    extras.style.display = oculto ? 'flex' : 'none';
+    btn.textContent = oculto ? '‹ Ocultar' : '› Mostrar';
+    localStorage.setItem('linhaExtrasOculto', oculto ? '0' : '1');
+}
+
+(function initLinhaExtras() {
+    if (localStorage.getItem('linhaExtrasOculto') === '1') {
+        document.addEventListener('DOMContentLoaded', () => {
+            const extras = document.getElementById('linha-extras');
+            const btn    = document.getElementById('linha-toggle-btn');
+            if (extras) extras.style.display = 'none';
+            if (btn)    btn.textContent = '› Mostrar';
+        });
     }
 }());
 
