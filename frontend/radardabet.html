@@ -2677,9 +2677,17 @@ async function carregarConfigLigas() {
                 ['periodo-mosaico',  S.jogosMosaico],
             ];
             _cfgLabel.forEach(([id, val]) => {
+                if (!val) return;
                 const sel = document.getElementById(id);
-                const opt = sel?.querySelector('option[value=""]');
-                if (opt && val) opt.textContent = `${val} Jogos ★`;
+                if (!sel) return;
+                // Tenta selecionar a opção exata (ex: j120, j200)
+                const optKey = `j${val}`;
+                if (sel.querySelector(`option[value="${optKey}"]`)) {
+                    sel.value = optKey;
+                }
+                // Atualiza o label "= Config" como fallback visual
+                const opt = sel.querySelector('option[value=""]');
+                if (opt) { opt.text = `${val} Jogos ★`; opt.textContent = `${val} Jogos ★`; }
             });
         }
         if (cfg.default_dias_analise)    { const _v = parseInt(cfg.default_dias_analise) || 100; S.fa.nJogos = _v >= 20 ? _v : 100; }
@@ -3140,8 +3148,8 @@ const S = {
     rankingN:      10,
     secao:         'over',
     filtro:        'over1.5',
-    horas:         6,       // período do grid: padrão 6H (sobrescrito pela config)
-    _horasCarregadas: 6,   // máximo de horas efetivamente buscadas do banco
+    horas:         24,      // período do grid: padrão 24H (sobrescrito pela config)
+    _horasCarregadas: 24,  // máximo de horas efetivamente buscadas do banco
     linhas:        {},
     linhaGrafPct:       false,
     linhaGrafTopoFundo: false,
