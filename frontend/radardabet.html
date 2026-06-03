@@ -5372,35 +5372,50 @@ const mktLabelPlugin = {
     }
 };
 
-// Plano cartesiano vazio — exibe eixos + mensagem centralizada
+// Plano cartesiano vazio — exibe grid completo + mensagem centralizada
 function _renderChartVazio(canvasEl, chartRef, mensagem, yMin, yMax) {
     if (chartRef) { try { chartRef.destroy(); } catch(_){} }
     const _orp = Chart.getChart(canvasEl);
     if (_orp) { try { _orp.destroy(); } catch(_){} }
+    const _yMn = yMin ?? 0, _yMx = yMax ?? 100;
+    const _step = (_yMx - _yMn) / 5;
+    // Labels fictícios para forçar linhas verticais no eixo X
+    const _xLabels = Array.from({ length: 20 }, () => '');
+    // Dataset transparente para "ocupar" o espaço sem desenhar nada
+    const _emptyDs = {
+        data: _xLabels.map(() => null),
+        borderColor: 'transparent', backgroundColor: 'transparent',
+        pointRadius: 0, spanGaps: false
+    };
     const _emptyPlugin = {
         id: 'emptyMsg',
         afterDraw(chart) {
-            if (chart.data.datasets.length) return;
             const { ctx, chartArea: { left, right, top, bottom } } = chart;
             const cx = (left + right) / 2, cy = (top + bottom) / 2;
             ctx.save();
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.font = '700 13px sans-serif'; ctx.fillStyle = '#334155';
+            ctx.font = '700 13px sans-serif'; ctx.fillStyle = '#475569';
             ctx.fillText(mensagem, cx, cy);
             ctx.restore();
         }
     };
     return new Chart(canvasEl.getContext('2d'), {
         type: 'line',
-        data: { labels: [], datasets: [] },
+        data: { labels: _xLabels, datasets: [_emptyDs] },
         options: {
             responsive: true, maintainAspectRatio: false, animation: false,
             plugins: { legend: { display: false }, tooltip: { enabled: false } },
             scales: {
-                x: { grid: { color: '#1e293b' }, ticks: { color: '#334155' } },
+                x: {
+                    grid: { color: '#1e293b', drawTicks: false },
+                    ticks: { color: 'transparent', maxRotation: 0 },
+                    border: { color: '#1e293b' }
+                },
                 y: {
-                    min: yMin ?? 0, max: yMax ?? 100,
-                    grid: { color: '#1e293b' }, ticks: { color: '#475569', font: { size: 9 } }
+                    min: _yMn, max: _yMx,
+                    ticks: { stepSize: _step, color: '#475569', font: { size: 9 } },
+                    grid: { color: '#1e293b' },
+                    border: { color: '#1e293b' }
                 }
             }
         },
