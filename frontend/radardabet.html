@@ -3157,7 +3157,7 @@ const S = {
     rankingN:      10,
     secao:         'over',
     filtro:        'over1.5',
-    horas:         6,       // período do grid: padrão 6H (sobrescrito pela config)
+    horas:         12,      // período do grid: padrão 12H (sobrescrito pela config)
     _horasCarregadas: 6,   // máximo de horas efetivamente buscadas do banco
     linhas:        {},
     linhaGrafPct:       false,
@@ -3199,9 +3199,9 @@ const S = {
     showGols:      false,
     showLinha:     false,
     horasGols:     null,
-    jogosGols:     200,
-    jogosLinha:    200,
-    jogosMosaico:  120,
+    jogosGols:     null,
+    jogosLinha:    null,
+    jogosMosaico:  null,
     horasLinha:    null,
     horasMosaico:  null,
     grafGolsMM:    false,
@@ -3673,6 +3673,12 @@ async function carregarHistorico() {
         }
 
         S.partidas = filtrarPartidas();
+
+        // Se não encontrou NENHUM dado, expande automaticamente até 48h (liga pode estar em pausa)
+        if (S.todasPartidas.length === 0 && S._horasCarregadas < 48) {
+            S._horasCarregadas = Math.min(48, S._horasCarregadas * 2);
+            return carregarHistorico();
+        }
 
         // Se padrões de jogos exigem mais dados do que foi buscado, expande a janela automaticamente
         // (mesma lógica de setSubViewPeriodo, mas aplicada ao boot e a qualquer re-fetch)
