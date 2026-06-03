@@ -5372,6 +5372,42 @@ const mktLabelPlugin = {
     }
 };
 
+// Plano cartesiano vazio — exibe eixos + mensagem centralizada
+function _renderChartVazio(canvasEl, chartRef, mensagem, yMin, yMax) {
+    if (chartRef) { try { chartRef.destroy(); } catch(_){} }
+    const _orp = Chart.getChart(canvasEl);
+    if (_orp) { try { _orp.destroy(); } catch(_){} }
+    const _emptyPlugin = {
+        id: 'emptyMsg',
+        afterDraw(chart) {
+            if (chart.data.datasets.length) return;
+            const { ctx, chartArea: { left, right, top, bottom } } = chart;
+            const cx = (left + right) / 2, cy = (top + bottom) / 2;
+            ctx.save();
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = '700 13px sans-serif'; ctx.fillStyle = '#334155';
+            ctx.fillText(mensagem, cx, cy);
+            ctx.restore();
+        }
+    };
+    return new Chart(canvasEl.getContext('2d'), {
+        type: 'line',
+        data: { labels: [], datasets: [] },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: {
+                x: { grid: { color: '#1e293b' }, ticks: { color: '#334155' } },
+                y: {
+                    min: yMin ?? 0, max: yMax ?? 100,
+                    grid: { color: '#1e293b' }, ticks: { color: '#475569', font: { size: 9 } }
+                }
+            }
+        },
+        plugins: [_emptyPlugin]
+    });
+}
+
 function renderGrafico() {
     const canvas = document.getElementById('grafico');
     if (!canvas) return;
@@ -5410,8 +5446,8 @@ function renderGrafico() {
         return;
     }
     if (!ativos.length) {
-        _destruirGrafico();
         if (tituloEl) tituloEl.textContent = 'Selecione mercados acima';
+        S.grafico = _renderChartVazio(canvas, S.grafico, 'Selecione mercados acima', 0, 100);
         return;
     }
 
@@ -5803,8 +5839,8 @@ function renderGraficoLinha() {
     };
 
     if (!ativos.length) {
-        _destruir();
         if (tituloEl) tituloEl.textContent = 'Selecione mercados acima';
+        S._graficoLinha = _renderChartVazio(canvas, S._graficoLinha, 'Selecione mercados acima', 0, 100);
         return;
     }
 
@@ -6087,9 +6123,9 @@ function renderGraficoGols() {
     const _offsetGols = _todasGols.length - serie.length;
 
     if (!serie.length) {
-        _destruirGols();
         const t = document.getElementById('g-gols-titulo');
         if (t) t.textContent = `⚽ Sem dados com placar para o período`;
+        S._graficoGols = _renderChartVazio(canvasEl, S._graficoGols, 'Sem dados para o período', 0, 10);
         return;
     }
     _GOLS_SERIE = serie;
