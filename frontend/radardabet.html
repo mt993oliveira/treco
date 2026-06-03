@@ -10417,8 +10417,9 @@ function _pingSession() {
     const u = _getUser();
     if (!u) return;
 
-    // Verifica timeout de sessão (MASTER nunca expira)
-    if (u.TipoUsuario !== 'master') {
+    // Verifica timeout de sessão (MASTER e admin nunca expiram)
+    const _tipoSessao = (u.TipoUsuario || '').toLowerCase();
+    if (_tipoSessao !== 'master' && _tipoSessao !== 'admin' && _tipoSessao !== 'administrador') {
         const timeoutMin = S._sessionTimeoutMin ?? 180;
         if (timeoutMin > 0) {
             const loginTime = parseInt(localStorage.getItem('loginTime') || '0');
