@@ -2664,29 +2664,22 @@ async function carregarConfigLigas() {
         // Padrões do frontend
         if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
         // Período padrão dos gráficos (em jogos — sobrescreve horas quando configurado)
-        if (cfg.default_jogos_gols)     { S.horasGols     = null; S.jogosGols     = parseInt(cfg.default_jogos_gols)     || S.jogosGols; }
-        if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || S.jogosLinha; }
-        if (cfg.default_jogos_mosaico)  { S.horasMosaico  = null; S.jogosMosaico  = parseInt(cfg.default_jogos_mosaico)  || S.jogosMosaico; }
-        // Atualiza select com o valor real configurado (config ou default do S)
+        if (cfg.default_jogos_gols)     { S.horasGols     = null; S.jogosGols     = parseInt(cfg.default_jogos_gols)     || 200; }
+        if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || 200; }
+
+        if (cfg.default_jogos_mosaico)  { S.horasMosaico  = null; S.jogosMosaico  = parseInt(cfg.default_jogos_mosaico)  || 200; }
+        // Atualiza label da opção padrão em cada select com o valor real configurado
         {
             const _cfgLabel = [
-                ['periodo-gols',     S.jogosGols,    'gols'],
-                ['periodo-linha',    S.jogosLinha,   'linha'],
-                ['periodo-mosaico',  S.jogosMosaico, 'mosaico'],
+                ['periodo-gols',     S.jogosGols],
+                ['periodo-linha',    S.jogosLinha],
+
+                ['periodo-mosaico',  S.jogosMosaico],
             ];
-            _cfgLabel.forEach(([id, val, subview]) => {
-                if (!val) return;
+            _cfgLabel.forEach(([id, val]) => {
                 const sel = document.getElementById(id);
-                if (!sel) return;
-                // Tenta selecionar a opção exata (ex: j120, j200)
-                const optKey = `j${val}`;
-                if (sel.querySelector(`option[value="${optKey}"]`)) {
-                    sel.value = optKey;
-                }
-                // Renomeia "= Config" para mostrar o valor real
-                const opt = sel.querySelector('option[value=""]');
-                if (opt) { opt.text = `${val} Jogos ★`; opt.textContent = `${val} Jogos ★`; }
-                _updatePeriodoBadge(subview, sel.value || '');
+                const opt = sel?.querySelector('option[value=""]');
+                if (opt && val) opt.textContent = `${val} Jogos ★`;
             });
         }
         if (cfg.default_dias_analise)    { const _v = parseInt(cfg.default_dias_analise) || 100; S.fa.nJogos = _v >= 20 ? _v : 100; }
@@ -2889,12 +2882,6 @@ async function carregarConfigLigas() {
                 _btnP.style.display = _show ? '' : 'none';
                 if (!_show && S.showPadroes) { S.showPadroes = false; renderFiltros(); }
             }
-        }
-
-        // Tema padrão do sistema — aplica se usuário não tiver tema próprio salvo
-        if (cfg.default_tema) {
-            const _temaLocal = localStorage.getItem('rdbt_tema');
-            if (!_temaLocal) aplicarTema(cfg.default_tema);
         }
 
         // Aplica visibilidade das seções
@@ -3192,12 +3179,12 @@ const S = {
     mktGrupoFs:    7.5,
     mktGrupoCor:        '#94a3b8',
     mktGrupoCorInativo: '#475569',
-    showGols:      true,
-    showLinha:     true,
+    showGols:      false,
+    showLinha:     false,
     horasGols:     null,
-    jogosGols:     200,
-    jogosLinha:    200,
-    jogosMosaico:  120,
+    jogosGols:     null,
+    jogosLinha:    null,
+    jogosMosaico:  null,
     horasLinha:    null,
     horasMosaico:  null,
     grafGolsMM:    false,
@@ -3670,41 +3657,28 @@ async function carregarHistorico() {
 
         S.partidas = filtrarPartidas();
 
-        // Calcula se é necessário buscar mais dados para atender os períodos configurados
+        // Se padrões de jogos exigem mais dados do que foi buscado, expande a janela automaticamente
+        // (mesma lógica de setSubViewPeriodo, mas aplicada ao boot e a qualquer re-fetch)
         const _jogosMax = Math.max(
             S.jogosGols     || 0,
             S.jogosLinha    || 0,
             S.jogosMosaico  || 0
         );
-        let _expansaoHoras = 0;
-        if (_jogosMax > 0 && S._horasCarregadas > 0) {
-            if (S.todasPartidas.length > 0) {
-                const _warmup   = S.grafMM1 || 20;
-                const _ligaJogs = S.ligaAtiva ? S.todasPartidas.filter(p => p.liga === S.ligaAtiva).length : 0;
-                const _taxa     = (_ligaJogs > 0)
-                    ? _ligaJogs / S._horasCarregadas
-                    : S.todasPartidas.length / S._horasCarregadas;
-                if (_taxa > 0) {
-                    const _horasNec = Math.ceil((_jogosMax + _warmup) / _taxa) + 2;
-                    if (_horasNec > S._horasCarregadas && _horasNec <= 168) {
-                        _expansaoHoras = _horasNec;
-                    }
+        if (_jogosMax > 0 && S.todasPartidas.length > 0 && S._horasCarregadas > 0) {
+            // Usa taxa da liga ativa quando possível — mais preciso que a taxa total.
+            // Inclui buffer de warmup (grafMM1) para que o rolling não comece do zero.
+            const _warmup   = S.grafMM1 || 20;
+            const _ligaJogs = S.ligaAtiva ? S.todasPartidas.filter(p => p.liga === S.ligaAtiva).length : 0;
+            const _taxa     = (_ligaJogs > 0)
+                ? _ligaJogs / S._horasCarregadas
+                : S.todasPartidas.length / S._horasCarregadas;
+            if (_taxa > 0) {
+                const _horasNec = Math.ceil((_jogosMax + _warmup) / _taxa) + 2;
+                if (_horasNec > S._horasCarregadas && _horasNec <= 168) {
+                    S._horasCarregadas = _horasNec;
+                    return carregarHistorico();
                 }
-            } else if (S._horasCarregadas < 48) {
-                // Nenhum dado no intervalo inicial — tenta 48h para encontrar histórico
-                _expansaoHoras = 48;
             }
-        }
-
-        // Renderiza imediatamente com o que temos (evita tela vazia durante expansão)
-        renderLigas();
-        if (S.view === 'historico') { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); _verificarAlertas(); }
-
-        // Se precisar de mais dados, busca em segundo plano e re-renderiza quando terminar
-        if (_expansaoHoras > 0) {
-            S._horasCarregadas = _expansaoHoras;
-            carregarHistorico(); // sem await — não bloqueia; re-renderiza ao concluir
-            return;
         }
 
         // Quando "Próximos Jogos" está ativo, busca eventos agendados para a grade
@@ -3725,12 +3699,6 @@ async function carregarHistorico() {
 
     } catch (e) {
         console.error('carregarHistorico:', e.message);
-        // Exibe erro visível para diagnóstico
-        const _tbody = document.getElementById('tbl-body');
-        if (_tbody) _tbody.innerHTML = `<tr><td colspan="30" style="text-align:center;padding:30px;color:#f87171;font-size:12px">
-            ⚠️ Erro ao carregar dados: ${e.message}<br>
-            <span style="color:#64748b;font-size:10px">horas=${S._horasCarregadas} | usuario=${_getUser()?.Usuario || '?'} | ${new Date().toLocaleTimeString('pt-BR')}</span>
-        </td></tr>`;
     }
 }
 
@@ -3738,28 +3706,6 @@ function filtrarPartidas() {
     if (!S.todasPartidas) return [];
     if (!S.ligaAtiva) return S.todasPartidas;
     return S.todasPartidas.filter(p => p.liga === S.ligaAtiva);
-}
-
-// Sincroniza os selects de período com os valores reais de S (config ou padrão)
-// Chamada no boot após carregarTudo — garante comportamento igual para todos os usuários
-function _sincronizarSelectsPeriodo() {
-    const _itens = [
-        ['periodo-gols',    S.jogosGols,    'gols'],
-        ['periodo-linha',   S.jogosLinha,   'linha'],
-        ['periodo-mosaico', S.jogosMosaico, 'mosaico'],
-    ];
-    _itens.forEach(([id, val, subview]) => {
-        if (!val) return;
-        const sel = document.getElementById(id);
-        if (!sel) return;
-        const optKey = `j${val}`;
-        if (sel.querySelector(`option[value="${optKey}"]`)) {
-            sel.value = optKey;
-        }
-        const opt = sel.querySelector('option[value=""]');
-        if (opt) { opt.text = `${val} Jogos ★`; opt.textContent = `${val} Jogos ★`; }
-        _updatePeriodoBadge(subview, sel.value || '');
-    });
 }
 
 // ── Constrói URL com params de S.fa ──────────────────────────────────────
@@ -9785,72 +9731,10 @@ async function salvarConfigSistema() {
 async function forcarResetConfigs() {
     const btn = document.getElementById('cfg-reset-btn');
     const msg = document.getElementById('cfg-msg');
-    if (!confirm('Isso vai aplicar suas configurações atuais (tema, cores, grid, períodos) como padrão do sistema para TODOS os usuários. Confirmar?')) return;
+    if (!confirm('Isso vai resetar o tema, cores e preferências de TODOS os usuários na próxima vez que abrirem a página. Confirmar?')) return;
     btn.disabled = true;
-    btn.textContent = 'Salvando padrões...';
+    btn.textContent = 'Aguarde...';
     try {
-        // Coleta configurações atuais do MASTER para salvar como padrão do sistema
-        const payload = {};
-
-        // Tema
-        const _tema = localStorage.getItem('rdbt_tema');
-        if (_tema) payload.default_tema = _tema;
-
-        // Preferências visuais da grade
-        const _showNomes = localStorage.getItem('rdbt_showNomes');
-        if (_showNomes !== null) payload.default_exibir_clubes = _showNomes;
-        const _showOdds = localStorage.getItem('rdbt_showOdds');
-        if (_showOdds !== null) payload.default_exibir_odds = _showOdds;
-        const _showHT = localStorage.getItem('rdbt_showHT');
-        if (_showHT !== null) payload.default_exibir_ht = _showHT;
-        const _showPct = localStorage.getItem('rdbt_showPct');
-        if (_showPct !== null) payload.default_mosaico_pct = _showPct;
-        const _showGols = localStorage.getItem('rdbt_showGols');
-        if (_showGols !== null) payload.default_mosaico_gols = _showGols;
-        const _showProx = localStorage.getItem('rdbt_showProximos');
-        if (_showProx !== null) payload.default_proximos_jogos = _showProx;
-
-        // Períodos dos gráficos (do estado atual de S)
-        if (S.jogosGols)    payload.default_jogos_gols    = String(S.jogosGols);
-        if (S.jogosLinha)   payload.default_jogos_linha   = String(S.jogosLinha);
-        if (S.jogosMosaico) payload.default_jogos_mosaico = String(S.jogosMosaico);
-
-        // Cores do grid (do localStorage do MASTER)
-        const _gridLS = localStorage.getItem('gridCores');
-        if (_gridLS) {
-            try {
-                const gc = JSON.parse(_gridLS);
-                Object.entries(gc).forEach(([k, v]) => { if (v) payload['grid_' + k] = String(v); });
-            } catch(_) {}
-        }
-
-        // Cores dos gráficos (do localStorage do MASTER)
-        const _u = _getUser();
-        if (_u?.Id) {
-            const _chartLS = localStorage.getItem('chartCores_' + _u.Id);
-            if (_chartLS) {
-                try {
-                    const cc = JSON.parse(_chartLS);
-                    Object.entries(cc).forEach(([id, cor]) => {
-                        if (cor) payload['chart_cor_' + id.replace(/[^a-zA-Z0-9]/g, '_')] = cor;
-                    });
-                } catch(_) {}
-            }
-        }
-
-        // Salva tudo como padrão do sistema no banco
-        if (Object.keys(payload).length > 0) {
-            const rCfg = await fetch('/api/bet365/admin/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const dCfg = await rCfg.json();
-            if (!dCfg.success) throw new Error(dCfg.error || 'Erro ao salvar padrões');
-        }
-
-        // Incrementa config_versao para forçar reset do localStorage de todos
-        btn.textContent = 'Agendando reset...';
         const cfgAtual = await fetch('/api/bet365/admin/config').then(r => r.json());
         const _cfgEntry = (cfgAtual.data || []).find(d => d.chave === 'config_versao');
         const versaoAtual = parseInt(_cfgEntry?.valor || '1');
@@ -9865,15 +9749,17 @@ async function forcarResetConfigs() {
         if (data.success) {
             msg.style.background = '#0f4c20';
             msg.style.color = '#4ade80';
-            msg.textContent = `✅ Padrões do MASTER salvos e reset agendado (v${novaVersao}). Todos os usuários herdarão suas configurações na próxima visita.`;
+            msg.textContent = `✅ Reset agendado (versão ${novaVersao}). Todos os usuários serão resetados na próxima visita.`;
         } else {
-            throw new Error(data.error || 'Erro ao atualizar versão');
+            msg.style.background = '#4c0f0f';
+            msg.style.color = '#f87171';
+            msg.textContent = '❌ Erro: ' + (data.error || 'desconhecido');
         }
     } catch(e) {
         msg.style.display = 'block';
         msg.style.background = '#4c0f0f';
         msg.style.color = '#f87171';
-        msg.textContent = '❌ Erro: ' + e.message;
+        msg.textContent = '❌ Erro de rede: ' + e.message;
     }
     btn.disabled = false;
     btn.textContent = '🔄 Forçar reset para todos';
@@ -10417,9 +10303,8 @@ function _pingSession() {
     const u = _getUser();
     if (!u) return;
 
-    // Verifica timeout de sessão (MASTER e admin nunca expiram)
-    const _tipoSessao = (u.TipoUsuario || '').toLowerCase();
-    if (_tipoSessao !== 'master' && _tipoSessao !== 'admin' && _tipoSessao !== 'administrador') {
+    // Verifica timeout de sessão (MASTER nunca expira)
+    if (u.TipoUsuario !== 'master') {
         const timeoutMin = S._sessionTimeoutMin ?? 180;
         if (timeoutMin > 0) {
             const loginTime = parseInt(localStorage.getItem('loginTime') || '0');
@@ -11472,19 +11357,11 @@ document.addEventListener('DOMContentLoaded', () => {
         await _carregarPadroesParaAlertas();
         await _carregarAlertaCfgRuntime();
         await carregarTudo();
-        // Segunda chamada garante que cores, grid e padrões de período
-        // sejam aplicados mesmo se o primeiro carregamento falhou silenciosamente.
-        // Necessário para todos os usuários (não apenas MASTER).
-        await carregarConfigLigas();
-        // Re-renderiza gráficos com as cores definitivas da config
-        if (S.view === 'historico') { _renderAllCharts(); }
         _atualizarCoresCharts(localStorage.getItem('rdbt_tema') || 'dark');
         // Auto-aplica padrão principal (se existir) logo após carregar dados
         // silencioso=true: não abre Mercados/Gráfico — respeita os defaults da config
         const principal = _padroesCache.find(p => p.is_principal);
         if (principal) aplicarPadrao(principal.id, { silencioso: true });
-        // Garante que os selects de período reflitam os valores carregados da config
-        _sincronizarSelectsPeriodo();
         const seg = S._autoRefreshSeg ?? 120;
         if (seg > 0) setInterval(carregarTudo, seg * 1000);
     });
