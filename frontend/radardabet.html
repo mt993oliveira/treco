@@ -264,6 +264,8 @@
         /* Header: oculta texto "FUTEBOL VIRTUAL" e comprime status */
         #header-subtitle  { display: none !important; }
         #header-separator { display: none !important; }
+        /* Logo: limita largura no mobile para não causar scroll */
+        img[alt="Radar da Bet"] { min-width: unset !important; max-width: 200px; height: 44px !important; }
         /* Liga tabs: compacto no mobile */
         .liga-tab { font-size: 12px; padding: 6px 12px; flex-direction: row; min-width: unset; gap: 5px; }
         .liga-tab .liga-img      { display: none; }
