@@ -673,8 +673,8 @@
     <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex:1;min-width:0">
             <img src="/img/logo_principal.png" alt="Radar da Bet" style="height:80px;min-width:340px;object-fit:contain;object-position:left center;flex-shrink:0">
-            <span id="header-separator" style="color:#1e293b">|</span>
-            <span id="header-subtitle" style="color:#475569;font-size:10px;font-weight:700;letter-spacing:.05em">FUTEBOL VIRTUAL</span>
+            <span id="header-separator" style="color:#334155;font-size:22px;font-weight:300;margin:0 4px">|</span>
+            <span id="header-subtitle" style="color:#94a3b8;font-size:22px;font-weight:700;letter-spacing:.08em">FUTEBOL VIRTUAL</span>
         </div>
 
         <!-- Extras do header (ocultáveis) -->
@@ -3076,8 +3076,20 @@ async function _aplicarConfigFrontend() {
         // Tamanho do logo no header
         const _logoEl = document.querySelector('img[alt="Radar da Bet"]');
         if (_logoEl) {
-            if (c.logo_header_altura) _logoEl.style.height    = (parseInt(c.logo_header_altura)  || 80)  + 'px';
-            if (c.logo_header_largura) _logoEl.style.minWidth = (parseInt(c.logo_header_largura) || 340) + 'px';
+            if (c.logo_header_altura)  _logoEl.style.height    = (parseInt(c.logo_header_altura)  || 80)  + 'px';
+            if (c.logo_header_largura) _logoEl.style.minWidth  = (parseInt(c.logo_header_largura) || 340) + 'px';
+        }
+        // Subtítulo do header
+        const _subEl = document.getElementById('header-subtitle');
+        const _sepEl = document.getElementById('header-separator');
+        if (_subEl) {
+            if (c.header_subtitle_texto)   _subEl.textContent   = c.header_subtitle_texto;
+            if (c.header_subtitle_tamanho) {
+                const _fs = (parseInt(c.header_subtitle_tamanho) || 22) + 'px';
+                _subEl.style.fontSize = _fs;
+                if (_sepEl) _sepEl.style.fontSize = _fs;
+            }
+            if (c.header_subtitle_cor)     _subEl.style.color   = c.header_subtitle_cor;
         }
 
     } catch(e) {}
