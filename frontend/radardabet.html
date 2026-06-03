@@ -11411,13 +11411,18 @@ document.addEventListener('DOMContentLoaded', () => {
         await _carregarPadroesParaAlertas();
         await _carregarAlertaCfgRuntime();
         await carregarTudo();
+        // Segunda chamada garante que cores, grid e padrões de período
+        // sejam aplicados mesmo se o primeiro carregamento falhou silenciosamente.
+        // Necessário para todos os usuários (não apenas MASTER).
+        await carregarConfigLigas();
+        // Re-renderiza gráficos com as cores definitivas da config
+        if (S.view === 'historico') { _renderAllCharts(); }
         _atualizarCoresCharts(localStorage.getItem('rdbt_tema') || 'dark');
         // Auto-aplica padrão principal (se existir) logo após carregar dados
         // silencioso=true: não abre Mercados/Gráfico — respeita os defaults da config
         const principal = _padroesCache.find(p => p.is_principal);
         if (principal) aplicarPadrao(principal.id, { silencioso: true });
         // Garante que os selects de período reflitam os valores carregados da config
-        // (para todos os usuários, não apenas MASTER)
         _sincronizarSelectsPeriodo();
         const seg = S._autoRefreshSeg ?? 120;
         if (seg > 0) setInterval(carregarTudo, seg * 1000);
