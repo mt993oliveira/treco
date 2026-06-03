@@ -5276,7 +5276,7 @@ function _toggleLinhaMarcaDagua() {
 // ============================================================
 // PLUGIN WATERMARK — marca d'água Radar da Bet
 // ============================================================
-const _watermarkSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 75">
+const _watermarkSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 75" width="270" height="75">
   <defs>
     <radialGradient id="wm_shieldBg" cx="50%" cy="35%" r="65%">
       <stop offset="0%" stop-color="#0e3d14"/>
@@ -5319,12 +5319,14 @@ const _watermarkSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 
 </svg>`;
 
 const _watermarkImg = new Image();
+let _watermarkReady = false;
+_watermarkImg.onload = () => { _watermarkReady = true; };
 _watermarkImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(_watermarkSVG);
 
 const watermarkPlugin = {
     id: 'watermark',
     afterDraw(chart) {
-        if (!_watermarkImg.complete || !_watermarkImg.naturalWidth) return;
+        if (!_watermarkReady) return;
         const { ctx, chartArea } = chart;
         if (!chartArea) return;
         const { left, right, top, bottom } = chartArea;
