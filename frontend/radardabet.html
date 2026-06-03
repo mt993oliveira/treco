@@ -5471,15 +5471,15 @@ function _renderChartVazio(canvasEl, chartRef, mensagem, yMin, yMax) {
             plugins: { legend: { display: false }, tooltip: { enabled: false } },
             scales: {
                 x: {
-                    grid: { color: '#1e293b', drawTicks: false },
+                    grid: { color: '#2d3f55', drawTicks: false },
                     ticks: { color: 'transparent', maxRotation: 0 },
-                    border: { color: '#1e293b' }
+                    border: { color: '#2d3f55' }
                 },
                 y: {
                     min: _yMn, max: _yMx,
-                    ticks: { stepSize: _step, color: '#475569', font: { size: 9 } },
-                    grid: { color: '#1e293b' },
-                    border: { color: '#1e293b' }
+                    ticks: { stepSize: _step, color: '#64748b', font: { size: 9 } },
+                    grid: { color: '#2d3f55' },
+                    border: { color: '#2d3f55' }
                 }
             }
         },
@@ -5703,8 +5703,8 @@ function renderGrafico() {
                 },
                 layout: { padding: { top: 18, bottom: 10 } },
                 scales: {
-                    x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                    y: { min:_yMinG, max:_yMaxG, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},stepSize:5,callback:v=>v+'%'} }
+                    x: { grid:{color:'#2d3f55'}, ticks:{color:'#64748b',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                    y: { min:_yMinG, max:_yMaxG, grid:{color:'#2d3f55'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},stepSize:5,callback:v=>v+'%'} }
                 }
             },
             plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin, watermarkPlugin]
@@ -6122,10 +6122,10 @@ function renderGraficoLinha() {
                 },
                 layout: { padding: { top: 18, bottom: 10 } },
                 scales: {
-                    x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                    x: { grid:{color:'#2d3f55'}, ticks:{color:'#64748b',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
                     y: {
                         min: _yMinL, max: _yMaxL,
-                        grid: { color: ctx => ctx.tick.value % 25 === 0 ? '#334155' : '#1e293b50' },
+                        grid: { color: ctx => ctx.tick.value % 25 === 0 ? '#4a6080' : '#2d3f55' },
                         ticks: {
                             padding: 6, color: '#94a3b8', font: { size: 9 },
                             stepSize: 5,
@@ -6349,8 +6349,8 @@ function renderGraficoGols() {
                 }
             },
             scales: {
-                x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
+                x: { grid:{color:'#2d3f55'}, ticks:{color:'#64748b',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
+                y: { min: yMin, max: yMax, grid:{color:'#2d3f55'}, ticks:{color:'#94a3b8',font:{size:9}} }
             }
         },
         plugins: [golsLabelPlugin, verticalLinesPlugin, watermarkPlugin]
@@ -11803,8 +11803,8 @@ const TEMAS = [
 function _atualizarCoresCharts(temaId) {
     const isLight = ['light','light-blue','mint','rose','cream'].includes(temaId);
     const isMed   = ['slate','steel','charcoal','dusk','ocean'].includes(temaId);
-    const gridC   = isLight ? '#cbd5e1' : (isMed ? '#2d3a50' : '#1e293b');
-    const tickC   = isLight ? '#64748b' : (isMed ? '#94a3b8' : '#334155');
+    const gridC   = isLight ? '#94a3b8' : (isMed ? '#374f6b' : '#2d3f55');
+    const tickC   = isLight ? '#475569' : (isMed ? '#94a3b8' : '#64748b');
     const legC    = isLight ? '#1e293b' : '#e2e8f0';
     const bgC     = isLight ? 'rgba(240,245,255,0.9)' : (isMed ? 'rgba(26,32,48,0.85)' : 'rgba(15,23,42,0.85)');
 
