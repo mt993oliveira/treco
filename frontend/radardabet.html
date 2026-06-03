@@ -5704,7 +5704,7 @@ function renderGrafico() {
                 layout: { padding: { top: 18, bottom: 10 } },
                 scales: {
                     x: { grid:{color:'#1e293b'}, ticks:{color:'#334155',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                    y: { min:_yMinG, max:_yMaxG, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
+                    y: { min:_yMinG, max:_yMaxG, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},stepSize:5,callback:v=>v+'%'} }
                 }
             },
             plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin, watermarkPlugin]
@@ -6129,7 +6129,7 @@ function renderGraficoLinha() {
                         ticks: {
                             padding: 6, color: '#94a3b8', font: { size: 9 },
                             stepSize: 5,
-                            callback: v => v % 25 === 0 ? v + '%' : (v % 10 === 0 ? v + '%' : '')
+                            callback: v => v + '%'
                         }
                     }
                 }
