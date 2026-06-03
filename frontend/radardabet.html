@@ -9785,10 +9785,72 @@ async function salvarConfigSistema() {
 async function forcarResetConfigs() {
     const btn = document.getElementById('cfg-reset-btn');
     const msg = document.getElementById('cfg-msg');
-    if (!confirm('Isso vai resetar o tema, cores e preferências de TODOS os usuários na próxima vez que abrirem a página. Confirmar?')) return;
+    if (!confirm('Isso vai aplicar suas configurações atuais (tema, cores, grid, períodos) como padrão do sistema para TODOS os usuários. Confirmar?')) return;
     btn.disabled = true;
-    btn.textContent = 'Aguarde...';
+    btn.textContent = 'Salvando padrões...';
     try {
+        // Coleta configurações atuais do MASTER para salvar como padrão do sistema
+        const payload = {};
+
+        // Tema
+        const _tema = localStorage.getItem('rdbt_tema');
+        if (_tema) payload.default_tema = _tema;
+
+        // Preferências visuais da grade
+        const _showNomes = localStorage.getItem('rdbt_showNomes');
+        if (_showNomes !== null) payload.default_exibir_clubes = _showNomes;
+        const _showOdds = localStorage.getItem('rdbt_showOdds');
+        if (_showOdds !== null) payload.default_exibir_odds = _showOdds;
+        const _showHT = localStorage.getItem('rdbt_showHT');
+        if (_showHT !== null) payload.default_exibir_ht = _showHT;
+        const _showPct = localStorage.getItem('rdbt_showPct');
+        if (_showPct !== null) payload.default_mosaico_pct = _showPct;
+        const _showGols = localStorage.getItem('rdbt_showGols');
+        if (_showGols !== null) payload.default_mosaico_gols = _showGols;
+        const _showProx = localStorage.getItem('rdbt_showProximos');
+        if (_showProx !== null) payload.default_proximos_jogos = _showProx;
+
+        // Períodos dos gráficos (do estado atual de S)
+        if (S.jogosGols)    payload.default_jogos_gols    = String(S.jogosGols);
+        if (S.jogosLinha)   payload.default_jogos_linha   = String(S.jogosLinha);
+        if (S.jogosMosaico) payload.default_jogos_mosaico = String(S.jogosMosaico);
+
+        // Cores do grid (do localStorage do MASTER)
+        const _gridLS = localStorage.getItem('gridCores');
+        if (_gridLS) {
+            try {
+                const gc = JSON.parse(_gridLS);
+                Object.entries(gc).forEach(([k, v]) => { if (v) payload['grid_' + k] = String(v); });
+            } catch(_) {}
+        }
+
+        // Cores dos gráficos (do localStorage do MASTER)
+        const _u = _getUser();
+        if (_u?.Id) {
+            const _chartLS = localStorage.getItem('chartCores_' + _u.Id);
+            if (_chartLS) {
+                try {
+                    const cc = JSON.parse(_chartLS);
+                    Object.entries(cc).forEach(([id, cor]) => {
+                        if (cor) payload['chart_cor_' + id.replace(/[^a-zA-Z0-9]/g, '_')] = cor;
+                    });
+                } catch(_) {}
+            }
+        }
+
+        // Salva tudo como padrão do sistema no banco
+        if (Object.keys(payload).length > 0) {
+            const rCfg = await fetch('/api/bet365/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const dCfg = await rCfg.json();
+            if (!dCfg.success) throw new Error(dCfg.error || 'Erro ao salvar padrões');
+        }
+
+        // Incrementa config_versao para forçar reset do localStorage de todos
+        btn.textContent = 'Agendando reset...';
         const cfgAtual = await fetch('/api/bet365/admin/config').then(r => r.json());
         const _cfgEntry = (cfgAtual.data || []).find(d => d.chave === 'config_versao');
         const versaoAtual = parseInt(_cfgEntry?.valor || '1');
@@ -9803,17 +9865,15 @@ async function forcarResetConfigs() {
         if (data.success) {
             msg.style.background = '#0f4c20';
             msg.style.color = '#4ade80';
-            msg.textContent = `✅ Reset agendado (versão ${novaVersao}). Todos os usuários serão resetados na próxima visita.`;
+            msg.textContent = `✅ Padrões do MASTER salvos e reset agendado (v${novaVersao}). Todos os usuários herdarão suas configurações na próxima visita.`;
         } else {
-            msg.style.background = '#4c0f0f';
-            msg.style.color = '#f87171';
-            msg.textContent = '❌ Erro: ' + (data.error || 'desconhecido');
+            throw new Error(data.error || 'Erro ao atualizar versão');
         }
     } catch(e) {
         msg.style.display = 'block';
         msg.style.background = '#4c0f0f';
         msg.style.color = '#f87171';
-        msg.textContent = '❌ Erro de rede: ' + e.message;
+        msg.textContent = '❌ Erro: ' + e.message;
     }
     btn.disabled = false;
     btn.textContent = '🔄 Forçar reset para todos';
