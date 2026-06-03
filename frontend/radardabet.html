@@ -135,6 +135,11 @@
         .sdot.err { background: #ef4444; }
         .sdot.idle { background: #475569; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+        @keyframes ligaAlertaBlink {
+            0%,100% { border-color:rgba(31,204,89,.28); box-shadow:none; }
+            50%     { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.55),0 0 14px rgba(245,158,11,.4); }
+        }
+        .liga-alerta-ativa { animation:ligaAlertaBlink 0.7s ease-in-out infinite !important; }
 
         .tabela-scroll { overflow-x: auto; }
 
@@ -4342,6 +4347,7 @@ function renderLigas() {
             ? `<span class="liga-img" style="${imgCss}"></span>`
             : `<span class="liga-icon">${icon}</span>`;
         b.innerHTML = `${imgHtml}<span class="liga-nome-full">${label}</span><span class="liga-nome-short">${short}</span>`;
+        b.dataset.liga = liga;
         b.title = total ? `${liga} — ${total} jogos` : liga;
         b.onclick = () => {
             S.ligaAtiva = liga;
@@ -9860,6 +9866,9 @@ async function _loadConfigSistema() {
         const dAlertas = byGroup.alertas || [];
         const cfgAlertas = {};
         dAlertas.forEach(d => { cfgAlertas[d.chave] = d.valor; });
+        // Atualiza globals de runtime ao abrir o painel
+        if (cfgAlertas.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(cfgAlertas.alerta_visual_duracao_s) || 15;
+        if (cfgAlertas.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(cfgAlertas.alerta_liga_piscar_s) || 30;
 
         const ativadoD = dAlertas.find(d => d.chave === 'alerta_ativado') || { chave:'alerta_ativado', valor:'true' };
 
@@ -9873,6 +9882,17 @@ async function _loadConfigSistema() {
                 `<input type="number" id="cfg-alerta_minutos_sem_coleta" value="${escHtml(cfgAlertas.alerta_minutos_sem_coleta||'15')}" min="5" max="120"
                     style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
                 'Padrão: 15 min · Alerta de recuperação enviado automaticamente quando o coletor voltar') +
+            `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
+                <span style="font-size:11px;font-weight:700;color:#e2e8f0">🔔 Alerta Visual (na tela)</span>
+            </div>` +
+            fldWrap('DURAÇÃO DO ALERTA NA TELA (segundos)',
+                `<input type="number" id="cfg-alerta_visual_duracao_s" value="${escHtml(cfgAlertas.alerta_visual_duracao_s||'15')}" min="5" max="300"
+                    style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
+                'Tempo que o pop-up de alerta fica visível antes de fechar automaticamente · Padrão: 15 s') +
+            fldWrap('PISCAR DA LIGA (segundos)',
+                `<input type="number" id="cfg-alerta_liga_piscar_s" value="${escHtml(cfgAlertas.alerta_liga_piscar_s||'30')}" min="5" max="300"
+                    style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
+                'Tempo que a aba da liga fica piscando na borda quando o alerta dispara · Padrão: 30 s') +
             `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
                 <span style="font-size:11px;font-weight:700;color:#e2e8f0">📱 Telegram</span>
             </div>` +
@@ -10137,6 +10157,9 @@ async function salvarConfigSistema() {
             msg.style.background = '#0f4c20';
             msg.style.color = '#4ade80';
             msg.textContent = '✅ Configurações salvas! Coleta aplicada imediatamente; padrões de tela e sessão aplicados no próximo acesso.';
+            // Atualiza globals de alerta visual imediatamente
+            if (payload.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(payload.alerta_visual_duracao_s) || 15;
+            if (payload.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(payload.alerta_liga_piscar_s) || 30;
             // Atualiza menu de ligas imediatamente
             await carregarConfigLigas();
             renderLigas();
@@ -11486,6 +11509,21 @@ function _verificarAlertas() {
 }
 
 let _alertaAutoFecharTimer = null;
+let _alertaVisDuracao = 15;
+let _alertaLigaPiscarDuracao = 30;
+let _alertaLigaPiscarTimers = {};
+
+async function _carregarAlertaCfgRuntime() {
+    try {
+        const r = await fetch('/api/bet365/admin/config');
+        const d = await r.json();
+        if (!d.success) return;
+        const alertas = {};
+        (d.data || []).filter(x => x.grupo === 'alertas').forEach(x => { alertas[x.chave] = x.valor; });
+        if (alertas.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(alertas.alerta_visual_duracao_s) || 15;
+        if (alertas.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(alertas.alerta_liga_piscar_s) || 30;
+    } catch(e) {}
+}
 
 function _mostrarNotificacaoAlerta(alertas) {
     let el = document.getElementById('alerta-notif');
@@ -11519,15 +11557,34 @@ function _mostrarNotificacaoAlerta(alertas) {
         <div style="font-size:10px;color:#475569;margin-top:6px;text-align:right">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`;
     el.style.display = 'block';
 
-    // Auto-fechar após 3 minutos
     if (_alertaAutoFecharTimer) clearTimeout(_alertaAutoFecharTimer);
-    _alertaAutoFecharTimer = setTimeout(() => _fecharNotificacaoAlerta(), 3 * 60 * 1000);
+    _alertaAutoFecharTimer = setTimeout(() => _fecharNotificacaoAlerta(), _alertaVisDuracao * 1000);
+
+    // Piscar borda das ligas alertadas
+    const ligasAlertadas = new Set(alertas.flatMap(a => a.ligas || []));
+    ligasAlertadas.forEach(liga => {
+        const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(liga)}"]`);
+        if (!tab) return;
+        tab.classList.add('liga-alerta-ativa');
+        if (_alertaLigaPiscarTimers[liga]) clearTimeout(_alertaLigaPiscarTimers[liga]);
+        _alertaLigaPiscarTimers[liga] = setTimeout(() => {
+            tab.classList.remove('liga-alerta-ativa');
+            delete _alertaLigaPiscarTimers[liga];
+        }, _alertaLigaPiscarDuracao * 1000);
+    });
 }
 
 function _fecharNotificacaoAlerta() {
     if (_alertaAutoFecharTimer) { clearTimeout(_alertaAutoFecharTimer); _alertaAutoFecharTimer = null; }
     const el = document.getElementById('alerta-notif');
     if (el) el.style.display = 'none';
+    // Interrompe piscar de todas as ligas imediatamente
+    Object.keys(_alertaLigaPiscarTimers).forEach(liga => {
+        clearTimeout(_alertaLigaPiscarTimers[liga]);
+        const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(liga)}"]`);
+        if (tab) tab.classList.remove('liga-alerta-ativa');
+    });
+    _alertaLigaPiscarTimers = {};
 }
 
 // ============================================================
@@ -11760,6 +11817,7 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarConfigLigas().then(async () => {
         _faInit();
         await _carregarPadroesParaAlertas();
+        await _carregarAlertaCfgRuntime();
         await carregarTudo();
         _atualizarCoresCharts(localStorage.getItem('rdbt_tema') || 'dark');
         // Auto-aplica padrão principal (se existir) logo após carregar dados
