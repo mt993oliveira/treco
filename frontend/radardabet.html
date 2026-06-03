@@ -2678,8 +2678,19 @@ async function carregarConfigLigas() {
             ];
             _cfgLabel.forEach(([id, val]) => {
                 const sel = document.getElementById(id);
-                const opt = sel?.querySelector('option[value=""]');
-                if (opt && val) opt.textContent = `${val} Jogos ★`;
+                if (!sel || !val) return;
+                const opt = sel.querySelector('option[value=""]');
+                if (opt) {
+                    const txt = `${val} Jogos ★`;
+                    opt.text        = txt; // compatível iOS Safari
+                    opt.textContent = txt;
+                    opt.label       = txt;
+                    // Força atualização visual do select (iOS bug)
+                    if (sel.value === '') {
+                        sel.value = '__tmp__';
+                        sel.value = '';
+                    }
+                }
             });
         }
         if (cfg.default_dias_analise)    { const _v = parseInt(cfg.default_dias_analise) || 100; S.fa.nJogos = _v >= 20 ? _v : 100; }
@@ -2888,6 +2899,12 @@ async function carregarConfigLigas() {
         S._cfgSecoes = cfg;
         _aplicarConfigFrontend();
         _verificarManutencao();
+
+        // Se o mosaico está vazio após a config carregar, força re-render
+        const _tbody = document.getElementById('tbl-body');
+        if (_tbody && !_tbody.innerHTML.trim() && S.partidas?.length) {
+            requestAnimationFrame(() => renderTabela());
+        }
 
     } catch(e) {
         // falha silenciosa — mantém defaults
@@ -3182,9 +3199,9 @@ const S = {
     showGols:      false,
     showLinha:     false,
     horasGols:     null,
-    jogosGols:     null,
-    jogosLinha:    null,
-    jogosMosaico:  null,
+    jogosGols:     200,
+    jogosLinha:    200,
+    jogosMosaico:  120,
     horasLinha:    null,
     horasMosaico:  null,
     grafGolsMM:    false,
