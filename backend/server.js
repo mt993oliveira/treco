@@ -1442,7 +1442,8 @@ app.post('/api/usuarios/historico-acessos', requireAuth, async (req, res) => {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
         const chk = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
-        if (!chk.recordset.length || chk.recordset[0].TipoUsuario !== 'master') {
+        const _tipoChk = (chk.recordset[0]?.TipoUsuario || '').toLowerCase();
+        if (!chk.recordset.length || !['master','admin','administrador'].includes(_tipoChk)) {
             return res.json({ success: false, message: 'Acesso negado' });
         }
         const { usuario = '', tipo = '', dataInicio = '', dataFim = '', pagina = 1, porPagina = 50 } = req.body;
@@ -1487,7 +1488,8 @@ app.post('/api/usuarios/historico-limpar', requireAuth, async (req, res) => {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
         const chk = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
-        if (!chk.recordset.length || chk.recordset[0].TipoUsuario !== 'master') {
+        const _tipoChk2 = (chk.recordset[0]?.TipoUsuario || '').toLowerCase();
+        if (!chk.recordset.length || !['master','admin','administrador'].includes(_tipoChk2)) {
             return res.json({ success: false, message: 'Acesso negado' });
         }
         const dias = Math.max(1, Number(req.body.dias) || 30);
