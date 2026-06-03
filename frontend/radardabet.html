@@ -3671,28 +3671,41 @@ async function carregarHistorico() {
 
         S.partidas = filtrarPartidas();
 
-        // Se padrões de jogos exigem mais dados do que foi buscado, expande a janela automaticamente
-        // (mesma lógica de setSubViewPeriodo, mas aplicada ao boot e a qualquer re-fetch)
+        // Calcula se é necessário buscar mais dados para atender os períodos configurados
         const _jogosMax = Math.max(
             S.jogosGols     || 0,
             S.jogosLinha    || 0,
             S.jogosMosaico  || 0
         );
-        if (_jogosMax > 0 && S.todasPartidas.length > 0 && S._horasCarregadas > 0) {
-            // Usa taxa da liga ativa quando possível — mais preciso que a taxa total.
-            // Inclui buffer de warmup (grafMM1) para que o rolling não comece do zero.
-            const _warmup   = S.grafMM1 || 20;
-            const _ligaJogs = S.ligaAtiva ? S.todasPartidas.filter(p => p.liga === S.ligaAtiva).length : 0;
-            const _taxa     = (_ligaJogs > 0)
-                ? _ligaJogs / S._horasCarregadas
-                : S.todasPartidas.length / S._horasCarregadas;
-            if (_taxa > 0) {
-                const _horasNec = Math.ceil((_jogosMax + _warmup) / _taxa) + 2;
-                if (_horasNec > S._horasCarregadas && _horasNec <= 168) {
-                    S._horasCarregadas = _horasNec;
-                    return carregarHistorico();
+        let _expansaoHoras = 0;
+        if (_jogosMax > 0 && S._horasCarregadas > 0) {
+            if (S.todasPartidas.length > 0) {
+                const _warmup   = S.grafMM1 || 20;
+                const _ligaJogs = S.ligaAtiva ? S.todasPartidas.filter(p => p.liga === S.ligaAtiva).length : 0;
+                const _taxa     = (_ligaJogs > 0)
+                    ? _ligaJogs / S._horasCarregadas
+                    : S.todasPartidas.length / S._horasCarregadas;
+                if (_taxa > 0) {
+                    const _horasNec = Math.ceil((_jogosMax + _warmup) / _taxa) + 2;
+                    if (_horasNec > S._horasCarregadas && _horasNec <= 168) {
+                        _expansaoHoras = _horasNec;
+                    }
                 }
+            } else if (S._horasCarregadas < 48) {
+                // Nenhum dado no intervalo inicial — tenta 48h para encontrar histórico
+                _expansaoHoras = 48;
             }
+        }
+
+        // Renderiza imediatamente com o que temos (evita tela vazia durante expansão)
+        renderLigas();
+        if (S.view === 'historico') { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); _verificarAlertas(); }
+
+        // Se precisar de mais dados, busca em segundo plano e re-renderiza quando terminar
+        if (_expansaoHoras > 0) {
+            S._horasCarregadas = _expansaoHoras;
+            carregarHistorico(); // sem await — não bloqueia; re-renderiza ao concluir
+            return;
         }
 
         // Quando "Próximos Jogos" está ativo, busca eventos agendados para a grade
