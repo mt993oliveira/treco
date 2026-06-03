@@ -2664,19 +2664,17 @@ async function carregarConfigLigas() {
         // Padrões do frontend
         if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
         // Período padrão dos gráficos (em jogos — sobrescreve horas quando configurado)
-        if (cfg.default_jogos_gols)     { S.horasGols     = null; S.jogosGols     = parseInt(cfg.default_jogos_gols)     || 200; }
-        if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || 200; }
-
-        if (cfg.default_jogos_mosaico)  { S.horasMosaico  = null; S.jogosMosaico  = parseInt(cfg.default_jogos_mosaico)  || 200; }
-        // Atualiza label da opção padrão em cada select com o valor real configurado
+        if (cfg.default_jogos_gols)     { S.horasGols     = null; S.jogosGols     = parseInt(cfg.default_jogos_gols)     || S.jogosGols; }
+        if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || S.jogosLinha; }
+        if (cfg.default_jogos_mosaico)  { S.horasMosaico  = null; S.jogosMosaico  = parseInt(cfg.default_jogos_mosaico)  || S.jogosMosaico; }
+        // Atualiza select com o valor real configurado (config ou default do S)
         {
             const _cfgLabel = [
-                ['periodo-gols',     S.jogosGols],
-                ['periodo-linha',    S.jogosLinha],
-
-                ['periodo-mosaico',  S.jogosMosaico],
+                ['periodo-gols',     S.jogosGols,    'gols'],
+                ['periodo-linha',    S.jogosLinha,   'linha'],
+                ['periodo-mosaico',  S.jogosMosaico, 'mosaico'],
             ];
-            _cfgLabel.forEach(([id, val]) => {
+            _cfgLabel.forEach(([id, val, subview]) => {
                 if (!val) return;
                 const sel = document.getElementById(id);
                 if (!sel) return;
@@ -2685,9 +2683,10 @@ async function carregarConfigLigas() {
                 if (sel.querySelector(`option[value="${optKey}"]`)) {
                     sel.value = optKey;
                 }
-                // Atualiza o label "= Config" como fallback visual
+                // Renomeia "= Config" para mostrar o valor real
                 const opt = sel.querySelector('option[value=""]');
                 if (opt) { opt.text = `${val} Jogos ★`; opt.textContent = `${val} Jogos ★`; }
+                _updatePeriodoBadge(subview, sel.value || '');
             });
         }
         if (cfg.default_dias_analise)    { const _v = parseInt(cfg.default_dias_analise) || 100; S.fa.nJogos = _v >= 20 ? _v : 100; }
@@ -3196,9 +3195,9 @@ const S = {
     showGols:      true,
     showLinha:     true,
     horasGols:     null,
-    jogosGols:     null,
-    jogosLinha:    null,
-    jogosMosaico:  null,
+    jogosGols:     200,
+    jogosLinha:    200,
+    jogosMosaico:  120,
     horasLinha:    null,
     horasMosaico:  null,
     grafGolsMM:    false,
