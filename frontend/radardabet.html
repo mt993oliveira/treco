@@ -6236,6 +6236,14 @@ function renderGraficoGols() {
     });
 
     const ativosGols = FILTROS_GOLS.filter(f => S.linhasGols[f.id] && f.id !== 'gols-equi');
+
+    if (!ativosGols.length) {
+        const t = document.getElementById('g-gols-titulo');
+        if (t) t.textContent = 'Selecione métricas acima';
+        S._graficoGols = _renderChartVazio(canvasEl, S._graficoGols, 'Selecione métricas acima', 0, 10);
+        return;
+    }
+
     const totalG = serie.map(j => j.gol_casa + j.gol_fora).reduce((a, b) => a + b, 0);
 
     const labels = serie.map(p => {
