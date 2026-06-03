@@ -1940,6 +1940,7 @@
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-linha-marca-dagua" class="acao-btn" onclick="_toggleLinhaMarcaDagua()" title="Marca d'água: mantém as seleções do gráfico de linha fixas ao passar o mouse sobre os mercados">💧 Marca d'água</button>
                     <button id="btn-linha-cores" class="acao-btn" onclick="_togglePontoCores()" title="Colorir bolinhas: verde = subiu (hit), vermelho = desceu (miss).&#10;Desative para usar a cor da própria linha em todas as bolinhas.">🟢 Cores</button>
                     <button id="btn-linha-pills" class="acao-btn ativo" onclick="_toggleLinhaPills()" title="Exibir/ocultar a seleção de mercados do Gráfico de Linha">📊 Mercados</button>
                     <button id="btn-linha-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
@@ -3248,6 +3249,7 @@ const S = {
     linhaGrafTopoFundo: false,
     linhaGrafCongest:   false,
     linhaGrafMedias:    false,
+    linhaMarcaDagua:    false,
     linhaShowLegendas:  false,
     linhaGrafMM1:       9,
     linhaGrafMM2:       21,
@@ -5265,6 +5267,12 @@ function toggleLinhaLegendas() {
     renderGraficoLinha();
 }
 
+function _toggleLinhaMarcaDagua() {
+    S.linhaMarcaDagua = !S.linhaMarcaDagua;
+    const btn = document.getElementById('btn-linha-marca-dagua');
+    if (btn) btn.classList.toggle('ativo', S.linhaMarcaDagua);
+}
+
 // ============================================================
 // PLUGIN COMPARTILHADO — linhas verticais tracejadas a cada 10 jogos
 // ============================================================
@@ -5832,6 +5840,7 @@ function _clearPreviewPillMercados() {
 }
 
 function _previewPillLinha(f) {
+    if (S.linhaMarcaDagua) return;
     if (S.linhasLinha[f.id]) return;
     S.linhasLinha[f.id] = true;
     _hoveringChart = true;
@@ -5840,6 +5849,7 @@ function _previewPillLinha(f) {
     S.linhasLinha[f.id] = false;
 }
 function _clearPreviewPillLinha() {
+    if (S.linhaMarcaDagua) return;
     renderGraficoLinha();
 }
 
