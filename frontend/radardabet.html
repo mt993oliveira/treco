@@ -2892,6 +2892,12 @@ async function carregarConfigLigas() {
             }
         }
 
+        // Tema padrão do sistema — aplica se usuário não tiver tema próprio salvo
+        if (cfg.default_tema) {
+            const _temaLocal = localStorage.getItem('rdbt_tema');
+            if (!_temaLocal) aplicarTema(cfg.default_tema);
+        }
+
         // Aplica visibilidade das seções
         S._cfgSecoes = cfg;
         _aplicarConfigFrontend();
@@ -3707,6 +3713,12 @@ async function carregarHistorico() {
 
     } catch (e) {
         console.error('carregarHistorico:', e.message);
+        // Exibe erro visível para diagnóstico
+        const _tbody = document.getElementById('tbl-body');
+        if (_tbody) _tbody.innerHTML = `<tr><td colspan="30" style="text-align:center;padding:30px;color:#f87171;font-size:12px">
+            ⚠️ Erro ao carregar dados: ${e.message}<br>
+            <span style="color:#64748b;font-size:10px">horas=${S._horasCarregadas} | usuario=${_getUser()?.Usuario || '?'} | ${new Date().toLocaleTimeString('pt-BR')}</span>
+        </td></tr>`;
     }
 }
 

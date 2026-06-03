@@ -1587,6 +1587,7 @@ const CONFIG_DEFAULTS = [
     { chave:'liga_express_cup',             valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Express Cup' },
     { chave:'liga_super_liga',              valor:'true',  tipo:'boolean', grupo:'ligas',    descricao:'Coletar Super Liga Sul-Americana' },
     // ── Padrões do frontend ──
+    { chave:'default_tema',                 valor:'dark',  tipo:'text',    grupo:'frontend', descricao:'🎨 Tema padrão para todos os usuários (dark, carbon, slate, light, etc.)' },
     { chave:'default_horas_historico',      valor:'6',     tipo:'number',  grupo:'frontend', descricao:'Período padrão da Tabela Histórica (horas)' },
     { chave:'default_dias_analise',         valor:'100',   tipo:'number',  grupo:'frontend', descricao:'Padrão de jogos para Análise (mín. 20)' },
     { chave:'default_min_amostras',         valor:'5',     tipo:'number',  grupo:'frontend', descricao:'Mínimo de amostras padrão (Análise)' },
