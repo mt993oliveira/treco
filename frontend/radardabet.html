@@ -15,11 +15,12 @@
 
         /* Liga tabs */
         .liga-tab {
-            cursor: pointer; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 700;
+            cursor: pointer; padding: 8px 14px 10px; border-radius: 10px; font-size: 13px; font-weight: 700;
             background: rgba(31,204,89,.14); color: #4ade80;
             border: 1px solid rgba(31,204,89,.28); border-bottom: 2px solid rgba(31,204,89,.2);
             transition: all .15s; white-space: nowrap; letter-spacing:.02em;
-            display: inline-flex; align-items: center; justify-content: center; gap: 9px; flex-shrink: 0;
+            display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 6px; flex-shrink: 0; min-width: 130px;
         }
         .liga-tab.ativo {
             background: rgba(31,204,89,.38); color: #fff;
@@ -29,6 +30,13 @@
         }
         .liga-tab:hover:not(.ativo) { background: rgba(31,204,89,.24); color: #86efac; border-color: rgba(31,204,89,.45); }
         .liga-tab .liga-icon { font-size: 22px; line-height: 1; }
+        .liga-tab .liga-img {
+            display: block; width: 120px; height: 68px;
+            background-repeat: no-repeat; border-radius: 6px;
+            overflow: hidden; flex-shrink: 0;
+        }
+        .liga-tab .liga-nome-full { font-size: 13px; font-weight: 700; letter-spacing: .03em; }
+        .liga-tab .liga-nome-short { display: none; }
 
         /* Section / filter buttons */
         .secao-btn { cursor: pointer; padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: 600;
@@ -246,8 +254,11 @@
         /* Header: oculta texto "FUTEBOL VIRTUAL" e comprime status */
         #header-subtitle  { display: none !important; }
         #header-separator { display: none !important; }
-        /* Liga tabs: fonte menor no mobile */
-        .liga-tab { font-size: 12px; padding: 7px 14px; }
+        /* Liga tabs: compacto no mobile */
+        .liga-tab { font-size: 12px; padding: 6px 12px; flex-direction: row; min-width: unset; gap: 5px; }
+        .liga-tab .liga-img      { display: none; }
+        .liga-tab .liga-nome-full { display: none; }
+        .liga-tab .liga-nome-short { display: inline; font-size: 12px; font-weight: 700; }
         .liga-tab .liga-icon { font-size: 18px; }
         /* User menu: esconde nome, deixa só avatar */
         #user-nome { display: none !important; }
@@ -263,8 +274,9 @@
     }
     @media (max-width: 480px) {
         body { font-size: 12px; }
-        .liga-tab { font-size: 11px; padding: 5px 10px; }
-        .liga-tab .liga-icon { font-size: 16px; }
+        .liga-tab { font-size: 11px; padding: 5px 9px; }
+        .liga-tab .liga-nome-short { font-size: 11px; }
+        .liga-tab .liga-icon { font-size: 15px; }
     }
         /* ── Chat ao Vivo ─────────────────────────────────────── */
         #chat-panel {
@@ -4286,6 +4298,22 @@ const LIGA_ICONS = {
     'Super Liga Sul-Americana': '🌎',
 };
 
+const LIGA_IMAGES = {
+    'Copa do Mundo':            'background-image:url(/img/Ligas.png);background-size:200% 200%;background-position:0% 0%',
+    'Euro Cup':                 'background-image:url(/img/Ligas.png);background-size:200% 200%;background-position:100% 0%',
+    'Premier League':           'background-image:url(/img/Ligas.png);background-size:200% 200%;background-position:0% 100%',
+    'Super Liga Sul-Americana': 'background-image:url(/img/Ligas.png);background-size:200% 200%;background-position:100% 100%',
+    'Express Cup':              'background-image:url(/img/express.png);background-size:160%;background-position:62% 28%',
+};
+
+const LIGA_SHORT = {
+    'Copa do Mundo':            '🌍 Copa',
+    'Euro Cup':                 '🇪🇺 Euro',
+    'Premier League':           '⚽ Premier',
+    'Express Cup':              '⚡ Express',
+    'Super Liga Sul-Americana': '🌎 Super',
+};
+
 function renderLigas() {
     const c = document.getElementById('liga-tabs');
     c.innerHTML = '';
@@ -4293,8 +4321,13 @@ function renderLigas() {
     const mk = (label, liga, total) => {
         const b = document.createElement('button');
         b.className = 'liga-tab' + (S.ligaAtiva === liga ? ' ativo' : '');
-        const icon = LIGA_ICONS[liga] || '🏆';
-        b.innerHTML = `<span class="liga-icon">${icon}</span><span>${label}</span>`;
+        const icon   = LIGA_ICONS[liga] || '🏆';
+        const imgCss = LIGA_IMAGES[liga] || '';
+        const short  = LIGA_SHORT[liga] || `${icon} ${label}`;
+        const imgHtml = imgCss
+            ? `<span class="liga-img" style="${imgCss}"></span>`
+            : `<span class="liga-icon">${icon}</span>`;
+        b.innerHTML = `${imgHtml}<span class="liga-nome-full">${label}</span><span class="liga-nome-short">${short}</span>`;
         b.title = total ? `${liga} — ${total} jogos` : liga;
         b.onclick = () => {
             S.ligaAtiva = liga;
