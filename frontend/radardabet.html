@@ -1860,7 +1860,6 @@
                         <span id="periodo-badge-gols" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
                         <select id="periodo-gols" onchange="setSubViewPeriodo('gols',this.value)"
                             style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
-                            <option value="">= Config</option>
                             <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
                             <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
                             <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
@@ -1911,7 +1910,6 @@
                         <span id="periodo-badge-linha" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
                         <select id="periodo-linha" onchange="setSubViewPeriodo('linha',this.value)"
                             style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
-                            <option value="">= Config</option>
                             <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
                             <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
                             <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
@@ -1997,7 +1995,6 @@
             <span id="periodo-badge-mosaico" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
             <select id="periodo-mosaico" onchange="setSubViewPeriodo('mosaico',this.value)"
                 style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
-                            <option value="">= Config</option>
                             <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
                             <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
                             <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
@@ -2662,35 +2659,30 @@ async function carregarConfigLigas() {
         _atualizarSelectLigas();
 
         // Padrões do frontend
-        if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
-        // Período padrão dos gráficos (em jogos — sobrescreve horas quando configurado)
-        if (cfg.default_jogos_gols)     { S.horasGols     = null; S.jogosGols     = parseInt(cfg.default_jogos_gols)     || 200; }
-        if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || 200; }
-
-        if (cfg.default_jogos_mosaico)  { S.horasMosaico  = null; S.jogosMosaico  = parseInt(cfg.default_jogos_mosaico)  || 200; }
-        // Atualiza label da opção padrão em cada select com o valor real configurado
+        // Período padrão dos gráficos (em jogos)
+        if (cfg.default_jogos_gols)    { S.horasGols    = null; S.jogosGols    = parseInt(cfg.default_jogos_gols)    || 200; }
+        if (cfg.default_jogos_linha)   { S.horasLinha   = null; S.jogosLinha   = parseInt(cfg.default_jogos_linha)   || 200; }
+        if (cfg.default_jogos_mosaico) { S.horasMosaico = null; S.jogosMosaico = parseInt(cfg.default_jogos_mosaico) || 120; }
+        // Seleciona a opção correta em cada select (remove "= Config")
         {
-            const _cfgLabel = [
-                ['periodo-gols',     S.jogosGols],
-                ['periodo-linha',    S.jogosLinha],
-
-                ['periodo-mosaico',  S.jogosMosaico],
+            const _sel = [
+                ['periodo-gols',    S.jogosGols,    'gols'],
+                ['periodo-linha',   S.jogosLinha,   'linha'],
+                ['periodo-mosaico', S.jogosMosaico, 'mosaico'],
             ];
-            _cfgLabel.forEach(([id, val]) => {
+            _sel.forEach(([id, val, subview]) => {
+                if (!val) return;
                 const sel = document.getElementById(id);
-                if (!sel || !val) return;
-                const opt = sel.querySelector('option[value=""]');
-                if (opt) {
-                    const txt = `${val} Jogos ★`;
-                    opt.text        = txt; // compatível iOS Safari
-                    opt.textContent = txt;
-                    opt.label       = txt;
-                    // Força atualização visual do select (iOS bug)
-                    if (sel.value === '') {
-                        sel.value = '__tmp__';
-                        sel.value = '';
-                    }
+                if (!sel) return;
+                const optKey = `j${val}`;
+                if (sel.querySelector(`option[value="${optKey}"]`)) {
+                    sel.value = optKey;
+                } else {
+                    // Valor não está no select — usa a opção "= Config" como label
+                    const opt0 = sel.querySelector('option[value=""]');
+                    if (opt0) { opt0.text = `${val} Jogos`; opt0.label = `${val} Jogos`; }
                 }
+                _updatePeriodoBadge(subview, sel.value || '');
             });
         }
         if (cfg.default_dias_analise)    { const _v = parseInt(cfg.default_dias_analise) || 100; S.fa.nJogos = _v >= 20 ? _v : 100; }
