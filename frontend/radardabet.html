@@ -3740,6 +3740,28 @@ function filtrarPartidas() {
     return S.todasPartidas.filter(p => p.liga === S.ligaAtiva);
 }
 
+// Sincroniza os selects de período com os valores reais de S (config ou padrão)
+// Chamada no boot após carregarTudo — garante comportamento igual para todos os usuários
+function _sincronizarSelectsPeriodo() {
+    const _itens = [
+        ['periodo-gols',    S.jogosGols,    'gols'],
+        ['periodo-linha',   S.jogosLinha,   'linha'],
+        ['periodo-mosaico', S.jogosMosaico, 'mosaico'],
+    ];
+    _itens.forEach(([id, val, subview]) => {
+        if (!val) return;
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const optKey = `j${val}`;
+        if (sel.querySelector(`option[value="${optKey}"]`)) {
+            sel.value = optKey;
+        }
+        const opt = sel.querySelector('option[value=""]');
+        if (opt) { opt.text = `${val} Jogos ★`; opt.textContent = `${val} Jogos ★`; }
+        _updatePeriodoBadge(subview, sel.value || '');
+    });
+}
+
 // ── Constrói URL com params de S.fa ──────────────────────────────────────
 function _faParams(extra = {}) {
     const p = { ...S.fa, ...extra };
@@ -11394,6 +11416,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // silencioso=true: não abre Mercados/Gráfico — respeita os defaults da config
         const principal = _padroesCache.find(p => p.is_principal);
         if (principal) aplicarPadrao(principal.id, { silencioso: true });
+        // Garante que os selects de período reflitam os valores carregados da config
+        // (para todos os usuários, não apenas MASTER)
+        _sincronizarSelectsPeriodo();
         const seg = S._autoRefreshSeg ?? 120;
         if (seg > 0) setInterval(carregarTudo, seg * 1000);
     });
