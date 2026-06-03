@@ -31,8 +31,13 @@
         .liga-tab:hover:not(.ativo) { background: rgba(31,204,89,.24); color: #86efac; border-color: rgba(31,204,89,.45); }
         .liga-tab .liga-icon { font-size: 22px; line-height: 1; }
         .liga-tab .liga-img {
-            display: block; width: 240px; height: 68px;
-            background-repeat: no-repeat; border-radius: 6px;
+            display: block;
+            width:  var(--liga-img-w, 240px);
+            height: var(--liga-img-h, 68px);
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position: center;
+            border-radius: 6px;
             overflow: hidden; flex-shrink: 0;
         }
         .liga-tab .liga-nome-full { font-size: 13px; font-weight: 700; letter-spacing: .03em; }
@@ -2925,6 +2930,10 @@ async function carregarConfigLigas() {
         S._manutencaoMensagem = cfg.manutencao_mensagem || 'Estamos realizando melhorias no sistema. Voltamos em breve!';
         S._manutencaoPrevisao = cfg.manutencao_previsao || '';
 
+        // Tamanho das imagens de liga (CSS custom properties)
+        if (cfg.liga_img_largura) document.documentElement.style.setProperty('--liga-img-w', cfg.liga_img_largura + 'px');
+        if (cfg.liga_img_altura)  document.documentElement.style.setProperty('--liga-img-h', cfg.liga_img_altura  + 'px');
+
         // Reset de localStorage quando MASTER incrementa config_versao
         if (cfg.config_versao !== undefined) {
             const _lsVer = localStorage.getItem('rdbt_config_versao');
@@ -4299,11 +4308,11 @@ const LIGA_ICONS = {
 };
 
 const LIGA_IMAGES = {
-    'Copa do Mundo':            'background-image:url(/img/Ligas.png);background-size:200% 200%;background-position:0% 0%',
-    'Euro Cup':                 'background-image:url(/img/Ligas.png);background-size:200% 200%;background-position:100% 0%',
-    'Premier League':           'background-image:url(/img/Ligas.png);background-size:200% 200%;background-position:0% 100%',
-    'Super Liga Sul-Americana': 'background-image:url(/img/Ligas.png);background-size:200% 200%;background-position:100% 100%',
-    'Express Cup':              'background-image:url(/img/express.png);background-size:160%;background-position:62% 28%',
+    'Copa do Mundo':            'background-image:url(/img/liga-copa-mundo.png)',
+    'Euro Cup':                 'background-image:url(/img/liga-euro-cup.png)',
+    'Premier League':           'background-image:url(/img/liga-premier.png)',
+    'Super Liga Sul-Americana': 'background-image:url(/img/liga-super-liga.png)',
+    'Express Cup':              'background-image:url(/img/express.png);background-position:65% center',
 };
 
 const LIGA_SHORT = {
@@ -9419,6 +9428,8 @@ const _CFG_LABELS = {
     default_so_value_bets:      'Apenas value bets por padrão (Análise)',
     default_legendas:           '💬 Legendas (suprimir tooltips) ativado por padrão no gráfico',
     analise_liberar_user:       '📊 Liberar "Análise & Sugestões" para usuários tipo User',
+    liga_img_largura:           '🏆 Ligas — largura da imagem no desktop (px)',
+    liga_img_altura:            '🏆 Ligas — altura da imagem no desktop (px)',
     padroes_visivel_bronze:     '📋 Padrões: exibir para 🥉 Bronze',
     padroes_visivel_prata:      '📋 Padrões: exibir para 🥈 Prata',
     padroes_visivel_gold:       '📋 Padrões: exibir para 🥇 Gold',
