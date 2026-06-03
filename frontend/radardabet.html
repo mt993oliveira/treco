@@ -5274,6 +5274,74 @@ function _toggleLinhaMarcaDagua() {
 }
 
 // ============================================================
+// PLUGIN WATERMARK — marca d'água Radar da Bet
+// ============================================================
+const _watermarkSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 75">
+  <defs>
+    <radialGradient id="wm_shieldBg" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#0e3d14"/>
+      <stop offset="100%" stop-color="#010c02"/>
+    </radialGradient>
+    <radialGradient id="wm_ballGrad" cx="38%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#cccccc"/>
+    </radialGradient>
+    <linearGradient id="wm_radarText" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#c8ffd8"/>
+    </linearGradient>
+    <linearGradient id="wm_betText" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2eff7a"/>
+      <stop offset="100%" stop-color="#0fa83a"/>
+    </linearGradient>
+  </defs>
+  <path d="M37 3 L68 12 L68 38 Q68 58 37 70 Q6 58 6 38 L6 12 Z" fill="url(#wm_shieldBg)"/>
+  <path d="M37 3 L68 12 L68 38 Q68 58 37 70 Q6 58 6 38 L6 12 Z" fill="none" stroke="#1fdd60" stroke-width="1.8"/>
+  <path d="M37 8 L63 16 L63 37 Q63 55 37 65 Q11 55 11 37 L11 16 Z" fill="none" stroke="#1fdd60" stroke-width="0.6" opacity="0.3"/>
+  <line x1="37" y1="14" x2="37" y2="62" stroke="#1fdd60" stroke-width="0.4" opacity="0.3"/>
+  <line x1="11" y1="37" x2="63" y2="37" stroke="#1fdd60" stroke-width="0.4" opacity="0.3"/>
+  <line x1="18" y1="20" x2="56" y2="54" stroke="#1fdd60" stroke-width="0.3" opacity="0.18"/>
+  <line x1="56" y1="20" x2="18" y2="54" stroke="#1fdd60" stroke-width="0.3" opacity="0.18"/>
+  <circle cx="37" cy="37" r="20" fill="none" stroke="#1fdd60" stroke-width="0.5" opacity="0.22"/>
+  <circle cx="37" cy="37" r="14" fill="none" stroke="#1fdd60" stroke-width="0.6" opacity="0.3"/>
+  <circle cx="37" cy="37" r="8"  fill="none" stroke="#1fdd60" stroke-width="0.7" opacity="0.45"/>
+  <line x1="37" y1="37" x2="56" y2="20" stroke="#1fdd60" stroke-width="1.6" stroke-linecap="round" opacity="0.95"/>
+  <path d="M37 37 L56 20 A20 20 0 0 1 57 37" fill="#1fdd60" opacity="0.07"/>
+  <circle cx="37" cy="37" r="7" fill="url(#wm_ballGrad)"/>
+  <polygon points="37,31 40,33 39.5,37 34.5,37 34,33" fill="#111" opacity="0.85"/>
+  <polygon points="44,34.5 46,37 44,39.5 41,39 41,34.5" fill="#111" opacity="0.85"/>
+  <polygon points="30,34.5 28,37 30,39.5 33,39 33,34.5" fill="#111" opacity="0.85"/>
+  <polygon points="39.5,40 37,43 34.5,40 35,37.5 39,37.5" fill="#111" opacity="0.85"/>
+  <text x="86" y="30" font-family="'Arial Black','Impact','Arial',sans-serif" font-size="28" font-weight="900" font-style="italic" letter-spacing="1" fill="url(#wm_radarText)">RADAR</text>
+  <text x="89" y="44" font-family="'Arial','Helvetica',sans-serif" font-size="10" font-weight="700" font-style="italic" letter-spacing="4" fill="#a0e8b8" opacity="0.85">DA</text>
+  <text x="83" y="66" font-family="'Arial Black','Impact','Arial',sans-serif" font-size="30" font-weight="900" font-style="italic" letter-spacing="1" fill="url(#wm_betText)">BET</text>
+  <line x1="83" y1="48" x2="200" y2="48" stroke="#1fdd60" stroke-width="0.5" opacity="0.25"/>
+</svg>`;
+
+const _watermarkImg = new Image();
+_watermarkImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(_watermarkSVG);
+
+const watermarkPlugin = {
+    id: 'watermark',
+    afterDraw(chart) {
+        if (!_watermarkImg.complete || !_watermarkImg.naturalWidth) return;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const { left, right, top, bottom } = chartArea;
+        const cx = (left + right) / 2;
+        const cy = (top + bottom) / 2;
+        const w  = (right - left) * 0.62;
+        const h  = w * (75 / 270);
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.translate(cx, cy);
+        ctx.rotate(-Math.PI / 5.5);
+        ctx.drawImage(_watermarkImg, -w / 2, -h / 2, w, h);
+        ctx.restore();
+    }
+};
+
+// ============================================================
 // PLUGIN COMPARTILHADO — linhas verticais tracejadas a cada 10 jogos
 // ============================================================
 const verticalLinesPlugin = {
@@ -5657,7 +5725,7 @@ function renderGrafico() {
                     y: { min:_yMinG, max:_yMaxG, grid:{color:'#1e293b'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},callback:v=>v+'%'} }
                 }
             },
-            plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin]
+            plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin, watermarkPlugin]
         });
     } catch(e) { console.error('renderGrafico error:', e); }
 }
@@ -6084,7 +6152,7 @@ function renderGraficoLinha() {
                     }
                 }
             },
-            plugins: [linhaLabelPlugin, linhaGrafPlugin, verticalLinesPlugin]
+            plugins: [linhaLabelPlugin, linhaGrafPlugin, verticalLinesPlugin, watermarkPlugin]
         });
     } catch(e) { console.error('renderGraficoLinha error:', e); }
 }
@@ -6295,7 +6363,7 @@ function renderGraficoGols() {
                 y: { min: yMin, max: yMax, grid:{color:'#1e293b'}, ticks:{color:'#94a3b8',font:{size:9}} }
             }
         },
-        plugins: [golsLabelPlugin, verticalLinesPlugin]
+        plugins: [golsLabelPlugin, verticalLinesPlugin, watermarkPlugin]
     }); } catch(e) { console.error('renderGraficoGols error:', e); }
 }
 
