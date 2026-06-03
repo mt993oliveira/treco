@@ -585,7 +585,6 @@
         /* ── Subview buttons — seletor direto por ID (garantido) ─────── */
         [data-theme]:not([data-theme="dark"]) #sub-btn-gols,
         [data-theme]:not([data-theme="dark"]) #sub-btn-linha,
-        [data-theme]:not([data-theme="dark"]) #sub-btn-grafico,
         [data-theme]:not([data-theme="dark"]) #sub-btn-mosaico
             { background: var(--bg-card) !important; border-color: var(--border-subtle) !important; }
 
@@ -630,8 +629,6 @@
         [data-theme="mint"]  #sub-btn-gols,[data-theme="rose"]       #sub-btn-gols,[data-theme="cream"] #sub-btn-gols,
         [data-theme="light"] #sub-btn-linha,[data-theme="light-blue"] #sub-btn-linha,
         [data-theme="mint"]  #sub-btn-linha,[data-theme="rose"]       #sub-btn-linha,[data-theme="cream"] #sub-btn-linha,
-        [data-theme="light"] #sub-btn-grafico,[data-theme="light-blue"] #sub-btn-grafico,
-        [data-theme="mint"]  #sub-btn-grafico,[data-theme="rose"]       #sub-btn-grafico,[data-theme="cream"] #sub-btn-grafico,
 
         [data-theme="light"] #sub-btn-mosaico,[data-theme="light-blue"] #sub-btn-mosaico,
         [data-theme="mint"]  #sub-btn-mosaico,[data-theme="rose"]       #sub-btn-mosaico,[data-theme="cream"] #sub-btn-mosaico
@@ -1829,7 +1826,7 @@
         </div>
     </div>
 
-    <!-- Toggle: Gráfico de Gols | Gráfico de Mercados | Menu Mosaico -->
+    <!-- Toggle: Gráfico de Gols | Gráfico de Linha | Menu Mosaico -->
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
         <button id="sub-btn-gols" onclick="setSubView('gols')"
             style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1e293b;
@@ -1844,14 +1841,6 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 17 9 11 13 15 21 7"/></svg>
             Gráfico de Linha
         </button>
-        <button id="sub-btn-grafico" onclick="setSubView('grafico')"
-            style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
-            border-radius:7px;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;gap:4px;transition:border-color .2s,color .2s">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            Gráfico de Mercados
-        </button>
-
         <button id="sub-btn-mosaico" onclick="setSubView('mosaico')"
             style="flex:1;min-width:130px;padding:8px 10px;background:#0f172a;border:1.5px solid #1fcc59;
             border-radius:7px;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;
@@ -1976,88 +1965,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Chart + Legend -->
-    <div id="historico-chart-section" style="display:flex;gap:10px;margin-bottom:10px">
-        <div style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
-                <div style="display:flex;align-items:center;gap:8px">
-                    <div style="display:none" id="g-titulo"></div>
-                    <div style="display:flex;align-items:center;gap:4px">
-                        <span id="periodo-badge-grafico" style="font-size:12px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 10px;white-space:nowrap;cursor:default;letter-spacing:.4px">⏱ Período</span>
-                        <select id="periodo-grafico" onchange="setSubViewPeriodo('grafico',this.value)"
-                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
-                            <option value="">= Config</option>
-                            <option value="j20">20 Jogos</option><option value="j40">40 Jogos</option><option value="j60">60 Jogos</option>
-                            <option value="j80">80 Jogos</option><option value="j100">100 Jogos</option><option value="j120">120 Jogos</option>
-                            <option value="j140">140 Jogos</option><option value="j160">160 Jogos</option><option value="j180">180 Jogos</option>
-                            <option value="j200">200 Jogos</option><option value="j240">240 Jogos</option><option value="j280">280 Jogos</option>
-                            <option value="j320">320 Jogos</option><option value="j360">360 Jogos</option><option value="j420">420 Jogos</option>
-                            <option disabled>── Horas ──</option>
-                            <option value="1">1H</option><option value="2">2H</option><option value="3">3H</option>
-                            <option value="4">4H</option><option value="5">5H</option><option value="6">6H</option>
-                            <option value="7">7H</option><option value="8">8H</option><option value="9">9H</option>
-                            <option value="10">10H</option><option value="11">11H</option><option value="12">12H</option>
-                            <option value="24">24H</option><option value="36">36H</option><option value="48">48H</option>
-                        </select>
-                        <span style="font-size:10px;font-weight:700;color:#94a3b8;background:#1e293b;border:1.5px solid #334155;border-radius:6px;padding:4px 8px;white-space:nowrap;cursor:default" title="Base Fixa — janela de jogos para o cálculo rolling principal">📐 Base</span>
-                        <select id="base-grafico" onchange="S.grafMM1=parseInt(this.value);const _imm=document.getElementById('inp-mm1');if(_imm)_imm.value=S.grafMM1;renderGrafico()" title="Base Fixa — quantidade de jogos da janela rolling para o Gráfico de Mercados"
-                            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
-                            <option value="20" selected>20 Jogos</option><option value="40">40 Jogos</option><option value="60">60 Jogos</option>
-                            <option value="80">80 Jogos</option><option value="100">100 Jogos</option><option value="120">120 Jogos</option>
-                            <option value="140">140 Jogos</option><option value="160">160 Jogos</option><option value="180">180 Jogos</option>
-                            <option value="200">200 Jogos</option><option value="240">240 Jogos</option><option value="280">280 Jogos</option>
-                            <option value="320">320 Jogos</option><option value="360">360 Jogos</option><option value="420">420 Jogos</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                    <button id="btn-g-cores" class="acao-btn" onclick="_togglePontoCores()" title="Colorir bolinhas: verde = subiu (hit), vermelho = desceu (miss).&#10;Desative para usar a cor da própria linha em todas as bolinhas.">🟢 Cores</button>
-                    <button id="btn-g-pills" class="acao-btn ativo" onclick="_toggleGrafPills()" title="Exibir/ocultar a seleção de mercados do Gráfico de Mercados">📊 Mercados</button>
-                    <button id="btn-g-flat"  class="acao-btn ativo" onclick="_togglePontoFlat()" title="Exibir bolinhas quando o valor não muda (linha plana).&#10;Desative para ver apenas as bolinhas que indicam subida (verde) ou descida (vermelho).">● Plano</button>
-                    <button id="btn-legendas" class="acao-btn"      onclick="toggleLegendas()"                     title="Suprimir tooltips e legendas do gráfico">💬 Legendas</button>
-                    <button id="btn-g-pct"   class="acao-btn"       onclick="_gToggle('grafPct','btn-g-pct')"            title="Exibe o % acumulado atual no final de cada linha">% Valor</button>
-                    <button id="btn-g-tf"    class="acao-btn"       onclick="_gToggle('grafTopoFundo','btn-g-tf')"      title="Marca o ponto mais alto (amarelo) e mais baixo (vermelho) de cada linha">⛰ T/F</button>
-                    <button id="btn-g-cong"  class="acao-btn"       onclick="_gToggle('grafCongest','btn-g-cong')"      title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
-                    <input id="inp-mm1" type="number" min="2" max="99" value="9"
-                        onchange="S.grafMM1=Math.max(2,Math.min(99,parseInt(this.value)||9));this.value=S.grafMM1;const _bg=document.getElementById('base-grafico');if(_bg)_bg.value=S.grafMM1;renderGrafico()"
-                        title="MM Curta — período em número de jogos (padrão: 9). Também é a Base Fixa do Gráfico de Mercados."
-                        style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
-                               font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
-                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                    <input id="inp-mm2" type="number" min="2" max="200" value="21"
-                        onchange="S.grafMM2=Math.max(2,Math.min(200,parseInt(this.value)||21));this.value=S.grafMM2;renderGrafico();if(S.showGols)renderGraficoGols()"
-                        title="MM Longa — período em número de jogos (padrão: 21).&#10;&#10;Linha mais estável que representa a média do período. Valor alto (ex: 40-60 jogos ≈ 2-3 horas) transforma a MM em referência central: a curva principal oscila em torno dela, deixando claro quando o mercado está acima ou abaixo do normal."
-                        style="width:36px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:4px;
-                               font-size:11px;font-weight:700;padding:3px 4px;text-align:center;outline:none"
-                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                    <div style="width:1px;height:14px;background:#1e293b"></div>
-                    <button class="acao-btn" onclick="resetZoomGrafico()" title="Resetar zoom do gráfico (Ctrl+Roda para zoom)">↺ Zoom</button>
-                    <button id="btn-caneta" class="acao-btn" onclick="toggleCaneta()" title="Ativar/desativar desenho na grade e gráfico">✏️ Caneta</button>
-                    <select id="draw-tool" onchange="DRAW.ferramenta=this.value" title="Ferramenta de desenho"
-                        style="display:none;background:#0f172a;border:1px solid #1fcc59;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 7px;cursor:pointer;height:26px">
-                        <option value="livre">✏️ Livre</option>
-                        <option value="linha">📏 Linha</option>
-                        <option value="seta">➡️ Seta</option>
-                        <option value="retangulo">⬜ Retângulo</option>
-                        <option value="borracha">🧹 Borracha</option>
-                    </select>
-                    <input type="color" id="caneta-cor" value="#f59e0b" title="Cor da caneta"
-                        style="width:24px;height:24px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0">
-                    <input type="range" id="caneta-esp" min="1" max="8" value="2" title="Espessura"
-                        style="width:50px;accent-color:#f59e0b">
-                    <button class="acao-btn" onclick="limparDesenho()" title="Apagar riscos">🗑 Limpar</button>
-                </div>
-            </div>
-            <!-- Pills de mercado — independentes do painel global 🎯 Mercados -->
-            <div id="pills-mercados" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;"></div>
-            <div style="position:relative;height:300px">
-                <canvas id="grafico"></canvas>
-                <canvas id="grafico-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
-            </div>
-        </div>
-    </div>
-
 
     <!-- Mosaico (tabela) -->
     <div id="historico-table-section" style="display:block">
@@ -2563,18 +2470,6 @@
     try {
         const u = JSON.parse(localStorage.getItem('currentUser'));
         if (!u || !u.Id) { window.location.replace('/'); }
-        // Check síncrono: oculta Gráfico de Mercados se master_only (usa cache do localStorage)
-        if (localStorage.getItem('rdbt_mkt_master_only') === 'true') {
-            const _isMaster = (u?.Usuario || '').toUpperCase() === 'MASTER';
-            if (!_isMaster) {
-                document.addEventListener('DOMContentLoaded', () => {
-                    const b = document.getElementById('sub-btn-grafico');
-                    const s = document.getElementById('historico-chart-section');
-                    if (b) b.style.display = 'none';
-                    if (s) s.style.display = 'none';
-                });
-            }
-        }
     } catch(e) {
         localStorage.removeItem('currentUser');
         window.location.replace('/');
@@ -2764,7 +2659,6 @@ async function carregarConfigLigas() {
         // Padrões do frontend
         if (cfg.default_horas_historico) { S.horas = parseInt(cfg.default_horas_historico) || 6; S._horasCarregadas = S.horas; }
         // Período padrão dos gráficos (em jogos — sobrescreve horas quando configurado)
-        if (cfg.default_jogos_grafico)  { S.horasGrafico  = null; S.jogosGrafico  = parseInt(cfg.default_jogos_grafico)  || 200; }
         if (cfg.default_jogos_gols)     { S.horasGols     = null; S.jogosGols     = parseInt(cfg.default_jogos_gols)     || 200; }
         if (cfg.default_jogos_linha)    { S.horasLinha    = null; S.jogosLinha    = parseInt(cfg.default_jogos_linha)    || 200; }
 
@@ -2772,7 +2666,6 @@ async function carregarConfigLigas() {
         // Atualiza label da opção padrão em cada select com o valor real configurado
         {
             const _cfgLabel = [
-                ['periodo-grafico',  S.jogosGrafico],
                 ['periodo-gols',     S.jogosGols],
                 ['periodo-linha',    S.jogosLinha],
 
@@ -2831,14 +2724,10 @@ async function carregarConfigLigas() {
         S._maxTendencias      = cfg.max_tendencias  !== undefined ? parseInt(cfg.max_tendencias)  : 8;
 
         // Gráfico — padrões dos botões
-        S.grafPct       = cfg.grafico_pct        === 'true';
-        S.grafTopoFundo  = cfg.grafico_topo_fundo === 'true';
         S._tfTopoCor     = cfg.grafico_tf_topo_cor  || '#4ade80';
         S._tfFundoCor    = cfg.grafico_tf_fundo_cor || '#f87171';
-        S.grafCongest   = cfg.grafico_congest    === 'true';
-        S.grafMedias    = cfg.grafico_medias     === 'true';
-        if (cfg.grafico_mm1) { S.grafMM1 = parseInt(cfg.grafico_mm1) || 20; const el = document.getElementById('inp-mm1'); if (el) el.value = S.grafMM1; const bg = document.getElementById('base-grafico'); if (bg) bg.value = S.grafMM1; }
-        if (cfg.grafico_mm2) { S.grafMM2 = parseInt(cfg.grafico_mm2) || 21; const el = document.getElementById('inp-mm2'); if (el) el.value = S.grafMM2; }
+        if (cfg.grafico_mm1) { S.grafMM1 = parseInt(cfg.grafico_mm1) || 20; }
+        if (cfg.grafico_mm2) { S.grafMM2 = parseInt(cfg.grafico_mm2) || 21; }
         // Base Fixa independente por gráfico — sincroniza selects
         { const el = document.getElementById('base-gols');  if (el) el.value = S.grafGolsJanela; }
         { const el = document.getElementById('base-linha'); if (el) el.value = S.grafLinhaJanela; }
@@ -2859,32 +2748,21 @@ async function carregarConfigLigas() {
         if (cfg.grafico_pct_cor) S._grafPctCor = cfg.grafico_pct_cor;
         if (cfg.grafico_pct_tamanho) S._grafPctTamanho = parseInt(cfg.grafico_pct_tamanho) || 8;
         if (cfg.grafico_pills_default !== undefined) {
-            const _pills = cfg.grafico_pills_default !== 'false';
-            S.grafShowPills  = _pills;
-            S.linhaShowPills = _pills;
+            S.linhaShowPills = cfg.grafico_pills_default !== 'false';
         }
         // Sincroniza classes dos botões com o estado carregado
-        [['grafPct','btn-g-pct'],['grafTopoFundo','btn-g-tf'],
-         ['grafCongest','btn-g-cong'],
-         ['grafPontoFlat','btn-g-flat'],['grafPontoFlat','btn-linha-flat'],
-         ['grafPontoCores','btn-g-cores'],['grafPontoCores','btn-linha-cores'],
-         ['grafShowPills','btn-g-pills'],['linhaShowPills','btn-linha-pills']].forEach(([k,id]) => {
+        [['grafPontoFlat','btn-linha-flat'],
+         ['grafPontoCores','btn-linha-cores'],
+         ['linhaShowPills','btn-linha-pills']].forEach(([k,id]) => {
             const b = document.getElementById(id);
             if (b) b.classList.toggle('ativo', !!S[k]);
         });
         // Aplica visibilidade das pills conforme config
-        { const _pm = document.getElementById('pills-mercados'); if (_pm) _pm.style.display = S.grafShowPills  ? 'flex' : 'none'; }
         { const _pl = document.getElementById('pills-linha');    if (_pl) _pl.style.display = S.linhaShowPills ? 'flex' : 'none'; }
         // Aplica visibilidade do botão ● Plano
-        ['btn-g-flat','btn-linha-flat'].forEach(id => {
-            const b = document.getElementById(id);
-            if (b) b.style.display = S.grafPontoFlatVisivel ? '' : 'none';
-        });
+        { const b = document.getElementById('btn-linha-flat'); if (b) b.style.display = S.grafPontoFlatVisivel ? '' : 'none'; }
         // Aplica visibilidade do botão 🟢 Cores
-        ['btn-g-cores','btn-linha-cores'].forEach(id => {
-            const b = document.getElementById(id);
-            if (b) b.style.display = S.grafPontoCoresVisivel ? '' : 'none';
-        });
+        { const b = document.getElementById('btn-linha-cores'); if (b) b.style.display = S.grafPontoCoresVisivel ? '' : 'none'; }
 
         // Padrões do grid/mosaico — cores e fontes (usados como base; usuário pode sobrescrever em ⚙️ Config)
         { const _gridKeys = ['verdeBg','verdeTxt','vermBg','vermTxt','futuroBg','futuroTxt','futuroBrd',
@@ -3049,27 +2927,12 @@ async function _aplicarConfigFrontend() {
             }
         };
         _visSubview('historico-gols-section',    'sub-btn-gols',     'show_subview_gols',     'showGols');
-        _visSubview('historico-chart-section',   'sub-btn-grafico',  'show_subview_grafico',  'showGrafico');
-        // Restrição MASTER: se grafico_mercados_master_only=true, oculta para quem não for o usuário MASTER
-        localStorage.setItem('rdbt_mkt_master_only', c.grafico_mercados_master_only || 'false');
-        if (c.grafico_mercados_master_only === 'true') {
-            const _uMO = (() => { try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e){ return null; } })();
-            const _isMasterUser = (_uMO?.Usuario || '').toUpperCase() === 'MASTER';
-            if (!_isMasterUser) {
-                S.showGrafico = false;
-                const _btnMO = document.getElementById('sub-btn-grafico');
-                const _secMO = document.getElementById('historico-chart-section');
-                if (_btnMO) _btnMO.style.display = 'none';
-                if (_secMO) _secMO.style.display = 'none';
-            }
-        }
         _visSubview('historico-linha-section',   'sub-btn-linha',    'show_subview_linha',    'showLinha');
 
         _visSubview('historico-table-section',   'sub-btn-mosaico',  'show_subview_mosaico',  'showMosaico');
 
         // Estado inicial (aberto/fechado) — configurável independente do habilitar/desabilitar
-        [['historico-chart-section',    'sub-btn-grafico',  'showGrafico',  'default_open_grafico'],
-         ['historico-table-section',    'sub-btn-mosaico',  'showMosaico',  'default_open_mosaico'],
+        [['historico-table-section',    'sub-btn-mosaico',  'showMosaico',  'default_open_mosaico'],
          ['historico-gols-section',     'sub-btn-gols',     'showGols',     'default_open_gols'],
          ['historico-linha-section',    'sub-btn-linha',    'showLinha',    'default_open_linha'],
 
@@ -3275,10 +3138,6 @@ const S = {
     horas:         6,       // período do grid: padrão 6H (sobrescrito pela config)
     _horasCarregadas: 6,   // máximo de horas efetivamente buscadas do banco
     linhas:        {},
-    grafico:       null,
-    grafTopo:      null,
-    grafPct:       false,
-    grafTopoFundo: false,
     linhaGrafPct:       false,
     linhaGrafTopoFundo: false,
     linhaGrafCongest:   false,
@@ -3290,8 +3149,6 @@ const S = {
     linhaGrafMM:        false,
     _tfTopoCor:    '#4ade80',
     _tfFundoCor:   '#f87171',
-    grafCongest:   false,
-    grafMedias:    false,
     grafMM1:           20,
     grafMM2:           21,
     grafGolsJanela:    20,  // base fixa independente do Gráfico de Gols
@@ -3310,7 +3167,6 @@ const S = {
     grafPontoFlatVisivel:  true,
     grafPontoCores:        false,  // colorir bolinhas verde/vermelho por hit/miss
     grafPontoCoresVisivel: true,   // exibir o botão 🟢 Cores nas toolbars
-    grafShowPills:    true,   // exibir pills de mercado no Gráfico de Mercados
     linhaShowPills:   true,   // exibir pills de mercado no Gráfico de Linha
     mktPillFs:     9,
     mktPillCor:    '#94a3b8',
@@ -3320,9 +3176,7 @@ const S = {
     mktGrupoCorInativo: '#475569',
     showGols:      false,
     showLinha:     false,
-    horasGrafico:  null,
     horasGols:     null,
-    jogosGrafico:  null,
     jogosGols:     null,
     jogosLinha:    null,
     jogosMosaico:  null,
@@ -3337,7 +3191,6 @@ const S = {
     _chartCores:   {},
     view:          'historico',
     _analiseSecoes: { ia:true, desempenho:true, detalhe:true, valuebets:true, tendencias:true, frequencia:true },
-    showGrafico:   true,   // toggle independente
     showMosaico:   true,   // toggle independente
     showMercados:  false,  // toggle painel de filtros/mercados
     showPadroes:   false,  // toggle painel inline de padrões
@@ -3375,11 +3228,6 @@ const S = {
 TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
 S.filtro = 'over2.5';
 S.filtroMosaico = localStorage.getItem('rdbt_filtroMosaico') || 'over2.5';
-
-// Estado independente do Gráfico de Mercados — O2.5 ativo por padrão
-S.linhasMercados = {};
-TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = false; });
-S.linhasMercados['over2.5'] = true;
 
 // Estado independente do Gráfico de Linha — O2.5 ativo por padrão
 S.linhasLinha = {};
@@ -3627,21 +3475,19 @@ function toggleAnaliseSecao(key) {
 
 // display correto ao restaurar cada seção (evita colapso após display:none)
 const _SECAO_DISPLAY = {
-    'historico-chart-section':   'flex',
     'historico-gols-section':    'block',
     'historico-linha-section':   'block',
 
     'historico-table-section':   'block',
 };
 function setSubView(v) {
-    if (v === 'grafico')   S.showGrafico   = !S.showGrafico;
     if (v === 'gols')      S.showGols      = !S.showGols;
     if (v === 'linha')     S.showLinha     = !S.showLinha;
 
     if (v === 'mosaico')   S.showMosaico   = !S.showMosaico;
-    const _secs = { grafico:'historico-chart-section', gols:'historico-gols-section', linha:'historico-linha-section', mosaico:'historico-table-section' };
-    const _btns = { grafico:'sub-btn-grafico', gols:'sub-btn-gols', linha:'sub-btn-linha', mosaico:'sub-btn-mosaico' };
-    const _show = { grafico:S.showGrafico, gols:S.showGols, linha:S.showLinha, mosaico:S.showMosaico };
+    const _secs = { gols:'historico-gols-section', linha:'historico-linha-section', mosaico:'historico-table-section' };
+    const _btns = { gols:'sub-btn-gols', linha:'sub-btn-linha', mosaico:'sub-btn-mosaico' };
+    const _show = { gols:S.showGols, linha:S.showLinha, mosaico:S.showMosaico };
     Object.keys(_secs).forEach(k => {
         const sec = document.getElementById(_secs[k]);
         const btn = document.getElementById(_btns[k]);
@@ -3649,7 +3495,6 @@ function setSubView(v) {
         if (sec) sec.style.display = on ? (_SECAO_DISPLAY[_secs[k]] || 'block') : 'none';
         if (btn) { btn.style.borderColor = on ? '#1fcc59' : '#1e293b'; btn.style.color = on ? '#e2e8f0' : '#94a3b8'; }
     });
-    if (v === 'grafico'  && S.showGrafico)  renderGrafico();
     if (v === 'gols'     && S.showGols)     requestAnimationFrame(() => renderGraficoGols());
     if (v === 'linha'    && S.showLinha)    requestAnimationFrame(() => renderGraficoLinha());
 
@@ -3688,14 +3533,12 @@ function setSubViewPeriodo(subview, val) {
 
     if (isJogos) {
         const n = parseInt(val.slice(1));
-        if (subview === 'grafico')  { S.horasGrafico  = null; S.jogosGrafico  = n; }
         if (subview === 'gols')     { S.horasGols     = null; S.jogosGols     = n; }
         if (subview === 'linha')    { S.horasLinha    = null; S.jogosLinha    = n; }
 
         if (subview === 'mosaico')  { S.horasMosaico  = null; S.jogosMosaico  = n; }
 
         const render = () => {
-            if (subview === 'grafico')  renderGrafico();
             if (subview === 'gols')     renderGraficoGols();
             if (subview === 'linha')    renderGraficoLinha();
             if (subview === 'mosaico')  renderTabela();
@@ -3714,14 +3557,12 @@ function setSubViewPeriodo(subview, val) {
     }
 
     const h = val ? parseInt(val) : null;
-    if (subview === 'grafico')  { S.horasGrafico  = h; S.jogosGrafico  = null; }
     if (subview === 'gols')     { S.horasGols     = h; S.jogosGols     = null; }
     if (subview === 'linha')    { S.horasLinha    = h; S.jogosLinha    = null; }
 
     if (subview === 'mosaico')  { S.horasMosaico  = h; S.jogosMosaico  = null; }
 
     const render = () => {
-        if (subview === 'grafico')  renderGrafico();
         if (subview === 'gols')     renderGraficoGols();
         if (subview === 'linha')    renderGraficoLinha();
         if (subview === 'mosaico')  renderTabela();
@@ -3814,7 +3655,6 @@ async function carregarHistorico() {
         // Se padrões de jogos exigem mais dados do que foi buscado, expande a janela automaticamente
         // (mesma lógica de setSubViewPeriodo, mas aplicada ao boot e a qualquer re-fetch)
         const _jogosMax = Math.max(
-            S.jogosGrafico  || 0,
             S.jogosGols     || 0,
             S.jogosLinha    || 0,
             S.jogosMosaico  || 0
@@ -4392,7 +4232,7 @@ function renderLigas() {
             b.classList.add('ativo');
             // Verifica se há dados suficientes para warmup desta liga.
             // Usa taxa da liga ativa (não do total) + buffer de warmup (grafMM1).
-            const _jMaxLiga = Math.max(S.jogosGrafico||0, S.jogosGols||0, S.jogosLinha||0);
+            const _jMaxLiga = Math.max(S.jogosGols||0, S.jogosLinha||0);
             if (_jMaxLiga > 0 && S.partidas.length > 0 && S._horasCarregadas > 0) {
                 const _taxaLiga  = S.partidas.length / S._horasCarregadas;
                 const _warmup    = S.grafMM1 || 20;
@@ -4622,14 +4462,6 @@ function renderFiltros() {
                     const resto = TODOS_FILTROS.filter(f2 => S.linhas[f2.id] && f2.id !== 'equilibrio');
                     if (resto.length > 0) S.filtro = resto[0].id;
                 }
-                // Garante seção do gráfico visível ao ativar filtro
-                if (TODOS_FILTROS.some(f2 => S.linhas[f2.id])) {
-                    S.showGrafico = true;
-                    const sec = document.getElementById('historico-chart-section');
-                    if (sec) sec.style.display = 'flex';
-                    const gbtn = document.getElementById('sub-btn-grafico');
-                    if (gbtn) { gbtn.style.borderColor = '#1fcc59'; gbtn.style.color = '#e2e8f0'; }
-                }
                 renderFiltros(); renderTabela();
                 // rAF: garante que o browser recalcule o layout (canvas com dimensões reais) antes do Chart.js
                 requestAnimationFrame(() => _renderAllCharts());
@@ -4642,68 +4474,6 @@ function renderFiltros() {
     });
 
     c.appendChild(blocksRow);
-}
-
-// ── Pills de mercado do Gráfico de Mercados (estado independente) ────────────
-
-function _renderPillsMercados() {
-    const container = document.getElementById('pills-mercados');
-    if (!container) return;
-    container.innerHTML = '';
-
-    // Botões Todos / Limpar
-    const btnStyle = 'padding:2px 8px;border-radius:4px;border:1px solid #334155;background:#1e293b;' +
-                     'color:#94a3b8;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap';
-    const btnTodos  = document.createElement('button');
-    btnTodos.textContent = 'Todos';
-    btnTodos.style.cssText = btnStyle;
-    btnTodos.onclick = _lgTodosMercados;
-    container.appendChild(btnTodos);
-
-    const btnLimpar = document.createElement('button');
-    btnLimpar.textContent = 'Limpar';
-    btnLimpar.style.cssText = btnStyle;
-    btnLimpar.onclick = _lgLimparMercados;
-    container.appendChild(btnLimpar);
-
-    const sep = document.createElement('div');
-    sep.style.cssText = 'width:1px;height:14px;background:#1e293b;align-self:center;margin:0 2px';
-    container.appendChild(sep);
-
-    // Uma pill por filtro
-    TODOS_FILTROS.forEach(f => {
-        const ativo = !!S.linhasMercados[f.id];
-        const cor   = (S._chartCores && S._chartCores[f.id]) || f.cor;
-        const pill  = document.createElement('span');
-        const _pfs = S.mktPillFs || 10;
-        pill.style.cssText =
-            `display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;` +
-            `border:1.5px ${f.dashed ? 'dashed' : 'solid'} ${ativo ? cor : '#334155'};` +
-            `background:${ativo ? cor + '22' : 'transparent'};` +
-            `color:${ativo ? '#e2e8f0' : '#64748b'};` +
-            `font-size:${_pfs}px;font-weight:${S.mktPillBold ? '700' : '600'};cursor:pointer;white-space:nowrap;transition:all .12s`;
-        const dot = document.createElement('span');
-        const _ds = Math.round(_pfs * 0.8);
-        dot.style.cssText =
-            `width:${_ds}px;height:${_ds}px;border-radius:2px;background:${cor};` +
-            `display:inline-block;opacity:${ativo ? 1 : 0.3};flex-shrink:0`;
-        const grupo = _GRUPO_POR_ID[f.id] || '';
-        pill.title = f.label + (grupo ? ' (' + grupo + ')' : '') + (f.desc ? ' — ' + f.desc : '');
-        pill.appendChild(dot);
-        pill.appendChild(document.createTextNode(f.label));
-        pill.onmouseenter = () => _previewPillMercados(f);
-        pill.onmouseleave = () => _clearPreviewPillMercados();
-        pill.onclick = () => { _togglePillMercado(f.id); };
-        container.appendChild(pill);
-    });
-    // respeita estado do botão 📊 Mercados
-    container.style.display = S.grafShowPills ? 'flex' : 'none';
-}
-
-function _togglePillMercado(id) {
-    S.linhasMercados[id] = !S.linhasMercados[id];
-    _renderPillsMercados();
-    renderGrafico();
 }
 
 function _renderPillsGols() {
@@ -4841,37 +4611,14 @@ function _lgLimparLinha() {
     renderGraficoLinha();
 }
 
-function _lgTodosMercados() {
-    TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = true; });
-    _renderPillsMercados();
-    renderGrafico();
-}
-
-function _lgLimparMercados() {
-    TODOS_FILTROS.forEach(f => { S.linhasMercados[f.id] = false; });
-    _renderPillsMercados();
-    renderGrafico();
-}
-
 function _lgTodos() {
     TODOS_FILTROS.forEach(f => { S.linhas[f.id] = true; });
     S.filtro = 'over1.5';
-    S.showGrafico = true;
-    const _secT = document.getElementById('historico-chart-section');
-    if (_secT) _secT.style.display = 'flex';
-    const _gbtnT = document.getElementById('sub-btn-grafico');
-    if (_gbtnT) { _gbtnT.style.borderColor = '#1fcc59'; _gbtnT.style.color = '#e2e8f0'; }
     renderFiltros(); renderTabela();
     requestAnimationFrame(() => _renderAllCharts());
 }
 function _lgLimpar() {
     TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
-    // Destrói qualquer instância no canvas — S.grafico OU órfã
-    const _cv = document.getElementById('grafico');
-    if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
-    if (_cv) { const _orp = Chart.getChart(_cv); if (_orp) { try { _orp.destroy(); } catch(_){} } }
-    const t = document.getElementById('g-titulo');
-    if (t) t.textContent = 'Selecione filtros em 🎯 Mercados';
     renderFiltros(); renderTabela();
     requestAnimationFrame(() => _renderAllCharts());
 }
@@ -5231,25 +4978,8 @@ function _gToggle(key, btnId) {
     if (btn) btn.classList.toggle('ativo', S[key]);
 
     if (key.startsWith('grafGols')) { renderGraficoGols(); return; }
-
-
-    // grafPct e grafCongest: lidos pelos plugins no momento do draw — só atualiza
-    if (key === 'grafPct' || key === 'grafCongest') {
-        if (S.grafico) { try { S.grafico.update(); } catch(_) { renderGrafico(); } }
-        else renderGrafico();
-        return;
-    }
-    // grafTopoFundo e grafMedias: alteram datasets — precisa recriar
-    renderGrafico();
 }
 
-function _toggleGrafPills() {
-    S.grafShowPills = !S.grafShowPills;
-    const btn = document.getElementById('btn-g-pills');
-    if (btn) btn.classList.toggle('ativo', S.grafShowPills);
-    const el = document.getElementById('pills-mercados');
-    if (el) el.style.display = S.grafShowPills ? 'flex' : 'none';
-}
 function _toggleLinhaPills() {
     S.linhaShowPills = !S.linhaShowPills;
     const btn = document.getElementById('btn-linha-pills');
@@ -5260,21 +4990,15 @@ function _toggleLinhaPills() {
 
 function _togglePontoFlat() {
     S.grafPontoFlat = !S.grafPontoFlat;
-    ['btn-g-flat','btn-linha-flat'].forEach(id => {
-        const b = document.getElementById(id);
-        if (b) b.classList.toggle('ativo', S.grafPontoFlat);
-    });
-    renderGrafico();
+    const b = document.getElementById('btn-linha-flat');
+    if (b) b.classList.toggle('ativo', S.grafPontoFlat);
     if (S.showLinha) renderGraficoLinha();
 }
 
 function _togglePontoCores() {
     S.grafPontoCores = !S.grafPontoCores;
-    ['btn-g-cores','btn-linha-cores'].forEach(id => {
-        const b = document.getElementById(id);
-        if (b) b.classList.toggle('ativo', S.grafPontoCores);
-    });
-    renderGrafico();
+    const b = document.getElementById('btn-linha-cores');
+    if (b) b.classList.toggle('ativo', S.grafPontoCores);
     if (S.showLinha) renderGraficoLinha();
 }
 
@@ -5384,91 +5108,7 @@ const verticalLinesPlugin = {
     }
 };
 
-// ============================================================
-// CACHE DE DADOS — compartilhado entre renderGrafico e callbacks de tooltip
-// ============================================================
-let _GRAF_DATA = { serie: [], ativos: [], hitsMap: {} };
-
-// ============================================================
-// PLUGIN GRÁFICO MERCADOS — % labels e zonas de congestão
-// ============================================================
-const grafPlugin = {
-    id: 'grafCustom',
-    afterDraw(chart) {
-        if (!S.grafCongest || !chart.chartArea) return;
-        const ctx2 = chart.ctx;
-        const { top, bottom } = chart.chartArea;
-
-        chart.data.datasets.forEach((ds, di) => {
-            if (ds._isRef || ds._isEquilibrio || ds._isMA) return;
-            const meta = chart.getDatasetMeta(di);
-            if (!meta.data || !meta.data.length) return;
-            const data = ds.data;
-            if (data.length < 5) return;
-
-            const THRESHOLD = 8, MIN_RUN = 5;
-            const lateral = data.map((_, i) => {
-                const sl = data.slice(Math.max(0, i - 2), Math.min(data.length, i + 3));
-                return Math.max(...sl) - Math.min(...sl) <= THRESHOLD;
-            });
-            let i = 0;
-            while (i < lateral.length) {
-                if (!lateral[i]) { i++; continue; }
-                let j = i;
-                while (j < lateral.length && lateral[j]) j++;
-                if (j - i >= MIN_RUN) {
-                    const x0 = meta.data[i]?.x, x1 = meta.data[j - 1]?.x;
-                    if (x0 != null && x1 != null && x1 > x0) {
-                        ctx2.save();
-                        ctx2.fillStyle   = ds.borderColor + '1a';
-                        ctx2.strokeStyle = ds.borderColor + '44';
-                        ctx2.lineWidth   = 0.5;
-                        ctx2.fillRect(x0, top, x1 - x0, bottom - top);
-                        ctx2.strokeRect(x0, top, x1 - x0, bottom - top);
-                        ctx2.restore();
-                    }
-                }
-                i = j > i ? j : i + 1;
-            }
-        });
-    }
-};
-
-// ============================================================
-// GRÁFICO DE MERCADOS — hit rate % por jogo (rolling), 0–100%
-// ============================================================
-let _MKTGRAF_SERIE = [];
-let _MKTGRAF_HITS  = {};
-let _MKTGRAF_N1    = 9;
 let _hoveringChart = false; // suprime rebuild de pills durante hover-preview
-
-// Rótulos de % — só exibe quando "% Valor" está ativo (S.grafPct = true)
-const mktLabelPlugin = {
-    id: 'mktLabels',
-    afterDatasetsDraw(chart) {
-        if (!S.grafPct) return;
-        const { ctx } = chart;
-        chart.data.datasets.forEach((ds, di) => {
-            if (ds._isRef || ds._isMA || ds._isEquilibrio) return;
-            const meta = chart.getDatasetMeta(di);
-            if (!meta.data || !meta.data.length) return;
-            const total = meta.data.length;
-            const step  = total > 60 ? 3 : total > 30 ? 2 : 1;
-            ctx.save();
-            ctx.font        = `bold ${S._grafPctTamanho || 8}px sans-serif`;
-            ctx.fillStyle   = S._grafPctCor || ds.borderColor;
-            ctx.textAlign   = 'center';
-            ctx.shadowColor = '#000';
-            ctx.shadowBlur  = 2;
-            meta.data.forEach((pt, i) => {
-                if (i % step !== 0) return;
-                if (!pt || ds.data[i] == null) return;
-                ctx.fillText(ds.data[i] + '%', pt.x, pt.y - 6);
-            });
-            ctx.restore();
-        });
-    }
-};
 
 // Plano cartesiano vazio — exibe grid completo + mensagem centralizada
 function _renderChartVazio(canvasEl, chartRef, mensagem, yMin, yMax) {
@@ -5521,230 +5161,8 @@ function _renderChartVazio(canvasEl, chartRef, mensagem, yMin, yMax) {
     });
 }
 
-function renderGrafico() {
-    const canvas = document.getElementById('grafico');
-    if (!canvas) return;
-
-    // Todos os jogos com placar, ordenados — base de cálculo com warmup histórico
-    const _parseMsG = p => new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getTime();
-    const _todasG = [...S.partidas]
-        .filter(j => j.gol_casa != null && j.gol_fora != null && j.data_partida)
-        .sort((a, b) => _parseMsG(a) - _parseMsG(b));
-
-    // Série de exibição — controla apenas o eixo X (mesma lógica do Gráfico de Linha)
-    let serie;
-    if (S.jogosGrafico != null) {
-        serie = _todasG.slice(-S.jogosGrafico);
-    } else {
-        const _hG = S.horasGrafico != null ? S.horasGrafico : S.horas;
-        const _cutG = Date.now() + BET365_OFFSET_MS - _hG * 3600000;
-        serie = _todasG.filter(j => _parseMsG(j) >= _cutG);
-    }
-    const _offsetG = _todasG.length - serie.length;
-
-    const tituloEl = document.getElementById('g-titulo');
-    const ativos   = TODOS_FILTROS.filter(f => S.linhasMercados[f.id] && f.id !== 'equilibrio' && !f.isMA_sel);
-
-    if (!_hoveringChart) _renderPillsMercados();
-
-    const _destruirGrafico = () => {
-        if (S.grafico) { try { S.grafico.destroy(); } catch(_){} S.grafico = null; }
-        const _orp = Chart.getChart(canvas);
-        if (_orp) { try { _orp.destroy(); } catch(_){} }
-    };
-
-    if (!serie.length) {
-        _destruirGrafico();
-        if (tituloEl) tituloEl.textContent = 'Sem dados com placar para o período';
-        return;
-    }
-    if (!ativos.length) {
-        if (tituloEl) tituloEl.textContent = 'Selecione mercados acima';
-        S.grafico = _renderChartVazio(canvas, S.grafico, 'Selecione mercados acima', 0, 100);
-        return;
-    }
-
-    const n1 = S.grafMM1 || 9;
-
-    // Rolling hit-rate % (0–100) — janela deslizante de n1 jogos
-    const rolPct = (hits, n) => hits.map((_, i) => {
-        const sl = hits.slice(Math.max(0, i - n + 1), i + 1);
-        return +(sl.reduce((a, b) => a + b, 0) / sl.length * 100).toFixed(1);
-    });
-
-    const hitsMap = {};
-    const pctMap  = {};
-    ativos.forEach(f => {
-        const hitsAll = _todasG.map(j => checa(j, f.id) ? 1 : 0);
-        const pctAll  = rolPct(hitsAll, n1);
-        hitsMap[f.id] = hitsAll.slice(_offsetG);
-        pctMap[f.id]  = pctAll.slice(_offsetG);
-    });
-
-    _MKTGRAF_SERIE = serie;
-    _MKTGRAF_HITS  = hitsMap;
-    _MKTGRAF_N1    = n1;
-
-    const datasets = [];
-
-    // Linha de equilíbrio real — uma linha por filtro, na média histórica do período
-    if (S.linhasMercados['equilibrio']) {
-        ativos.forEach(f => {
-            const hits = hitsMap[f.id];
-            const avg  = +(hits.reduce((a,b)=>a+b,0) / hits.length * 100).toFixed(1);
-            const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
-            datasets.push({ type:'line', label:`${f.label} ~${avg}%`,
-                data: serie.map(() => avg),
-                borderColor: cor + '70', backgroundColor:'transparent',
-                borderWidth:1.5, borderDash:[6,4], pointRadius:0, tension:0,
-                _isEquilibrio:true, _isRef:true });
-        });
-    }
-
-    ativos.forEach(f => {
-        const pts  = hitsMap[f.id];
-        const data = pctMap[f.id];
-        const cor  = (S._chartCores && S._chartCores[f.id]) || f.cor;
-        const pct  = Math.round(pts.reduce((a,b)=>a+b,0) / serie.length * 100);
-
-        // Cor por ponto: verde = hit, vermelho = miss — ou cor da linha se 🟢 Cores desligado
-        let pointRadius  = S.grafPontoRaio || 4;
-        const _corSobe  = S.grafPontoCorSobe  || '#4ade80';
-        const _corDesce = S.grafPontoCorDesce || '#ef4444';
-        let pointBgColor = S.grafPontoCores
-            ? pts.map(hit => hit ? _corSobe : _corDesce)
-            : data.map(() => cor);
-
-        // T/F — marca pico máximo e mínimo da curva rolling após warmup
-        if (S.grafTopoFundo && data.length > 1) {
-            const warmup = Math.min(n1 - 1, data.length - 1);
-            const maxIdx = data.reduce((b, v, i) => i >= warmup && v > data[b] ? i : b, warmup);
-            const minIdx = data.reduce((b, v, i) => i >= warmup && v < data[b] ? i : b, warmup);
-            const base   = pts.map(hit => hit ? _corSobe : _corDesce);
-            pointRadius  = data.map((_, i) => (i === maxIdx || i === minIdx) ? (S.grafPontoRaio||4) + 3 : S.grafPontoRaio||4);
-            pointBgColor = base.map((c, i) => i === maxIdx ? (S._tfTopoCor||'#4ade80') : i === minIdx ? (S._tfFundoCor||'#f87171') : c);
-        }
-
-        // Ocultar bolinhas planas (sem variação)
-        if (!S.grafPontoFlat) {
-            const baseR = Array.isArray(pointRadius) ? pointRadius : data.map(() => S.grafPontoRaio || 4);
-            pointBgColor = pointBgColor.map((c, i) => (i > 0 && data[i] === data[i-1]) ? 'transparent' : c);
-            pointRadius  = data.map((v, i, a) => (i > 0 && v === a[i-1]) ? 0 : baseR[i]);
-        }
-
-        datasets.push({ type:'line', label:`${f.label} ${pct}%`,
-            data, borderColor: cor, backgroundColor:'transparent',
-            borderWidth:2, borderDash: f.dashed ? [6,4] : [],
-            pointRadius, pointHoverRadius: (S.grafPontoRaio||4) + 2,
-            pointBackgroundColor: pointBgColor,
-            pointBorderColor: pointBgColor,
-            pointBorderWidth: S.grafPontoBorda || 1.5,
-            tension:0.2, _filtroId: f.id });
-
-        // MM — uma linha de média móvel longa
-        if (S.grafMedias) {
-            const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
-            const n2 = S.grafMM2 || 21;
-            const rolAvg = data.map((_, i) => {
-                const sl = data.slice(Math.max(0, i - n2 + 1), i + 1);
-                return +(sl.reduce((a,b)=>a+b,0) / sl.length).toFixed(1);
-            });
-            datasets.push({ type:'line', label:`${f.label} MM${n2}`,
-                data: rolAvg, borderColor: S.grafMM2Cor||'#fbbf24',
-                backgroundColor:'transparent', borderWidth: S.grafMM2Esp||2,
-                borderDash: _pd(S.grafMM2Dash||'8,4'), pointRadius:0, tension:0.4, _isMA:true });
-        }
-    });
-
-    // MM9/MM21 como mercados selecionáveis — calculados sobre o filtro primário
-    {
-        const _mmSel = [
-            S.linhasMercados['mm9']  && { n: S.grafMM1||9,  cor: S.grafMM1Cor||'#60a5fa', esp: S.grafMM1Esp||1.5, dash: S.grafMM1Dash||'4,4'  },
-            S.linhasMercados['mm21'] && { n: S.grafMM2||21, cor: S.grafMM2Cor||'#fbbf24', esp: S.grafMM2Esp||2,   dash: S.grafMM2Dash||'8,4'  },
-        ].filter(Boolean);
-        if (_mmSel.length > 0) {
-            const _pdmm = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
-            const _primDs = datasets.find(d => d._filtroId === S.filtro) || datasets.find(d => d._filtroId && !d._isMA);
-            if (_primDs) {
-                const _base = _primDs.data;
-                _mmSel.forEach(mm => {
-                    const rolAvg = _base.map((_,i) => {
-                        const sl = _base.slice(Math.max(0,i-mm.n+1), i+1);
-                        return +(sl.reduce((a,b)=>a+b,0)/sl.length).toFixed(1);
-                    });
-                    datasets.push({ type:'line', label:`MM${mm.n}`, data: rolAvg,
-                        borderColor: mm.cor, backgroundColor:'transparent',
-                        borderWidth: mm.esp, borderDash: _pdmm(mm.dash),
-                        pointRadius:0, tension:0.4, _isMA:true });
-                });
-            }
-        }
-    }
-
-    const labels = serie.map(p => {
-        if (!p.data_partida) return '';
-        const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
-        return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
-    });
-
-    if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ');
-
-    // Escala Y dinâmica — ajusta à amplitude real dos dados (igual ao Gráfico de Gols)
-    const _valsG = datasets.filter(d => !d._isRef && !d._isMA && !d._isEquilibrio).flatMap(d => d.data).filter(v => v != null);
-    const _yMinG = _valsG.length ? Math.max(0,   Math.floor(Math.min(..._valsG) / 5) * 5 - 5)  : 0;
-    const _yMaxG = _valsG.length ? Math.min(100,  Math.ceil(Math.max(..._valsG) / 5) * 5 + 5)  : 100;
-
-    _destruirGrafico();
-
-    try {
-        S.grafico = new Chart(canvas.getContext('2d'), {
-            type: 'line',
-            data: { labels, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
-                clip: 8,
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: !S.showLegendas,
-                        filter: item => !item.dataset._isRef && !item.dataset._isMA,
-                        backgroundColor: 'rgba(15,23,42,0.85)', borderColor:'#334155', borderWidth:1,
-                        titleColor:'#94a3b8', bodyColor:'#cbd5e1',
-                        callbacks: {
-                            title: ctxArr => {
-                                const j = _MKTGRAF_SERIE[ctxArr[0].dataIndex];
-                                if (!j) return '';
-                                const d = j.data_partida ? new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')) : null;
-                                const hora = d ? `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : '';
-                                const ht = (j.gol_casa_ht != null && j.gol_fora_ht != null)
-                                    ? `  HT: ${j.gol_casa_ht}-${j.gol_fora_ht}` : j.ht_outro ? '  HT: OUT' : '';
-                                return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}${ht}  (FT: ${j.gol_casa}-${j.gol_fora})`;
-                            },
-                            label: ctx => {
-                                if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
-                                const i   = ctx.dataIndex;
-                                const fid = ctx.dataset._filtroId;
-                                const hit = fid ? (_MKTGRAF_HITS[fid]?.[i] ? ' ✓' : ' ✗') : '';
-                                return ` ${ctx.dataset.label}: ${ctx.raw}%${hit}`;
-                            }
-                        }
-                    },
-                    zoom: {
-                        zoom: { wheel:{ enabled:true, modifierKey:'ctrl' }, pinch:{ enabled:true }, mode:'x' },
-                        pan:  { enabled:true, modifierKey:'shift', mode:'x' }
-                    }
-                },
-                layout: { padding: { top: 18, bottom: 10 } },
-                scales: {
-                    x: { grid:{color:'#2d3f55'}, ticks:{color:'#64748b',font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40} },
-                    y: { min:_yMinG, max:_yMaxG, grid:{color:'#2d3f55'}, ticks:{padding:6,color:'#94a3b8',font:{size:9},stepSize:5,callback:v=>v+'%'} }
-                }
-            },
-            plugins: [mktLabelPlugin, grafPlugin, verticalLinesPlugin, watermarkPlugin]
-        });
-    } catch(e) { console.error('renderGrafico error:', e); }
-}
+// renderGrafico removido — Gráfico de Mercados descontinuado
+function renderGrafico() {}
 
 // ============================================================
 // PLUGINS INDEPENDENTES DO GRÁFICO DE LINHA
@@ -5910,18 +5328,6 @@ let _LINHA_SERIE        = [];
 let _LINHA_HITS         = {};
 let _LINHA_TODAS_SORTED = [];
 let _LINHA_OFFSET       = 0;
-
-function _previewPillMercados(f) {
-    if (S.linhasMercados[f.id]) return; // já ativo — linha já visível
-    S.linhasMercados[f.id] = true;
-    _hoveringChart = true;
-    renderGrafico();
-    _hoveringChart = false;
-    S.linhasMercados[f.id] = false; // reverte estado (chart já foi desenhado)
-}
-function _clearPreviewPillMercados() {
-    renderGrafico(); // re-render sem o filtro de preview
-}
 
 function _previewPillLinha(f) {
     if (S.linhaMarcaDagua) return;
@@ -6396,7 +5802,7 @@ function renderGraficoGols() {
 // ============================================================
 
 // ── Zoom reset ──────────────────────────────────────────────
-function resetZoomGrafico() { try { if (S.grafico?.resetZoom) S.grafico.resetZoom(); } catch(_){} }
+function resetZoomGrafico() {}
 function resetZoomGols()    { try { if (S._graficoGols?.resetZoom) S._graficoGols.resetZoom(); } catch(_){} }
 function resetZoomLinha()   { try { if (S._graficoLinha?.resetZoom) S._graficoLinha.resetZoom(); } catch(_){} }
 
@@ -6505,7 +5911,6 @@ function minutosParaLiga(liga) {
 // ============================================================
 // TABELA HISTÓRICA — 1 linha = 1 hora, 20 colunas = jogos daquela hora
 function _renderAllCharts() {
-    renderGrafico();
     if (S.showLinha) renderGraficoLinha();
     renderGraficoGols();
 }
@@ -7068,20 +6473,7 @@ function togglePadroes() {
 }
 
 function _hoverFiltroChart(filtroId) {
-    if (!S.grafico) return;
-    S.grafico.data.datasets.forEach(ds => {
-        if (ds._isEquilibrio || ds._isMA) return;
-        const fi = TODOS_FILTROS.find(f => f.id === ds._filtroId);
-        const corBase = (S._chartCores?.[ds._filtroId] || fi?.cor || '#64748b');
-        if (!filtroId || ds._filtroId === filtroId) {
-            ds.borderColor = corBase;
-            ds.borderWidth = S.filtro === ds._filtroId ? 3 : 2;
-        } else {
-            ds.borderColor = corBase + '28';
-            ds.borderWidth = 1;
-        }
-    });
-    S.grafico.update('none');
+    // Gráfico de Mercados removido — sem ação
 }
 
 function _toggleClubeSel(nome) {
@@ -7103,7 +6495,7 @@ function toggleLegendas() {
     if (btn) { btn.style.borderColor = S.showLegendas ? '#1fcc59' : '#1e293b'; btn.style.color = S.showLegendas ? '#e2e8f0' : '#94a3b8'; }
     if (S.showLegendas) hideTT();
     localStorage.setItem('showLegendas', S.showLegendas ? '1' : '0');
-    if (S.view === 'historico') renderGrafico();
+    if (S.view === 'historico') _renderAllCharts();
 }
 
 // ============================================================
@@ -9596,7 +8988,6 @@ const _CFG_LABELS = {
     liga_super_liga:            'Super Liga Sul-Americana',
     // Padrões do frontend
     default_horas_historico:    'Período padrão — Gráficos e Mosaico (horas)',
-    default_jogos_grafico:      '📊 Período padrão — Gráfico de Mercados (jogos)',
     default_jogos_gols:         '⚽ Período padrão — Gráfico de Gols (jogos)',
     default_jogos_linha:        '📈 Período padrão — Gráfico de Linha (jogos)',
 
@@ -9677,7 +9068,6 @@ const _CFG_LABELS = {
     // Sistema
     sessao_timeout_minutos:     'Timeout de sessão em minutos (0 = nunca expirar; MASTER sempre ativo)',
     auto_reinicio_minutos:      '🔄 Reinício automático: minutos sem coleta para fechar Edge + Node e reiniciar tudo (0 = desativado)',
-    grafico_mercados_master_only: '📈 Gráfico de Mercados: exibir somente para o usuário MASTER',
     // Seções
     show_secao_ia:              'Exibir: 🤖 IA — Sugestões para Próximos Jogos',
     show_secao_value_bets:      'Exibir: 💰 Value Bets',
@@ -9687,11 +9077,9 @@ const _CFG_LABELS = {
     coletor_auto_restart:       '🔄 Coletor: reiniciar automaticamente Edge+Node quando login Bet365 falha (desative para evitar reinícios não supervisionados)',
     chat_notificacao:           '💬 Chat: exibir badge de notificação quando há mensagens novas',
     show_subview_gols:          'Exibir botão/seção: ⚽ Gráfico de Gols',
-    show_subview_grafico:       'Exibir botão/seção: 📈 Gráfico de Mercados',
     show_subview_linha:         'Exibir botão/seção: 📉 Gráfico de Linha',
 
     show_subview_mosaico:       'Exibir botão/seção: 🏁 Menu Mosaico',
-    default_open_grafico:       'Aberto por padrão: 📈 Gráfico de Mercados',
     default_open_mosaico:       'Aberto por padrão: 🏁 Menu Mosaico',
     default_open_gols:          'Aberto por padrão: ⚽ Gráfico de Gols',
     default_open_linha:         'Aberto por padrão: 📉 Gráfico de Linha',
@@ -9792,7 +9180,6 @@ async function _loadConfigSistema() {
                     default_min_amostras:     [3,5,10,20,50],
                     default_freq_min:         [0,50,60,70,80],
                     default_janela_recente:   [10,20,30,50],
-                    default_jogos_grafico:    JOGOS_OPTS,
                     default_jogos_gols:       JOGOS_OPTS,
                     default_jogos_linha:      JOGOS_OPTS,
 
@@ -11312,7 +10699,6 @@ function aplicarPadrao(id, opts = {}) {
         renderTabela();
         // rAF: garante que o canvas tem dimensões corretas antes de criar o chart
         requestAnimationFrame(() => {
-            renderGrafico();
             if (S.showLinha)    renderGraficoLinha();
             if (S.showGols)     renderGraficoGols();
 
@@ -11850,7 +11236,6 @@ function _atualizarCoresCharts(temaId) {
 
     try {
         const charts = [
-            typeof S !== 'undefined' && S.grafico,
             typeof S !== 'undefined' && S._graficoGols,
             typeof S !== 'undefined' && S._graficoLinha,
         ].filter(Boolean);

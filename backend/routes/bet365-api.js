@@ -1594,7 +1594,6 @@ const CONFIG_DEFAULTS = [
     { chave:'default_tipo_mercado',         valor:'Todos', tipo:'text',    grupo:'frontend', descricao:'Tipo de mercado padrão (Análise)' },
     { chave:'default_janela_recente',       valor:'20',    tipo:'number',  grupo:'frontend', descricao:'Janela recente padrão (Análise)' },
     // ── Período padrão dos gráficos (em jogos) ──
-    { chave:'default_jogos_grafico',        valor:'200',   tipo:'number',  grupo:'frontend', descricao:'📊 Padrão de jogos — Gráfico de Mercados' },
     { chave:'default_jogos_gols',           valor:'200',   tipo:'number',  grupo:'frontend', descricao:'⚽ Padrão de jogos — Gráfico de Gols' },
     { chave:'default_jogos_linha',          valor:'200',   tipo:'number',  grupo:'frontend', descricao:'📈 Padrão de jogos — Gráfico de Linha' },
 
@@ -1691,7 +1690,6 @@ const CONFIG_DEFAULTS = [
     { chave:'backoff_ligas_ativo',          valor:'true',  tipo:'boolean', grupo:'sistema',  descricao:'⏸️ Backoff automático — pausar tentativas quando ligas não aparecem N vezes seguidas' },
     { chave:'backoff_ligas_threshold',      valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'⏸️ Backoff: nº de falhas consecutivas "Ligas não aparecem" para ativar a pausa' },
     { chave:'backoff_ligas_espera_min',     valor:'15',    tipo:'number',  grupo:'sistema',  descricao:'⏸️ Backoff: minutos de espera ao atingir o limite de falhas' },
-    { chave:'grafico_mercados_master_only', valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'📈 Gráfico de Mercados: exibir somente para o usuário MASTER' },
     // ── Alertas ──
     { chave:'alerta_ativado',               valor:'true',  tipo:'boolean', grupo:'alertas',  descricao:'Ativar sistema de alertas (Telegram + e-mail)' },
     { chave:'alerta_minutos_sem_coleta',    valor:'15',    tipo:'number',  grupo:'alertas',  descricao:'Minutos sem coleta bem-sucedida para disparar alerta' },
@@ -1706,11 +1704,9 @@ const CONFIG_DEFAULTS = [
     { chave:'show_secao_frequencia',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Frequência dos Mercados' },
     { chave:'show_secao_desempenho',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Desempenho por Liga' },
     { chave:'show_subview_gols',            valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: ⚽ Gráfico de Gols' },
-    { chave:'show_subview_grafico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 📈 Gráfico de Mercados' },
     { chave:'show_subview_linha',           valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 📉 Gráfico de Linha' },
 
     { chave:'show_subview_mosaico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir botão/seção: 🏁 Menu Mosaico' },
-    { chave:'default_open_grafico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 📈 Gráfico de Mercados' },
     { chave:'default_open_mosaico',         valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 🏁 Menu Mosaico' },
     { chave:'default_open_gols',            valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: ⚽ Gráfico de Gols' },
     { chave:'default_open_linha',           valor:'false', tipo:'boolean', grupo:'secoes',   descricao:'Aberto por padrão: 📉 Gráfico de Linha' },
