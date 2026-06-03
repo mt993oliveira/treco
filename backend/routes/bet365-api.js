@@ -1674,6 +1674,8 @@ const CONFIG_DEFAULTS = [
     { chave:'fonte_proximos',               valor:'results',tipo:'text',   grupo:'sistema',  descricao:'Fonte dos próximos jogos: results = página de resultados | none = desativado' },
     { chave:'max_padroes_usuario',          valor:'5',     tipo:'number',  grupo:'sistema',  descricao:'Limite de padrões de gráfico por usuário (1–10)' },
     { chave:'config_versao',               valor:'1',     tipo:'number',  grupo:'sistema',  descricao:'Versão das configurações — incrementar força reset do localStorage de todos os usuários' },
+    { chave:'logo_header_altura',          valor:'80',    tipo:'number',  grupo:'frontend', descricao:'🖼️ Logo do header — altura (px)' },
+    { chave:'logo_header_largura',         valor:'340',   tipo:'number',  grupo:'frontend', descricao:'🖼️ Logo do header — largura mínima (px)' },
     { chave:'liga_img_largura',            valor:'240',   tipo:'number',  grupo:'frontend', descricao:'🏆 Ligas — largura da imagem no desktop (px)' },
     { chave:'liga_img_altura',             valor:'68',    tipo:'number',  grupo:'frontend', descricao:'🏆 Ligas — altura da imagem no desktop (px)' },
     { chave:'padroes_visivel_bronze',       valor:'false', tipo:'boolean', grupo:'sistema',  descricao:'📋 Padrões: exibir para usuários 🥉 Bronze' },
