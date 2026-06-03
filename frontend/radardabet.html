@@ -2563,6 +2563,18 @@
     try {
         const u = JSON.parse(localStorage.getItem('currentUser'));
         if (!u || !u.Id) { window.location.replace('/'); }
+        // Check síncrono: oculta Gráfico de Mercados se master_only (usa cache do localStorage)
+        if (localStorage.getItem('rdbt_mkt_master_only') === 'true') {
+            const _isMaster = (u?.Usuario || '').toUpperCase() === 'MASTER';
+            if (!_isMaster) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    const b = document.getElementById('sub-btn-grafico');
+                    const s = document.getElementById('historico-chart-section');
+                    if (b) b.style.display = 'none';
+                    if (s) s.style.display = 'none';
+                });
+            }
+        }
     } catch(e) {
         localStorage.removeItem('currentUser');
         window.location.replace('/');
@@ -3039,6 +3051,7 @@ async function _aplicarConfigFrontend() {
         _visSubview('historico-gols-section',    'sub-btn-gols',     'show_subview_gols',     'showGols');
         _visSubview('historico-chart-section',   'sub-btn-grafico',  'show_subview_grafico',  'showGrafico');
         // Restrição MASTER: se grafico_mercados_master_only=true, oculta para quem não for o usuário MASTER
+        localStorage.setItem('rdbt_mkt_master_only', c.grafico_mercados_master_only || 'false');
         if (c.grafico_mercados_master_only === 'true') {
             const _uMO = (() => { try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e){ return null; } })();
             const _isMasterUser = (_uMO?.Usuario || '').toUpperCase() === 'MASTER';
