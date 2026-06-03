@@ -9177,6 +9177,11 @@ function _initUserMenu() {
         const btnKirv = document.getElementById('dd-btn-kirvano');
         if (btnKirv) btnKirv.style.display = 'flex';
     }
+
+    // 🔧 Diagnóstico — exclusivo para o login MASTER (por nome de usuário)
+    const btnDiag = document.getElementById('view-diagnostico');
+    if (btnDiag) btnDiag.style.display = _isMasterUser ? '' : 'none';
+    if (!_isMasterUser && S.view === 'diagnostico') setView('historico');
 }
 
 function toggleUserMenu() {
