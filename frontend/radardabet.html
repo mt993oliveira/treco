@@ -7459,7 +7459,46 @@ function abrirModalLigaResultados() {
 // CLUBES — Histórico por time + próximos jogos
 // ============================================================
 
-let S_clubes = { busca: '', timeSel: null, proximosEvts: [] };
+let S_clubes = { busca: '', timeSel: null, proximosEvts: [], nPartidas: 10 };
+
+// Mapeamento nome do time → código ISO da bandeira (flagcdn.com)
+const CLUBES_FLAG_MAP = {
+    'Afeganistão':'af','África do Sul':'za','Albânia':'al','Alemanha':'de',
+    'Argélia':'dz','Angola':'ao','Argentina':'ar','Armênia':'am','Austrália':'au',
+    'Áustria':'at','Azerbaijão':'az','Bélgica':'be','Bolívia':'bo','Bósnia':'ba',
+    'Brasil':'br','Bulgária':'bg','Camarões':'cm','Canadá':'ca','Qatar':'qa','Catar':'qa',
+    'Chile':'cl','China':'cn','Colômbia':'co','Costa Rica':'cr','Costa-Rica':'cr',
+    'Costa do Marfim':'ci','Croácia':'hr','Dinamarca':'dk','Egito':'eg','Equador':'ec',
+    'Eslováquia':'sk','Eslovênia':'si','Espanha':'es','EUA':'us','Estados Unidos':'us',
+    'Escócia':'gb-sct','Finlândia':'fi','França':'fr','Gana':'gh','Geórgia':'ge',
+    'Grécia':'gr','Gales':'gb-wls','País de Gales':'gb-wls','Honduras':'hn','Hungria':'hu',
+    'Índia':'in','Inglaterra':'gb-eng','Irã':'ir','Iraque':'iq','Irlanda':'ie',
+    'Islândia':'is','Israel':'il','Itália':'it','Jamaica':'jm','Japão':'jp','Jordânia':'jo',
+    'Letônia':'lv','Líbano':'lb','Líbia':'ly','Lituânia':'lt','Marrocos':'ma',
+    'México':'mx','Nigéria':'ng','Noruega':'no','Nova Zelândia':'nz',
+    'Países Baixos':'nl','Holanda':'nl','Panamá':'pa','Paraguai':'py','Peru':'pe',
+    'Polônia':'pl','Portugal':'pt','República Checa':'cz','Romênia':'ro','Rússia':'ru',
+    'Arábia Saudita':'sa','Senegal':'sn','Sérvia':'rs','Suécia':'se','Suíça':'ch',
+    'Tunísia':'tn','Turquia':'tr','Ucrânia':'ua','Uruguai':'uy','Venezuela':'ve',
+    'Coreia do Sul':'kr','Coreia':'kr','Japão':'jp','Síria':'sy',
+};
+function _getClubeFlag(nome, w, h) {
+    w = w||32; h = h||24;
+    const iso = CLUBES_FLAG_MAP[nome] || CLUBES_FLAG_MAP[nome.split(' ')[0]];
+    if (!iso) return `<span style="font-size:${h}px;line-height:1">⚽</span>`;
+    return `<img src="https://flagcdn.com/${w}x${h}/${iso}.png" alt="${nome}"
+        style="width:${w}px;height:${h}px;object-fit:cover;border-radius:3px;flex-shrink:0"
+        onerror="this.replaceWith(document.createTextNode('⚽'))">`;
+}
+function _clubeSetN(n) {
+    S_clubes.nPartidas = n;
+    document.querySelectorAll('.clube-n-btn').forEach(b => {
+        b.style.background = +b.dataset.n === n ? '#7c3aed' : '#1e293b';
+        b.style.borderColor = +b.dataset.n === n ? '#7c3aed' : '#334155';
+        b.style.color = +b.dataset.n === n ? '#fff' : '#64748b';
+    });
+    if (S_clubes.timeSel) renderDetalheClube(S_clubes.timeSel);
+}
 
 // Monta mapa de stats por time a partir de S.todasPartidas
 function buildTimesMap(liga) {
@@ -7542,11 +7581,14 @@ function renderListaClubes() {
             ${ativo?'background:#0c1833;border-left:2px solid #3b82f6':''}
             display:flex;align-items:center;justify-content:space-between;gap:6px"
             onmouseover="this.style.background='#1e293b30'" onmouseout="this.style.background='${ativo?'#0c1833':''}'" >
-            <div>
-                <div style="font-size:11px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">${t.nome}</div>
-                <div style="font-size:9px;color:#475569;margin-top:1px">${t.jogos} jogos • ${forma5}</div>
+            <div style="display:flex;align-items:center;gap:7px;min-width:0">
+                ${_getClubeFlag(t.nome, 28, 21)}
+                <div style="min-width:0">
+                    <div style="font-size:12px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">${t.nome}</div>
+                    <div style="font-size:10px;color:#475569;margin-top:1px">${t.jogos} jogos • ${forma5}</div>
+                </div>
             </div>
-            <span style="font-size:12px;font-weight:800;color:${cor};flex-shrink:0">${pct}%</span>
+            <span style="font-size:13px;font-weight:800;color:${cor};flex-shrink:0">${pct}%</span>
         </div>`;
     }).join('');
 }
@@ -7584,10 +7626,10 @@ async function renderDetalheClube(nomeTime) {
         ).sort((a,b) => new Date(b.data_partida) - new Date(a.data_partida)).slice(0, 20);
     }
 
-    // Últimas 10 partidas
+    // Últimas N partidas
     const ultimas = [...t.partidas]
         .sort((a,b) => new Date(b.data_partida) - new Date(a.data_partida))
-        .slice(0, 10);
+        .slice(0, S_clubes.nPartidas);
 
     const pct    = t.jogos ? +(t.vit / t.jogos * 100).toFixed(1) : 0;
     const gdiff  = t.gm - t.gs;
@@ -7596,7 +7638,7 @@ async function renderDetalheClube(nomeTime) {
     const mediaG = t.jogos ? +(t.gm / t.jogos).toFixed(1) : 0;
     const mediaS = t.jogos ? +(t.gs / t.jogos).toFixed(1) : 0;
 
-    const forma10 = t.forma.slice(-10).map(f => {
+    const forma10 = t.forma.slice(-S_clubes.nPartidas).map(f => {
         const cor = f.r==='V'?'#14532d':f.r==='E'?'#1e1b4b':'#3b0a0a';
         const txt = f.r==='V'?'#4ade80':f.r==='E'?'#a5b4fc':'#f87171';
         const op  = f.jogo.time_casa === nomeTime
@@ -7615,13 +7657,13 @@ async function renderDetalheClube(nomeTime) {
         const lado   = isC ? 'Casa' : 'Fora';
         const _pd = p.data_partida ? new Date(p.data_partida) : null;
         const data   = _pd ? `${pad2(_pd.getUTCDate())}/${pad2(_pd.getUTCMonth()+1)} ${pad2(_pd.getUTCHours())}:${pad2(_pd.getUTCMinutes())}` : '';
-        return `<tr>
-            <td style="padding:4px 8px;color:#475569;font-size:10px">${data}</td>
-            <td style="padding:4px 8px;font-size:10px;color:#94a3b8">${lado}</td>
-            <td style="padding:4px 8px;font-size:11px;color:#e2e8f0">${nomeTime} <span style="color:#334155">×</span> ${opn}</td>
-            <td style="padding:4px 8px;font-weight:800;text-align:center;font-size:12px">${pl}</td>
-            <td style="padding:4px 8px;text-align:center"><span style="background:${corBg};color:${corRes};padding:1px 6px;border-radius:3px;font-size:11px;font-weight:800">${res}</span></td>
-            <td style="padding:4px 8px;font-size:10px;color:#334155">${(p.liga||'').replace(/virtual/gi,'').trim()}</td>
+        return `<tr style="border-bottom:1px solid #0d1421">
+            <td style="padding:6px 10px;color:#475569;font-size:11px;white-space:nowrap">${data}</td>
+            <td style="padding:6px 10px;font-size:11px;color:#94a3b8">${lado}</td>
+            <td style="padding:6px 10px;font-size:12px;color:#e2e8f0">${nomeTime} <span style="color:#334155">×</span> ${opn}</td>
+            <td style="padding:6px 10px;font-weight:800;text-align:center;font-size:13px;color:#e2e8f0">${pl}</td>
+            <td style="padding:6px 10px;text-align:center"><span style="background:${corBg};color:${corRes};padding:2px 8px;border-radius:4px;font-size:12px;font-weight:800">${res}</span></td>
+            <td style="padding:6px 10px;font-size:11px;color:#475569">${(p.liga||'').replace(/virtual/gi,'').trim()}</td>
         </tr>`;
     }).join('');
 
@@ -7710,42 +7752,59 @@ async function renderDetalheClube(nomeTime) {
     c.innerHTML = `
     <!-- Stats principais -->
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;flex:2;min-width:240px">
-            <div style="font-size:14px;font-weight:800;color:#e2e8f0;margin-bottom:4px">${nomeTime}</div>
-            <div style="font-size:10px;color:#475569;margin-bottom:10px">${[...t.ligas].join(', ')}</div>
-            <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
-                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#e2e8f0">${t.jogos}</div><div style="font-size:9px;color:#475569">Jogos</div></div>
-                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#4ade80">${t.vit}</div><div style="font-size:9px;color:#475569">Vitórias</div></div>
-                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#a5b4fc">${t.emp}</div><div style="font-size:9px;color:#475569">Empates</div></div>
-                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#f87171">${t.der}</div><div style="font-size:9px;color:#475569">Derrotas</div></div>
-                <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:${pct>=55?'#4ade80':pct>=40?'#fbbf24':'#f87171'}">${pct}%</div><div style="font-size:9px;color:#475569">Vitórias%</div></div>
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;flex:2;min-width:240px">
+            <!-- Cabeçalho com bandeira -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+                ${_getClubeFlag(nomeTime, 48, 36)}
+                <div>
+                    <div style="font-size:18px;font-weight:800;color:#e2e8f0;line-height:1.2">${nomeTime}</div>
+                    <div style="font-size:11px;color:#475569;margin-top:2px">${[...t.ligas].join(', ')}</div>
+                </div>
             </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-                <span style="font-size:10px;color:#94a3b8">Gols marcados: <b>${t.gm}</b> (${mediaG}/jogo)</span>
-                <span style="font-size:10px;color:#94a3b8">Gols sofridos: <b>${t.gs}</b> (${mediaS}/jogo)</span>
-                <span style="font-size:10px;color:${gdiff>=0?'#4ade80':'#f87171'}">Saldo: ${gdiff>=0?'+':''}${gdiff}</span>
+            <!-- Stats -->
+            <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#e2e8f0">${t.jogos}</div><div style="font-size:11px;color:#475569">Jogos</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#4ade80">${t.vit}</div><div style="font-size:11px;color:#475569">Vitórias</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#a5b4fc">${t.emp}</div><div style="font-size:11px;color:#475569">Empates</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#f87171">${t.der}</div><div style="font-size:11px;color:#475569">Derrotas</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:${pct>=55?'#4ade80':pct>=40?'#fbbf24':'#f87171'}">${pct}%</div><div style="font-size:11px;color:#475569">Vitórias%</div></div>
             </div>
-            <div style="font-size:10px;font-weight:700;color:#334155;margin-bottom:5px">FORMA RECENTE</div>
-            <div style="display:flex;gap:3px;flex-wrap:wrap">${forma10 || '<span style="color:#334155;font-size:10px">Sem dados</span>'}</div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+                <span style="font-size:12px;color:#94a3b8">⚽ Marcados: <b>${t.gm}</b> (${mediaG}/jogo)</span>
+                <span style="font-size:12px;color:#94a3b8">🥅 Sofridos: <b>${t.gs}</b> (${mediaS}/jogo)</span>
+                <span style="font-size:12px;color:${gdiff>=0?'#4ade80':'#f87171'}">Saldo: ${gdiff>=0?'+':''}${gdiff}</span>
+            </div>
+            <!-- Seletor N partidas -->
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:700;color:#475569">ÚLTIMAS:</span>
+                ${[10,20,30,50,100].map(n => `<button class="clube-n-btn" data-n="${n}" onclick="_clubeSetN(${n})"
+                    style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid;
+                    background:${S_clubes.nPartidas===n?'#7c3aed':'#1e293b'};
+                    border-color:${S_clubes.nPartidas===n?'#7c3aed':'#334155'};
+                    color:${S_clubes.nPartidas===n?'#fff':'#64748b'}">${n}</button>`).join('')}
+                <span style="font-size:11px;color:#475569">partidas</span>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;letter-spacing:.05em">FORMA RECENTE</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap">${forma10 || '<span style="color:#334155;font-size:11px">Sem dados</span>'}</div>
         </div>
-        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;flex:1;min-width:160px">
-            <div style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em;margin-bottom:10px">DESEMPENHO</div>
-            <div style="margin-bottom:8px">
-                <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">Como CASA (${t.jogos_casa} jogos)</div>
-                <div style="display:flex;gap:6px">
-                    <span style="font-size:11px;font-weight:700;color:#4ade80">V:${t.vit_casa}</span>
-                    <span style="font-size:11px;font-weight:700;color:#a5b4fc">E:${t.emp_casa}</span>
-                    <span style="font-size:11px;font-weight:700;color:#f87171">D:${t.der_casa}</span>
-                    <span style="font-size:11px;font-weight:700;color:${pctC>=55?'#4ade80':pctC>=40?'#fbbf24':'#f87171'}">${pctC}%</span>
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;flex:1;min-width:160px">
+            <div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:12px">DESEMPENHO</div>
+            <div style="margin-bottom:12px">
+                <div style="font-size:12px;color:#94a3b8;margin-bottom:5px">🏠 CASA (${t.jogos_casa} jogos)</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <span style="font-size:13px;font-weight:700;color:#4ade80">V:${t.vit_casa}</span>
+                    <span style="font-size:13px;font-weight:700;color:#a5b4fc">E:${t.emp_casa}</span>
+                    <span style="font-size:13px;font-weight:700;color:#f87171">D:${t.der_casa}</span>
+                    <span style="font-size:13px;font-weight:800;color:${pctC>=55?'#4ade80':pctC>=40?'#fbbf24':'#f87171'}">${pctC}%</span>
                 </div>
             </div>
             <div>
-                <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">Como FORA (${t.jogos_fora} jogos)</div>
-                <div style="display:flex;gap:6px">
-                    <span style="font-size:11px;font-weight:700;color:#4ade80">V:${t.vit_fora}</span>
-                    <span style="font-size:11px;font-weight:700;color:#a5b4fc">E:${t.emp_fora}</span>
-                    <span style="font-size:11px;font-weight:700;color:#f87171">D:${t.der_fora}</span>
-                    <span style="font-size:11px;font-weight:700;color:${pctF>=55?'#4ade80':pctF>=40?'#fbbf24':'#f87171'}">${pctF}%</span>
+                <div style="font-size:12px;color:#94a3b8;margin-bottom:5px">✈️ FORA (${t.jogos_fora} jogos)</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <span style="font-size:13px;font-weight:700;color:#4ade80">V:${t.vit_fora}</span>
+                    <span style="font-size:13px;font-weight:700;color:#a5b4fc">E:${t.emp_fora}</span>
+                    <span style="font-size:13px;font-weight:700;color:#f87171">D:${t.der_fora}</span>
+                    <span style="font-size:13px;font-weight:800;color:${pctF>=55?'#4ade80':pctF>=40?'#fbbf24':'#f87171'}">${pctF}%</span>
                 </div>
             </div>
         </div>
@@ -7756,18 +7815,20 @@ async function renderDetalheClube(nomeTime) {
 
     <!-- Últimas partidas -->
     <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-top:10px">
-        <div style="padding:7px 10px;background:#0c1220;font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">ÚLTIMAS ${ultimas.length} PARTIDAS</div>
+        <div style="padding:9px 12px;background:#0c1220;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.06em">
+            📋 ÚLTIMAS ${ultimas.length} PARTIDAS
+        </div>
         <div style="overflow-x:auto">
             <table style="width:100%;border-collapse:collapse">
                 <thead><tr style="background:#0c1220">
-                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:left">Data</th>
-                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:left">Lado</th>
-                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:left">Confronto</th>
-                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:center">Placar</th>
-                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:center">Res</th>
-                    <th style="padding:5px 8px;color:#334155;font-size:9px;font-weight:700;text-align:left">Liga</th>
+                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:left">Data</th>
+                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:left">Lado</th>
+                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:left">Confronto</th>
+                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:center">Placar</th>
+                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:center">Res</th>
+                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:left">Liga</th>
                 </tr></thead>
-                <tbody>${listaPartidas || '<tr><td colspan="6" style="padding:16px;text-align:center;color:#334155;font-size:10px">Sem partidas registradas</td></tr>'}</tbody>
+                <tbody>${listaPartidas || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#334155;font-size:12px">Sem partidas registradas</td></tr>'}</tbody>
             </table>
         </div>
     </div>`;
