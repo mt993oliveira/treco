@@ -8724,21 +8724,21 @@ function _initUserMenu() {
                 if (_dias < 0)       { _perCor = '#f87171'; _perBg = 'rgba(248,113,113,.08)'; _brd = 'rgba(248,113,113,.3)'; _title = 'Licença expirada'; }
                 else if (_dias <= 7) { _perCor = '#f97316'; _perBg = 'rgba(249,115,22,.08)';  _brd = 'rgba(249,115,22,.3)';  _title = `Expira em ${_dias} dia(s)!`; }
                 else                 { _perCor = '#1fcc59'; _perBg = 'rgba(31,204,89,.05)';   _brd = '#1e293b';              _title = `Válida por mais ${_dias} dia(s)`; }
+                const _btnRenov = document.getElementById('btn-renovar-licenca');
+                if (_btnRenov) {
+                    _btnRenov.style.display = 'flex';
+                    if (_dias <= 7) {
+                        _btnRenov.style.background    = 'rgba(239,68,68,.15)';
+                        _btnRenov.style.borderColor   = 'rgba(239,68,68,.5)';
+                        _btnRenov.style.color         = '#f87171';
+                    }
+                }
             }
             _dataEl.style.color = _perCor;
             if (_blocoPer) _blocoPer.style.background = _perBg;
             _badgeEl.style.borderColor = _brd;
             _badgeEl.title = _title;
             _badgeEl.style.display = 'flex';
-            const _btnRenov = document.getElementById('btn-renovar-licenca');
-            if (_btnRenov) {
-                _btnRenov.style.display = 'flex';
-                if (_dias <= 7) {
-                    _btnRenov.style.background    = 'rgba(239,68,68,.15)';
-                    _btnRenov.style.borderColor   = 'rgba(239,68,68,.5)';
-                    _btnRenov.style.color         = '#f87171';
-                }
-            }
         }
     }
 
