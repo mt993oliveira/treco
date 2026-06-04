@@ -143,6 +143,31 @@
 
         .tabela-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
+        /* Abas de Clubes */
+        .clube-tab { cursor:pointer; padding:7px 16px; border-radius:7px; font-size:13px; font-weight:700;
+            background:#1e293b; border:1px solid #334155; color:#64748b; transition:all .15s; }
+        .clube-tab.ativo { background:#7c3aed; border-color:#7c3aed; color:#fff; }
+        .clube-tab:hover:not(.ativo) { background:#334155; color:#94a3b8; }
+        .flex-row { display:flex; }
+
+        /* Cards de ranking */
+        .clube-card { background:#0f172a; border:1px solid #1e293b; border-radius:10px;
+            padding:14px; cursor:pointer; transition:all .15s; }
+        .clube-card:hover { border-color:#334155; background:#111827; transform:translateY(-1px); }
+
+        /* Stat badge comparador */
+        .stat-badge { display:inline-block; padding:2px 10px; border-radius:5px;
+            font-size:13px; font-weight:800; }
+        .stat-badge.verde  { background:#14532d; color:#4ade80; }
+        .stat-badge.amarelo{ background:#78350f; color:#fbbf24; }
+        .stat-badge.verm   { background:#3b0a0a; color:#f87171; }
+        .stat-badge.neutro { background:#1e293b; color:#94a3b8; }
+
+        /* Destaques */
+        .destaque-row { padding:10px 14px; border-bottom:1px solid #0d1421;
+            font-size:13px; color:#94a3b8; }
+        .destaque-row:last-child { border-bottom:none; }
+
         #tt { position: fixed; background: #1e293b; border: 1px solid #334155; border-radius: 6px;
             padding: 7px 10px; font-size: 11px; z-index: 300; pointer-events: none;
             white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.6); display: none; }
@@ -2034,31 +2059,88 @@
 <!-- ========== VIEW: CLUBES ========== -->
 <div id="view-clubes-content" style="display:none;padding:12px 16px">
 
-    <!-- Cabeçalho Clubes -->
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-        <span style="font-size:10px;font-weight:700;color:#334155;letter-spacing:.07em">⚽ FUTEBOL VIRTUAL</span>
-        <span style="font-size:9px;color:#1e3a5f">Copa do Mundo · Euro Cup · Premier League · Express Cup · Super Liga Sul-Americana</span>
-        <input id="clubes-busca" type="text" placeholder="Buscar time..." oninput="filtrarClubes()"
-            style="margin-left:auto;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:4px 10px;font-size:11px;width:160px;outline:none">
+    <!-- Abas -->
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <button id="clube-tab-ranking"   onclick="_clubeSetTab('ranking')"   class="clube-tab ativo">🏆 Ranking</button>
+        <button id="clube-tab-ficha"     onclick="_clubeSetTab('ficha')"     class="clube-tab">👤 Ficha</button>
+        <button id="clube-tab-comp"      onclick="_clubeSetTab('comp')"      class="clube-tab">⚔ Comparador</button>
+        <!-- Filtros de ranking -->
+        <div id="clubes-ranking-filtros" style="display:flex;gap:6px;align-items:center;margin-left:auto;flex-wrap:wrap">
+            <select id="clubes-rank-liga" onchange="renderRankingClubes()"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 8px;height:28px;outline:none">
+                <option value="">Todas as ligas</option>
+                <option value="World Cup">Copa do Mundo</option>
+                <option value="Euro Cup">Euro Cup</option>
+                <option value="Premiership">Premier League</option>
+                <option value="Express Cup">Express Cup</option>
+                <option value="Super Liga Sul-Americana">Super Liga</option>
+            </select>
+            <select id="clubes-rank-order" onchange="renderRankingClubes()"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 8px;height:28px;outline:none">
+                <option value="jogos">Mais jogos</option>
+                <option value="over25">% Over 2.5</option>
+                <option value="gols">Média gols</option>
+                <option value="vit">% Vitórias</option>
+                <option value="btts">% Ambas Marcam</option>
+            </select>
+            <input id="clubes-busca" type="text" placeholder="Buscar..." oninput="filtrarClubes()"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:3px 10px;font-size:11px;width:120px;outline:none;height:28px">
+        </div>
+        <!-- Busca ficha -->
+        <div id="clubes-ficha-filtros" style="display:none;gap:6px;align-items:center;margin-left:auto">
+            <input id="clubes-busca-ficha" type="text" placeholder="Buscar time..." oninput="filtrarClubes()"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:3px 10px;font-size:11px;width:160px;outline:none;height:28px">
+        </div>
     </div>
 
-    <div style="display:flex;gap:12px;align-items:flex-start">
+    <!-- RANKING DE CARDS -->
+    <div id="clubes-ranking-content">
+        <div id="clubes-destaques"></div>
+        <div id="clubes-ranking-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px"></div>
+    </div>
 
-        <!-- LISTA DE TIMES -->
+    <!-- FICHA (lista + detalhe) -->
+    <div id="clubes-ficha-content" style="display:none;gap:12px;align-items:flex-start" class="flex-row">
         <div style="width:210px;flex-shrink:0;background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
-            <div style="padding:7px 10px;background:#0c1220;font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">TIMES — clique para detalhar</div>
-            <div id="clubes-lista" style="overflow-y:auto;max-height:600px"></div>
+            <div style="padding:7px 10px;background:#0c1220;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em">TIMES — clique para detalhar</div>
+            <div id="clubes-lista" style="overflow-y:auto;max-height:620px"></div>
         </div>
-
-        <!-- DETALHE DO TIME -->
         <div style="flex:1;min-width:0" id="clubes-detalhe">
             <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:24px;text-align:center;color:#334155">
                 <div style="font-size:28px;margin-bottom:8px">⚽</div>
-                <div style="font-size:12px">Selecione um time para ver o histórico e próximos jogos</div>
+                <div style="font-size:13px">Selecione um time para ver a ficha completa</div>
             </div>
         </div>
-
     </div>
+
+    <!-- COMPARADOR -->
+    <div id="clubes-comp-content" style="display:none">
+        <!-- Seletores -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+            <div style="flex:1;min-width:140px">
+                <div style="font-size:10px;color:#475569;font-weight:700;margin-bottom:4px">TIME A</div>
+                <select id="comp-sel-a" onchange="_compAtualizar()"
+                    style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:6px 10px;font-size:13px;font-weight:700;outline:none">
+                    <option value="">— Selecione —</option>
+                </select>
+            </div>
+            <div style="font-size:20px;color:#334155;font-weight:900;padding-top:18px">×</div>
+            <div style="flex:1;min-width:140px">
+                <div style="font-size:10px;color:#475569;font-weight:700;margin-bottom:4px">TIME B</div>
+                <select id="comp-sel-b" onchange="_compAtualizar()"
+                    style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:6px 10px;font-size:13px;font-weight:700;outline:none">
+                    <option value="">— Selecione —</option>
+                </select>
+            </div>
+        </div>
+        <div id="clubes-comp-resultado">
+            <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:32px;text-align:center;color:#334155">
+                <div style="font-size:32px;margin-bottom:8px">⚔</div>
+                <div style="font-size:13px">Selecione dois times para ver o comparativo H2H</div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- ========== VIEW: DIAGNÓSTICO ========== -->
@@ -7459,7 +7541,7 @@ function abrirModalLigaResultados() {
 // CLUBES — Histórico por time + próximos jogos
 // ============================================================
 
-let S_clubes = { busca: '', timeSel: null, proximosEvts: [], nPartidas: 10 };
+let S_clubes = { busca: '', timeSel: null, proximosEvts: [], nPartidas: 10, tab: 'ranking', compN: 20 };
 
 // Mapeamento nome do time → código ISO da bandeira (flagcdn.com)
 const CLUBES_FLAG_MAP = {
@@ -7551,13 +7633,17 @@ function buildTimesMap(liga) {
 }
 
 function renderClubes() {
-    renderListaClubes();
-    if (S_clubes.timeSel) renderDetalheClube(S_clubes.timeSel);
+    _clubeSetTab(S_clubes.tab || 'ranking');
 }
 
 function filtrarClubes() {
-    S_clubes.busca = document.getElementById('clubes-busca').value.toLowerCase();
-    renderListaClubes();
+    if (S_clubes.tab === 'ficha') {
+        S_clubes.busca = (document.getElementById('clubes-busca-ficha')?.value || '').toLowerCase();
+        renderListaClubes();
+    } else {
+        S_clubes.busca = (document.getElementById('clubes-busca')?.value || '').toLowerCase();
+        renderRankingClubes();
+    }
 }
 
 function renderListaClubes() {
@@ -7778,8 +7864,7 @@ async function renderDetalheClube(nomeTime) {
         </div>`;
     }
 
-    c.innerHTML = `
-    <!-- Stats principais -->
+    c.innerHTML = `<!-- Stats principais -->
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
         <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;flex:2;min-width:240px">
             <!-- Cabeçalho com bandeira -->
@@ -7857,6 +7942,357 @@ async function renderDetalheClube(nomeTime) {
                 <tbody>${listaPartidas || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#334155;font-size:12px">Sem partidas registradas</td></tr>'}</tbody>
             </table>
         </div>
+    </div>`;
+}
+
+// ============================================================
+// ABAS DA VIEW CLUBES
+// ============================================================
+
+function _clubeSetTab(tab) {
+    S_clubes.tab = tab;
+    ['ranking','ficha','comp'].forEach(t => {
+        const content = document.getElementById('clubes-' + t + '-content');
+        const btn     = document.getElementById('clube-tab-' + t);
+        if (content) content.style.display = t === tab ? (t === 'ficha' ? 'flex' : '') : 'none';
+        if (btn)     btn.classList.toggle('ativo', t === tab);
+    });
+    const rankF = document.getElementById('clubes-ranking-filtros');
+    const fichaF = document.getElementById('clubes-ficha-filtros');
+    if (rankF)  rankF.style.display  = tab === 'ranking' ? 'flex' : 'none';
+    if (fichaF) fichaF.style.display = tab === 'ficha'   ? 'flex' : 'none';
+    if (tab === 'ranking') renderRankingClubes();
+    else if (tab === 'ficha') { renderListaClubes(); if (S_clubes.timeSel) renderDetalheClube(S_clubes.timeSel); }
+    else if (tab === 'comp')  _compPopularSelects();
+}
+
+function _clubeAbrirFicha(nome) {
+    _clubeSetTab('ficha');
+    renderDetalheClube(nome);
+}
+
+// ============================================================
+// RANKING DE CARDS
+// ============================================================
+
+function renderRankingClubes() {
+    const liga  = document.getElementById('clubes-rank-liga')?.value  || '';
+    const order = document.getElementById('clubes-rank-order')?.value || 'jogos';
+    const busca = S_clubes.busca || '';
+
+    const map = buildTimesMap(liga);
+    let lista = [...map.values()].filter(t => t.jogos >= 2);
+    if (busca) lista = lista.filter(t => t.nome.toLowerCase().includes(busca));
+
+    lista.forEach(t => {
+        t.pct_vit        = t.jogos ? +(t.vit / t.jogos * 100).toFixed(1) : 0;
+        t.media_tot_gols = t.jogos ? +((t.gm + t.gs) / t.jogos).toFixed(2) : 0;
+        const over25     = t.partidas.filter(p => (p.gol_casa||0) + (p.gol_fora||0) >= 3).length;
+        t.pct_over25     = t.partidas.length ? +(over25 / t.partidas.length * 100).toFixed(0) : 0;
+        const btts       = t.partidas.filter(p => (p.gol_casa||0) > 0 && (p.gol_fora||0) > 0).length;
+        t.pct_btts       = t.partidas.length ? +(btts / t.partidas.length * 100).toFixed(0) : 0;
+    });
+
+    if (order === 'over25')    lista.sort((a,b) => b.pct_over25 - a.pct_over25);
+    else if (order === 'gols') lista.sort((a,b) => b.media_tot_gols - a.media_tot_gols);
+    else if (order === 'vit')  lista.sort((a,b) => b.pct_vit - a.pct_vit);
+    else if (order === 'btts') lista.sort((a,b) => b.pct_btts - a.pct_btts);
+    else                       lista.sort((a,b) => b.jogos - a.jogos);
+
+    const destC = document.getElementById('clubes-destaques');
+    if (destC) destC.innerHTML = _renderDestaques();
+
+    const grid = document.getElementById('clubes-ranking-grid');
+    if (!lista.length) {
+        grid.innerHTML = `<div style="padding:24px;color:#334155;text-align:center;grid-column:1/-1">Sem dados suficientes</div>`;
+        return;
+    }
+
+    grid.innerHTML = lista.map((t, i) => {
+        const cor  = t.pct_vit >= 55 ? '#4ade80' : t.pct_vit >= 40 ? '#fbbf24' : '#f87171';
+        const corO = t.pct_over25 >= 60 ? '#4ade80' : t.pct_over25 >= 45 ? '#fbbf24' : '#f87171';
+        const forma = t.forma.slice(-10).map(f => {
+            const bg = f.r==='V'?'#14532d':f.r==='E'?'#1e1b4b':'#3b0a0a';
+            const tx = f.r==='V'?'#4ade80':f.r==='E'?'#a5b4fc':'#f87171';
+            return `<span style="display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:2px;font-size:9px;font-weight:800;background:${bg};color:${tx}">${f.r}</span>`;
+        }).join('');
+        return `<div class="clube-card" onclick="_clubeAbrirFicha('${t.nome.replace(/'/g,"\\'")}')">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                ${_getClubeFlag(t.nome, 36, 27)}
+                <div style="min-width:0;flex:1">
+                    <div style="font-size:13px;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i+1}. ${t.nome}</div>
+                    <div style="font-size:10px;color:#475569">${t.jogos} jogos</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:20px;font-weight:900;color:${cor};line-height:1">${t.pct_vit}%</div>
+                    <div style="font-size:9px;color:#475569">vitórias</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">
+                <div style="background:#0c1220;border-radius:5px;padding:5px;text-align:center">
+                    <div style="font-size:14px;font-weight:800;color:${corO}">${t.pct_over25}%</div>
+                    <div style="font-size:9px;color:#475569">Over 2.5</div>
+                </div>
+                <div style="background:#0c1220;border-radius:5px;padding:5px;text-align:center">
+                    <div style="font-size:14px;font-weight:800;color:#60a5fa">${t.media_tot_gols}</div>
+                    <div style="font-size:9px;color:#475569">Gols/jogo</div>
+                </div>
+                <div style="background:#0c1220;border-radius:5px;padding:5px;text-align:center">
+                    <div style="font-size:14px;font-weight:800;color:#a78bfa">${t.pct_btts}%</div>
+                    <div style="font-size:9px;color:#475569">BTTS</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:2px;flex-wrap:wrap">${forma || '<span style="color:#334155;font-size:9px">Sem forma</span>'}</div>
+        </div>`;
+    }).join('');
+}
+
+// ============================================================
+// DESTAQUES — ÚLTIMAS 24H
+// ============================================================
+
+function _renderDestaques() {
+    const corte = Date.now() - 24 * 3600 * 1000;
+    const recente = S.todasPartidas.filter(p => p.data_partida && new Date(p.data_partida).getTime() >= corte);
+    if (recente.length < 5) return '';
+
+    const tMap = new Map();
+    recente.forEach(p => {
+        [p.time_casa, p.time_fora].forEach((nome, idx) => {
+            if (!nome) return;
+            if (!tMap.has(nome)) tMap.set(nome, { nome, jogos:0, vit:0, under25:0, under35:0, btts_nao:0, casa_nao:0, vis_nao:0, empate_gols:0 });
+            const s   = tMap.get(nome);
+            const gc  = p.gol_casa||0, gf = p.gol_fora||0, tot = gc+gf;
+            const isC = idx === 0;
+            s.jogos++;
+            if (isC ? p.resultado==='CASA' : p.resultado==='FORA') s.vit++;
+            if (tot < 3) s.under25++;
+            if (tot < 4) s.under35++;
+            if (!(gc > 0 && gf > 0)) s.btts_nao++;
+            if (gc === 0) s.casa_nao++;
+            if (gf === 0) s.vis_nao++;
+            if (p.resultado === 'EMPATE' && tot >= 2 && tot <= 4) s.empate_gols++;
+        });
+    });
+
+    const times = [...tMap.values()].filter(t => t.jogos >= 3);
+    if (!times.length) return '';
+
+    const mercados = [
+        { nome: 'Venceu FT',                pct: t => t.vit        / t.jogos },
+        { nome: 'Under 3.5',                pct: t => t.under35    / t.jogos },
+        { nome: 'Ambas não marcam',         pct: t => t.btts_nao   / t.jogos },
+        { nome: 'Under 2.5',                pct: t => t.under25    / t.jogos },
+        { nome: 'Time Casa Não Marca',      pct: t => t.casa_nao   / t.jogos },
+        { nome: 'Time Visitante Não Marca', pct: t => t.vis_nao    / t.jogos },
+        { nome: 'Empates com Gols',         pct: t => t.empate_gols/ t.jogos },
+    ];
+
+    const linhas = [];
+    mercados.forEach(m => {
+        [...times].sort((a,b) => m.pct(b)-m.pct(a)).slice(0,3).forEach((t,i) => {
+            if (m.pct(t) < 0.4) return;
+            linhas.push(`<div class="destaque-row">
+                ⭐ <b style="color:#e2e8f0">${t.nome}</b>
+                <span style="color:#64748b"> está em ${i+1}º no mercado</span>
+                <b style="color:#fbbf24"> ${m.nome}</b>
+                <span style="color:#64748b"> nas últimas 24 horas.</span> ⭐
+            </div>`);
+        });
+    });
+
+    if (!linhas.length) return '';
+    return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:14px">
+        <div style="padding:8px 14px;background:#0c1220;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.06em">⭐ DESTAQUES — ÚLTIMAS 24 HORAS</div>
+        ${linhas.join('')}
+    </div>`;
+}
+
+// ============================================================
+// COMPARADOR H2H
+// ============================================================
+
+function _compPopularSelects() {
+    const map   = buildTimesMap(null);
+    const times = [...map.values()].sort((a,b) => b.jogos - a.jogos).map(t => t.nome);
+    ['comp-sel-a','comp-sel-b'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">— Selecione —</option>' +
+            times.map(n => `<option value="${n}"${n===cur?' selected':''}>${n}</option>`).join('');
+    });
+    if (document.getElementById('comp-sel-a')?.value && document.getElementById('comp-sel-b')?.value) {
+        _compAtualizar();
+    }
+}
+
+function _compAtualizar() {
+    const nInput = document.getElementById('comp-n-input');
+    if (nInput) S_clubes.compN = Math.max(5, Math.min(500, parseInt(nInput.value)||20));
+    const nomeA = document.getElementById('comp-sel-a')?.value;
+    const nomeB = document.getElementById('comp-sel-b')?.value;
+    const el    = document.getElementById('clubes-comp-resultado');
+    if (!el) return;
+    if (!nomeA || !nomeB) {
+        el.innerHTML = `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:32px;text-align:center;color:#334155">
+            <div style="font-size:32px;margin-bottom:8px">⚔</div>
+            <div style="font-size:13px">Selecione dois times para ver o comparativo H2H</div></div>`;
+        return;
+    }
+    if (nomeA === nomeB) {
+        el.innerHTML = `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:32px;text-align:center;color:#475569;font-size:13px">Selecione dois times diferentes.</div>`;
+        return;
+    }
+    _compRender(nomeA, nomeB);
+}
+
+function _compRender(nomeA, nomeB) {
+    const el = document.getElementById('clubes-comp-resultado');
+
+    const h2hTodos = S.todasPartidas.filter(p =>
+        (p.time_casa === nomeA && p.time_fora === nomeB) ||
+        (p.time_casa === nomeB && p.time_fora === nomeA)
+    ).sort((a,b) => new Date(b.data_partida) - new Date(a.data_partida)).slice(0, S_clubes.compN);
+
+    const h2hA_casa = h2hTodos.filter(p => p.time_casa === nomeA);
+
+    if (!h2hTodos.length) {
+        el.innerHTML = `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:32px;text-align:center;color:#475569;font-size:13px">
+            Sem jogos diretos encontrados entre <b style="color:#e2e8f0">${nomeA}</b> e <b style="color:#e2e8f0">${nomeB}</b>.</div>`;
+        return;
+    }
+
+    const flagA = _getClubeFlag(nomeA, 32, 24);
+    const flagB = _getClubeFlag(nomeB, 32, 24);
+
+    el.innerHTML = `
+        <div style="text-align:center;margin-bottom:16px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px">
+                ${flagA}
+                <span style="font-size:18px;font-weight:800;color:#e2e8f0">${nomeA}</span>
+                <span style="font-size:20px;color:#334155;font-weight:900">×</span>
+                <span style="font-size:18px;font-weight:800;color:#e2e8f0">${nomeB}</span>
+                ${flagB}
+            </div>
+            <div style="font-size:20px;font-weight:700;color:#94a3b8">Confrontos Diretos</div>
+            <div style="font-size:11px;color:#475569;margin-top:4px">${h2hTodos.length} jogos analisados</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:14px">
+            <span style="font-size:11px;color:#475569">Últimos:</span>
+            <input id="comp-n-input" type="number" value="${S_clubes.compN}" min="5" max="500"
+                style="width:64px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:4px 8px;font-size:12px;text-align:center;outline:none">
+            <button onclick="_compAtualizar()" style="background:#7c3aed;border:none;color:#fff;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">Filtrar</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            ${_compColuna(h2hTodos, nomeA, nomeB, 'Status Geral')}
+            ${h2hA_casa.length
+                ? _compColuna(h2hA_casa, nomeA, nomeB, 'Status Mandante — ' + nomeA.split(' ')[0])
+                : '<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:24px;text-align:center;color:#334155;font-size:12px">Sem jogos como mandante</div>'}
+        </div>`;
+}
+
+function _compColuna(jogos, nomeA, nomeB, titulo) {
+    const n = jogos.length;
+    if (!n) return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:24px;text-align:center;color:#334155;font-size:12px">Sem dados</div>`;
+
+    const vitA = jogos.filter(p => p.time_casa===nomeA ? p.resultado==='CASA' : p.resultado==='FORA').length;
+    const emp  = jogos.filter(p => p.resultado==='EMPATE').length;
+    const vitB = n - vitA - emp;
+
+    // Placares mais frequentes (perspectiva de A)
+    const scoreMap = new Map();
+    jogos.forEach(p => {
+        const gc = p.gol_casa||0, gf = p.gol_fora||0;
+        const key = p.time_casa === nomeA ? `${gc}-${gf}` : `${gf}-${gc}`;
+        scoreMap.set(key, (scoreMap.get(key)||0)+1);
+    });
+    const topScores = [...scoreMap.entries()].sort((a,b) => b[1]-a[1]).slice(0,4);
+
+    // Distribuição gols totais
+    const goalDist = [0,1,2,3,4].map(g => ({ g, c: jogos.filter(p => (p.gol_casa||0)+(p.gol_fora||0) === g).length }));
+    const g5plus   = jogos.filter(p => (p.gol_casa||0)+(p.gol_fora||0) >= 5).length;
+
+    // BTTS
+    const bttsSim = jogos.filter(p => (p.gol_casa||0)>0 && (p.gol_fora||0)>0).length;
+    const bttsNao = n - bttsSim;
+
+    // Gols por time (A vs B)
+    const gA = g => jogos.filter(p => { const v = p.time_casa===nomeA?(p.gol_casa||0):(p.gol_fora||0); return v===g; }).length;
+    const gB = g => jogos.filter(p => { const v = p.time_casa===nomeB?(p.gol_casa||0):(p.gol_fora||0); return v===g; }).length;
+    const goalRowsA = [0,1,2,3,4].map(g => ({ g, cA: gA(g), cB: gB(g) }));
+
+    // Margem de vitória
+    const margem = (nV, nL, m) => jogos.filter(p => {
+        const ga = p.time_casa===nV?(p.gol_casa||0):(p.gol_fora||0);
+        const gb = p.time_casa===nL?(p.gol_casa||0):(p.gol_fora||0);
+        return m === '3+' ? ga-gb >= 3 : ga-gb === m;
+    }).length;
+
+    const pct = c => n ? (c/n*100).toFixed(2)+'%' : '0.00%';
+    const sec = txt => `<div style="padding:6px 10px;background:#0c1220;font-size:10px;font-weight:700;color:#475569;letter-spacing:.05em;border-top:1px solid #1e293b">${txt}</div>`;
+    const row1 = (label, c) => `<tr>
+        <td style="padding:6px 10px;font-size:12px;color:#94a3b8">${label}</td>
+        <td style="padding:6px 10px;text-align:center;font-size:13px;font-weight:700;color:#e2e8f0">${c}</td>
+        <td style="padding:6px 10px;text-align:right;font-size:12px;color:#64748b">${pct(c)}</td>
+    </tr>`;
+    const row2 = (label, cA, cB) => `<tr>
+        <td style="padding:5px 8px;font-size:12px;color:#94a3b8">${label}</td>
+        <td style="padding:5px 8px;text-align:center;font-size:12px;font-weight:700;color:#60a5fa">${cA}</td>
+        <td style="padding:5px 8px;text-align:right;font-size:11px;color:#475569">${pct(cA)}</td>
+        <td style="padding:5px 8px;text-align:center;font-size:12px;font-weight:700;color:#f59e0b">${cB}</td>
+        <td style="padding:5px 8px;text-align:right;font-size:11px;color:#475569">${pct(cB)}</td>
+    </tr>`;
+
+    const nA = nomeA.split(' ')[0], nB = nomeB.split(' ')[0];
+
+    return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+        <div style="padding:8px 12px;background:#0c1630;font-size:11px;font-weight:700;color:#7c3aed;letter-spacing:.05em">${titulo}</div>
+        <div style="padding:10px 12px;display:flex;justify-content:center;gap:24px;border-bottom:1px solid #1e293b">
+            <div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#4ade80">${vitA}</div><div style="font-size:10px;color:#475569">${nA}</div></div>
+            <div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#a5b4fc">${emp}</div><div style="font-size:10px;color:#475569">Empates</div></div>
+            <div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#f87171">${vitB}</div><div style="font-size:10px;color:#475569">${nB}</div></div>
+        </div>
+        ${sec('Placares mais frequentes')}
+        <table style="width:100%;border-collapse:collapse">
+            ${topScores.map(([sc,c]) => {
+                const [ga,gb] = sc.split('-').map(Number);
+                const lb = ga > gb ? `${nA} ${ga}×${gb}` : ga < gb ? `${nB} ${gb}×${ga}` : `Empate ${ga}×${gb}`;
+                return row1(lb, c);
+            }).join('')}
+        </table>
+        ${sec('Gols totais na partida')}
+        <table style="width:100%;border-collapse:collapse">
+            ${goalDist.map(({g,c}) => row1(`${g} GOLS`, c)).join('')}
+            ${g5plus ? row1('5+ GOLS', g5plus) : ''}
+        </table>
+        ${sec('Ambas Marcam')}
+        <table style="width:100%;border-collapse:collapse">
+            ${row1('SIM', bttsSim)}${row1('NÃO', bttsNao)}
+        </table>
+        ${sec(`Gols marcados — ${nA} (esq) / ${nB} (dir)`)}
+        <table style="width:100%;border-collapse:collapse">
+            <tr style="background:#0c1220">
+                <th style="padding:4px 8px;font-size:10px;color:#475569;font-weight:600">Gols</th>
+                <th style="padding:4px 8px;text-align:center;font-size:10px;color:#60a5fa;font-weight:700">${nA}</th>
+                <th style="padding:4px 8px;text-align:right;font-size:9px;color:#475569">%</th>
+                <th style="padding:4px 8px;text-align:center;font-size:10px;color:#f59e0b;font-weight:700">${nB}</th>
+                <th style="padding:4px 8px;text-align:right;font-size:9px;color:#475569">%</th>
+            </tr>
+            ${goalRowsA.map(({g,cA,cB}) => row2(`${g} GOLS`, cA, cB)).join('')}
+        </table>
+        ${sec('Margem de vitória')}
+        <table style="width:100%;border-collapse:collapse">
+            <tr style="background:#0c1220">
+                <th style="padding:4px 8px;font-size:10px;color:#475569;font-weight:600">Margem</th>
+                <th style="padding:4px 8px;text-align:center;font-size:10px;color:#60a5fa;font-weight:700">${nA}</th>
+                <th style="padding:4px 8px;text-align:right;font-size:9px;color:#475569">%</th>
+                <th style="padding:4px 8px;text-align:center;font-size:10px;color:#f59e0b;font-weight:700">${nB}</th>
+                <th style="padding:4px 8px;text-align:right;font-size:9px;color:#475569">%</th>
+            </tr>
+            ${[1,2].map(m => row2(`${m} gol`, margem(nomeA,nomeB,m), margem(nomeB,nomeA,m))).join('')}
+            ${row2('3+ gols', margem(nomeA,nomeB,'3+'), margem(nomeB,nomeA,'3+'))}
+        </table>
     </div>`;
 }
 
