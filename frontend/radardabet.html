@@ -7773,12 +7773,12 @@ async function renderDetalheClube(nomeTime) {
                     ${flagOpn}
                     <span style="font-size:15px;font-weight:800;color:#e2e8f0">${opn}</span>
                 </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <span style="font-size:11px;color:#475569">${data}</span>
-                    <span style="font-size:10px;color:#334155">•</span>
-                    <span style="font-size:11px;color:${isC?'#60a5fa':'#f59e0b'};font-weight:700">${lado}</span>
-                    <span style="font-size:10px;color:#334155">•</span>
-                    <span style="font-size:10px;color:#334155">${(p.liga||'').replace(/virtual/gi,'').trim()}</span>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+                    <span style="font-size:13px;color:#64748b;font-weight:500">${data}</span>
+                    <span style="font-size:12px;color:#334155">•</span>
+                    <span style="font-size:13px;color:${isC?'#60a5fa':'#f59e0b'};font-weight:800">${lado}</span>
+                    <span style="font-size:12px;color:#334155">•</span>
+                    <span style="font-size:13px;color:#475569;font-weight:500">${(p.liga||'').replace(/virtual/gi,'').trim()}</span>
                 </div>
             </td>
             <!-- Placar -->
