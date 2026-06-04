@@ -7663,13 +7663,36 @@ async function renderDetalheClube(nomeTime) {
         const lado   = isC ? 'Casa' : 'Fora';
         const _pd = p.data_partida ? new Date(p.data_partida) : null;
         const data   = _pd ? `${pad2(_pd.getUTCDate())}/${pad2(_pd.getUTCMonth()+1)} ${pad2(_pd.getUTCHours())}:${pad2(_pd.getUTCMinutes())}` : '';
-        return `<tr style="border-bottom:1px solid #0d1421">
-            <td style="padding:6px 10px;color:#475569;font-size:11px;white-space:nowrap">${data}</td>
-            <td style="padding:6px 10px;font-size:11px;color:#94a3b8">${lado}</td>
-            <td style="padding:6px 10px;font-size:12px;color:#e2e8f0">${nomeTime} <span style="color:#334155">×</span> ${opn}</td>
-            <td style="padding:6px 10px;font-weight:800;text-align:center;font-size:13px;color:#e2e8f0">${pl}</td>
-            <td style="padding:6px 10px;text-align:center"><span style="background:${corBg};color:${corRes};padding:2px 8px;border-radius:4px;font-size:12px;font-weight:800">${res}</span></td>
-            <td style="padding:6px 10px;font-size:11px;color:#475569">${(p.liga||'').replace(/virtual/gi,'').trim()}</td>
+        const flagTime = _getClubeFlag(nomeTime, 20, 15);
+        const flagOpn  = _getClubeFlag(opn, 20, 15);
+        return `<tr style="border-bottom:1px solid #0d1421;transition:background .1s"
+            onmouseover="this.style.background='#1e293b18'" onmouseout="this.style.background=''">
+            <!-- Resultado -->
+            <td style="padding:10px 12px;text-align:center;white-space:nowrap">
+                <span style="display:inline-block;width:32px;height:32px;line-height:32px;text-align:center;
+                    border-radius:6px;font-size:16px;font-weight:900;background:${corBg};color:${corRes}">${res}</span>
+            </td>
+            <!-- Confronto (destaque principal) -->
+            <td style="padding:10px 12px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                    ${flagTime}
+                    <span style="font-size:15px;font-weight:800;color:#e2e8f0">${nomeTime}</span>
+                    <span style="font-size:13px;font-weight:700;color:#475569;margin:0 2px">×</span>
+                    ${flagOpn}
+                    <span style="font-size:15px;font-weight:800;color:#e2e8f0">${opn}</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <span style="font-size:11px;color:#475569">${data}</span>
+                    <span style="font-size:10px;color:#334155">•</span>
+                    <span style="font-size:11px;color:${isC?'#60a5fa':'#f59e0b'};font-weight:700">${lado}</span>
+                    <span style="font-size:10px;color:#334155">•</span>
+                    <span style="font-size:10px;color:#334155">${(p.liga||'').replace(/virtual/gi,'').trim()}</span>
+                </div>
+            </td>
+            <!-- Placar -->
+            <td style="padding:10px 16px;text-align:center;white-space:nowrap">
+                <span style="font-size:22px;font-weight:900;color:#e2e8f0;letter-spacing:2px">${pl}</span>
+            </td>
         </tr>`;
     }).join('');
 
@@ -7827,12 +7850,9 @@ async function renderDetalheClube(nomeTime) {
         <div style="overflow-x:auto">
             <table style="width:100%;border-collapse:collapse">
                 <thead><tr style="background:#0c1220">
-                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:left">Data</th>
-                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:left">Lado</th>
+                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:center">Res</th>
                     <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:left">Confronto</th>
                     <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:center">Placar</th>
-                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:center">Res</th>
-                    <th style="padding:6px 10px;color:#475569;font-size:11px;font-weight:700;text-align:left">Liga</th>
                 </tr></thead>
                 <tbody>${listaPartidas || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#334155;font-size:12px">Sem partidas registradas</td></tr>'}</tbody>
             </table>
