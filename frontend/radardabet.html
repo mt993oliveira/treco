@@ -2689,12 +2689,12 @@ async function carregarConfigLigas() {
         if (cfg.default_janela_recente)  S.fa.nRecente = parseInt(cfg.default_janela_recente) || 20;
         if (cfg.default_so_value_bets)   S.fa.soValueBets = cfg.default_so_value_bets === 'true';
 
-        // Botões padrão da grade — localStorage tem prioridade sobre config do sistema
-        // Permite que a preferência do usuário persista entre atualizações automáticas
+        // Botões padrão da grade — config do sistema tem prioridade sobre localStorage
+        // Se o MASTER definiu um valor, todos os usuários carregam com esse valor
         const _lsView = (k, cfgVal, def) => {
+            if (cfgVal !== undefined) return cfgVal === 'true';
             const ls = localStorage.getItem('rdbt_' + k);
             if (ls !== null) return ls === 'true';
-            if (cfgVal !== undefined) return cfgVal === 'true';
             return def;
         };
         S.showProximos     = _lsView('showProximos', cfg.default_proximos_jogos, false);
@@ -2712,11 +2712,14 @@ async function carregarConfigLigas() {
         if (_sb('btn-exibir-ht'))       _sb('btn-exibir-ht').classList.toggle('ativo',       S.showHT);
         if (_sb('btn-mosaico-pct'))     _sb('btn-mosaico-pct').classList.toggle('ativo',     S._mosaicoShowPct);
         if (_sb('btn-mosaico-gols'))    _sb('btn-mosaico-gols').classList.toggle('ativo',    S._mosaicoShowGols);
-        // Legendas: config do sistema define o padrão; localStorage (preferência do usuário) sobrescreve
+        // Legendas: config do sistema tem prioridade; localStorage só entra se MASTER não definiu valor
         // showLegendas: true = suprimido (ativo), false = visível (padrão)
-        if (cfg.default_legendas !== undefined) S.showLegendas = cfg.default_legendas === 'true';
-        const _lsLeg = localStorage.getItem('showLegendas');
-        if (_lsLeg !== null) S.showLegendas = _lsLeg === '1';
+        if (cfg.default_legendas !== undefined) {
+            S.showLegendas = cfg.default_legendas === 'true';
+        } else {
+            const _lsLeg = localStorage.getItem('showLegendas');
+            if (_lsLeg !== null) S.showLegendas = _lsLeg === '1';
+        }
         if (_sb('btn-legendas')) _sb('btn-legendas').classList.toggle('ativo', S.showLegendas);
 
         // Timeout de sessão e auto-refresh
