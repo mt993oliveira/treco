@@ -8006,7 +8006,7 @@ function renderRankingClubes() {
     else                       lista.sort((a,b) => b.jogos - a.jogos);
 
     const destC = document.getElementById('clubes-destaques');
-    if (destC) destC.innerHTML = _renderDestaques();
+    if (destC) destC.innerHTML = _renderDestaques(liga);
 
     const grid = document.getElementById('clubes-ranking-grid');
     if (!lista.length) {
@@ -8057,9 +8057,13 @@ function renderRankingClubes() {
 // DESTAQUES — ÚLTIMAS 24H
 // ============================================================
 
-function _renderDestaques() {
+function _renderDestaques(liga) {
     const corte = Date.now() - 24 * 3600 * 1000;
-    const recente = S.todasPartidas.filter(p => p.data_partida && new Date(p.data_partida).getTime() >= corte);
+    const recente = S.todasPartidas.filter(p =>
+        p.data_partida &&
+        new Date(p.data_partida).getTime() >= corte &&
+        (!liga || p.liga === liga)
+    );
     if (recente.length < 5) return '';
 
     const tMap = new Map();
@@ -8108,8 +8112,9 @@ function _renderDestaques() {
     });
 
     if (!linhas.length) return '';
+    const ligaLabel = liga ? ` — ${liga}` : '';
     return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:14px">
-        <div style="padding:8px 14px;background:#0c1220;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.06em">⭐ DESTAQUES — ÚLTIMAS 24 HORAS</div>
+        <div style="padding:8px 14px;background:#0c1220;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.06em">⭐ DESTAQUES — ÚLTIMAS 24 HORAS${ligaLabel}</div>
         ${linhas.join('')}
     </div>`;
 }
