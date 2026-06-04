@@ -2645,9 +2645,11 @@ const LIGA_CONFIG_CHAVE = {
 // Carrega quais ligas estão habilitadas na config do sistema
 async function carregarConfigLigas(_tentativa) {
     _tentativa = _tentativa || 1;
+    console.log(`[Config] tentativa ${_tentativa}/3 — buscando /api/bet365/admin/config`);
     try {
         const r    = await fetch('/api/bet365/admin/config');
         const data = await r.json();
+        console.log(`[Config] resposta:`, data.success ? `OK (${data.data?.length} itens)` : `FALHA — ${data.error || 'success=false'}`);
         if (!data.success) throw new Error('config: success=false');
 
         const cfg = {};
@@ -2979,12 +2981,16 @@ async function _aplicarConfigFrontend() {
             }
             if (c.header_subtitle_cor)     _subEl.style.color   = c.header_subtitle_cor;
         }
+        console.log('[Config] ✅ aplicada com sucesso — tema:', c.default_tema, '| subtitle:', c.header_subtitle_texto);
 
     } catch(e) {
+        console.warn(`[Config] erro tentativa ${_tentativa}:`, e.message);
         if (_tentativa < 3) {
+            console.log(`[Config] aguardando ${_tentativa * 2}s para retry...`);
             await new Promise(r => setTimeout(r, 2000 * _tentativa));
             return carregarConfigLigas(_tentativa + 1);
         }
+        console.error('[Config] falhou após 3 tentativas — usando padrões do HTML');
     }
 }
 
