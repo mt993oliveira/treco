@@ -198,6 +198,7 @@
             #sidebar-nav .vbtn-text { display: none; }
             #sidebar-nav .view-btn { justify-content: center; padding: 9px 0; }
             #sidebar-toggle { display: none; }
+            .theme-btn-nome { display: none; }
         }
 
 
@@ -752,7 +753,7 @@
                        background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
                        font-size:11px;font-weight:700;color:#94a3b8;transition:background .15s;white-space:nowrap"
                 onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
-                <span style="font-size:14px">🎨</span> Temas
+                <span style="font-size:14px">🎨</span><span class="theme-btn-nome"> Temas</span>
             </button>
             <div id="theme-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 6px);
                  background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 10px 8px;
@@ -11382,7 +11383,7 @@ function aplicarTema(id) {
     _atualizarCoresCharts(id);
     const tema = TEMAS.find(t => t.id === id);
     const btn = document.getElementById('theme-btn');
-    if (btn && tema) btn.innerHTML = `<span style="font-size:14px">🎨</span> ${tema.nome}`;
+    if (btn && tema) btn.innerHTML = `<span style="font-size:14px">🎨</span><span class="theme-btn-nome"> ${tema.nome}</span>`;
 }
 
 function toggleThemePicker() {
