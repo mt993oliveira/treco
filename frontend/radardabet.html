@@ -8158,43 +8158,43 @@ function _compRender(nomeA, nomeB) {
     const h2hA_casa = h2hTodos.filter(p => p.time_casa === nomeA);
 
     if (!h2hTodos.length) {
-        el.innerHTML = `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:32px;text-align:center;color:#475569;font-size:13px">
+        el.innerHTML = `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:40px;text-align:center;color:#475569;font-size:15px">
             Sem jogos diretos encontrados entre <b style="color:#e2e8f0">${nomeA}</b> e <b style="color:#e2e8f0">${nomeB}</b>.</div>`;
         return;
     }
 
-    const flagA = _getClubeFlag(nomeA, 32, 24);
-    const flagB = _getClubeFlag(nomeB, 32, 24);
+    const flagA = _getClubeFlag(nomeA, 48, 36);
+    const flagB = _getClubeFlag(nomeB, 48, 36);
 
     el.innerHTML = `
-        <div style="text-align:center;margin-bottom:16px">
-            <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px">
+        <div style="text-align:center;margin-bottom:20px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:8px">
                 ${flagA}
-                <span style="font-size:18px;font-weight:800;color:#e2e8f0">${nomeA}</span>
-                <span style="font-size:20px;color:#334155;font-weight:900">×</span>
-                <span style="font-size:18px;font-weight:800;color:#e2e8f0">${nomeB}</span>
+                <span style="font-size:22px;font-weight:800;color:#e2e8f0">${nomeA}</span>
+                <span style="font-size:24px;color:#334155;font-weight:900">×</span>
+                <span style="font-size:22px;font-weight:800;color:#e2e8f0">${nomeB}</span>
                 ${flagB}
             </div>
-            <div style="font-size:20px;font-weight:700;color:#94a3b8">Confrontos Diretos</div>
-            <div style="font-size:11px;color:#475569;margin-top:4px">${h2hTodos.length} jogos analisados</div>
+            <div style="font-size:22px;font-weight:700;color:#94a3b8;letter-spacing:.03em">Confrontos Diretos</div>
+            <div style="font-size:13px;color:#475569;margin-top:6px">${h2hTodos.length} jogos analisados</div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:14px">
-            <span style="font-size:11px;color:#475569">Últimos:</span>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:16px">
+            <span style="font-size:13px;color:#475569">Últimos:</span>
             <input id="comp-n-input" type="number" value="${S_clubes.compN}" min="5" max="500"
-                style="width:64px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:4px 8px;font-size:12px;text-align:center;outline:none">
-            <button onclick="_compAtualizar()" style="background:#7c3aed;border:none;color:#fff;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">Filtrar</button>
+                style="width:70px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:6px 10px;font-size:14px;text-align:center;outline:none">
+            <button onclick="_compAtualizar()" style="background:#7c3aed;border:none;color:#fff;border-radius:6px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">Filtrar</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
             ${_compColuna(h2hTodos, nomeA, nomeB, 'Status Geral')}
             ${h2hA_casa.length
                 ? _compColuna(h2hA_casa, nomeA, nomeB, 'Status Mandante — ' + nomeA.split(' ')[0])
-                : '<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:24px;text-align:center;color:#334155;font-size:12px">Sem jogos como mandante</div>'}
+                : '<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:32px;text-align:center;color:#334155;font-size:14px">Sem jogos como mandante</div>'}
         </div>`;
 }
 
 function _compColuna(jogos, nomeA, nomeB, titulo) {
     const n = jogos.length;
-    if (!n) return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:24px;text-align:center;color:#334155;font-size:12px">Sem dados</div>`;
+    if (!n) return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:32px;text-align:center;color:#334155;font-size:14px">Sem dados</div>`;
 
     const vitA = jogos.filter(p => p.time_casa===nomeA ? p.resultado==='CASA' : p.resultado==='FORA').length;
     const emp  = jogos.filter(p => p.resultado==='EMPATE').length;
@@ -8230,29 +8230,49 @@ function _compColuna(jogos, nomeA, nomeB, titulo) {
     }).length;
 
     const pct = c => n ? (c/n*100).toFixed(2)+'%' : '0.00%';
-    const sec = txt => `<div style="padding:6px 10px;background:#0c1220;font-size:10px;font-weight:700;color:#475569;letter-spacing:.05em;border-top:1px solid #1e293b">${txt}</div>`;
-    const row1 = (label, c) => `<tr>
-        <td style="padding:6px 10px;font-size:12px;color:#94a3b8">${label}</td>
-        <td style="padding:6px 10px;text-align:center;font-size:13px;font-weight:700;color:#e2e8f0">${c}</td>
-        <td style="padding:6px 10px;text-align:right;font-size:12px;color:#64748b">${pct(c)}</td>
+
+    // Cabeçalho de seção
+    const sec = txt => `<div style="padding:8px 14px;background:#0c1220;font-size:12px;font-weight:700;color:#64748b;letter-spacing:.06em;border-top:1px solid #1e293b;text-transform:uppercase">${txt}</div>`;
+
+    // Linha simples: label | count | %
+    const row1 = (label, c) => `<tr style="border-bottom:1px solid #080f1a">
+        <td style="padding:9px 14px;font-size:14px;color:#94a3b8;font-weight:500">${label}</td>
+        <td style="padding:9px 14px;text-align:center;font-size:18px;font-weight:900;color:#e2e8f0">${c}</td>
+        <td style="padding:9px 14px;text-align:right;font-size:14px;font-weight:700;color:#64748b">${pct(c)}</td>
     </tr>`;
-    const row2 = (label, cA, cB) => `<tr>
-        <td style="padding:5px 8px;font-size:12px;color:#94a3b8">${label}</td>
-        <td style="padding:5px 8px;text-align:center;font-size:12px;font-weight:700;color:#60a5fa">${cA}</td>
-        <td style="padding:5px 8px;text-align:right;font-size:11px;color:#475569">${pct(cA)}</td>
-        <td style="padding:5px 8px;text-align:center;font-size:12px;font-weight:700;color:#f59e0b">${cB}</td>
-        <td style="padding:5px 8px;text-align:right;font-size:11px;color:#475569">${pct(cB)}</td>
+
+    // Linha dupla: label | cA | %A | cB | %B
+    const row2 = (label, cA, cB) => `<tr style="border-bottom:1px solid #080f1a">
+        <td style="padding:9px 12px;font-size:14px;color:#94a3b8;font-weight:500">${label}</td>
+        <td style="padding:9px 12px;text-align:center;font-size:18px;font-weight:900;color:#60a5fa">${cA}</td>
+        <td style="padding:9px 12px;text-align:right;font-size:13px;font-weight:700;color:#3b82f680">${pct(cA)}</td>
+        <td style="padding:9px 12px;text-align:center;font-size:18px;font-weight:900;color:#f59e0b">${cB}</td>
+        <td style="padding:9px 12px;text-align:right;font-size:13px;font-weight:700;color:#f59e0b80">${pct(cB)}</td>
     </tr>`;
 
     const nA = nomeA.split(' ')[0], nB = nomeB.split(' ')[0];
 
-    return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
-        <div style="padding:8px 12px;background:#0c1630;font-size:11px;font-weight:700;color:#7c3aed;letter-spacing:.05em">${titulo}</div>
-        <div style="padding:10px 12px;display:flex;justify-content:center;gap:24px;border-bottom:1px solid #1e293b">
-            <div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#4ade80">${vitA}</div><div style="font-size:10px;color:#475569">${nA}</div></div>
-            <div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#a5b4fc">${emp}</div><div style="font-size:10px;color:#475569">Empates</div></div>
-            <div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#f87171">${vitB}</div><div style="font-size:10px;color:#475569">${nB}</div></div>
+    return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;overflow:hidden">
+
+        <!-- Título da coluna -->
+        <div style="padding:10px 16px;background:#0d1526;font-size:13px;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase">${titulo}</div>
+
+        <!-- Placar geral VED -->
+        <div style="padding:16px 14px;display:flex;justify-content:center;gap:32px;border-bottom:1px solid #1e293b;background:#0a1020">
+            <div style="text-align:center">
+                <div style="font-size:40px;font-weight:900;color:#4ade80;line-height:1">${vitA}</div>
+                <div style="font-size:12px;color:#4ade8099;font-weight:700;margin-top:4px">${nA}</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:40px;font-weight:900;color:#a5b4fc;line-height:1">${emp}</div>
+                <div style="font-size:12px;color:#a5b4fc99;font-weight:700;margin-top:4px">Empates</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:40px;font-weight:900;color:#f87171;line-height:1">${vitB}</div>
+                <div style="font-size:12px;color:#f8717199;font-weight:700;margin-top:4px">${nB}</div>
+            </div>
         </div>
+
         ${sec('Placares mais frequentes')}
         <table style="width:100%;border-collapse:collapse">
             ${topScores.map(([sc,c]) => {
@@ -8261,34 +8281,39 @@ function _compColuna(jogos, nomeA, nomeB, titulo) {
                 return row1(lb, c);
             }).join('')}
         </table>
+
         ${sec('Gols totais na partida')}
         <table style="width:100%;border-collapse:collapse">
             ${goalDist.map(({g,c}) => row1(`${g} GOLS`, c)).join('')}
             ${g5plus ? row1('5+ GOLS', g5plus) : ''}
         </table>
+
         ${sec('Ambas Marcam')}
         <table style="width:100%;border-collapse:collapse">
-            ${row1('SIM', bttsSim)}${row1('NÃO', bttsNao)}
+            ${row1('SIM', bttsSim)}
+            ${row1('NÃO', bttsNao)}
         </table>
-        ${sec(`Gols marcados — ${nA} (esq) / ${nB} (dir)`)}
+
+        ${sec(`Gols marcados — ${nA} / ${nB}`)}
         <table style="width:100%;border-collapse:collapse">
-            <tr style="background:#0c1220">
-                <th style="padding:4px 8px;font-size:10px;color:#475569;font-weight:600">Gols</th>
-                <th style="padding:4px 8px;text-align:center;font-size:10px;color:#60a5fa;font-weight:700">${nA}</th>
-                <th style="padding:4px 8px;text-align:right;font-size:9px;color:#475569">%</th>
-                <th style="padding:4px 8px;text-align:center;font-size:10px;color:#f59e0b;font-weight:700">${nB}</th>
-                <th style="padding:4px 8px;text-align:right;font-size:9px;color:#475569">%</th>
+            <tr style="background:#0a1020">
+                <th style="padding:7px 12px;font-size:12px;color:#475569;font-weight:600;text-align:left">Gols</th>
+                <th style="padding:7px 12px;text-align:center;font-size:13px;color:#60a5fa;font-weight:800">${nA}</th>
+                <th style="padding:7px 12px;text-align:right;font-size:11px;color:#3b82f6;font-weight:600">%</th>
+                <th style="padding:7px 12px;text-align:center;font-size:13px;color:#f59e0b;font-weight:800">${nB}</th>
+                <th style="padding:7px 12px;text-align:right;font-size:11px;color:#d97706;font-weight:600">%</th>
             </tr>
             ${goalRowsA.map(({g,cA,cB}) => row2(`${g} GOLS`, cA, cB)).join('')}
         </table>
+
         ${sec('Margem de vitória')}
         <table style="width:100%;border-collapse:collapse">
-            <tr style="background:#0c1220">
-                <th style="padding:4px 8px;font-size:10px;color:#475569;font-weight:600">Margem</th>
-                <th style="padding:4px 8px;text-align:center;font-size:10px;color:#60a5fa;font-weight:700">${nA}</th>
-                <th style="padding:4px 8px;text-align:right;font-size:9px;color:#475569">%</th>
-                <th style="padding:4px 8px;text-align:center;font-size:10px;color:#f59e0b;font-weight:700">${nB}</th>
-                <th style="padding:4px 8px;text-align:right;font-size:9px;color:#475569">%</th>
+            <tr style="background:#0a1020">
+                <th style="padding:7px 12px;font-size:12px;color:#475569;font-weight:600;text-align:left">Margem</th>
+                <th style="padding:7px 12px;text-align:center;font-size:13px;color:#60a5fa;font-weight:800">${nA}</th>
+                <th style="padding:7px 12px;text-align:right;font-size:11px;color:#3b82f6;font-weight:600">%</th>
+                <th style="padding:7px 12px;text-align:center;font-size:13px;color:#f59e0b;font-weight:800">${nB}</th>
+                <th style="padding:7px 12px;text-align:right;font-size:11px;color:#d97706;font-weight:600">%</th>
             </tr>
             ${[1,2].map(m => row2(`${m} gol`, margem(nomeA,nomeB,m), margem(nomeB,nomeA,m))).join('')}
             ${row2('3+ gols', margem(nomeA,nomeB,'3+'), margem(nomeB,nomeA,'3+'))}
