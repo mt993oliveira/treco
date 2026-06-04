@@ -2643,11 +2643,12 @@ const LIGA_CONFIG_CHAVE = {
 };
 
 // Carrega quais ligas estão habilitadas na config do sistema
-async function carregarConfigLigas() {
+async function carregarConfigLigas(_tentativa) {
+    _tentativa = _tentativa || 1;
     try {
         const r    = await fetch('/api/bet365/admin/config');
         const data = await r.json();
-        if (!data.success) return;
+        if (!data.success) throw new Error('config: success=false');
 
         const cfg = {};
         data.data.forEach(d => { cfg[d.chave] = d.valor; });
@@ -2979,7 +2980,12 @@ async function _aplicarConfigFrontend() {
             if (c.header_subtitle_cor)     _subEl.style.color   = c.header_subtitle_cor;
         }
 
-    } catch(e) {}
+    } catch(e) {
+        if (_tentativa < 3) {
+            await new Promise(r => setTimeout(r, 2000 * _tentativa));
+            return carregarConfigLigas(_tentativa + 1);
+        }
+    }
 }
 
 // Atualiza o <select> do diagnóstico com as ligas habilitadas
