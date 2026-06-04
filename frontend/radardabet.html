@@ -7633,6 +7633,12 @@ function buildTimesMap(liga) {
 }
 
 function renderClubes() {
+    if (!S.todasPartidas.length) {
+        const grid = document.getElementById('clubes-ranking-grid');
+        if (grid) grid.innerHTML = '<div style="padding:28px;color:#475569;text-align:center;grid-column:1/-1;font-size:13px">Carregando dados...</div>';
+        carregarHistorico().then(() => _clubeSetTab(S_clubes.tab || 'ranking'));
+        return;
+    }
     _clubeSetTab(S_clubes.tab || 'ranking');
 }
 
