@@ -141,7 +141,7 @@
         }
         .liga-alerta-ativa { animation:ligaAlertaBlink 0.7s ease-in-out infinite !important; }
 
-        .tabela-scroll { overflow-x: auto; }
+        .tabela-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
         #tt { position: fixed; background: #1e293b; border: 1px solid #334155; border-radius: 6px;
             padding: 7px 10px; font-size: 11px; z-index: 300; pointer-events: none;
@@ -5974,8 +5974,11 @@ function renderTabela() {
     const N = minuteSlots.length;
 
     // Auto-ajuste: célula ocupa exatamente a largura disponível dividida por N
+    // Em portrait mobile usa mínimo legível (25px) e deixa rolar horizontalmente
     const _horaW   = S._mosaicoHoraLarg || 22;
-    const _autoW   = Math.max(12, Math.floor((window.innerWidth - _horaW - 20) / N));
+    const _isMobile = window.innerWidth < 768;
+    const _minCelW  = _isMobile ? 25 : 12;
+    const _autoW   = Math.max(_minCelW, Math.floor((window.innerWidth - _horaW - 20) / N));
     const _celulaW = Math.min(S._mosaicoCelulaLarg, _autoW);
     const _maxW    = Math.round(_celulaW * 1.3);
     const _celulaFonte = _celulaW < 20 ? Math.max(7, Math.floor(_celulaW * 0.65)) : S._mosaicoCelulaFonte;
@@ -11358,6 +11361,17 @@ function _initThemePicker() {
     });
     aplicarTema(localStorage.getItem('rdbt_tema') || 'dark');
 }
+
+// Re-renderiza mosaico ao girar/redimensionar (landscape <-> portrait)
+(function() {
+    let _resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(() => {
+            if (typeof S !== 'undefined' && S.view === 'historico' && S.showMosaico) renderTabela();
+        }, 200);
+    });
+}());
 
 document.addEventListener('DOMContentLoaded', () => {
     _initUserMenu();
