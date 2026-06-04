@@ -7465,7 +7465,8 @@ let S_clubes = { busca: '', timeSel: null, proximosEvts: [], nPartidas: 10 };
 const CLUBES_FLAG_MAP = {
     'Afeganistão':'af','África do Sul':'za','Albânia':'al','Alemanha':'de',
     'Argélia':'dz','Angola':'ao','Argentina':'ar','Armênia':'am','Austrália':'au',
-    'Áustria':'at','Azerbaijão':'az','Bélgica':'be','Bolívia':'bo','Bósnia':'ba',
+    'Áustria':'at','Azerbaijão':'az','Bélgica':'be','Bolívia':'bo',
+    'Bósnia':'ba','Bósnia e Herzegovina':'ba','Bósnia-Herzegovina':'ba',
     'Brasil':'br','Bulgária':'bg','Camarões':'cm','Canadá':'ca','Qatar':'qa','Catar':'qa',
     'Chile':'cl','China':'cn','Colômbia':'co','Costa Rica':'cr','Costa-Rica':'cr',
     'Costa do Marfim':'ci','Croácia':'hr','Dinamarca':'dk','Egito':'eg','Equador':'ec',
@@ -7477,10 +7478,15 @@ const CLUBES_FLAG_MAP = {
     'Letônia':'lv','Líbano':'lb','Líbia':'ly','Lituânia':'lt','Marrocos':'ma',
     'México':'mx','Nigéria':'ng','Noruega':'no','Nova Zelândia':'nz',
     'Países Baixos':'nl','Holanda':'nl','Panamá':'pa','Paraguai':'py','Peru':'pe',
-    'Polônia':'pl','Portugal':'pt','República Checa':'cz','Romênia':'ro','Rússia':'ru',
+    'Polônia':'pl','Portugal':'pt',
+    'República Checa':'cz','República Tcheca':'cz',  // ambas as grafias do banco
+    'Romênia':'ro','Rússia':'ru',
     'Arábia Saudita':'sa','Senegal':'sn','Sérvia':'rs','Suécia':'se','Suíça':'ch',
     'Tunísia':'tn','Turquia':'tr','Ucrânia':'ua','Uruguai':'uy','Venezuela':'ve',
-    'Coreia do Sul':'kr','Coreia':'kr','Japão':'jp','Síria':'sy',
+    'Coreia do Sul':'kr','Coreia do Norte':'kp',
+    'Síria':'sy','Gabão':'ga','Guiné':'gn','Mali':'ml','Camarões':'cm',
+    'Burkina Faso':'bf','Cabo Verde':'cv','Namíbia':'na','Tanzânia':'tz',
+    'Etiópia':'et','Quênia':'ke','Costa do Marfim':'ci',
 };
 function _getClubeFlag(nome, w, h) {
     w = w||32; h = h||24;
