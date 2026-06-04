@@ -7578,6 +7578,133 @@ function _getClubeFlag(nome, w, h) {
         style="width:${w}px;height:${h}px;object-fit:cover;border-radius:3px;flex-shrink:0"
         onerror="this.replaceWith(document.createTextNode('⚽'))">`;
 }
+function _fichaStatusGeral(nomeTime, jogos) {
+    const n = jogos.length;
+    if (!n) return '';
+
+    const pct = c => n ? (c/n*100).toFixed(1)+'%' : '0.0%';
+
+    // VED
+    const vit = jogos.filter(p => (p.time_casa===nomeTime ? p.resultado==='CASA' : p.resultado==='FORA')).length;
+    const emp = jogos.filter(p => p.resultado==='EMPATE').length;
+    const der = n - vit - emp;
+
+    // Placares mais frequentes (perspectiva do clube: marcado×sofrido)
+    const scoreMap = new Map();
+    jogos.forEach(p => {
+        const isC = p.time_casa === nomeTime;
+        const gm = isC ? (p.gol_casa||0) : (p.gol_fora||0);
+        const gs = isC ? (p.gol_fora||0) : (p.gol_casa||0);
+        const k = `${gm}-${gs}`;
+        scoreMap.set(k, (scoreMap.get(k)||0)+1);
+    });
+    const topScores = [...scoreMap.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+    // Gols totais
+    const totalGols = g => jogos.filter(p => (p.gol_casa||0)+(p.gol_fora||0)===g).length;
+    const g5plus    = jogos.filter(p => (p.gol_casa||0)+(p.gol_fora||0)>=5).length;
+
+    // Over X.5
+    const overX = x => jogos.filter(p => (p.gol_casa||0)+(p.gol_fora||0)>x).length;
+
+    // BTTS
+    const bttsSim = jogos.filter(p => (p.gol_casa||0)>0 && (p.gol_fora||0)>0).length;
+
+    // Gols marcados e sofridos
+    const gMarcados  = g => jogos.filter(p => { const isC=p.time_casa===nomeTime; return (isC?(p.gol_casa||0):(p.gol_fora||0))===g; }).length;
+    const gMarcados5 = jogos.filter(p => { const isC=p.time_casa===nomeTime; return (isC?(p.gol_casa||0):(p.gol_fora||0))>=5; }).length;
+    const gSofridos  = g => jogos.filter(p => { const isC=p.time_casa===nomeTime; return (isC?(p.gol_fora||0):(p.gol_casa||0))===g; }).length;
+    const gSofridos5 = jogos.filter(p => { const isC=p.time_casa===nomeTime; return (isC?(p.gol_fora||0):(p.gol_casa||0))>=5; }).length;
+
+    // Margem de vitória (só nas vitórias do clube)
+    const margem = m => jogos.filter(p => {
+        const isC = p.time_casa === nomeTime;
+        const ga = isC ? (p.gol_casa||0) : (p.gol_fora||0);
+        const gb = isC ? (p.gol_fora||0) : (p.gol_casa||0);
+        return m==='3+' ? ga-gb>=3 : ga-gb===m;
+    }).length;
+
+    const sec = txt => `<div style="padding:7px 14px;background:#0c1220;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.06em;border-top:1px solid #1e293b;text-transform:uppercase">${txt}</div>`;
+    const row = (label, c, cor) => `<tr style="border-bottom:1px solid #080f1a">
+        <td style="padding:8px 14px;font-size:13px;color:#94a3b8;font-weight:500">${label}</td>
+        <td style="padding:8px 14px;text-align:center;font-size:17px;font-weight:900;color:${cor||'#e2e8f0'}">${c}</td>
+        <td style="padding:8px 14px;text-align:right;font-size:13px;font-weight:700;color:#64748b">${pct(c)}</td>
+    </tr>`;
+
+    const ab = nomeTime.split(' ')[0];
+
+    return `
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-top:10px">
+
+        <div style="padding:9px 12px;background:#0c1220;font-size:11px;font-weight:700;color:#818cf8;letter-spacing:.06em;text-transform:uppercase">
+            📊 STATUS — ÚLTIMAS ${n} PARTIDAS
+        </div>
+
+        <div style="padding:14px;display:flex;justify-content:center;gap:28px;border-bottom:1px solid #1e293b;background:#0a1020">
+            <div style="text-align:center">
+                <div style="font-size:36px;font-weight:900;color:#4ade80;line-height:1">${vit}</div>
+                <div style="font-size:11px;color:#4ade8099;font-weight:700;margin-top:3px">Vitórias</div>
+                <div style="font-size:13px;color:#4ade80;font-weight:700">${pct(vit)}</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:36px;font-weight:900;color:#a5b4fc;line-height:1">${emp}</div>
+                <div style="font-size:11px;color:#a5b4fc99;font-weight:700;margin-top:3px">Empates</div>
+                <div style="font-size:13px;color:#a5b4fc;font-weight:700">${pct(emp)}</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:36px;font-weight:900;color:#f87171;line-height:1">${der}</div>
+                <div style="font-size:11px;color:#f8717199;font-weight:700;margin-top:3px">Derrotas</div>
+                <div style="font-size:13px;color:#f87171;font-weight:700">${pct(der)}</div>
+            </div>
+        </div>
+
+        ${sec('Placares mais frequentes')}
+        <table style="width:100%;border-collapse:collapse">
+            ${topScores.map(([sc,c]) => {
+                const [gm,gs] = sc.split('-').map(Number);
+                const cor = gm>gs?'#4ade80':gm<gs?'#f87171':'#a5b4fc';
+                const label = gm>gs ? `${ab} ${gm}×${gs}` : gm<gs ? `Derrota ${gm}×${gs}` : `Empate ${gm}×${gs}`;
+                return row(label, c, cor);
+            }).join('')}
+        </table>
+
+        ${sec('Over / Under')}
+        <table style="width:100%;border-collapse:collapse">
+            ${[0.5,1.5,2.5,3.5,4.5].map(x => row(`Over ${x}`, overX(x))).join('')}
+        </table>
+
+        ${sec('Gols totais na partida')}
+        <table style="width:100%;border-collapse:collapse">
+            ${[0,1,2,3,4].map(g => row(`${g} gols`, totalGols(g))).join('')}
+            ${g5plus ? row('5+ gols', g5plus) : ''}
+        </table>
+
+        ${sec('Ambas Marcam (BTTS)')}
+        <table style="width:100%;border-collapse:collapse">
+            ${row('SIM', bttsSim, '#4ade80')}
+            ${row('NÃO', n-bttsSim, '#f87171')}
+        </table>
+
+        ${sec(`Gols marcados — ${ab}`)}
+        <table style="width:100%;border-collapse:collapse">
+            ${[0,1,2,3,4].map(g => row(`${g} gols`, gMarcados(g))).join('')}
+            ${gMarcados5 ? row('5+ gols', gMarcados5) : ''}
+        </table>
+
+        ${sec(`Gols sofridos — ${ab}`)}
+        <table style="width:100%;border-collapse:collapse">
+            ${[0,1,2,3,4].map(g => row(`${g} gols`, gSofridos(g))).join('')}
+            ${gSofridos5 ? row('5+ gols', gSofridos5) : ''}
+        </table>
+
+        ${sec('Margem de vitória')}
+        <table style="width:100%;border-collapse:collapse">
+            ${[1,2].map(m => row(`${m} gol`, margem(m))).join('')}
+            ${row('3+ gols', margem('3+'))}
+        </table>
+    </div>`;
+}
+
 function _clubeSetN(n) {
     S_clubes.nPartidas = n;
     document.querySelectorAll('.clube-n-btn').forEach(b => {
@@ -7960,7 +8087,8 @@ async function renderDetalheClube(nomeTime) {
                 <tbody>${listaPartidas || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#334155;font-size:12px">Sem partidas registradas</td></tr>'}</tbody>
             </table>
         </div>
-    </div>`;
+    </div>
+    ${_fichaStatusGeral(nomeTime, ultimas)}`;
 }
 
 // ============================================================
