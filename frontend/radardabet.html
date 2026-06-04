@@ -157,11 +157,27 @@
 
         /* View switcher */
         .view-btn { cursor: pointer; padding: 8px 20px; border-radius: 7px; font-size: 14px; font-weight: 700;
-            background: #1e293b; border: 1px solid #334155; color: #64748b; transition: all .15s; }
+            background: #1e293b; border: 1px solid #334155; color: #64748b; transition: all .15s; white-space: nowrap; }
         .view-btn.ativo { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+        .vbtn-short { display: none; }
 
         @media (max-width: 768px) {
             .theme-btn-nome { display: none; }
+            /* View selector: scroll horizontal igual às ligas */
+            #view-selector {
+                flex-wrap: nowrap !important;
+                justify-content: flex-start !important;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 6px !important;
+                padding: 8px 12px !important;
+            }
+            #view-selector::-webkit-scrollbar { display: none; }
+            .view-btn { padding: 6px 10px; font-size: 11px; }
+            .vbtn-full { display: none; }
+            .vbtn-short { display: inline; }
+            .vbtn-icon { font-size: 14px; }
         }
 
 
@@ -1607,13 +1623,13 @@
 </div>
 
 <!-- ========== VIEW SELECTOR ========== -->
-<div style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
-    <button class="view-btn ativo" id="view-historico" onclick="setView('historico')">📈 Gráficos e Mosaico</button>
-    <button class="view-btn" id="view-analise" onclick="setView('analise')">📊 Análise & Sugestões</button>
-    <button class="view-btn" id="view-clubes" onclick="setView('clubes')">⚽ Clubes</button>
-    <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')">🔧 Diagnóstico</button>
-    <button class="view-btn" id="view-config" onclick="toggleConfig()">⚙️ Config</button>
-    <button class="view-btn" id="view-padroes" onclick="togglePadroes()" style="display:none">📋 Padrões</button>
+<div id="view-selector" style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
+    <button class="view-btn ativo" id="view-historico" onclick="setView('historico')"><span class="vbtn-icon">📈</span><span class="vbtn-full"> Gráficos e Mosaico</span><span class="vbtn-short"> Gráficos</span></button>
+    <button class="view-btn" id="view-analise" onclick="setView('analise')"><span class="vbtn-icon">📊</span><span class="vbtn-full"> Análise & Sugestões</span><span class="vbtn-short"> Análise</span></button>
+    <button class="view-btn" id="view-clubes" onclick="setView('clubes')"><span class="vbtn-icon">⚽</span><span class="vbtn-full"> Clubes</span><span class="vbtn-short"> Clubes</span></button>
+    <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')"><span class="vbtn-icon">🔧</span><span class="vbtn-full"> Diagnóstico</span><span class="vbtn-short"> Diag.</span></button>
+    <button class="view-btn" id="view-config" onclick="toggleConfig()"><span class="vbtn-icon">⚙️</span><span class="vbtn-full"> Config</span><span class="vbtn-short"> Config</span></button>
+    <button class="view-btn" id="view-padroes" onclick="togglePadroes()" style="display:none"><span class="vbtn-icon">📋</span><span class="vbtn-full"> Padrões</span><span class="vbtn-short"> Padrões</span></button>
 </div>
 
 <!-- ========== CONTEÚDO PRINCIPAL ========== -->
