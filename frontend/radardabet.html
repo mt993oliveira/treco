@@ -3097,7 +3097,7 @@ function carregarCoresGrid() {
     let sysExt = {};
     try { if (S && S._gridCoresSistema) sysExt = S._gridCoresSistema; } catch(_) {}
     const sys = Object.assign({}, GRID_CORES_PADRAO, sysExt);
-    try { return Object.assign({}, sys, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
+    try { return Object.assign({}, JSON.parse(localStorage.getItem('gridCores') || '{}'), sys); }
     catch(e) { return Object.assign({}, sys); }
 }
 function aplicarCoresGrid(c) {
