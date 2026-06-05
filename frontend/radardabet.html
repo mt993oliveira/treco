@@ -5990,8 +5990,8 @@ function renderGraficoGols() {
                             const ht = htDisp ? j.gol_casa_ht + j.gol_fora_ht : null;
                             const ft = j.gol_casa + j.gol_fora;
                             let gLabel;
-                            if      (mid === 'gols-1t')   gLabel = htDisp ? `1T: ${ht}⚽` : `1T: s/d`;
-                            else if (mid === 'gols-2t')   gLabel = htDisp ? `2T: ${Math.max(0, ft - ht)}⚽` : `2T: s/d`;
+                            if      (mid === 'gols-1t')   gLabel = htDisp ? `1T: ${ht}⚽` : `1T: OUT`;
+                            else if (mid === 'gols-2t')   gLabel = htDisp ? `2T: ${Math.max(0, ft - ht)}⚽` : `2T: ${ft}⚽`;
                             else if (mid === 'gols-casa')  gLabel = `Casa: ${j.gol_casa}⚽`;
                             else if (mid === 'gols-fora')  gLabel = `Fora: ${j.gol_fora}⚽`;
                             else                           gLabel = `FT: ${ft}⚽`;
