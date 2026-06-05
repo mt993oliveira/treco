@@ -1147,7 +1147,6 @@ async function _ensurePadroesTable() {
             data_atualizacao DATETIME2      DEFAULT GETUTCDATE()
         )
     `;
-    // Expande coluna filtros de NVARCHAR(2000) → NVARCHAR(MAX) — ignorado se já for MAX
     try {
         await sql.query`
             IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS
@@ -1155,7 +1154,24 @@ async function _ensurePadroesTable() {
                        AND CHARACTER_MAXIMUM_LENGTH=2000)
             ALTER TABLE user_padroes_grafico ALTER COLUMN filtros NVARCHAR(MAX) NOT NULL`;
     } catch(_) {}
+    // Coluna publicado_por: referência ao padrão original quando é uma cópia publicada pelo admin
+    try {
+        await sql.query`
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+                           WHERE TABLE_NAME='user_padroes_grafico' AND COLUMN_NAME='publicado_por')
+            ALTER TABLE user_padroes_grafico ADD publicado_por INT NULL`;
+    } catch(_) {}
+    // Coluna is_publicado: marca o padrão original do admin como já publicado
+    try {
+        await sql.query`
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+                           WHERE TABLE_NAME='user_padroes_grafico' AND COLUMN_NAME='is_publicado')
+            ALTER TABLE user_padroes_grafico ADD is_publicado BIT NOT NULL DEFAULT 0`;
+    } catch(_) {}
     _padroesMigrated = true;
+}
+function _isAdminTipo(tipo) {
+    return ['master', 'admin', 'administrador'].includes((tipo || '').toLowerCase());
 }
 async function _getMaxPadroes() {
     try {
@@ -1173,7 +1189,7 @@ app.get('/api/usuario/padroes', async (req, res) => {
         await connectSQL(getDatabaseConfigFromEnv());
         await _ensurePadroesTable();
         const r = await sql.query`
-            SELECT id, nome, filtros, is_principal, data_criacao
+            SELECT id, nome, filtros, is_principal, data_criacao, publicado_por, is_publicado
             FROM user_padroes_grafico
             WHERE user_id = ${usuarioId}
             ORDER BY is_principal DESC, data_criacao ASC
@@ -1202,7 +1218,7 @@ app.post('/api/usuario/padroes', async (req, res) => {
     } catch(e) { res.json({ success: false, message: e.message }); }
 });
 
-// Atualizar padrão (nome/filtros) ou definir principal
+// Atualizar padrão (nome/filtros) ou definir principal — propaga para cópias publicadas
 app.put('/api/usuario/padroes/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const { usuarioId, nome, filtros, is_principal } = req.body;
@@ -1217,12 +1233,14 @@ app.put('/api/usuario/padroes/:id', async (req, res) => {
         if (nome && filtros) {
             const fs = typeof filtros === 'string' ? filtros : JSON.stringify(filtros);
             await sql.query`UPDATE user_padroes_grafico SET nome=${nome}, filtros=${fs}, data_atualizacao=GETUTCDATE() WHERE id=${id} AND user_id=${usuarioId}`;
+            // Propaga alterações para todas as cópias publicadas deste padrão
+            await sql.query`UPDATE user_padroes_grafico SET nome=${nome}, filtros=${fs}, data_atualizacao=GETUTCDATE() WHERE publicado_por=${id}`;
         }
         res.json({ success: true });
     } catch(e) { res.json({ success: false, message: e.message }); }
 });
 
-// Apagar padrão
+// Apagar padrão — bloqueia se for cópia recebida de um admin (publicado_por IS NOT NULL)
 app.delete('/api/usuario/padroes/:id', async (req, res) => {
     const id = parseInt(req.params.id);
     const usuarioId = parseInt(req.body.usuarioId || req.query.usuarioId);
@@ -1230,8 +1248,69 @@ app.delete('/api/usuario/padroes/:id', async (req, res) => {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
         await _ensurePadroesTable();
+        const chk = await sql.query`SELECT publicado_por FROM user_padroes_grafico WHERE id=${id} AND user_id=${usuarioId}`;
+        if (chk.recordset.length && chk.recordset[0].publicado_por != null) {
+            return res.json({ success: false, message: 'Padrão publicado pelo administrador não pode ser excluído' });
+        }
         await sql.query`DELETE FROM user_padroes_grafico WHERE id=${id} AND user_id=${usuarioId}`;
         res.json({ success: true });
+    } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
+// Publicar padrão para todos os usuários ativos (somente master/admin)
+app.post('/api/padroes/publicar/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { usuarioId } = req.body;
+    if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await _ensurePadroesTable();
+        // Verifica tipo do usuário solicitante
+        const uRow = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE id=${usuarioId}`;
+        if (!uRow.recordset.length || !_isAdminTipo(uRow.recordset[0].TipoUsuario)) {
+            return res.json({ success: false, message: 'Permissão insuficiente' });
+        }
+        // Busca o padrão original
+        const pRow = await sql.query`SELECT * FROM user_padroes_grafico WHERE id=${id} AND user_id=${usuarioId}`;
+        if (!pRow.recordset.length) return res.json({ success: false, message: 'Padrão não encontrado' });
+        const p = pRow.recordset[0];
+        // Marca como publicado
+        await sql.query`UPDATE user_padroes_grafico SET is_publicado=1 WHERE id=${id}`;
+        // Usuários ativos que ainda não têm cópia deste padrão
+        const usuarios = await sql.query`SELECT id FROM Usuarios WHERE id <> ${usuarioId} AND Ativo=1`;
+        let copiados = 0;
+        for (const u of usuarios.recordset) {
+            const jaExiste = await sql.query`SELECT 1 AS n FROM user_padroes_grafico WHERE publicado_por=${id} AND user_id=${u.id}`;
+            if (jaExiste.recordset.length) continue;
+            await sql.query`
+                INSERT INTO user_padroes_grafico (user_id, nome, filtros, publicado_por)
+                VALUES (${u.id}, ${p.nome}, ${p.filtros}, ${id})
+            `;
+            copiados++;
+        }
+        res.json({ success: true, copiados });
+    } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
+// Remover padrão publicado de todos os usuários (somente master/admin)
+app.delete('/api/padroes/publicar/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const usuarioId = parseInt(req.body.usuarioId || req.query.usuarioId);
+    if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await _ensurePadroesTable();
+        const uRow = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE id=${usuarioId}`;
+        if (!uRow.recordset.length || !_isAdminTipo(uRow.recordset[0].TipoUsuario)) {
+            return res.json({ success: false, message: 'Permissão insuficiente' });
+        }
+        // Verifica que o padrão pertence a este admin
+        const pRow = await sql.query`SELECT id FROM user_padroes_grafico WHERE id=${id} AND user_id=${usuarioId}`;
+        if (!pRow.recordset.length) return res.json({ success: false, message: 'Padrão não encontrado' });
+        // Remove todas as cópias e desmarca o original
+        const del = await sql.query`DELETE FROM user_padroes_grafico WHERE publicado_por=${id}`;
+        await sql.query`UPDATE user_padroes_grafico SET is_publicado=0 WHERE id=${id}`;
+        res.json({ success: true, removidos: del.rowsAffected[0] || 0 });
     } catch(e) { res.json({ success: false, message: e.message }); }
 });
 

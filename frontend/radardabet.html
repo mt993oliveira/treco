@@ -11997,6 +11997,9 @@ function _renderListaPadroes(padroes) {
         listEl.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:16px">Nenhum padrão salvo.<br><span style="font-size:11px;opacity:.7">Salve a configuração atual de filtros acima.</span></div>';
         return;
     }
+    const _u = _getUser();
+    const _tipoU = (_u?.TipoUsuario || '').toLowerCase();
+    const _isElevado = _tipoU === 'master' || _tipoU === 'admin' || _tipoU === 'administrador';
     const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const desc = filtrosJson => {
         try {
@@ -12009,6 +12012,8 @@ function _renderListaPadroes(padroes) {
     listEl.innerHTML = padroes.map(p => {
         const editando = _editandoPadraoId === p.id;
         const _valorEdit = (editando && _editandoValorAtual !== null) ? _editandoValorAtual : p.nome;
+        const _ehCopia = p.publicado_por != null;    // recebido de admin
+        const _ehPublicado = !!p.is_publicado;       // padrão original já publicado
         const nomeArea = editando ? `
             <div style="display:flex;gap:6px;align-items:center">
                 <input id="padrao-edit-${p.id}" type="text" value="${esc(_valorEdit)}" maxlength="50"
@@ -12023,13 +12028,23 @@ function _renderListaPadroes(padroes) {
                     border:1px solid #334155;color:#64748b;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>
             </div>` : `
             <div style="font-size:13px;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                ${p.is_principal?'<span style="color:#1fcc59;font-size:10px;font-weight:700;margin-right:4px">★</span>':''}${esc(p.nome)}
+                ${p.is_principal?'<span style="color:#1fcc59;font-size:10px;font-weight:700;margin-right:4px">★</span>':''}${esc(p.nome)}${_ehCopia?'<span title="Publicado pelo administrador" style="margin-left:6px;font-size:10px;color:#60a5fa;opacity:.8">📤</span>':''}${_ehPublicado?'<span title="Publicado para todos" style="margin-left:6px;font-size:10px;background:rgba(96,165,250,.18);color:#60a5fa;border-radius:4px;padding:1px 5px;font-weight:700">Publicado</span>':''}
             </div>
             <div style="font-size:10px;color:#64748b;margin-top:2px">${desc(p.filtros)}</div>`;
         const _alertaInfo = (() => { try { const f = typeof p.filtros==='string'?JSON.parse(p.filtros||'{}'):(p.filtros||{}); return f.alerta||{}; } catch(e){return {};} })();
         const _alertaAtivo = !!(_alertaInfo.ativo);
         const _alertaGraf  = (_alertaInfo.grafico && _alertaInfo.grafico !== 'mercados') ? _alertaInfo.grafico : 'linha';
         const _alertaGrafLabel = _alertaAtivo ? (_alertaGraf === 'gols' ? ' 📊' : ' 📉') : '';
+        // Botão publicar/remover — somente para admin/master, somente no padrão original (não cópia)
+        const _btnPublicar = (_isElevado && !_ehCopia) ? (
+            _ehPublicado
+                ? `<button onclick="removerPublicacaoPadrao(${p.id})" title="Remover de todos os usuários"
+                    style="padding:5px 8px;border-radius:5px;background:rgba(248,113,113,.12);border:1px solid #f87171;
+                    color:#f87171;font-size:11px;cursor:pointer">📤✕</button>`
+                : `<button onclick="publicarPadrao(${p.id})" title="Publicar para todos os usuários"
+                    style="padding:5px 8px;border-radius:5px;background:rgba(96,165,250,.12);border:1px solid #60a5fa;
+                    color:#60a5fa;font-size:11px;cursor:pointer">📤</button>`
+        ) : '';
         const acoes = editando ? '' : `
             <button onclick="aplicarPadrao(${p.id})" title="Aplicar este padrão"
                 style="padding:5px 10px;border-radius:5px;background:#1e293b;border:1px solid #334155;
@@ -12045,11 +12060,12 @@ function _renderListaPadroes(padroes) {
                 style="padding:5px 8px;border-radius:5px;background:${p.is_principal?'rgba(31,204,89,.15)':'#1e293b'};
                 border:1px solid ${p.is_principal?'#1fcc59':'#334155'};
                 color:${p.is_principal?'#1fcc59':'#64748b'};font-size:11px;cursor:pointer">★</button>
-            <button onclick="deletarPadrao(${p.id})" title="Excluir padrão"
+            ${_btnPublicar}
+            ${_ehCopia ? '' : `<button onclick="deletarPadrao(${p.id})" title="Excluir padrão"
                 style="padding:5px 8px;border-radius:5px;background:#1e293b;border:1px solid #334155;
-                color:#f87171;font-size:11px;cursor:pointer">✕</button>`;
+                color:#f87171;font-size:11px;cursor:pointer">✕</button>`}`;
         return `
-        <div style="background:#0f172a;border:1px solid ${p.is_principal?'#1fcc59':'#1e293b'};border-radius:8px;
+        <div style="background:#0f172a;border:1px solid ${p.is_principal?'#1fcc59':_ehCopia?'#334155':'#1e293b'};border-radius:8px;
              padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
             <div style="flex:1;min-width:0">${nomeArea}</div>
             ${acoes}
@@ -12061,6 +12077,52 @@ function _renderListaPadroes(padroes) {
             if (inp) { inp.focus(); inp.select(); }
         }, 30);
     }
+}
+
+async function publicarPadrao(id) {
+    const u = _getUser();
+    if (!u) return;
+    if (!confirm('Publicar este padrão para todos os usuários ativos?\nEles não poderão excluí-lo.')) return;
+    try {
+        const r = await fetch(`/api/padroes/publicar/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id })
+        });
+        const d = await r.json();
+        if (d.success) {
+            _padroesCache = _padroesCache.map(x => x.id === id ? { ...x, is_publicado: 1 } : x);
+            _renderListaPadroes(_padroesCache);
+            const msg = document.createElement('div');
+            msg.textContent = `✓ Publicado para ${d.copiados} usuário(s)`;
+            msg.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1fcc59;color:#0f172a;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.4)';
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 3000);
+        } else { alert(d.message || 'Erro ao publicar padrão.'); }
+    } catch(e) { alert('Erro de conexão ao publicar padrão.'); }
+}
+
+async function removerPublicacaoPadrao(id) {
+    const u = _getUser();
+    if (!u) return;
+    if (!confirm('Remover este padrão de todos os usuários?\nAs cópias serão excluídas permanentemente.')) return;
+    try {
+        const r = await fetch(`/api/padroes/publicar/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id })
+        });
+        const d = await r.json();
+        if (d.success) {
+            _padroesCache = _padroesCache.map(x => x.id === id ? { ...x, is_publicado: 0 } : x);
+            _renderListaPadroes(_padroesCache);
+            const msg = document.createElement('div');
+            msg.textContent = `✓ Removido de ${d.removidos} usuário(s)`;
+            msg.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#f87171;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.4)';
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 3000);
+        } else { alert(d.message || 'Erro ao remover publicação.'); }
+    } catch(e) { alert('Erro de conexão ao remover publicação.'); }
 }
 
 function editarNomePadrao(id) {
