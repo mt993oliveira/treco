@@ -351,6 +351,7 @@ class Bet365Coletor {
     }
 
     async _rodarMigracoes() {
+        // Migrações estruturais — sempre executadas (rápidas: IF NOT EXISTS / IF EXISTS)
         const migracoes = [
             `IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id=OBJECT_ID('bet365_resultados_mercados') AND type='U')
              CREATE TABLE bet365_resultados_mercados (
@@ -369,7 +370,30 @@ class Bet365Coletor {
              CREATE INDEX IX_b365_resmkt_evento ON bet365_resultados_mercados (evento_id)`,
             `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('bet365_resultados_mercados') AND name='IX_b365_resmkt_liga_data')
              CREATE INDEX IX_b365_resmkt_liga_data ON bet365_resultados_mercados (liga, data_partida)`,
-            // ── Normalizar nomes de mercado em inglês → português (dados históricos) ──
+            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='gol_casa') ALTER TABLE bet365_eventos DROP COLUMN gol_casa`,
+            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='gol_fora') ALTER TABLE bet365_eventos DROP COLUMN gol_fora`,
+            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='minuto_jogo') ALTER TABLE bet365_eventos DROP COLUMN minuto_jogo`,
+            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='seconds_to_start') ALTER TABLE bet365_eventos DROP COLUMN seconds_to_start`,
+        ];
+        for (const mig of migracoes) {
+            await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));
+        }
+
+        // Migrações de normalização de dados históricos — desabilitadas por padrão (migracoes_normalizar=1 para ativar)
+        const rCfg = await this.pool.request().query(
+            `IF OBJECT_ID('bet365_config') IS NOT NULL
+                 SELECT TOP 1 valor FROM bet365_config WHERE chave='migracoes_normalizar'
+             ELSE
+                 SELECT NULL AS valor WHERE 1=0`
+        ).catch(() => ({ recordset: [] }));
+        if (rCfg.recordset[0]?.valor !== '1') {
+            console.log('   ⏩ Normalizações de dados desabilitadas (migracoes_normalizar=0)');
+            return;
+        }
+
+        console.log('   🔧 Executando normalizações de dados históricos...');
+        const normalizacoes = [
+            // ── Normalizar nomes de mercado em inglês → português ──
             `UPDATE bet365_resultados_mercados SET mercado='Resultado Final'               WHERE mercado IN ('Fulltime Result','Full Time Result','1X2')`,
             `UPDATE bet365_resultados_mercados SET mercado='Resultado Correto'             WHERE mercado='Correct Score'`,
             `UPDATE bet365_resultados_mercados SET mercado='Resultado Correto - Intervalo' WHERE mercado IN ('Half Time Correct Score','Half-Time Correct Score','Halftime Correct Score')`,
@@ -422,7 +446,6 @@ class Bet365Coletor {
                 return `UPDATE bet365_resultados_mercados SET selecao=STUFF(selecao,1,${cap.length},'${pt}') WHERE mercado='Gols por Time' AND (selecao LIKE '${cap} - %' OR selecao LIKE '${en} - %')`;
             }),
             // ── Remover duplicatas de Resultado Final por evento (bug pré-odds) ──
-            // Para cada evento com >1 linha de Resultado Final, apaga as extras
             `DELETE brm FROM bet365_resultados_mercados brm
              WHERE brm.mercado = 'Resultado Final'
              AND EXISTS (
@@ -438,15 +461,11 @@ class Bet365Coletor {
                  AND (b.selecao = ev.time_casa OR b.selecao = ev.time_fora OR b.selecao = 'Empate')
                  ORDER BY CASE WHEN b.selecao = ev.time_casa OR b.selecao = ev.time_fora THEN 0 ELSE 1 END
              )`,
-            // ── Remover colunas desnecessárias de bet365_eventos ──
-            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='gol_casa') ALTER TABLE bet365_eventos DROP COLUMN gol_casa`,
-            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='gol_fora') ALTER TABLE bet365_eventos DROP COLUMN gol_fora`,
-            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='minuto_jogo') ALTER TABLE bet365_eventos DROP COLUMN minuto_jogo`,
-            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='seconds_to_start') ALTER TABLE bet365_eventos DROP COLUMN seconds_to_start`,
         ];
-        for (const mig of migracoes) {
+        for (const mig of normalizacoes) {
             await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));
         }
+        console.log('   ✅ Normalizações de dados concluídas');
     }
 
     // ─────────────────────────────────────────────────────────────
