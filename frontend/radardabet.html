@@ -1650,6 +1650,7 @@
 <!-- ========== VIEW SELECTOR ========== -->
 <div id="view-selector" style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
     <button class="view-btn ativo" id="view-historico" onclick="setView('historico')"><span class="vbtn-icon">📈</span><span class="vbtn-full"> Gráficos e Mosaico</span><span class="vbtn-short"> Gráficos</span></button>
+    <button class="view-btn" id="view-multi" onclick="setView('multi')"><span class="vbtn-icon">⊞</span><span class="vbtn-full"> Multi Horários</span><span class="vbtn-short"> Multi</span></button>
     <button class="view-btn" id="view-analise" onclick="setView('analise')"><span class="vbtn-icon">📊</span><span class="vbtn-full"> Análise & Sugestões</span><span class="vbtn-short"> Análise</span></button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')"><span class="vbtn-icon">⚽</span><span class="vbtn-full"> Clubes</span><span class="vbtn-short"> Clubes</span></button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')"><span class="vbtn-icon">🔧</span><span class="vbtn-full"> Diagnóstico</span><span class="vbtn-short"> Diag.</span></button>
@@ -2054,6 +2055,37 @@
     </div>
     </div><!-- /historico-table-section -->
 
+</div>
+
+<!-- ========== VIEW: MULTI HORÁRIOS ========== -->
+<div id="view-multi-content" style="display:none;padding:12px 16px">
+    <!-- Controles -->
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 14px">
+        <span style="font-size:11px;font-weight:700;color:#475569">PERÍODO:</span>
+        <select id="multi-periodo" onchange="S_multi.jogos=parseInt(this.value)||200;renderMultiHorarios()"
+            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none">
+            <option value="20">20 Jogos</option><option value="40">40 Jogos</option>
+            <option value="60">60 Jogos</option><option value="80">80 Jogos</option>
+            <option value="100">100 Jogos</option><option value="120">120 Jogos</option>
+            <option value="140">140 Jogos</option><option value="160">160 Jogos</option>
+            <option value="180">180 Jogos</option><option value="200" selected>200 Jogos</option>
+            <option value="240">240 Jogos</option><option value="480">480 Jogos</option>
+            <option value="600">600 Jogos</option><option value="960">960 Jogos</option>
+            <option value="1920">1920 Jogos</option>
+        </select>
+        <span style="font-size:11px;font-weight:700;color:#475569">BASE:</span>
+        <select id="multi-filtro" onchange="S_multi.filtroId=this.value;renderMultiHorarios()"
+            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:130px">
+        </select>
+        <span style="font-size:10px;color:#334155">• mesma base para as 4 ligas</span>
+    </div>
+    <!-- Grid 2x2 -->
+    <div id="multi-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div id="multi-c0"></div>
+        <div id="multi-c1"></div>
+        <div id="multi-c2"></div>
+        <div id="multi-c3"></div>
+    </div>
 </div>
 
 <!-- ========== VIEW: CLUBES ========== -->
@@ -3543,14 +3575,16 @@ function setView(v) {
     S.view = v;
     document.getElementById('view-analise-content').style.display      = v === 'analise'      ? '' : 'none';
     document.getElementById('view-historico-content').style.display     = v === 'historico'    ? '' : 'none';
+    document.getElementById('view-multi-content').style.display         = v === 'multi'        ? '' : 'none';
     document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
     document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
-    ['analise','historico','clubes','diagnostico'].forEach(id => {
+    ['analise','historico','multi','clubes','diagnostico'].forEach(id => {
         const el = document.getElementById('view-' + id);
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
     if (v === 'historico')   { carregarHistorico(); }
     if (v === 'analise')     { renderAnalise(); carregarAnalise(); }
+    if (v === 'multi')       { renderMultiHorarios(); }
     if (v === 'clubes')      { renderClubes(); }
     if (v === 'diagnostico') { carregarDiagnostico(); _bfInit(); }
 }
@@ -6006,6 +6040,167 @@ function minutosParaLiga(liga) {
     if (l.includes('euro'))    return LIGA_MINUTOS.euro;
     if (l.includes('express')) return LIGA_MINUTOS.express;
     return null;
+}
+
+// ============================================================
+// MULTI HORÁRIOS
+// ============================================================
+
+const MULTI_LIGAS = [
+    { key: 'Copa do Mundo',             label: 'Copa do Mundo'    },
+    { key: 'Euro Cup',                  label: 'Euro Cup'         },
+    { key: 'Super Liga Sul-Americana',  label: 'Super Liga'       },
+    { key: 'Premier League',            label: 'Premier League'   },
+];
+
+let S_multi = { jogos: 200, filtroId: 'over2.5' };
+
+(function _initMultiFiltro() {
+    const sel = document.getElementById('multi-filtro');
+    if (!sel) return;
+    GRUPOS_LEGENDA.forEach(grupo => {
+        const og = document.createElement('optgroup');
+        og.label = grupo.label;
+        grupo.ids.filter(id => id !== 'equilibrio').forEach(id => {
+            const fi2 = TODOS_FILTROS.find(f => f.id === id);
+            if (!fi2) return;
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = fi2.label;
+            if (id === S_multi.filtroId) opt.selected = true;
+            og.appendChild(opt);
+        });
+        if (og.children.length) sel.appendChild(og);
+    });
+})();
+
+function _gruposParaMulti(partidas, nJogos) {
+    const agora = new Date(Date.now() + BET365_OFFSET_MS);
+    const horas = Math.ceil(nJogos / 20);
+    const byHour = new Map();
+    for (let h = 0; h < horas; h++) {
+        const ms  = utcHourStart(new Date(agora.getTime() - h * 3600000));
+        const key = horaKey(new Date(ms));
+        byHour.set(key, { key, hora: new Date(ms), jogos: [] });
+    }
+    partidas.forEach(p => {
+        if (!p.data_partida) return;
+        const raw = typeof p.data_partida === 'string'
+            ? p.data_partida.replace(' ', 'T').replace(/Z?$/, 'Z')
+            : p.data_partida;
+        const d = new Date(raw);
+        if (isNaN(d)) return;
+        const key = horaKey(d);
+        if (byHour.has(key)) byHour.get(key).jogos.push(p);
+    });
+    return [...byHour.values()].sort((a, b) => a.hora - b.hora);
+}
+
+function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
+    const partidas = (S.todasPartidas || []).filter(p => normalizarLiga(p.liga) === ligaKey);
+    if (!partidas.length) return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:24px;text-align:center;color:#334155;font-size:12px">${ligaLabel}<br><span style="font-size:10px">Sem dados</span></div>`;
+
+    const gs = _gruposParaMulti(partidas, nJogos);
+    let minuteSlots = minutosParaLiga(ligaKey);
+    if (!minuteSlots) {
+        const ms = new Set();
+        partidas.forEach(p => { if (p.data_partida) ms.add(new Date(p.data_partida).getUTCMinutes()); });
+        minuteSlots = [...ms].sort((a,b) => a-b);
+        if (!minuteSlots.length || minuteSlots.length > 20) minuteSlots = Array.from({length:20},(_,i)=>i*3);
+    }
+    const N = minuteSlots.length;
+    const fi = TODOS_FILTROS.find(f => f.id === filtroId);
+    const gridCores = carregarCoresGrid();
+
+    const allJogos = gs.flatMap(g => g.jogos).filter(j => j.resultado);
+    const totalHits = fi ? allJogos.filter(j => checa(j, fi.id)).length : 0;
+    const total = allJogos.length;
+    const pctV = total ? Math.round(totalHits / total * 100) : 0;
+    const pctR = total ? 100 - pctV : 0;
+
+    const _nowBSTms = Date.now() + BET365_OFFSET_MS;
+    const gsDesc = [...gs].reverse().filter(g => g.hora.getTime() <= _nowBSTms && g.jogos.length > 0);
+
+    const cW = 24;
+
+    const headerCols = minuteSlots.map(m =>
+        `<th style="min-width:${cW}px;max-width:${cW}px;padding:1px 0;text-align:center;font-size:7px;color:#475569;background:#0c1220;font-weight:600">${pad2(m)}</th>`
+    ).join('');
+
+    const rows = gsDesc.map(grupo => {
+        const slotMap = new Array(N).fill(null);
+        [...grupo.jogos]
+            .sort((a,b) => new Date(a.data_partida) - new Date(b.data_partida))
+            .forEach(j => {
+                if (!j.data_partida) return;
+                const raw = typeof j.data_partida === 'string' ? j.data_partida.replace(' ','T').replace(/Z?$/,'Z') : j.data_partida;
+                const min = new Date(raw).getUTCMinutes();
+                let idx = minuteSlots.indexOf(min);
+                if (idx < 0) {
+                    let best = 0, bestD = Infinity;
+                    minuteSlots.forEach((m,i) => { const d=Math.abs(m-min); if(d<bestD){bestD=d;best=i;} });
+                    idx = best;
+                }
+                if (!slotMap[idx]) slotMap[idx] = j;
+            });
+
+        const hh = pad2(grupo.hora.getUTCHours());
+        const cells = slotMap.map(j => {
+            if (!j) return `<td style="min-width:${cW}px;max-width:${cW}px;background:#060810;padding:1px 0"></td>`;
+            const hit = fi ? checa(j, fi.id) : false;
+            const bg  = !j.resultado ? '#0a1020' : hit ? gridCores.verdeBg : gridCores.vermBg;
+            const txt = !j.resultado ? '#475569' : hit ? gridCores.verdeTxt : gridCores.vermTxt;
+            const score = (j.gol_casa != null && j.gol_fora != null) ? `${j.gol_casa}-${j.gol_fora}` : '·';
+            return `<td style="min-width:${cW}px;max-width:${cW}px;background:${bg};padding:1px 0;text-align:center">
+                <span style="font-size:8px;font-weight:700;color:${txt};line-height:1.4;display:block">${score}</span>
+            </td>`;
+        }).join('');
+
+        return `<tr>
+            <td style="padding:1px 5px;font-size:8px;color:${gridCores.horaHHCor||'#1fcc59'};font-weight:700;background:#060810;position:sticky;left:0;z-index:1;white-space:nowrap">${hh}h</td>
+            ${cells}
+        </tr>`;
+    }).join('');
+
+    const corPctV = pctV >= 55 ? '#4ade80' : pctV >= 45 ? '#fbbf24' : '#f87171';
+    const corPctR = pctR >= 55 ? '#f87171' : pctR >= 45 ? '#fbbf24' : '#94a3b8';
+
+    return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+        <div style="padding:7px 10px;display:flex;justify-content:space-between;align-items:center;background:#0c1220;border-bottom:1px solid #1e293b;flex-wrap:wrap;gap:4px">
+            <span style="font-size:12px;font-weight:800;color:#e2e8f0">${ligaLabel}</span>
+            <span style="font-size:11px;font-weight:700;white-space:nowrap">
+                <span style="color:${corPctV}">VERDE ${pctV}%</span>
+                <span style="color:#334155"> | </span>
+                <span style="color:${corPctR}">${pctR}% RED</span>
+                <span style="color:#334155;font-size:9px;margin-left:4px">${total}j</span>
+            </span>
+        </div>
+        <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+            <table style="border-collapse:collapse">
+                <thead><tr>
+                    <th style="padding:1px 5px;font-size:7px;color:#475569;background:#0c1220;position:sticky;left:0;z-index:2;font-weight:600">HH</th>
+                    ${headerCols}
+                </tr></thead>
+                <tbody>${rows || `<tr><td colspan="${N+1}" style="padding:16px;text-align:center;color:#334155;font-size:11px">Sem dados no período</td></tr>`}</tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+function renderMultiHorarios() {
+    if (!S.todasPartidas?.length) {
+        carregarHistorico().then(() => renderMultiHorarios());
+        return;
+    }
+    // Sincroniza select de período
+    const selP = document.getElementById('multi-periodo');
+    if (selP && selP.value != S_multi.jogos) {
+        [...selP.options].forEach(o => { o.selected = +o.value === S_multi.jogos; });
+    }
+    MULTI_LIGAS.forEach((liga, i) => {
+        const c = document.getElementById(`multi-c${i}`);
+        if (c) c.innerHTML = _renderMiniMosaico(liga.key, liga.label, S_multi.jogos, S_multi.filtroId);
+    });
 }
 
 // ============================================================
