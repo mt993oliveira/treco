@@ -2627,6 +2627,10 @@
                 <input type="checkbox" id="alerta-ativo" style="accent-color:#f59e0b;width:14px;height:14px">
                 Alerta ativo
             </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#94a3b8" title="Não exibe o popup — apenas pisca a aba da liga">
+                <input type="checkbox" id="alerta-silencioso" style="accent-color:#60a5fa;width:13px;height:13px">
+                🔕 Silencioso
+            </label>
             <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap">
                 <div style="display:flex;align-items:center;gap:6px">
                     <span style="font-size:12px;color:#94a3b8">Janela:</span>
@@ -12505,6 +12509,8 @@ function abrirAlertaEditor(id) {
     if (nomeEl) nomeEl.textContent = p.nome;
     const ativoEl = document.getElementById('alerta-ativo');
     if (ativoEl) ativoEl.checked = !!al.ativo;
+    const silEl = document.getElementById('alerta-silencioso');
+    if (silEl) silEl.checked = !!al.silencioso;
     const janelaEl = document.getElementById('alerta-janela');
     if (janelaEl) janelaEl.value = String(al.janela || '12');
     const baseEl = document.getElementById('alerta-base');
@@ -12600,11 +12606,12 @@ async function salvarAlertaPadrao() {
     let f = {};
     try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) {}
     f.alerta = {
-        ativo:    !!(document.getElementById('alerta-ativo')?.checked),
-        janela:   document.getElementById('alerta-janela')?.value || '12',
-        base:     parseInt(document.getElementById('alerta-base')?.value || '0') || 0,
-        grafico:  document.querySelector('input[name="alerta-graf"]:checked')?.value || 'linha',
-        condicoes: _alertaCondicoes
+        ativo:      !!(document.getElementById('alerta-ativo')?.checked),
+        silencioso: !!(document.getElementById('alerta-silencioso')?.checked),
+        janela:     document.getElementById('alerta-janela')?.value || '12',
+        base:       parseInt(document.getElementById('alerta-base')?.value || '0') || 0,
+        grafico:    document.querySelector('input[name="alerta-graf"]:checked')?.value || 'linha',
+        condicoes:  _alertaCondicoes
     };
     const fs = JSON.stringify(f);
     try {
@@ -12711,7 +12718,7 @@ function _verificarAlertas() {
                     });
                     if (!ligas.length) ligas = ['Todas as ligas'];
                 }
-                disparados.push({ id: p.id, nome: p.nome, ligas, grafico: al.grafico || 'linha', condicoes: al.condicoes || [] });
+                disparados.push({ id: p.id, nome: p.nome, ligas, grafico: al.grafico || 'linha', condicoes: al.condicoes || [], silencioso: !!al.silencioso });
             }
         } catch(e) {}
     }
@@ -12738,6 +12745,24 @@ async function _carregarAlertaCfgRuntime() {
 function _mostrarNotificacaoAlerta(alertas) {
     // Salva ligas disparadas por id para uso em aplicarPadrao
     alertas.forEach(a => { _alertaLigasMap[a.id] = a.ligas || []; });
+
+    // Piscar ligas de todos os alertas (silenciosos ou não)
+    const ligasAlertadasAll = new Set(alertas.flatMap(a => a.ligas || []));
+    ligasAlertadasAll.forEach(liga => {
+        const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(liga)}"]`);
+        if (!tab) return;
+        tab.classList.add('liga-alerta-ativa');
+        if (_alertaLigaPiscarTimers[liga]) clearTimeout(_alertaLigaPiscarTimers[liga]);
+        _alertaLigaPiscarTimers[liga] = setTimeout(() => {
+            tab.classList.remove('liga-alerta-ativa');
+            delete _alertaLigaPiscarTimers[liga];
+        }, _alertaLigaPiscarDuracao * 1000);
+    });
+
+    // Se todos os alertas disparados forem silenciosos, não exibe o popup
+    if (alertas.every(a => a.silencioso)) return;
+    const alertasVisiveis = alertas.filter(a => !a.silencioso);
+
     let el = document.getElementById('alerta-notif');
     if (!el) {
         el = document.createElement('div');
@@ -12751,7 +12776,7 @@ function _mostrarNotificacaoAlerta(alertas) {
             <span style="font-size:13px;font-weight:700;color:#f59e0b">⚠️ Alerta Disparado</span>
             <button onclick="_fecharNotificacaoAlerta()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;line-height:1">×</button>
         </div>
-        ${alertas.map(a => {
+        ${alertasVisiveis.map(a => {
             const ligasExib = (a.ligas || []);
             const ligasTxt  = ligasExib.length > 4
                 ? ligasExib.slice(0, 4).map(esc).join(' · ') + ` +${ligasExib.length - 4}`
@@ -12771,19 +12796,6 @@ function _mostrarNotificacaoAlerta(alertas) {
 
     if (_alertaAutoFecharTimer) clearTimeout(_alertaAutoFecharTimer);
     _alertaAutoFecharTimer = setTimeout(() => _fecharNotificacaoAlerta(), _alertaVisDuracao * 1000);
-
-    // Piscar borda das ligas alertadas
-    const ligasAlertadas = new Set(alertas.flatMap(a => a.ligas || []));
-    ligasAlertadas.forEach(liga => {
-        const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(liga)}"]`);
-        if (!tab) return;
-        tab.classList.add('liga-alerta-ativa');
-        if (_alertaLigaPiscarTimers[liga]) clearTimeout(_alertaLigaPiscarTimers[liga]);
-        _alertaLigaPiscarTimers[liga] = setTimeout(() => {
-            tab.classList.remove('liga-alerta-ativa');
-            delete _alertaLigaPiscarTimers[liga];
-        }, _alertaLigaPiscarDuracao * 1000);
-    });
 }
 
 function _fecharNotificacaoAlerta() {
