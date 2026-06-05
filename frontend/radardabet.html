@@ -12094,7 +12094,8 @@ async function publicarPadrao(id) {
             _padroesCache = _padroesCache.map(x => x.id === id ? { ...x, is_publicado: 1 } : x);
             _renderListaPadroes(_padroesCache);
             const msg = document.createElement('div');
-            msg.textContent = `✓ Publicado para ${d.copiados} usuário(s)`;
+            const extra = d.pulados ? ` (${d.pulados} no limite)` : '';
+            msg.textContent = `✓ Publicado para ${d.copiados} usuário(s)${extra}`;
             msg.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1fcc59;color:#0f172a;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.4)';
             document.body.appendChild(msg);
             setTimeout(() => msg.remove(), 3000);

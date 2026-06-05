@@ -1276,19 +1276,22 @@ app.post('/api/padroes/publicar/:id', async (req, res) => {
         const p = pRow.recordset[0];
         // Marca como publicado
         await sql.query`UPDATE user_padroes_grafico SET is_publicado=1 WHERE id=${id}`;
+        const limite = await _getMaxPadroes();
         // Usuários ativos que ainda não têm cópia deste padrão
         const usuarios = await sql.query`SELECT id FROM Usuarios WHERE id <> ${usuarioId} AND Ativo=1`;
-        let copiados = 0;
+        let copiados = 0, pulados = 0;
         for (const u of usuarios.recordset) {
             const jaExiste = await sql.query`SELECT 1 AS n FROM user_padroes_grafico WHERE publicado_por=${id} AND user_id=${u.id}`;
             if (jaExiste.recordset.length) continue;
+            const cnt = (await sql.query`SELECT COUNT(*) AS n FROM user_padroes_grafico WHERE user_id=${u.id}`).recordset[0].n;
+            if (cnt >= limite) { pulados++; continue; }
             await sql.query`
                 INSERT INTO user_padroes_grafico (user_id, nome, filtros, publicado_por)
                 VALUES (${u.id}, ${p.nome}, ${p.filtros}, ${id})
             `;
             copiados++;
         }
-        res.json({ success: true, copiados });
+        res.json({ success: true, copiados, pulados });
     } catch(e) { res.json({ success: false, message: e.message }); }
 });
 
