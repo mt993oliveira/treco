@@ -979,10 +979,29 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 return res.json({ success: false, message: 'Data de início e fim da licença são obrigatórias para criar um usuário.' });
             }
 
-            await sql.query`
+            const insUser = await sql.query`
                 INSERT INTO Usuarios (NomeCompleto, Usuario, Email, Telefone, Senha, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, DataAtualizacao)
+                OUTPUT INSERTED.Id
                 VALUES (${nomeCompleto}, ${usuario}, ${email}, ${telefoneVal || null}, ${hashedPassword}, ${tipoUsuario}, ${dataInicioLicenca}, ${dataFimLicenca}, GETDATE(), GETDATE())
             `;
+            const novoUserId = insUser.recordset[0]?.Id;
+
+            // Copia automaticamente todos os padrões publicados (is_publicado=1) para o novo usuário
+            if (novoUserId) {
+                try {
+                    await _ensurePadroesTable();
+                    const limite = await _getMaxPadroes();
+                    const pubPadroes = await sql.query`SELECT * FROM user_padroes_grafico WHERE is_publicado=1`;
+                    for (const p of pubPadroes.recordset) {
+                        const cnt = (await sql.query`SELECT COUNT(*) AS n FROM user_padroes_grafico WHERE user_id=${novoUserId}`).recordset[0].n;
+                        if (cnt >= limite) break;
+                        await sql.query`
+                            INSERT INTO user_padroes_grafico (user_id, nome, filtros, publicado_por)
+                            VALUES (${novoUserId}, ${p.nome}, ${p.filtros}, ${p.id})
+                        `;
+                    }
+                } catch(_) {}
+            }
 
             const reqLogin2 = currentUser.Usuario || `ID:${req.body.usuarioId}`;
             await sql.query`
