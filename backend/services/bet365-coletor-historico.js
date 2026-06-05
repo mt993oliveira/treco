@@ -443,6 +443,28 @@ async function coletarViaExtra(browser, ligaNorm, dataAlvo) {
 
         for (const jogo of jogosParaClicar) {
             try {
+                // Pula se o jogo já foi coletado (≥3 mercados no banco)
+                {
+                    const [hh, mi] = jogo.horario.replace('.', ':').split(':').map(Number);
+                    const [yyyy, mm2, dd] = dataAlvo.split('-').map(Number);
+                    const dOff = hh < HORA_VIRADA_DIA ? 1 : 0;
+                    const dtJ  = new Date(Date.UTC(yyyy, mm2-1, dd+dOff, hh, mi, 0, 0));
+                    const tcN  = normalizarNomeTime(jogo.timeCasa);
+                    const tfN  = normalizarNomeTime(jogo.timeFora);
+                    const ck   = await (await getPool()).request()
+                        .input('liga',     sql.NVarChar(200), ligaNorm)
+                        .input('timeCasa', sql.NVarChar(100), tcN)
+                        .input('timeFora', sql.NVarChar(100), tfN)
+                        .input('dt',       sql.DateTime2,     dtJ)
+                        .query(`SELECT COUNT(*) AS n FROM bet365_resultados_mercados
+                                WHERE liga=@liga AND time_casa=@timeCasa AND time_fora=@timeFora
+                                  AND data_partida BETWEEN DATEADD(MINUTE,-30,@dt) AND DATEADD(MINUTE,30,@dt)`);
+                    if (ck.recordset[0].n >= 3) {
+                        console.log(`   ⏩ [${ligaNorm}] ${jogo.horario} ${tcN}×${tfN} — já coletado (${ck.recordset[0].n} mercados), pulando`);
+                        continue;
+                    }
+                }
+
                 // Clica no botão da partida (com retry — às vezes precisa de 2 cliques)
                 for (let tentClique = 1; tentClique <= MAX_CLIQUES; tentClique++) {
                     await novaPg.evaluate((idx) => {
