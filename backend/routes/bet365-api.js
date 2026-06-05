@@ -865,6 +865,24 @@ router.get('/historico-mercados', async (req, res) => {
             });
         }
 
+        // Dedup: se dois evento_ids caem no mesmo liga+minuto, mantém só o com mais mercados.
+        // Resolve casos de registros fantasma (1-2 mercados) no mesmo slot que um jogo completo.
+        {
+            const slotMap = new Map(); // "liga|YYYY-MM-DDTHH:MM" → key do gamesMap
+            for (const [key, game] of gamesMap.entries()) {
+                const minuteKey = new Date(game.data_partida).toISOString().substring(0, 16);
+                const slotKey = `${game.liga}|${minuteKey}`;
+                const existing = slotMap.get(slotKey);
+                if (!existing || game.mercados.length > gamesMap.get(existing).mercados.length) {
+                    slotMap.set(slotKey, key);
+                }
+            }
+            const keysValidos = new Set(slotMap.values());
+            for (const key of [...gamesMap.keys()]) {
+                if (!keysValidos.has(key)) gamesMap.delete(key);
+            }
+        }
+
         // Deriva campos adicionais de cada partida a partir dos mercados
         for (const j of gamesMap.values()) {
             const mkts = j.mercados;
