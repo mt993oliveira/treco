@@ -1317,6 +1317,47 @@ app.delete('/api/padroes/publicar/:id', async (req, res) => {
     } catch(e) { res.json({ success: false, message: e.message }); }
 });
 
+// Listar todos os padrões de todos os usuários (somente master/admin)
+app.get('/api/admin/padroes', async (req, res) => {
+    const usuarioId = parseInt(req.query.usuarioId);
+    if (!usuarioId) return res.json({ success: false, message: 'usuarioId obrigatório' });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const uRow = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE id=${usuarioId}`;
+        if (!uRow.recordset.length || !_isAdminTipo(uRow.recordset[0].TipoUsuario)) {
+            return res.json({ success: false, message: 'Permissão insuficiente' });
+        }
+        await _ensurePadroesTable();
+        const r = await sql.query`
+            SELECT p.id, p.user_id, u.Usuario AS usuario_nome, u.TipoUsuario AS usuario_tipo,
+                   p.nome, p.filtros, p.is_principal, p.is_publicado, p.publicado_por, p.data_criacao
+            FROM user_padroes_grafico p
+            INNER JOIN Usuarios u ON u.Id = p.user_id
+            ORDER BY u.Usuario ASC, p.data_criacao ASC
+        `;
+        res.json({ success: true, padroes: r.recordset });
+    } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
+// Excluir qualquer padrão (somente master/admin)
+app.delete('/api/admin/padroes/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const usuarioId = parseInt(req.body.usuarioId || req.query.usuarioId);
+    if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const uRow = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE id=${usuarioId}`;
+        if (!uRow.recordset.length || !_isAdminTipo(uRow.recordset[0].TipoUsuario)) {
+            return res.json({ success: false, message: 'Permissão insuficiente' });
+        }
+        await _ensurePadroesTable();
+        // Se for o original publicado, remove também todas as cópias
+        await sql.query`DELETE FROM user_padroes_grafico WHERE publicado_por=${id}`;
+        await sql.query`DELETE FROM user_padroes_grafico WHERE id=${id}`;
+        res.json({ success: true });
+    } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
 // Rota de contato — encaminha para Formspree pelo backend (evita bloqueio CORS/domínio)
 app.post('/api/contato', async (req, res) => {
     const { name, email, phone, message } = req.body;

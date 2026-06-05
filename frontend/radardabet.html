@@ -2527,6 +2527,45 @@
             </table>
         </div>
         </div><!-- /diag-mkt-wrap -->
+
+    <!-- PADRÕES DE USUÁRIOS -->
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-top:10px">
+        <div style="padding:6px 12px;background:#0c1220;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:9px;font-weight:700;color:#334155;letter-spacing:.06em">📋 PADRÕES DOS USUÁRIOS</span>
+            <span style="font-size:9px;color:#334155">Visualize e exclua padrões de qualquer usuário</span>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+                <input id="diag-pad-filtro" type="text" placeholder="Filtrar por usuário ou nome..."
+                    oninput="_diagFiltrarPadroes()"
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;
+                    padding:3px 8px;font-size:10px;outline:none;width:180px">
+                <button onclick="_diagCarregarPadroes()"
+                    style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                    padding:3px 10px;font-size:10px;cursor:pointer">↺ Carregar</button>
+            </div>
+        </div>
+        <div style="padding:10px 14px">
+            <div id="diag-pad-resumo" style="font-size:10px;color:#475569;margin-bottom:8px"></div>
+            <div style="overflow-x:auto">
+                <table class="tabela-hist" style="font-size:11px;width:100%">
+                    <thead>
+                        <tr>
+                            <th class="th-l" style="min-width:110px">Usuário</th>
+                            <th class="th-l" style="min-width:60px">Tipo</th>
+                            <th class="th-l" style="min-width:140px">Nome do Padrão</th>
+                            <th class="th-l" style="min-width:160px">Descrição</th>
+                            <th style="min-width:70px">Status</th>
+                            <th style="min-width:90px">Criado em</th>
+                            <th style="min-width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="diag-pad-tbody">
+                        <tr><td colspan="7" style="padding:20px;text-align:center;color:#334155;font-size:11px">Clique em ↺ Carregar para listar os padrões.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     </div>
 </div>
 
@@ -9197,6 +9236,95 @@ async function carregarDiagnostico() {
         _diagCarregarMkt(),
     ]);
     _diagAtualizarWS();
+}
+
+let _diagPadroesCache = [];
+async function _diagCarregarPadroes() {
+    const u = _getUser();
+    if (!u) return;
+    const tbody = document.getElementById('diag-pad-tbody');
+    const resumo = document.getElementById('diag-pad-resumo');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#475569;font-size:11px">Carregando...</td></tr>';
+    try {
+        const r = await fetch(`/api/admin/padroes?usuarioId=${u.Id}`);
+        const d = await r.json();
+        if (!d.success) { if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="padding:20px;text-align:center;color:#f87171;font-size:11px">${d.message}</td></tr>`; return; }
+        _diagPadroesCache = d.padroes || [];
+        _diagFiltrarPadroes();
+    } catch(e) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#f87171;font-size:11px">Erro ao carregar.</td></tr>';
+    }
+}
+
+function _diagFiltrarPadroes() {
+    const tbody = document.getElementById('diag-pad-tbody');
+    const resumo = document.getElementById('diag-pad-resumo');
+    if (!tbody) return;
+    const q = (document.getElementById('diag-pad-filtro')?.value || '').toLowerCase();
+    const lista = q
+        ? _diagPadroesCache.filter(p => p.usuario_nome.toLowerCase().includes(q) || p.nome.toLowerCase().includes(q))
+        : _diagPadroesCache;
+    if (resumo) {
+        const total = _diagPadroesCache.length;
+        const usuarios = new Set(_diagPadroesCache.map(p => p.user_id)).size;
+        resumo.textContent = `${total} padrão(ões) de ${usuarios} usuário(s)${q ? ` · ${lista.length} exibido(s)` : ''}`;
+    }
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#334155;font-size:11px">Nenhum padrão encontrado.</td></tr>';
+        return;
+    }
+    const TIPO_LABEL = { master:'Master', administrador:'Admin', admin:'Admin', user:'Usuário', bronze:'Bronze', prata:'Prata', gold:'Gold', premium:'Premium' };
+    const descPad = filtrosJson => {
+        try {
+            const f = typeof filtrosJson === 'string' ? JSON.parse(filtrosJson) : filtrosJson;
+            const ativas = Object.keys(f.linhas||{}).filter(k => f.linhas[k]);
+            const filtro = f.filtro ? (TODOS_FILTROS.find(x=>x.id===f.filtro)||{label:f.filtro}).label : '';
+            return `${filtro||'—'} · ${ativas.length} linha(s)`;
+        } catch(e) { return '—'; }
+    };
+    const fmtData = iso => { try { const d = new Date(iso); return d.toLocaleDateString('pt-BR'); } catch(e) { return '—'; } };
+    tbody.innerHTML = lista.map(p => {
+        const tipo = (p.usuario_tipo||'').toLowerCase();
+        const tipoLabel = TIPO_LABEL[tipo] || p.usuario_tipo;
+        const tipoColor = tipo === 'master' ? '#f59e0b' : tipo === 'admin' || tipo === 'administrador' ? '#60a5fa' : '#64748b';
+        let status = '';
+        if (p.is_publicado) status = '<span style="font-size:9px;background:rgba(96,165,250,.18);color:#60a5fa;border-radius:4px;padding:1px 6px;font-weight:700">Publicado</span>';
+        else if (p.publicado_por) status = '<span style="font-size:9px;background:rgba(96,165,250,.1);color:#93c5fd;border-radius:4px;padding:1px 6px">Cópia</span>';
+        else if (p.is_principal) status = '<span style="font-size:9px;color:#1fcc59">★ Principal</span>';
+        return `<tr>
+            <td style="font-weight:600;color:#e2e8f0">${p.usuario_nome}</td>
+            <td style="color:${tipoColor};font-size:10px;font-weight:600">${tipoLabel}</td>
+            <td style="color:#f1f5f9">${p.nome}</td>
+            <td style="color:#64748b;font-size:10px">${descPad(p.filtros)}</td>
+            <td style="text-align:center">${status}</td>
+            <td style="color:#475569;font-size:10px;text-align:center">${fmtData(p.data_criacao)}</td>
+            <td style="text-align:center">
+                <button onclick="_diagExcluirPadrao(${p.id},'${p.nome.replace(/'/g,"\\'")}')"
+                    style="padding:3px 8px;border-radius:4px;background:#3b1a1a;border:1px solid #7f1d1d;
+                    color:#f87171;font-size:10px;cursor:pointer">✕</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function _diagExcluirPadrao(id, nome) {
+    const u = _getUser();
+    if (!u) return;
+    const p = _diagPadroesCache.find(x => x.id === id);
+    const aviso = p?.is_publicado ? '\n⚠️ Este padrão está publicado — as cópias também serão removidas.' : '';
+    if (!confirm(`Excluir o padrão "${nome}"?${aviso}`)) return;
+    try {
+        const r = await fetch(`/api/admin/padroes/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: u.Id })
+        });
+        const d = await r.json();
+        if (d.success) {
+            _diagPadroesCache = _diagPadroesCache.filter(x => x.id !== id && x.publicado_por !== id);
+            _diagFiltrarPadroes();
+        } else { alert(d.message || 'Erro ao excluir.'); }
+    } catch(e) { alert('Erro de conexão ao excluir padrão.'); }
 }
 
 function _diagAtualizarWS() {
