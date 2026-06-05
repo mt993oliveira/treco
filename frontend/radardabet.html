@@ -6452,7 +6452,7 @@ function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
             { label:`~${avgPct}%`, data: pctSlice.map(()=>avgPct),
               borderColor: cor+'50', backgroundColor:'transparent',
               borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
-            { label:`${fi.label} ${pctGeral}%`, data: pctSlice,
+            { label:`${fi.label} ${pctGeral}%`, _filtroLabel: fi.label, data: pctSlice,
               borderColor: cor, backgroundColor:'transparent',
               borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:0 }
         ]},
@@ -6466,7 +6466,7 @@ function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
                     backgroundColor:'rgba(15,23,42,0.85)', borderColor:'#334155', borderWidth:1,
                     titleColor:'#94a3b8', bodyColor:'#cbd5e1',
                     filter: item => !item.dataset._isRef,
-                    callbacks:{ title:items=>items[0]?.label||'', label:item=>` ${item.dataset.label}: ${item.raw}%` }
+                    callbacks:{ title:items=>items[0]?.label||'', label:item=>` ${item.dataset._filtroLabel || item.dataset.label}: ${item.raw}%` }
                 }
             },
             scales:{
