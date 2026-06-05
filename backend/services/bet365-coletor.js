@@ -242,6 +242,7 @@ class Bet365Coletor {
         this._ultimaColetaProximos = new Map(); // liga → timestamp da última busca de próximos
         this._ligasFalhadasConsec    = 0;   // contador de falhas consecutivas "Ligas não apareceram"
         this._proximaColetaPermitida = 0;   // backoff: timestamp mínimo para próxima tentativa
+        this._ciclosSemResultados    = 0;   // contador de ciclos consecutivos com 0 resultados
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1071,7 +1072,17 @@ class Bet365Coletor {
                     await this._verificarSessao(pg);
                 }
             }
-            if (!recarregouOk) console.log('   ❌ Não foi possível recarregar. Próxima liga pode falhar.');
+            if (!recarregouOk) {
+                console.log('   ❌ Não foi possível recarregar — navegando de volta para URL virtual...');
+                try {
+                    await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                    await this._delay(this._cfgNum('delay_pos_reload_ms', 8000));
+                    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                    console.log('   ✅ Navegação de recuperação OK — ligas voltaram');
+                } catch(e) {
+                    console.log(`   ❌ Recuperação falhou (${e.message.substring(0, 60)}) — próxima liga pode não aparecer`);
+                }
+            }
         }
 
         console.log(`\n   ✅ Total: ${todosEventos.length} evento(s), ${todosResultados.length} resultado(s)`);
@@ -1430,7 +1441,7 @@ class Bet365Coletor {
         return null;
     }
 
-    async _verificarSessao(pg) {
+    async _verificarSessao(pg, { forcar = false } = {}) {
         try {
             await pg.bringToFront();
 
@@ -1491,7 +1502,10 @@ class Bet365Coletor {
                 })
             );
 
-            if (!temAvisoVirtual && !temBotaoLoginHeader && naPaginaVirtual) return; // sessão OK
+            if (!forcar && !temAvisoVirtual && !temBotaoLoginHeader && naPaginaVirtual) return; // sessão OK
+            if (forcar && !temAvisoVirtual && !temBotaoLoginHeader && naPaginaVirtual) {
+                console.log('   🔑 Sessão aparenta OK visualmente mas forçando login (ciclos sem resultado)...');
+            }
 
             const motivo = temAvisoVirtual ? '"Faça Login para Assistir" detectado'
                 : !naPaginaVirtual         ? `URL fora da página virtual: ${url.substring(0, 60)}`
@@ -1991,12 +2005,20 @@ class Bet365Coletor {
 
             // Só marca sucesso se extraiu algum dado — garante alerta quando sessão falha silenciosamente
             if (evBrutos.length > 0 || resBrutos.length > 0) {
-                this.ultimaColetaSucesso = Date.now();
-                this.ultimoErro          = null;
+                this.ultimaColetaSucesso  = Date.now();
+                this.ultimoErro           = null;
+                this._ciclosSemResultados = 0;
                 console.log(`✅ Bet365 - Coleta concluída`);
             } else {
+                this._ciclosSemResultados++;
                 this.ultimoErro = 'Coleta retornou 0 eventos e 0 resultados';
-                console.log(`⚠️  Bet365 - Coleta concluída mas sem dados extraídos (sessão pode ter expirado)`);
+                console.log(`⚠️  Bet365 - Coleta concluída mas sem dados extraídos (sessão pode ter expirado) [${this._ciclosSemResultados}x]`);
+                const threshold = this._cfgNum('ciclos_sem_resultado_threshold', 3);
+                if (this._ciclosSemResultados >= threshold) {
+                    console.log(`   🔑 ${this._ciclosSemResultados} ciclos sem resultado — forçando verificação de sessão...`);
+                    await this._verificarSessao(this.page, { forcar: true });
+                    this._ciclosSemResultados = 0;
+                }
             }
 
         } catch(err) {
