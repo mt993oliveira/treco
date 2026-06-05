@@ -890,7 +890,8 @@ router.get('/historico-mercados', async (req, res) => {
         {
             const slotMap = new Map(); // "liga|YYYY-MM-DDTHH:MM" → key do gamesMap
             for (const [key, game] of gamesMap.entries()) {
-                const minuteKey = new Date(game.data_partida).toISOString().substring(0, 16);
+                const snappedForDedup = _snapMinuto(new Date(game.data_partida), game.liga);
+                const minuteKey = snappedForDedup.toISOString().substring(0, 16);
                 const slotKey = `${game.liga}|${minuteKey}`;
                 const existing = slotMap.get(slotKey);
                 if (!existing || game.mercados.length > gamesMap.get(existing).mercados.length) {
