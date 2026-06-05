@@ -370,10 +370,6 @@ class Bet365Coletor {
              CREATE INDEX IX_b365_resmkt_evento ON bet365_resultados_mercados (evento_id)`,
             `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('bet365_resultados_mercados') AND name='IX_b365_resmkt_liga_data')
              CREATE INDEX IX_b365_resmkt_liga_data ON bet365_resultados_mercados (liga, data_partida)`,
-            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='gol_casa') ALTER TABLE bet365_eventos DROP COLUMN gol_casa`,
-            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='gol_fora') ALTER TABLE bet365_eventos DROP COLUMN gol_fora`,
-            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='minuto_jogo') ALTER TABLE bet365_eventos DROP COLUMN minuto_jogo`,
-            `IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('bet365_eventos') AND name='seconds_to_start') ALTER TABLE bet365_eventos DROP COLUMN seconds_to_start`,
         ];
         for (const mig of migracoes) {
             await this.pool.query(mig).catch(e => console.warn('⚠️ Schema:', e.message));
