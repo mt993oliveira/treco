@@ -5986,11 +5986,12 @@ function renderGraficoGols() {
                             const j = _GOLS_SERIE[ctx.dataIndex];
                             if (!j) return [` ?: ?`, ` Soma ${n}j: ${ctx.raw}`];
                             const mid = ctx.dataset._metricId;
-                            const ht = (j.gol_casa_ht ?? 0) + (j.gol_fora_ht ?? 0);
+                            const htDisp = j.gol_casa_ht != null && j.gol_fora_ht != null;
+                            const ht = htDisp ? j.gol_casa_ht + j.gol_fora_ht : null;
                             const ft = j.gol_casa + j.gol_fora;
                             let gLabel;
-                            if      (mid === 'gols-1t')   gLabel = `1T: ${ht}⚽`;
-                            else if (mid === 'gols-2t')   gLabel = `2T: ${Math.max(0, ft - ht)}⚽`;
+                            if      (mid === 'gols-1t')   gLabel = htDisp ? `1T: ${ht}⚽` : `1T: s/d`;
+                            else if (mid === 'gols-2t')   gLabel = htDisp ? `2T: ${Math.max(0, ft - ht)}⚽` : `2T: s/d`;
                             else if (mid === 'gols-casa')  gLabel = `Casa: ${j.gol_casa}⚽`;
                             else if (mid === 'gols-fora')  gLabel = `Fora: ${j.gol_fora}⚽`;
                             else                           gLabel = `FT: ${ft}⚽`;
