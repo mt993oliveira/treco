@@ -4525,6 +4525,13 @@ function renderFiltros() {
     if (_b('view-padroes'))      _b('view-padroes').classList.toggle('ativo',      !!S.showPadroes);
 
     const c = document.getElementById('filtros-row');
+
+    // Salva texto que o usuário pode estar digitando no rename inline antes de destruir o DOM
+    if (_editandoPadraoId !== null) {
+        const _inp = document.getElementById(`padrao-edit-${_editandoPadraoId}`);
+        if (_inp) _editandoValorAtual = _inp.value;
+    }
+
     c.innerHTML = '';
 
     const temConteudo = S.showPadroes || S.showMercados || S.showConfig;
@@ -11958,6 +11965,7 @@ function _usrMsg(txt, ok) {
 // ============================================================
 let _padroesCache = [];
 let _editandoPadraoId = null;
+let _editandoValorAtual = null; // preserva texto digitado no rename quando renderFiltros reconstrói o DOM
 let _alertaLigasMap = {}; // id → ligas[] disparadas na última verificação
 
 async function abrirModalPadroes() {
@@ -12000,9 +12008,10 @@ function _renderListaPadroes(padroes) {
     };
     listEl.innerHTML = padroes.map(p => {
         const editando = _editandoPadraoId === p.id;
+        const _valorEdit = (editando && _editandoValorAtual !== null) ? _editandoValorAtual : p.nome;
         const nomeArea = editando ? `
             <div style="display:flex;gap:6px;align-items:center">
-                <input id="padrao-edit-${p.id}" type="text" value="${esc(p.nome)}" maxlength="50"
+                <input id="padrao-edit-${p.id}" type="text" value="${esc(_valorEdit)}" maxlength="50"
                     onkeydown="if(event.key==='Enter')confirmarEdicaoNome(${p.id});else if(event.key==='Escape')cancelarEdicaoNome();"
                     style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:5px;
                     padding:5px 8px;color:#e2e8f0;font-size:12px;outline:none;min-width:0">
@@ -12056,6 +12065,7 @@ function _renderListaPadroes(padroes) {
 
 function editarNomePadrao(id) {
     _editandoPadraoId = id;
+    _editandoValorAtual = null;
     _renderListaPadroes(_padroesCache);
 }
 
@@ -12076,12 +12086,14 @@ async function confirmarEdicaoNome(id) {
         const d = await r.json();
         if (!d.success) { alert(d.message || 'Erro ao renomear.'); return; }
         _editandoPadraoId = null;
+        _editandoValorAtual = null;
         await _carregarPadroes();
     } catch(e) { alert('Erro ao renomear padrão.'); }
 }
 
 function cancelarEdicaoNome() {
     _editandoPadraoId = null;
+    _editandoValorAtual = null;
     _renderListaPadroes(_padroesCache);
 }
 
