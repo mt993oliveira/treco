@@ -2620,10 +2620,6 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:8px 12px;background:#1e293b;border-radius:8px">
             <span style="font-size:12px;color:#94a3b8;flex-shrink:0">Gráfico:</span>
             <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#e2e8f0">
-                <input type="radio" id="alerta-graf-mercados" name="alerta-graf" value="mercados" style="accent-color:#f59e0b" onchange="_renderCondicoesAlerta()">
-                📈 Mercados
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#e2e8f0">
                 <input type="radio" id="alerta-graf-linha" name="alerta-graf" value="linha" style="accent-color:#f59e0b" onchange="_renderCondicoesAlerta()">
                 📉 Linha
             </label>
@@ -12010,8 +12006,8 @@ function _renderListaPadroes(padroes) {
             <div style="font-size:10px;color:#64748b;margin-top:2px">${desc(p.filtros)}</div>`;
         const _alertaInfo = (() => { try { const f = typeof p.filtros==='string'?JSON.parse(p.filtros||'{}'):(p.filtros||{}); return f.alerta||{}; } catch(e){return {};} })();
         const _alertaAtivo = !!(_alertaInfo.ativo);
-        const _alertaGraf  = _alertaInfo.grafico || 'mercados';
-        const _alertaGrafLabel = _alertaAtivo ? (_alertaGraf === 'linha' ? ' 📉' : _alertaGraf === 'gols' ? ' 📊' : ' 📈') : '';
+        const _alertaGraf  = (_alertaInfo.grafico && _alertaInfo.grafico !== 'mercados') ? _alertaInfo.grafico : 'linha';
+        const _alertaGrafLabel = _alertaAtivo ? (_alertaGraf === 'gols' ? ' 📊' : ' 📉') : '';
         const acoes = editando ? '' : `
             <button onclick="aplicarPadrao(${p.id})" title="Aplicar este padrão"
                 style="padding:5px 10px;border-radius:5px;background:#1e293b;border:1px solid #334155;
@@ -12186,7 +12182,7 @@ function abrirAlertaEditor(id) {
     _alertaEditandoId = id;
     let f = {};
     try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) {}
-    const al = f.alerta || { ativo: false, condicoes: [], janela: '12', base: 20, grafico: 'mercados' };
+    const al = f.alerta || { ativo: false, condicoes: [], janela: '12', base: 20, grafico: 'linha' };
     _alertaCondicoes = al.condicoes ? JSON.parse(JSON.stringify(al.condicoes)) : [];
 
     const nomeEl = document.getElementById('alerta-padrao-nome');
@@ -12197,7 +12193,7 @@ function abrirAlertaEditor(id) {
     if (janelaEl) janelaEl.value = String(al.janela || '12');
     const baseEl = document.getElementById('alerta-base');
     if (baseEl) baseEl.value = String(al.base != null ? al.base : 20);
-    const grafVal = al.grafico || 'mercados';
+    const grafVal = (al.grafico && al.grafico !== 'mercados') ? al.grafico : 'linha';
     const grafEl = document.getElementById(`alerta-graf-${grafVal}`);
     if (grafEl) grafEl.checked = true;
 
@@ -12215,7 +12211,7 @@ const _GOLS_METRICAS = [
 ];
 
 function _grafAlertaAtual() {
-    return document.querySelector('input[name="alerta-graf"]:checked')?.value || 'mercados';
+    return document.querySelector('input[name="alerta-graf"]:checked')?.value || 'linha';
 }
 
 function _renderCondicoesAlerta() {
@@ -12291,7 +12287,7 @@ async function salvarAlertaPadrao() {
         ativo:    !!(document.getElementById('alerta-ativo')?.checked),
         janela:   document.getElementById('alerta-janela')?.value || '12',
         base:     parseInt(document.getElementById('alerta-base')?.value || '0') || 0,
-        grafico:  document.querySelector('input[name="alerta-graf"]:checked')?.value || 'mercados',
+        grafico:  document.querySelector('input[name="alerta-graf"]:checked')?.value || 'linha',
         condicoes: _alertaCondicoes
     };
     const fs = JSON.stringify(f);
