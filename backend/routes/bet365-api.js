@@ -1735,8 +1735,9 @@ const CONFIG_DEFAULTS = [
     { chave:'alerta_minutos_sem_coleta',    valor:'15',    tipo:'number',  grupo:'alertas',  descricao:'Minutos sem coleta bem-sucedida para disparar alerta' },
     { chave:'telegram_bot_token',           valor:'8189807116:AAEByra9URAFBh_Hutwn_-lVzWinpk68BOY', tipo:'text', grupo:'alertas', descricao:'Token do bot Telegram (obtido via @BotFather)' },
     { chave:'telegram_chat_ids',            valor:'5493649790', tipo:'text', grupo:'alertas', descricao:'Chat IDs do Telegram separados por vírgula' },
-    { chave:'alerta_visual_duracao_s',      valor:'15',  tipo:'number', grupo:'alertas', descricao:'Duração da notificação de alerta na tela (segundos)' },
-    { chave:'alerta_liga_piscar_s',         valor:'30',  tipo:'number', grupo:'alertas', descricao:'Duração do piscar da borda da liga quando alerta dispara (segundos)' },
+    { chave:'alerta_visual_duracao_s',      valor:'15',   tipo:'number',  grupo:'alertas', descricao:'Duração da notificação de alerta na tela (segundos)' },
+    { chave:'alerta_liga_piscar_s',         valor:'30',   tipo:'number',  grupo:'alertas', descricao:'Duração do piscar da borda da liga quando alerta dispara (segundos)' },
+    { chave:'alerta_popup_ativo',           valor:'true', tipo:'boolean', grupo:'alertas', descricao:'Exibir popup de alerta visual (quando desativado, apenas a liga pisca; MASTER sempre vê o popup)' },
     // ── Seções da Análise ──
     { chave:'show_secao_ia',                valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: IA — Sugestões para Próximos Jogos' },
     { chave:'show_secao_value_bets',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Value Bets' },

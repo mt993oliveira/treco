@@ -10916,6 +10916,7 @@ async function _loadConfigSistema() {
         // Atualiza globals de runtime ao abrir o painel
         if (cfgAlertas.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(cfgAlertas.alerta_visual_duracao_s) || 15;
         if (cfgAlertas.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(cfgAlertas.alerta_liga_piscar_s) || 30;
+        if (cfgAlertas.alerta_popup_ativo !== undefined) _alertaPopupAtivo = cfgAlertas.alerta_popup_ativo !== 'false';
 
         const ativadoD = dAlertas.find(d => d.chave === 'alerta_ativado') || { chave:'alerta_ativado', valor:'true' };
 
@@ -10940,6 +10941,7 @@ async function _loadConfigSistema() {
                 `<input type="number" id="cfg-alerta_liga_piscar_s" value="${escHtml(cfgAlertas.alerta_liga_piscar_s||'30')}" min="5" max="300"
                     style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
                 'Tempo que a aba da liga fica piscando na borda quando o alerta dispara · Padrão: 30 s') +
+            _toggleHtml({ chave:'alerta_popup_ativo', valor: cfgAlertas.alerta_popup_ativo ?? 'true', descricao:'Exibir popup de alerta visual (desativado = apenas a liga pisca; MASTER sempre vê o popup)' }) +
             `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
                 <span style="font-size:11px;font-weight:700;color:#e2e8f0">📱 Telegram</span>
             </div>` +
@@ -11207,6 +11209,7 @@ async function salvarConfigSistema() {
             // Atualiza globals de alerta visual imediatamente
             if (payload.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(payload.alerta_visual_duracao_s) || 15;
             if (payload.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(payload.alerta_liga_piscar_s) || 30;
+            if (payload.alerta_popup_ativo !== undefined) _alertaPopupAtivo = payload.alerta_popup_ativo !== 'false';
             // Atualiza menu de ligas imediatamente
             await carregarConfigLigas();
             renderLigas();
@@ -12729,6 +12732,7 @@ let _alertaAutoFecharTimer = null;
 let _alertaVisDuracao = 15;
 let _alertaLigaPiscarDuracao = 30;
 let _alertaLigaPiscarTimers = {};
+let _alertaPopupAtivo = true; // controlado por alerta_popup_ativo no config do sistema
 
 async function _carregarAlertaCfgRuntime() {
     try {
@@ -12739,6 +12743,7 @@ async function _carregarAlertaCfgRuntime() {
         (d.data || []).filter(x => x.grupo === 'alertas').forEach(x => { alertas[x.chave] = x.valor; });
         if (alertas.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(alertas.alerta_visual_duracao_s) || 15;
         if (alertas.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(alertas.alerta_liga_piscar_s) || 30;
+        if (alertas.alerta_popup_ativo !== undefined) _alertaPopupAtivo = alertas.alerta_popup_ativo !== 'false';
     } catch(e) {}
 }
 
@@ -12759,8 +12764,12 @@ function _mostrarNotificacaoAlerta(alertas) {
         }, _alertaLigaPiscarDuracao * 1000);
     });
 
-    // Se todos os alertas disparados forem silenciosos, não exibe o popup
-    if (alertas.every(a => a.silencioso)) return;
+    // Verifica se o popup está habilitado (MASTER sempre vê, independente da config)
+    const _isMaster = (_getUser()?.TipoUsuario || '').toLowerCase() === 'master';
+    const _popupPermitido = _alertaPopupAtivo || _isMaster;
+
+    // Se todos os alertas forem silenciosos, ou popup desativado para este usuário, não exibe
+    if (alertas.every(a => a.silencioso) || !_popupPermitido) return;
     const alertasVisiveis = alertas.filter(a => !a.silencioso);
 
     let el = document.getElementById('alerta-notif');
