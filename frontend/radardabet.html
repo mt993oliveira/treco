@@ -12177,12 +12177,28 @@ function aplicarPadrao(id, opts = {}) {
             S.showMercados = false;
             S.showConfig   = false;
             if (isGols2) {
+                // Ativa métricas de gols da condição (mesmo comportamento do alerta)
+                const metricas2 = (al2.condicoes || []).map(c => c.metrica).filter(Boolean);
+                if (metricas2.length) {
+                    FILTROS_GOLS.forEach(x => { S.linhasGols[x.id] = false; });
+                    metricas2.forEach(m => { if (S.linhasGols[m] !== undefined) S.linhasGols[m] = true; });
+                    _renderPillsGols();
+                }
                 S.showGols = true;
                 const sec = document.getElementById('historico-gols-section');
                 if (sec) sec.style.display = 'block';
                 const btn = document.getElementById('sub-btn-gols');
                 if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
             } else {
+                // Ativa mercados da condição em Mosaico e Gráfico de Linha (mesmo comportamento do alerta)
+                const mercados2 = (al2.condicoes || []).map(c => c.mercado).filter(Boolean);
+                if (mercados2.length) {
+                    TODOS_FILTROS.forEach(x => { S.linhas[x.id] = false; S.linhasLinha[x.id] = false; });
+                    mercados2.forEach(m => {
+                        if (S.linhas[m] !== undefined) S.linhas[m] = true;
+                        if (S.linhasLinha[m] !== undefined) S.linhasLinha[m] = true;
+                    });
+                }
                 S.showLinha = true;
                 const sec = document.getElementById('historico-linha-section');
                 if (sec) sec.style.display = 'block';
