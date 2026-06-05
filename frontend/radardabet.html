@@ -2088,6 +2088,7 @@
         <div id="multi-c2"></div>
         <div id="multi-c3"></div>
     </div>
+    <div id="multi-ranking" style="margin-top:10px"></div>
 </div>
 
 <!-- ========== VIEW: MULTI GOLS ========== -->
@@ -2122,6 +2123,7 @@
         <div id="mgols-c2"></div>
         <div id="mgols-c3"></div>
     </div>
+    <div id="mgols-ranking" style="margin-top:10px"></div>
 </div>
 
 <!-- ========== VIEW: MULTI LINHAS ========== -->
@@ -2151,6 +2153,7 @@
         <div id="mlinha-c2"></div>
         <div id="mlinha-c3"></div>
     </div>
+    <div id="mlinha-ranking" style="margin-top:10px"></div>
 </div>
 
 <!-- ========== VIEW: CLUBES ========== -->
@@ -3893,7 +3896,10 @@ async function carregarHistorico() {
         }
 
         renderLigas();
-        if (S.view === 'historico') { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); _verificarAlertas(); }
+        if (S.view === 'historico')    { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); _verificarAlertas(); }
+        if (S.view === 'multi')        { renderMultiHorarios(); }
+        if (S.view === 'multi-gols')   { renderMultiGols(); }
+        if (S.view === 'multi-linhas') { renderMultiLinhas(); }
 
     } catch (e) {
         console.error('carregarHistorico:', e.message);
@@ -6278,6 +6284,7 @@ function renderMultiHorarios() {
         const c = document.getElementById(`multi-c${i}`);
         if (c) c.innerHTML = _renderMiniMosaico(liga.key, liga.label, S_multi.jogos, S_multi.filtroId);
     });
+    _renderMultiHorariosRanking(S_multi.jogos, S_multi.filtroId);
 }
 
 // ============================================================
@@ -6287,9 +6294,48 @@ let S_multiGols  = { jogos: 200, metricaId: 'gols-total' };
 let S_multiLinha = { jogos: 200, filtroId:  'over2.5'    };
 const _mGolsCharts  = {};
 const _mLinhaCharts = {};
+const _multiSyncGroups = {};
 
 function _destroyMiniChart(map, key) {
-    if (map[key]) { try { map[key].destroy(); } catch(e){} delete map[key]; }
+    if (map[key]) {
+        const ch = map[key];
+        for (const gid in _multiSyncGroups) {
+            _multiSyncGroups[gid] = _multiSyncGroups[gid].filter(c => c !== ch);
+        }
+        try { ch.destroy(); } catch(e){}
+        delete map[key];
+    }
+}
+
+function _makeSyncPlugin(groupId) {
+    return {
+        id: 'multiSync',
+        afterEvent(chart, args) {
+            if (!['mousemove','mouseout'].includes(args.event.type)) return;
+            const group = (_multiSyncGroups[groupId] || []).filter(c => c !== chart);
+            if (!group.length) return;
+            if (args.event.type === 'mouseout') {
+                group.forEach(c => { try { c.tooltip.setActiveElements([], {x:0,y:0}); c.update('none'); } catch(e){} });
+                return;
+            }
+            const active = chart.tooltip.getActiveElements();
+            if (!active.length) {
+                group.forEach(c => { try { c.tooltip.setActiveElements([], {x:0,y:0}); c.update('none'); } catch(e){} });
+                return;
+            }
+            const dataIndex = active[0].index;
+            group.forEach(c => {
+                try {
+                    const maxIdx = Math.max(0, (c.data.labels?.length||1) - 1);
+                    const idx = Math.min(dataIndex, maxIdx);
+                    const elems = c.data.datasets
+                        .map((_, di) => ({ datasetIndex: di, index: idx }))
+                        .filter((_, di) => !c.data.datasets[di]._isRef);
+                    if (elems.length) { c.tooltip.setActiveElements(elems, {x:0,y:0}); c.update('none'); }
+                } catch(e) {}
+            });
+        }
+    };
 }
 
 function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
@@ -6343,6 +6389,7 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
               borderColor: cor, backgroundColor: cor+'15',
               borderWidth:2, pointRadius:0, pointHoverRadius:4, fill:true, tension:0.3 }
         ]},
+        plugins: [_makeSyncPlugin('mgols')],
         options: {
             responsive:true, maintainAspectRatio:false, animation:false,
             interaction:{ intersect:false, mode:'index' },
@@ -6365,6 +6412,7 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
         }
     });
     _mGolsCharts[chartKey] = chart;
+    (_multiSyncGroups['mgols'] = _multiSyncGroups['mgols'] || []).push(chart);
     return chart;
 }
 
@@ -6411,6 +6459,7 @@ function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
               borderColor: cor, backgroundColor:'transparent',
               borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:0 }
         ]},
+        plugins: [_makeSyncPlugin('mlinha')],
         options: {
             responsive:true, maintainAspectRatio:false, animation:false,
             interaction:{ intersect:false, mode:'index' },
@@ -6433,6 +6482,7 @@ function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
         }
     });
     _mLinhaCharts[chartKey] = chart;
+    (_multiSyncGroups['mlinha'] = _multiSyncGroups['mlinha'] || []).push(chart);
     return chart;
 }
 
@@ -6448,6 +6498,89 @@ function _multiPainel(id, ligaLabel, idx) {
     </div>`;
 }
 
+function _renderMultiRanking(elId, stats, title, corDestaque) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!stats?.length) { el.innerHTML = ''; return; }
+    const sorted = [...stats].sort((a, b) => b.val - a.val);
+    const maxVal = sorted[0]?.val || 1;
+    el.innerHTML = `
+    <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:10px 14px">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:10px">▲ RANKING — ${title}</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+        ${sorted.map((s, i) => {
+            const pct = +(s.val / maxVal * 100).toFixed(1);
+            const isFirst = i === 0;
+            const barCor = isFirst ? corDestaque : corDestaque + '70';
+            const textCor = isFirst ? corDestaque : '#64748b';
+            return `<div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:11px;font-weight:900;color:${isFirst?'#fbbf24':'#334155'};width:18px;text-align:right">${i+1}º</span>
+                <span style="font-size:11px;font-weight:700;color:#cbd5e1;width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.label}</span>
+                <div style="flex:1;background:#1e293b;border-radius:3px;height:8px;overflow:hidden">
+                    <div style="height:100%;background:${barCor};border-radius:3px;width:${pct}%"></div>
+                </div>
+                <span style="font-size:12px;font-weight:900;color:${textCor};width:52px;text-align:right">${s.display}</span>
+                <span style="font-size:10px;color:#334155;width:28px">${s.n}j</span>
+            </div>`;
+        }).join('')}
+        </div>
+    </div>`;
+}
+
+function _renderMultiGolsRanking(nJogos, metricaId) {
+    const fi = FILTROS_GOLS.find(f => f.id === metricaId);
+    if (!fi) return;
+    const stats = MULTI_LIGAS.map(liga => {
+        const all = (S.todasPartidas || [])
+            .filter(p => p.liga === liga.key && p.gol_casa != null && p.gol_fora != null);
+        const serie = all.slice(-nJogos);
+        if (!serie.length) return { label: liga.label, val: 0, display: '0.00/j', n: 0 };
+        const vals = serie.map(j => {
+            switch(metricaId) {
+                case 'gols-total': return j.gol_casa + j.gol_fora;
+                case 'gols-casa':  return j.gol_casa;
+                case 'gols-fora':  return j.gol_fora;
+                case 'gols-1t':    return (j.gol_casa_ht??0)+(j.gol_fora_ht??0);
+                case 'gols-2t':    return Math.max(0,(j.gol_casa+j.gol_fora)-((j.gol_casa_ht??0)+(j.gol_fora_ht??0)));
+                default: return 0;
+            }
+        });
+        const media = +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2);
+        return { label: liga.label, val: media, display: media+'/j', n: serie.length };
+    });
+    _renderMultiRanking('mgols-ranking', stats, `${fi.label.toUpperCase()} por liga (média/jogo)`, fi.cor);
+}
+
+function _renderMultiLinhasRanking(nJogos, filtroId) {
+    const fi = TODOS_FILTROS.find(f => f.id === filtroId);
+    if (!fi) return;
+    const stats = MULTI_LIGAS.map(liga => {
+        const all = (S.todasPartidas || [])
+            .filter(p => p.liga === liga.key && p.gol_casa != null && p.gol_fora != null);
+        const serie = all.slice(-nJogos);
+        if (!serie.length) return { label: liga.label, val: 0, display: '0%', n: 0 };
+        const hits = serie.filter(j => checa(j, fi.id)).length;
+        const pct = Math.round(hits / serie.length * 100);
+        return { label: liga.label, val: pct, display: pct+'%', n: serie.length };
+    });
+    _renderMultiRanking('mlinha-ranking', stats, `${fi.label.toUpperCase()} — taxa de acerto por liga`, fi.cor);
+}
+
+function _renderMultiHorariosRanking(nJogos, filtroId) {
+    const fi = TODOS_FILTROS.find(f => f.id === filtroId);
+    if (!fi) return;
+    const stats = MULTI_LIGAS.map(liga => {
+        const all = (S.todasPartidas || [])
+            .filter(p => p.liga === liga.key && p.gol_casa != null && p.gol_fora != null);
+        const serie = all.slice(-nJogos);
+        if (!serie.length) return { label: liga.label, val: 0, display: '0%', n: 0 };
+        const hits = serie.filter(j => checa(j, fi.id)).length;
+        const pct = Math.round(hits / serie.length * 100);
+        return { label: liga.label, val: pct, display: pct+'%', n: serie.length };
+    });
+    _renderMultiRanking('multi-ranking', stats, `${fi.label.toUpperCase()} — taxa de acerto por liga`, fi.cor);
+}
+
 function renderMultiGols() {
     if (!S.todasPartidas?.length) {
         carregarHistorico().then(() => renderMultiGols());
@@ -6460,6 +6593,7 @@ function renderMultiGols() {
         const canvasEl = document.getElementById(`mgols-canvas-${i}`);
         if (canvasEl) _renderMiniGolsChart(liga.key, canvasEl, S_multiGols.jogos, S_multiGols.metricaId);
     });
+    _renderMultiGolsRanking(S_multiGols.jogos, S_multiGols.metricaId);
 }
 
 function renderMultiLinhas() {
@@ -6490,6 +6624,7 @@ function renderMultiLinhas() {
         const canvasEl = document.getElementById(`mlinha-canvas-${i}`);
         if (canvasEl) _renderMiniLinhaChart(liga.key, canvasEl, S_multiLinha.jogos, S_multiLinha.filtroId);
     });
+    _renderMultiLinhasRanking(S_multiLinha.jogos, S_multiLinha.filtroId);
 }
 
 // ============================================================
