@@ -6108,13 +6108,12 @@ function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
     const _nowBSTms = Date.now() + BET365_OFFSET_MS;
     const gsDesc = [...gs].reverse().filter(g => g.hora.getTime() <= _nowBSTms && g.jogos.length > 0);
 
-    // Célula: 32px wide, 20px tall — legível no grid 2×2
-    const cW = 32;
-    const cH = 20;
-    const horaW = 38;
+    // Hora fixa; colunas de dados expandem para preencher o container
+    const cH    = 26;
+    const horaW = 40;
 
     const headerCols = minuteSlots.map(m =>
-        `<th style="min-width:${cW}px;width:${cW}px;padding:2px 0;text-align:center;font-size:9px;color:#64748b;background:#0c1220;font-weight:700;border-right:1px solid #0d1526">${pad2(m)}</th>`
+        `<th style="padding:3px 0;text-align:center;font-size:9px;color:#64748b;background:#0c1220;font-weight:700;border-right:1px solid #0d1526">${pad2(m)}</th>`
     ).join('');
 
     const rows = gsDesc.map(grupo => {
@@ -6136,18 +6135,18 @@ function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
 
         const hh = pad2(grupo.hora.getUTCHours());
         const cells = slotMap.map(j => {
-            if (!j) return `<td style="min-width:${cW}px;width:${cW}px;height:${cH}px;background:#060810;border-right:1px solid #0a0f1e"></td>`;
+            if (!j) return `<td style="height:${cH}px;background:#060810;border-right:1px solid #0a0f1e"></td>`;
             const hit  = fi ? checa(j, fi.id) : false;
             const bg   = !j.resultado ? '#0a1020' : hit ? gridCores.verdeBg : gridCores.vermBg;
             const txt  = !j.resultado ? '#475569' : hit ? gridCores.verdeTxt : gridCores.vermTxt;
             const score = (j.gol_casa != null && j.gol_fora != null) ? `${j.gol_casa}-${j.gol_fora}` : '·';
-            return `<td style="min-width:${cW}px;width:${cW}px;height:${cH}px;background:${bg};border-right:1px solid #0a0f1e;text-align:center;vertical-align:middle">
-                <span style="font-size:10px;font-weight:800;color:${txt};line-height:1">${score}</span>
+            return `<td style="height:${cH}px;background:${bg};border-right:1px solid #0a0f1e;text-align:center;vertical-align:middle">
+                <span style="font-size:11px;font-weight:800;color:${txt};line-height:1">${score}</span>
             </td>`;
         }).join('');
 
         return `<tr style="border-bottom:1px solid #0a0f1e">
-            <td style="width:${horaW}px;min-width:${horaW}px;padding:0 6px;height:${cH}px;font-size:10px;font-weight:800;color:${gridCores.horaHHCor||'#1fcc59'};background:#060810;position:sticky;left:0;z-index:1;white-space:nowrap;vertical-align:middle;border-right:2px solid #1e293b">${hh}h</td>
+            <td style="width:${horaW}px;padding:0 6px;height:${cH}px;font-size:11px;font-weight:800;color:${gridCores.horaHHCor||'#1fcc59'};background:#060810;position:sticky;left:0;z-index:1;white-space:nowrap;vertical-align:middle;border-right:2px solid #1e293b">${hh}h</td>
             ${cells}
         </tr>`;
     }).join('');
@@ -6173,9 +6172,9 @@ function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
         </div>
         <!-- Grid -->
         <div style="overflow-x:auto">
-            <table style="border-collapse:collapse;table-layout:fixed">
+            <table style="border-collapse:collapse;table-layout:fixed;width:100%">
                 <thead><tr style="background:#0c1220">
-                    <th style="width:${horaW}px;min-width:${horaW}px;padding:3px 6px;font-size:9px;color:#475569;font-weight:700;background:#0c1220;position:sticky;left:0;z-index:2;border-right:2px solid #1e293b">HH</th>
+                    <th style="width:${horaW}px;padding:3px 6px;font-size:9px;color:#475569;font-weight:700;background:#0c1220;position:sticky;left:0;z-index:2;border-right:2px solid #1e293b">HH</th>
                     ${headerCols}
                 </tr></thead>
                 <tbody>${rows || `<tr><td colspan="${N+1}" style="padding:20px;text-align:center;color:#334155;font-size:11px">Sem dados no período</td></tr>`}</tbody>
