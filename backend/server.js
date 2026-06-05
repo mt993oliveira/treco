@@ -2076,8 +2076,7 @@ server.listen(PORT, () => {
                               AND data_partida >= DATEADD(HOUR, -3, GETUTCDATE())
                         `);
                     const qtd     = r.recordset[0]?.qtd || 0;
-                    const minimo  = liga === 'Express Cup' ? 45 : 16; // tolera ~20% de perda
-                    if (qtd < minimo) {
+                    if (qtd < esperado) {
                         ligasComLacuna.push(liga);
                         console.log(`   📚 [Backfill] [${liga}] ${qtd}/${esperado} resultados na hora ${horaIniStr} → backfill`);
                     }
