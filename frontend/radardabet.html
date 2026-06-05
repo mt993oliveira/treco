@@ -12148,11 +12148,14 @@ function aplicarPadrao(id, opts = {}) {
                 const btn = document.getElementById('sub-btn-gols');
                 if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
             } else {
-                // Ativa os mercados das condições do alerta no Gráfico de Linha
+                // Ativa os mercados das condições do alerta no Mosaico E no Gráfico de Linha
                 const mercadosAlerta = (al.condicoes || []).map(c => c.mercado).filter(Boolean);
                 if (mercadosAlerta.length) {
-                    TODOS_FILTROS.forEach(x => { S.linhas[x.id] = false; });
-                    mercadosAlerta.forEach(m => { if (S.linhas[m] !== undefined) S.linhas[m] = true; });
+                    TODOS_FILTROS.forEach(x => { S.linhas[x.id] = false; S.linhasLinha[x.id] = false; });
+                    mercadosAlerta.forEach(m => {
+                        if (S.linhas[m] !== undefined) S.linhas[m] = true;
+                        if (S.linhasLinha[m] !== undefined) S.linhasLinha[m] = true;
+                    });
                 }
                 S.showLinha = true;
                 const sec = document.getElementById('historico-linha-section');
