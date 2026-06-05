@@ -12106,6 +12106,12 @@ function aplicarPadrao(id, opts = {}) {
             TODOS_FILTROS.forEach(x => { S.linhas[x.id] = false; });
             Object.assign(S.linhas, f.linhas);
         }
+        // Aplica estado do Gráfico de Linha (linhasLinha salvo separado; fallback: usa linhas do mosaico)
+        const linhasParaGrafico = f.linhasLinha || f.linhas;
+        if (linhasParaGrafico) {
+            TODOS_FILTROS.forEach(x => { S.linhasLinha[x.id] = false; });
+            Object.assign(S.linhasLinha, linhasParaGrafico);
+        }
         if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
 
         if (opts.abrirGrafico) {
@@ -12182,7 +12188,7 @@ async function salvarPadraoAtual() {
     const inp = document.getElementById('padroes-nome-input');
     const nome = (inp.value || '').trim();
     if (!nome) { inp.focus(); return; }
-    const filtros = JSON.stringify({ linhas: { ...S.linhas }, filtro: S.filtro });
+    const filtros = JSON.stringify({ linhas: { ...S.linhas }, linhasLinha: { ...S.linhasLinha }, filtro: S.filtro });
     try {
         const r = await fetch('/api/usuario/padroes', {
             method: 'POST',
