@@ -11958,6 +11958,7 @@ function _usrMsg(txt, ok) {
 // ============================================================
 let _padroesCache = [];
 let _editandoPadraoId = null;
+let _alertaLigasMap = {}; // id → ligas[] disparadas na última verificação
 
 async function abrirModalPadroes() {
     // mantido por compatibilidade — redireciona para togglePadroes
@@ -12102,6 +12103,20 @@ function aplicarPadrao(id, opts = {}) {
             S.showPadroes  = false;
             S.showMercados = false;
             S.showConfig   = false;
+
+            // Redireciona para a liga que disparou (se for exatamente uma liga específica)
+            const ligasDisp = _alertaLigasMap[id] || [];
+            if (ligasDisp.length === 1 && ligasDisp[0] !== 'Todas as ligas') {
+                const ligaAlvo = ligasDisp[0];
+                if (S.ligaAtiva !== ligaAlvo && S.ligas.find(l => l.liga === ligaAlvo)) {
+                    S.ligaAtiva = ligaAlvo;
+                    S.partidas  = filtrarPartidas();
+                    document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
+                    const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(ligaAlvo)}"]`);
+                    if (tab) tab.classList.add('ativo');
+                }
+            }
+
             if (isGols) {
                 // Ativa as métricas de gols usadas nas condições do alerta
                 const metricas = (al.condicoes || []).map(c => c.metrica).filter(Boolean);
@@ -12457,6 +12472,8 @@ async function _carregarAlertaCfgRuntime() {
 }
 
 function _mostrarNotificacaoAlerta(alertas) {
+    // Salva ligas disparadas por id para uso em aplicarPadrao
+    alertas.forEach(a => { _alertaLigasMap[a.id] = a.ligas || []; });
     let el = document.getElementById('alerta-notif');
     if (!el) {
         el = document.createElement('div');
