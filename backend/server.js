@@ -1173,11 +1173,15 @@ async function _ensurePadroesTable() {
 function _isAdminTipo(tipo) {
     return ['master', 'admin', 'administrador'].includes((tipo || '').toLowerCase());
 }
+let _maxPadroesCache = null, _maxPadroesCacheTs = 0;
 async function _getMaxPadroes() {
+    if (_maxPadroesCache !== null && Date.now() - _maxPadroesCacheTs < 60000) return _maxPadroesCache;
     try {
         const { getSystemConfig } = require('./routes/bet365-api');
         const cfg = await getSystemConfig();
-        return Math.max(1, Math.min(10, parseInt(cfg.max_padroes_usuario) || 5));
+        _maxPadroesCache = Math.max(1, Math.min(10, parseInt(cfg.max_padroes_usuario) || 5));
+        _maxPadroesCacheTs = Date.now();
+        return _maxPadroesCache;
     } catch(_) { return 5; }
 }
 

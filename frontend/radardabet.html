@@ -7255,8 +7255,9 @@ function togglePadroes() {
     if (_btnP && _btnP.style.display === 'none') return;
     S.showPadroes = !S.showPadroes;
     if (S.showPadroes) { S.showMercados = false; S.showConfig = false; }
-    renderFiltros();
-    if (S.showPadroes) _carregarPadroes();
+    renderFiltros(); // renderFiltros já chama _carregarPadroes() se cache vazio
+    // Se cache já existe, mostra imediatamente e atualiza em background sem "Carregando..."
+    if (S.showPadroes && _padroesCache.length > 0) _carregarPadroesSilencioso();
 }
 
 function _hoverFiltroChart(filtroId) {
@@ -12116,6 +12117,20 @@ async function _carregarPadroes() {
     } catch(e) {
         listEl.innerHTML = '<div style="color:#f87171;font-size:12px;text-align:center;padding:12px">Erro ao carregar padrões.</div>';
     }
+}
+
+// Atualiza cache em background sem exibir "Carregando..." — usado quando cache já tem dados
+async function _carregarPadroesSilencioso() {
+    const u = _getUser();
+    if (!u) return;
+    try {
+        const r = await fetch(`/api/usuario/padroes?usuarioId=${u.Id}`);
+        const data = await r.json();
+        if (data.padroes) {
+            _padroesCache = data.padroes;
+            if (S.showPadroes) _renderListaPadroes(_padroesCache);
+        }
+    } catch(e) { /* silencioso */ }
 }
 
 function _renderListaPadroes(padroes) {
