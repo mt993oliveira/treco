@@ -12095,7 +12095,34 @@ function aplicarPadrao(id, opts = {}) {
         }
         if (f.filtro && TODOS_FILTROS.find(x => x.id === f.filtro)) S.filtro = f.filtro;
 
-        if (!opts.silencioso) {
+        if (opts.abrirGrafico) {
+            // Chamado pelo alerta: abre o gráfico correto com as métricas/filtros da condição
+            const al = f.alerta || {};
+            const isGols = al.grafico === 'gols';
+            S.showPadroes  = false;
+            S.showMercados = false;
+            S.showConfig   = false;
+            if (isGols) {
+                // Ativa as métricas de gols usadas nas condições do alerta
+                const metricas = (al.condicoes || []).map(c => c.metrica).filter(Boolean);
+                if (metricas.length) {
+                    FILTROS_GOLS.forEach(x => { S.linhasGols[x.id] = false; });
+                    metricas.forEach(m => { if (S.linhasGols[m] !== undefined) S.linhasGols[m] = true; });
+                    _renderPillsGols();
+                }
+                S.showGols = true;
+                const sec = document.getElementById('historico-gols-section');
+                if (sec) { sec.style.display = 'block'; requestAnimationFrame(() => sec.scrollIntoView({ behavior:'smooth', block:'center' })); }
+                const btn = document.getElementById('sub-btn-gols');
+                if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
+            } else {
+                S.showLinha = true;
+                const sec = document.getElementById('historico-linha-section');
+                if (sec) { sec.style.display = 'block'; requestAnimationFrame(() => sec.scrollIntoView({ behavior:'smooth', block:'center' })); }
+                const btn = document.getElementById('sub-btn-linha');
+                if (btn) { btn.style.borderColor = '#1fcc59'; btn.style.color = '#e2e8f0'; }
+            }
+        } else if (!opts.silencioso) {
             // Aplicação manual: fecha padrões e abre Gráfico de Linha
             S.showPadroes  = false;
             S.showMercados = false;
@@ -12109,11 +12136,9 @@ function aplicarPadrao(id, opts = {}) {
 
         renderFiltros();
         renderTabela();
-        // rAF: garante que o canvas tem dimensões corretas antes de criar o chart
         requestAnimationFrame(() => {
-            if (S.showLinha)    renderGraficoLinha();
-            if (S.showGols)     renderGraficoGols();
-
+            if (S.showLinha) renderGraficoLinha();
+            if (S.showGols)  renderGraficoGols();
         });
     } catch(e) { console.error('Erro ao aplicar padrão', e); }
 }
@@ -12407,7 +12432,7 @@ function _verificarAlertas() {
                     });
                     if (!ligas.length) ligas = ['Todas as ligas'];
                 }
-                disparados.push({ id: p.id, nome: p.nome, ligas });
+                disparados.push({ id: p.id, nome: p.nome, ligas, grafico: al.grafico || 'linha', condicoes: al.condicoes || [] });
             }
         } catch(e) {}
     }
@@ -12454,7 +12479,7 @@ function _mostrarNotificacaoAlerta(alertas) {
             <div style="background:#1e293b;border-radius:6px;padding:8px 10px;margin-bottom:6px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <span style="flex:1;font-size:12px;color:#e2e8f0;font-weight:600">${esc(a.nome)}</span>
-                    <button onclick="aplicarPadrao(${a.id},{silencioso:true});_fecharNotificacaoAlerta()"
+                    <button onclick="aplicarPadrao(${a.id},{abrirGrafico:true});_fecharNotificacaoAlerta()"
                         style="padding:4px 10px;border-radius:5px;background:rgba(31,204,89,.15);border:1px solid #1fcc59;color:#1fcc59;font-size:11px;font-weight:700;cursor:pointer">Aplicar</button>
                 </div>
                 ${ligasTxt ? `<div style="font-size:10px;color:#60a5fa;margin-top:4px">🏆 ${ligasTxt}</div>` : ''}
