@@ -5984,8 +5984,17 @@ function renderGraficoGols() {
                         label: ctx => {
                             if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
                             const j = _GOLS_SERIE[ctx.dataIndex];
-                            const ft = j ? j.gol_casa + j.gol_fora : '?';
-                            return [` FT: ${ft}⚽`, ` Soma ${n}j: ${ctx.raw}`];
+                            if (!j) return [` ?: ?`, ` Soma ${n}j: ${ctx.raw}`];
+                            const mid = ctx.dataset._metricId;
+                            const ht = (j.gol_casa_ht ?? 0) + (j.gol_fora_ht ?? 0);
+                            const ft = j.gol_casa + j.gol_fora;
+                            let gLabel;
+                            if      (mid === 'gols-1t')   gLabel = `1T: ${ht}⚽`;
+                            else if (mid === 'gols-2t')   gLabel = `2T: ${Math.max(0, ft - ht)}⚽`;
+                            else if (mid === 'gols-casa')  gLabel = `Casa: ${j.gol_casa}⚽`;
+                            else if (mid === 'gols-fora')  gLabel = `Fora: ${j.gol_fora}⚽`;
+                            else                           gLabel = `FT: ${ft}⚽`;
+                            return [` ${gLabel}`, ` Soma ${n}j: ${ctx.raw}`];
                         }
                     }
                 },
