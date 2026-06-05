@@ -6055,24 +6055,6 @@ const MULTI_LIGAS = [
 
 let S_multi = { jogos: 200, filtroId: 'over2.5' };
 
-(function _initMultiFiltro() {
-    const sel = document.getElementById('multi-filtro');
-    if (!sel) return;
-    GRUPOS_LEGENDA.forEach(grupo => {
-        const og = document.createElement('optgroup');
-        og.label = grupo.label;
-        grupo.ids.filter(id => id !== 'equilibrio').forEach(id => {
-            const fi2 = TODOS_FILTROS.find(f => f.id === id);
-            if (!fi2) return;
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = fi2.label;
-            if (id === S_multi.filtroId) opt.selected = true;
-            og.appendChild(opt);
-        });
-        if (og.children.length) sel.appendChild(og);
-    });
-})();
 
 function _gruposParaMulti(partidas, nJogos) {
     const agora = new Date(Date.now() + BET365_OFFSET_MS);
@@ -6097,8 +6079,13 @@ function _gruposParaMulti(partidas, nJogos) {
 }
 
 function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
-    const partidas = (S.todasPartidas || []).filter(p => normalizarLiga(p.liga) === ligaKey);
-    if (!partidas.length) return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:24px;text-align:center;color:#334155;font-size:12px">${ligaLabel}<br><span style="font-size:10px">Sem dados</span></div>`;
+    // p.liga já está normalizado em S.todasPartidas
+    const partidas = (S.todasPartidas || []).filter(p => p.liga === ligaKey);
+    if (!partidas.length) return `
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:32px;text-align:center;color:#334155">
+            <div style="font-size:14px;font-weight:700;color:#475569;margin-bottom:6px">${ligaLabel}</div>
+            <div style="font-size:11px">Sem dados no período</div>
+        </div>`;
 
     const gs = _gruposParaMulti(partidas, nJogos);
     let minuteSlots = minutosParaLiga(ligaKey);
@@ -6121,10 +6108,13 @@ function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
     const _nowBSTms = Date.now() + BET365_OFFSET_MS;
     const gsDesc = [...gs].reverse().filter(g => g.hora.getTime() <= _nowBSTms && g.jogos.length > 0);
 
-    const cW = 24;
+    // Célula: 32px wide, 20px tall — legível no grid 2×2
+    const cW = 32;
+    const cH = 20;
+    const horaW = 38;
 
     const headerCols = minuteSlots.map(m =>
-        `<th style="min-width:${cW}px;max-width:${cW}px;padding:1px 0;text-align:center;font-size:7px;color:#475569;background:#0c1220;font-weight:600">${pad2(m)}</th>`
+        `<th style="min-width:${cW}px;width:${cW}px;padding:2px 0;text-align:center;font-size:9px;color:#64748b;background:#0c1220;font-weight:700;border-right:1px solid #0d1526">${pad2(m)}</th>`
     ).join('');
 
     const rows = gsDesc.map(grupo => {
@@ -6146,42 +6136,49 @@ function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
 
         const hh = pad2(grupo.hora.getUTCHours());
         const cells = slotMap.map(j => {
-            if (!j) return `<td style="min-width:${cW}px;max-width:${cW}px;background:#060810;padding:1px 0"></td>`;
-            const hit = fi ? checa(j, fi.id) : false;
-            const bg  = !j.resultado ? '#0a1020' : hit ? gridCores.verdeBg : gridCores.vermBg;
-            const txt = !j.resultado ? '#475569' : hit ? gridCores.verdeTxt : gridCores.vermTxt;
+            if (!j) return `<td style="min-width:${cW}px;width:${cW}px;height:${cH}px;background:#060810;border-right:1px solid #0a0f1e"></td>`;
+            const hit  = fi ? checa(j, fi.id) : false;
+            const bg   = !j.resultado ? '#0a1020' : hit ? gridCores.verdeBg : gridCores.vermBg;
+            const txt  = !j.resultado ? '#475569' : hit ? gridCores.verdeTxt : gridCores.vermTxt;
             const score = (j.gol_casa != null && j.gol_fora != null) ? `${j.gol_casa}-${j.gol_fora}` : '·';
-            return `<td style="min-width:${cW}px;max-width:${cW}px;background:${bg};padding:1px 0;text-align:center">
-                <span style="font-size:8px;font-weight:700;color:${txt};line-height:1.4;display:block">${score}</span>
+            return `<td style="min-width:${cW}px;width:${cW}px;height:${cH}px;background:${bg};border-right:1px solid #0a0f1e;text-align:center;vertical-align:middle">
+                <span style="font-size:10px;font-weight:800;color:${txt};line-height:1">${score}</span>
             </td>`;
         }).join('');
 
-        return `<tr>
-            <td style="padding:1px 5px;font-size:8px;color:${gridCores.horaHHCor||'#1fcc59'};font-weight:700;background:#060810;position:sticky;left:0;z-index:1;white-space:nowrap">${hh}h</td>
+        return `<tr style="border-bottom:1px solid #0a0f1e">
+            <td style="width:${horaW}px;min-width:${horaW}px;padding:0 6px;height:${cH}px;font-size:10px;font-weight:800;color:${gridCores.horaHHCor||'#1fcc59'};background:#060810;position:sticky;left:0;z-index:1;white-space:nowrap;vertical-align:middle;border-right:2px solid #1e293b">${hh}h</td>
             ${cells}
         </tr>`;
     }).join('');
 
     const corPctV = pctV >= 55 ? '#4ade80' : pctV >= 45 ? '#fbbf24' : '#f87171';
     const corPctR = pctR >= 55 ? '#f87171' : pctR >= 45 ? '#fbbf24' : '#94a3b8';
+    const fiLabel  = fi ? fi.label : '—';
+    const fiCor    = fi ? fi.cor   : '#64748b';
 
     return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
-        <div style="padding:7px 10px;display:flex;justify-content:space-between;align-items:center;background:#0c1220;border-bottom:1px solid #1e293b;flex-wrap:wrap;gap:4px">
-            <span style="font-size:12px;font-weight:800;color:#e2e8f0">${ligaLabel}</span>
-            <span style="font-size:11px;font-weight:700;white-space:nowrap">
-                <span style="color:${corPctV}">VERDE ${pctV}%</span>
-                <span style="color:#334155"> | </span>
-                <span style="color:${corPctR}">${pctR}% RED</span>
-                <span style="color:#334155;font-size:9px;margin-left:4px">${total}j</span>
-            </span>
+        <!-- Cabeçalho -->
+        <div style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center;background:#0c1220;border-bottom:2px solid #1e293b;flex-wrap:wrap;gap:4px">
+            <div>
+                <span style="font-size:13px;font-weight:900;color:#e2e8f0">${ligaLabel}</span>
+                <span style="font-size:10px;font-weight:700;color:${fiCor};margin-left:8px;background:${fiCor}22;border:1px solid ${fiCor}66;border-radius:4px;padding:1px 6px">${fiLabel}</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+                <span style="font-size:13px;font-weight:900;color:${corPctV}">VERDE ${pctV}%</span>
+                <span style="font-size:11px;color:#334155">|</span>
+                <span style="font-size:13px;font-weight:900;color:${corPctR}">${pctR}% RED</span>
+                <span style="font-size:10px;color:#334155;margin-left:2px">${total}j</span>
+            </div>
         </div>
-        <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
-            <table style="border-collapse:collapse">
-                <thead><tr>
-                    <th style="padding:1px 5px;font-size:7px;color:#475569;background:#0c1220;position:sticky;left:0;z-index:2;font-weight:600">HH</th>
+        <!-- Grid -->
+        <div style="overflow-x:auto">
+            <table style="border-collapse:collapse;table-layout:fixed">
+                <thead><tr style="background:#0c1220">
+                    <th style="width:${horaW}px;min-width:${horaW}px;padding:3px 6px;font-size:9px;color:#475569;font-weight:700;background:#0c1220;position:sticky;left:0;z-index:2;border-right:2px solid #1e293b">HH</th>
                     ${headerCols}
                 </tr></thead>
-                <tbody>${rows || `<tr><td colspan="${N+1}" style="padding:16px;text-align:center;color:#334155;font-size:11px">Sem dados no período</td></tr>`}</tbody>
+                <tbody>${rows || `<tr><td colspan="${N+1}" style="padding:20px;text-align:center;color:#334155;font-size:11px">Sem dados no período</td></tr>`}</tbody>
             </table>
         </div>
     </div>`;
@@ -6192,10 +6189,22 @@ function renderMultiHorarios() {
         carregarHistorico().then(() => renderMultiHorarios());
         return;
     }
-    // Sincroniza select de período
-    const selP = document.getElementById('multi-periodo');
-    if (selP && selP.value != S_multi.jogos) {
-        [...selP.options].forEach(o => { o.selected = +o.value === S_multi.jogos; });
+    // Popula filtro se ainda vazio
+    const selF = document.getElementById('multi-filtro');
+    if (selF && !selF.options.length) {
+        GRUPOS_LEGENDA.forEach(grupo => {
+            const og = document.createElement('optgroup');
+            og.label = grupo.label;
+            grupo.ids.filter(id => id !== 'equilibrio').forEach(id => {
+                const fi2 = TODOS_FILTROS.find(f => f.id === id);
+                if (!fi2) return;
+                const opt = document.createElement('option');
+                opt.value = id; opt.textContent = fi2.label;
+                if (id === S_multi.filtroId) opt.selected = true;
+                og.appendChild(opt);
+            });
+            if (og.children.length) selF.appendChild(og);
+        });
     }
     MULTI_LIGAS.forEach((liga, i) => {
         const c = document.getElementById(`multi-c${i}`);
