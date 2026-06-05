@@ -5665,7 +5665,7 @@ function renderGraficoLinha() {
             pointBorderColor: pointBgColor,
             pointBorderWidth: S.grafPontoBorda || 1.5,
             tension: 0,
-            _filtroId: f.id });
+            _filtroId: f.id, _filtroLabel: f.label });
 
         if (S.linhaGrafMM) {
             const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
@@ -5756,7 +5756,8 @@ function renderGraficoLinha() {
                                 const i   = ctx.dataIndex;
                                 const fid = ctx.dataset._filtroId;
                                 const hit = fid ? (_LINHA_HITS[fid]?.[i] ? ' ✓' : ' ✗') : '';
-                                return ` ${ctx.dataset.label}: ${ctx.raw}%${hit}`;
+                                const lbl = ctx.dataset._filtroLabel || ctx.dataset.label;
+                                return ` ${lbl}: ${ctx.raw}%${hit}`;
                             }
                         }
                     },
