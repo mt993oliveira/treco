@@ -1381,6 +1381,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 🏁 Grade
             </button>
+            <button id="cfg-tab-seguranca" onclick="_cfgSetTab('seguranca')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🔐 Segurança
+            </button>
         </div>
 
         <!-- Seção Coleta -->
@@ -1448,6 +1453,13 @@
         <!-- Seção Grade/Mosaico — cores e fontes padrão -->
         <div id="cfg-section-grade" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
             <div id="cfg-grade-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Segurança -->
+        <div id="cfg-section-seguranca" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-seguranca-fields">
                 <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
@@ -11631,7 +11643,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade', 'seguranca'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -11641,6 +11653,105 @@ function _cfgSetTab(tab) {
         }
         if (sec) sec.style.display = ativo ? 'block' : 'none';
     });
+    if (tab === 'seguranca') _carregarDashboardSeguranca();
+}
+
+async function _carregarDashboardSeguranca() {
+    const el = document.getElementById('cfg-seguranca-fields');
+    if (!el) return;
+    el.innerHTML = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
+    try {
+        const r = await fetch('/api/admin/seguranca', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: _getUser()?.Id }),
+        });
+        const d = await r.json();
+        if (!d.success) { el.innerHTML = `<div style="color:#f87171;padding:16px;font-size:12px">${d.message||'Erro'}</div>`; return; }
+
+        const _tag = (txt, cor) => `<span style="background:${cor}22;border:1px solid ${cor}44;color:${cor};border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700">${txt}</span>`;
+        const _ago = (dt) => { if (!dt) return '—'; const m = Math.round((Date.now()-new Date(dt).getTime())/60000); return m < 1 ? 'agora' : m < 60 ? `${m}min atrás` : `${Math.floor(m/60)}h atrás`; };
+
+        // ── Sessões ativas ──────────────────────────────────────
+        const sessoesHtml = d.sessoesAtivas.length === 0
+            ? '<div style="color:#475569;font-size:11px;padding:10px">Nenhuma sessão ativa.</div>'
+            : d.sessoesAtivas.map(s => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b;gap:8px;flex-wrap:wrap">
+                <div style="min-width:0">
+                    <div style="font-size:12px;font-weight:700;color:#e2e8f0">${s.usuario} <span style="color:#64748b;font-weight:400">${s.nome||''}</span> ${s.tipo==='master'?_tag('MASTER','#f59e0b'):''}</div>
+                    <div style="font-size:10px;color:#64748b;margin-top:2px">IP: ${s.ip} · Login: ${_ago(s.loginTime)} · Ativo: ${_ago(s.lastSeen)} · ${s.inativoMin}min inativo</div>
+                </div>
+                ${s.tipo!=='master'?`<button onclick="_segDesconectar('${s.id}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">Desconectar</button>`:''}
+            </div>`).join('');
+
+        // ── IPs bloqueados ──────────────────────────────────────
+        const bloqHtml = d.ipsBlockeados.length === 0
+            ? '<div style="color:#475569;font-size:11px;padding:10px">Nenhum IP bloqueado.</div>'
+            : d.ipsBlockeados.map(b => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1e293b;gap:8px">
+                <div style="font-size:12px;color:#f87171;font-weight:700">${b.ip} <span style="color:#64748b;font-weight:400;font-size:10px">desbloqueio: ${new Date(b.desbloqueiaEm).toLocaleTimeString('pt-BR')}</span></div>
+            </div>`).join('');
+
+        // ── Req/min por usuário ─────────────────────────────────
+        const reqHtml = d.reqPorUsuario.length === 0
+            ? '<div style="color:#475569;font-size:11px;padding:10px">Sem dados de requisição.</div>'
+            : d.reqPorUsuario.slice(0,10).map(r => {
+                const cor = r.reqUltimoMin > 200 ? '#f87171' : r.reqUltimoMin > 100 ? '#fbbf24' : '#1fcc59';
+                const barW = Math.min(100, Math.round(r.reqUltimoMin / 3));
+                return `<div style="padding:5px 0;border-bottom:1px solid #1e293b">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+                        <span style="color:#e2e8f0">uid ${r.uid}</span>
+                        <span style="color:${cor};font-weight:700">${r.reqUltimoMin} req/min</span>
+                    </div>
+                    <div style="height:4px;background:#1e293b;border-radius:2px"><div style="height:4px;width:${barW}%;background:${cor};border-radius:2px;transition:width .3s"></div></div>
+                </div>`;
+            }).join('');
+
+        // ── Últimos logins ──────────────────────────────────────
+        const loginsHtml = d.ultimosLogins.map(l => {
+            const ok = l.tipo === 'login_ok';
+            return `<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid #1e293b">
+                <span style="min-width:14px;font-size:11px">${ok ? '✅' : '❌'}</span>
+                <div style="min-width:0;flex:1">
+                    <div style="font-size:11px;color:${ok?'#86efac':'#f87171'};font-weight:700">${l.usuario} <span style="color:#64748b;font-weight:400">${l.ip||''} ${l.cidade?'· '+l.cidade:''} ${l.pais?'('+l.pais+')':''}</span></div>
+                    <div style="font-size:10px;color:#475569">${new Date(l.data_hora).toLocaleString('pt-BR')} · ${(l.user_agent||'').substring(0,60)}</div>
+                </div>
+            </div>`;
+        }).join('');
+
+        el.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <span style="font-size:11px;color:#475569">Atualizado agora</span>
+            <button onclick="_carregarDashboardSeguranca()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer">🔄 Atualizar</button>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Sessões Ativas (${d.sessoesAtivas.length})</div>
+        <div style="margin-bottom:18px">${sessoesHtml}</div>
+
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">IPs Bloqueados por Brute Force (${d.ipsBlockeados.length})</div>
+        <div style="margin-bottom:18px">${bloqHtml}</div>
+
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Requisições por Usuário (último minuto)</div>
+        <div style="margin-bottom:18px">${reqHtml}</div>
+
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Últimos 50 Logins</div>
+        <div>${loginsHtml}</div>`;
+
+    } catch(e) {
+        el.innerHTML = `<div style="color:#f87171;padding:16px;font-size:12px">Erro: ${e.message}</div>`;
+    }
+}
+
+async function _segDesconectar(uid) {
+    if (!confirm('Desconectar este usuário?')) return;
+    const r = await fetch(`/api/usuarios/desconectar/${uid}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuarioId: _getUser()?.Id }),
+    });
+    const d = await r.json();
+    if (d.success) _carregarDashboardSeguranca();
+    else alert(d.message || 'Erro ao desconectar');
 }
 
 const _CFG_LABELS = {
