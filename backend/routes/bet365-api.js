@@ -1725,6 +1725,8 @@ const CONFIG_DEFAULTS = [
     { chave:'default_mosaico_gols',         valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'⚽ Linha ativado por padrão no Mosaico' },
     { chave:'default_so_value_bets',        valor:'false', tipo:'boolean', grupo:'frontend', descricao:'Apenas value bets por padrão (Análise)' },
     { chave:'default_legendas',             valor:'false', tipo:'boolean', grupo:'frontend', descricao:'💬 Legendas (suprimir tooltips) ativado por padrão no gráfico' },
+    { chave:'simulador_saldo_inicial', valor:'100',   tipo:'number',  grupo:'frontend', descricao:'🎮 Simulador: saldo inicial de créditos por usuário' },
+    { chave:'simulador_max_aposta',    valor:'50',    tipo:'number',  grupo:'frontend', descricao:'🎮 Simulador: máximo de créditos por aposta' },
     { chave:'analise_liberar_user',    valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Análise & Sugestões: liberar para 👤 User' },
     { chave:'analise_liberar_bronze',  valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Análise & Sugestões: liberar para 🥉 Bronze' },
     { chave:'analise_liberar_prata',   valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Análise & Sugestões: liberar para 🥈 Prata' },

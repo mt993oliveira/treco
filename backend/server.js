@@ -222,6 +222,10 @@ function requireAuth(req, res, next) {
 const bet365Routes = require('./routes/bet365-api');
 app.use('/api/bet365', bet365Routes);
 
+// Simulador de apostas virtuais
+const simuladorRoutes = require('./routes/simulador-api');
+app.use('/api/simulador', simuladorRoutes);
+
 // Kirvano — webhook de pagamento + credenciais
 const kirvanRoutes = require('./routes/kirvano');
 app.use('/api/kirvano', kirvanRoutes);

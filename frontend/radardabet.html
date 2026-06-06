@@ -1686,6 +1686,7 @@
 <div id="view-selector" style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
     <button class="view-btn ativo" id="view-historico" onclick="setView('historico')"><span class="vbtn-icon">📈</span><span class="vbtn-full"> Gráficos e Mosaico</span><span class="vbtn-short"> Gráficos</span></button>
     <button class="view-btn" id="view-proximos" onclick="setView('proximos')"><span class="vbtn-icon">🕐</span><span class="vbtn-full"> Próximos Jogos</span><span class="vbtn-short"> Próximos</span></button>
+    <button class="view-btn" id="view-simulador" onclick="setView('simulador')"><span class="vbtn-icon">🎮</span><span class="vbtn-full"> Simulador</span><span class="vbtn-short"> Simul.</span></button>
     <button class="view-btn" id="view-multi" onclick="setView('multi')"><span class="vbtn-icon">⊞</span><span class="vbtn-full"> Multi Horários</span><span class="vbtn-short"> Horários</span></button>
     <button class="view-btn" id="view-multi-gols" onclick="setView('multi-gols')"><span class="vbtn-icon">⚽</span><span class="vbtn-full"> Multi Gols</span><span class="vbtn-short"> Gols</span></button>
     <button class="view-btn" id="view-multi-linhas" onclick="setView('multi-linhas')"><span class="vbtn-icon">📈</span><span class="vbtn-full"> Multi Linhas</span><span class="vbtn-short"> Linhas</span></button>
@@ -2284,6 +2285,9 @@
     <div id="proximos-lista"></div>
     <div id="proximos-detalhe" style="display:none"></div>
 </div>
+
+<!-- ========== VIEW: SIMULADOR ========== -->
+<div id="view-simulador-content" style="display:none"></div>
 
 <!-- ========== VIEW: DIAGNÓSTICO ========== -->
 <div id="view-diagnostico-content" style="display:none;padding:10px 14px">
@@ -3730,7 +3734,8 @@ function setView(v) {
     document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
     document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
     document.getElementById('view-proximos-content').style.display      = v === 'proximos'     ? '' : 'none';
-    ['analise','historico','multi','multi-gols','multi-linhas','clubes','diagnostico','proximos'].forEach(id => {
+    document.getElementById('view-simulador-content').style.display     = v === 'simulador'    ? '' : 'none';
+    ['analise','historico','multi','multi-gols','multi-linhas','clubes','diagnostico','proximos','simulador'].forEach(id => {
         const el = document.getElementById('view-' + id);
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
@@ -3742,6 +3747,7 @@ function setView(v) {
     if (v === 'clubes')       { renderClubes(); }
     if (v === 'diagnostico')  { carregarDiagnostico(); _bfInit(); }
     if (v === 'proximos')     { renderProximosJogos(); }
+    if (v === 'simulador')    { renderSimulador(); }
 }
 
 const _ANALISE_SECOES_MAP = {
@@ -8929,6 +8935,427 @@ async function renderDetalheClube(nomeTime) {
 let _proximosCache  = null;
 let _proximosTs     = 0;
 let _proximosLista  = [];
+
+// ============================================================
+// SIMULADOR DE APOSTAS VIRTUAIS
+// ============================================================
+
+let _simResumo = null; // cached /api/simulador/resumo response
+
+// Nomes legíveis para cada mercado apostável
+const _SIM_MKT_LABEL = {
+    'casa':'1 Casa', 'empate':'X Empate', 'fora':'2 Fora',
+    'over0.5':'Over 0.5', 'over1.5':'Over 1.5', 'over2.5':'Over 2.5',
+    'over3.5':'Over 3.5', 'over4.5':'Over 4.5',
+    'under0.5':'Under 0.5', 'under1.5':'Under 1.5', 'under2.5':'Under 2.5',
+    'under3.5':'Under 3.5', 'under4.5':'Under 4.5',
+    'ambas-sim':'Ambas Marcam', 'ambas-nao':'Ambas Não',
+    'casa-ht':'1 Casa HT', 'empate-ht':'X Empate HT', 'fora-ht':'2 Fora HT',
+    'over0.5-1t':'Over 0.5 HT', 'over1.5-1t':'Over 1.5 HT',
+    'under0.5-1t':'Under 0.5 HT', 'under1.5-1t':'Under 1.5 HT',
+};
+
+async function renderSimulador() {
+    const el = document.getElementById('view-simulador-content');
+    if (!el) return;
+    const _u = _getUser();
+    if (!_u) {
+        el.innerHTML = '<div style="padding:40px;text-align:center;color:#475569;font-size:13px">Faça login para usar o Simulador.</div>';
+        return;
+    }
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:#475569;font-size:13px">⏳ Carregando simulador...</div>';
+    try {
+        // Ensure proximos cache is loaded (needed for the bet form)
+        if (!_proximosCache) {
+            try {
+                const pr = await fetch('/api/bet365/eventos?status=AGENDADO');
+                const pd = await pr.json();
+                _proximosCache = pd.success ? (pd.data || []) : [];
+                _proximosTs    = Date.now();
+            } catch(_) { _proximosCache = []; }
+        }
+        const r = await fetch('/api/simulador/resumo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: _u.Id }),
+        });
+        const d = await r.json();
+        if (!d.success) throw new Error(d.message);
+        _simResumo = d;
+        _simRenderUI(el, d, _u);
+    } catch(e) {
+        el.innerHTML = `<div style="padding:24px;color:#f87171;text-align:center;font-size:13px">❌ ${e.message}</div>`;
+    }
+}
+
+function _simRenderUI(el, d, _u) {
+    const roi      = +(d.saldoTotal - d.saldoInicial).toFixed(2);
+    const roiCor   = roi > 0 ? '#4ade80' : roi < 0 ? '#f87171' : '#64748b';
+    const roiStr   = (roi >= 0 ? '+' : '') + roi;
+    const _tipoU   = (_u?.TipoUsuario || '').toLowerCase();
+    const _isElev  = ['master','admin','administrador'].includes(_tipoU);
+    const adminBtn = _isElev
+        ? `<button onclick="renderSimuladorAdmin()"
+               style="background:#1e293b;border:1px solid #334155;color:#a78bfa;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:10px;font-weight:700;margin-top:4px">
+               👑 Painel Admin
+           </button>`
+        : '';
+
+    // ── Jogos disponíveis (com odds coletadas) ──────────────────────────────
+    const eventosDisp = (_proximosCache || []).filter(e => e.odd_casa > 0);
+    const jogosOpts = eventosDisp.length
+        ? eventosDisp.map((e, i) => {
+            const dt = e.horario ? new Date(e.horario) : null;
+            const h  = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '';
+            return `<option value="${i}">${h} ${e.time_casa} x ${e.time_fora}</option>`;
+          }).join('')
+        : '<option value="">— sem jogos agendados com odds —</option>';
+
+    // ── Histórico de apostas ────────────────────────────────────────────────
+    const histHtml = d.apostas.length
+        ? d.apostas.map(a => {
+            const res    = a.resultado;
+            const icon   = res === 'ganhou' ? '🟢' : res === 'perdeu' ? '🔴' : res === 'cancelado' ? '⛔' : '🟡';
+            const corL   = res === 'ganhou' ? '#4ade80' : res === 'perdeu' ? '#f87171' : '#fbbf24';
+            const lucroTxt = res === 'pendente'
+                ? `<span style="color:#fbbf24;font-size:11px">pendente</span>`
+                : res === 'cancelado'
+                    ? `<span style="color:#64748b;font-size:11px">cancelado</span>`
+                    : `<span style="color:${corL};font-weight:700;font-size:12px">${a.lucro > 0 ? '+' : ''}${a.lucro} cr</span>`;
+            const dj = new Date(a.data_jogo);
+            const h  = `${pad2(dj.getUTCHours())}:${pad2(dj.getUTCMinutes())}`;
+            const cancelBtn = res === 'pendente'
+                ? `<button onclick="_simCancelar(${a.id})"
+                        style="background:transparent;border:1px solid #334155;color:#64748b;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;margin-left:4px">✕</button>`
+                : '';
+            return `
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #1e293b">
+                <span style="font-size:14px;flex-shrink:0">${icon}</span>
+                <div style="flex:1;min-width:0">
+                    <div style="color:#e2e8f0;font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.time_casa} x ${a.time_fora}</div>
+                    <div style="color:#64748b;font-size:10px">${_SIM_MKT_LABEL[a.mercado]||a.mercado} &nbsp;·&nbsp; odd ${parseFloat(a.odd).toFixed(2)} &nbsp;·&nbsp; ${a.creditos} cr &nbsp;·&nbsp; ${h}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:0">
+                    ${lucroTxt}${cancelBtn}
+                </div>
+            </div>`;
+          }).join('')
+        : '<div style="color:#334155;font-size:12px;padding:12px 0;text-align:center">Nenhuma aposta ainda</div>';
+
+    const maxCred = Math.min(d.maxAposta, Math.max(0, d.saldoDisp));
+
+    el.innerHTML = `
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+
+        <!-- Saldo / Painel -->
+        <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div>
+                <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.07em;margin-bottom:4px">💰 SALDO DISPONÍVEL</div>
+                <div style="font-size:30px;font-weight:900;color:#1fcc59;line-height:1">${d.saldoDisp} <span style="font-size:14px;color:#64748b">cr</span></div>
+                <div style="font-size:10px;color:#475569;margin-top:3px">
+                    Total: <b style="color:#94a3b8">${d.saldoTotal}</b> cr &nbsp;|&nbsp;
+                    Em jogo: <b style="color:#fbbf24">${d.emJogo}</b> cr
+                    ${d.pendentes > 0 ? `<span style="color:#475569"> (${d.pendentes} pendente${d.pendentes !== 1 ? 's' : ''})</span>` : ''}
+                </div>
+            </div>
+            <div style="text-align:right">
+                <div style="font-size:10px;color:#475569;margin-bottom:2px">ROI acumulado</div>
+                <div style="font-size:22px;font-weight:900;color:${roiCor}">${roiStr} cr</div>
+                <div style="font-size:10px;color:#475569;margin-top:2px">${d.ganhas}🟢 &nbsp;${d.perdidas}🔴 &nbsp;${d.pendentes}🟡</div>
+                ${adminBtn}
+            </div>
+        </div>
+
+        <!-- Formulário de nova aposta -->
+        <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px 16px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.07em;margin-bottom:10px">✚ NOVA APOSTA</div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+
+                <div>
+                    <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">Jogo</label>
+                    <select id="sim-jogo" onchange="_simOnJogoChange()"
+                        style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:12px;padding:6px 8px;outline:none;cursor:pointer">
+                        <option value="">— selecione um jogo agendado —</option>
+                        ${jogosOpts}
+                    </select>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 90px;gap:8px">
+                    <div>
+                        <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">Mercado</label>
+                        <select id="sim-mercado" onchange="_simOnMercadoChange()"
+                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:12px;padding:6px 8px;outline:none;cursor:pointer">
+                            <optgroup label="1X2 FT">
+                                <option value="casa">1 Casa</option>
+                                <option value="empate">X Empate</option>
+                                <option value="fora">2 Fora</option>
+                            </optgroup>
+                            <optgroup label="Over FT">
+                                <option value="over0.5">Over 0.5</option>
+                                <option value="over1.5">Over 1.5</option>
+                                <option value="over2.5">Over 2.5</option>
+                                <option value="over3.5">Over 3.5</option>
+                                <option value="over4.5">Over 4.5</option>
+                            </optgroup>
+                            <optgroup label="Under FT">
+                                <option value="under0.5">Under 0.5</option>
+                                <option value="under1.5">Under 1.5</option>
+                                <option value="under2.5">Under 2.5</option>
+                                <option value="under3.5">Under 3.5</option>
+                                <option value="under4.5">Under 4.5</option>
+                            </optgroup>
+                            <optgroup label="Ambas Marcam">
+                                <option value="ambas-sim">Ambas Sim</option>
+                                <option value="ambas-nao">Ambas Não</option>
+                            </optgroup>
+                            <optgroup label="1X2 HT">
+                                <option value="casa-ht">1 Casa HT</option>
+                                <option value="empate-ht">X Empate HT</option>
+                                <option value="fora-ht">2 Fora HT</option>
+                            </optgroup>
+                            <optgroup label="Over/Under HT">
+                                <option value="over0.5-1t">Over 0.5 HT</option>
+                                <option value="over1.5-1t">Over 1.5 HT</option>
+                                <option value="under0.5-1t">Under 0.5 HT</option>
+                                <option value="under1.5-1t">Under 1.5 HT</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">Odd</label>
+                        <input id="sim-odd" type="number" min="1.01" step="0.01" placeholder="ex: 2.10"
+                            oninput="_simAtualizarRetorno()"
+                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:12px;padding:6px 8px;outline:none;box-sizing:border-box">
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end">
+                    <div>
+                        <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">
+                            Créditos <span style="color:#334155">(1–${maxCred})</span>
+                        </label>
+                        <input id="sim-creditos" type="number" min="1" max="${maxCred}" step="1" value="10"
+                            oninput="_simAtualizarRetorno()"
+                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:12px;padding:6px 8px;outline:none;box-sizing:border-box">
+                    </div>
+                    <div id="sim-retorno" style="color:#64748b;font-size:11px;padding-bottom:8px;text-align:right">Retorno: —</div>
+                </div>
+
+                <button id="sim-btn" onclick="_simApostar()"
+                    style="background:#1fcc59;color:#0a0f1e;font-weight:900;font-size:13px;border:none;border-radius:6px;padding:10px;cursor:pointer;width:100%;transition:opacity .15s">
+                    ▶ APOSTAR
+                </button>
+                <div id="sim-msg" style="display:none;font-size:12px;text-align:center;padding:2px 0"></div>
+            </div>
+        </div>
+
+        <!-- Histórico -->
+        <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px 16px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.07em;margin-bottom:8px">
+                📋 HISTÓRICO
+                <span style="font-weight:400;color:#334155;margin-left:6px">${d.apostas.length} registro${d.apostas.length !== 1 ? 's' : ''}</span>
+            </div>
+            ${histHtml}
+        </div>
+
+    </div>`;
+}
+
+// ── Eventos do formulário ─────────────────────────────────────────────────────
+
+function _simGetEvento() {
+    const sel = document.getElementById('sim-jogo');
+    if (!sel || sel.value === '') return null;
+    const idx = parseInt(sel.value);
+    const evs = (_proximosCache || []).filter(e => e.odd_casa > 0);
+    return evs[idx] || null;
+}
+
+function _simOnJogoChange()   { _simOnMercadoChange(); }
+
+function _simOnMercadoChange() {
+    const ev  = _simGetEvento();
+    const mkt = document.getElementById('sim-mercado')?.value;
+    const inp = document.getElementById('sim-odd');
+    if (!inp) return;
+    // Pre-fill odds for 1X2 markets when event has odds
+    if (ev) {
+        if (mkt === 'casa'   && ev.odd_casa)   { inp.value = parseFloat(ev.odd_casa).toFixed(2);   }
+        else if (mkt === 'empate' && ev.odd_empate) { inp.value = parseFloat(ev.odd_empate).toFixed(2); }
+        else if (mkt === 'fora'   && ev.odd_fora)   { inp.value = parseFloat(ev.odd_fora).toFixed(2);   }
+        else inp.value = '';
+    }
+    _simAtualizarRetorno();
+}
+
+function _simAtualizarRetorno() {
+    const retEl = document.getElementById('sim-retorno');
+    if (!retEl) return;
+    const odd  = parseFloat(document.getElementById('sim-odd')?.value   || '0');
+    const cred = parseFloat(document.getElementById('sim-creditos')?.value || '0');
+    if (odd > 1 && cred > 0) {
+        const retorno = +(cred * odd).toFixed(2);
+        const lucro   = +(cred * (odd - 1)).toFixed(2);
+        retEl.innerHTML =
+            `<span style="color:#1fcc59;font-weight:700">+${lucro} cr</span> ` +
+            `<span style="color:#64748b">(retorno ${retorno})</span>`;
+    } else {
+        retEl.textContent = 'Retorno: —';
+    }
+}
+
+async function _simApostar() {
+    const _u  = _getUser();
+    if (!_u) return;
+    const btn = document.getElementById('sim-btn');
+    const msg = document.getElementById('sim-msg');
+
+    const ev    = _simGetEvento();
+    const mkt   = document.getElementById('sim-mercado')?.value;
+    const odd   = parseFloat(document.getElementById('sim-odd')?.value   || '0');
+    const cred  = parseFloat(document.getElementById('sim-creditos')?.value || '0');
+
+    const _msg = (txt, cor) => {
+        if (!msg) return;
+        msg.style.display = 'block';
+        msg.style.color   = cor;
+        msg.textContent   = txt;
+    };
+
+    if (!ev)               return _msg('Selecione um jogo.', '#f87171');
+    if (!mkt)              return _msg('Selecione um mercado.', '#f87171');
+    if (isNaN(odd) || odd <= 1) return _msg('Odd inválida (mínimo 1.01).', '#f87171');
+    if (isNaN(cred) || cred <= 0) return _msg('Informe os créditos.', '#f87171');
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Registrando...'; }
+    try {
+        const r = await fetch('/api/simulador/apostar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                usuarioId: _u.Id,
+                time_casa: ev.time_casa,
+                time_fora: ev.time_fora,
+                liga:      ev.liga || '',
+                data_jogo: ev.horario,
+                mercado:   mkt,
+                odd,
+                creditos:  cred,
+            }),
+        });
+        const d = await r.json();
+        if (!d.success) throw new Error(d.message);
+        _msg('✅ Aposta registrada!', '#4ade80');
+        setTimeout(() => renderSimulador(), 1000);
+    } catch(e) {
+        _msg('❌ ' + e.message, '#f87171');
+        if (btn) { btn.disabled = false; btn.textContent = '▶ APOSTAR'; }
+    }
+}
+
+async function _simCancelar(apostaId) {
+    const _u = _getUser();
+    if (!_u) return;
+    try {
+        const r = await fetch('/api/simulador/cancelar-aposta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: _u.Id, apostaId }),
+        });
+        const d = await r.json();
+        if (!d.success) throw new Error(d.message);
+        renderSimulador();
+    } catch(e) {
+        alert('Erro ao cancelar: ' + e.message);
+    }
+}
+
+async function renderSimuladorAdmin() {
+    const el = document.getElementById('view-simulador-content');
+    if (!el) return;
+    const _u = _getUser();
+    if (!_u) return;
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:#475569">Carregando painel admin...</div>';
+    try {
+        const r = await fetch('/api/simulador/admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: _u.Id }),
+        });
+        const d = await r.json();
+        if (!d.success) throw new Error(d.message);
+
+        const linhas = d.usuarios.map((u, i) => {
+            const roi    = +(u.saldoTotal - d.saldoInicial).toFixed(2);
+            const roiCor = roi > 0 ? '#4ade80' : roi < 0 ? '#f87171' : '#64748b';
+            const win    = u.ganhas + u.perdidas > 0
+                ? Math.round(u.ganhas / (u.ganhas + u.perdidas) * 100) + '%'
+                : '—';
+            return `
+            <tr style="border-bottom:1px solid #1e293b">
+                <td style="padding:7px 8px;font-size:12px;color:#94a3b8">${i+1}</td>
+                <td style="padding:7px 8px">
+                    <div style="font-size:12px;font-weight:700;color:#e2e8f0">${u.nome || u.usuario}</div>
+                    <div style="font-size:10px;color:#475569">${u.tipo}</div>
+                </td>
+                <td style="padding:7px 8px;font-size:13px;font-weight:900;color:#1fcc59;text-align:right">${u.saldoDisp}</td>
+                <td style="padding:7px 8px;font-size:12px;font-weight:700;color:${roiCor};text-align:right">${roi >= 0 ? '+' : ''}${roi}</td>
+                <td style="padding:7px 8px;font-size:11px;color:#64748b;text-align:center">${win}</td>
+                <td style="padding:7px 8px;font-size:11px;color:#fbbf24;text-align:center">${u.pendentes}</td>
+                <td style="padding:7px 8px;font-size:11px;color:#475569;text-align:right">${u.totalApost}</td>
+            </tr>`;
+        }).join('');
+
+        el.innerHTML = `
+        <div style="padding:12px 16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+                <span style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.07em">🎮 SIMULADOR — PAINEL ADMIN</span>
+                <div style="display:flex;gap:8px">
+                    <button onclick="_simResolverTodos()"
+                        style="background:#1e293b;border:1px solid #334155;color:#fbbf24;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700">
+                        ⚙ Resolver Pendentes
+                    </button>
+                    <button onclick="renderSimulador()"
+                        style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:11px">
+                        ← Minha visão
+                    </button>
+                </div>
+            </div>
+            <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;overflow:hidden;overflow-x:auto">
+                <table style="width:100%;border-collapse:collapse;min-width:520px">
+                    <thead>
+                        <tr style="background:#0c1220">
+                            <th style="padding:7px 8px;font-size:9px;color:#475569;font-weight:700;text-align:left">#</th>
+                            <th style="padding:7px 8px;font-size:9px;color:#475569;font-weight:700;text-align:left">Usuário</th>
+                            <th style="padding:7px 8px;font-size:9px;color:#475569;font-weight:700;text-align:right">Saldo</th>
+                            <th style="padding:7px 8px;font-size:9px;color:#475569;font-weight:700;text-align:right">ROI</th>
+                            <th style="padding:7px 8px;font-size:9px;color:#475569;font-weight:700;text-align:center">Win%</th>
+                            <th style="padding:7px 8px;font-size:9px;color:#475569;font-weight:700;text-align:center">Pend.</th>
+                            <th style="padding:7px 8px;font-size:9px;color:#475569;font-weight:700;text-align:right">Apostado</th>
+                        </tr>
+                    </thead>
+                    <tbody>${linhas || '<tr><td colspan="7" style="padding:20px;text-align:center;color:#334155;font-size:12px">Nenhum usuário</td></tr>'}</tbody>
+                </table>
+            </div>
+        </div>`;
+    } catch(e) {
+        el.innerHTML = `<div style="padding:24px;color:#f87171;text-align:center;font-size:13px">❌ ${e.message}</div>`;
+    }
+}
+
+async function _simResolverTodos() {
+    try {
+        const r = await fetch('/api/simulador/resolver-pendentes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        const d = await r.json();
+        alert(d.message || (d.success ? 'Concluído' : 'Erro'));
+        renderSimuladorAdmin();
+    } catch(e) { alert('Erro: ' + e.message); }
+}
 
 async function renderProximosJogos() {
     const el = document.getElementById('view-proximos-content');
