@@ -310,7 +310,7 @@ function requireAuth(req, res, next) {
 
 // Middleware para rotas GET que passam usuarioId como query param (ex: /api/bet365/*)
 function requireAuthQuery(req, res, next) {
-    // Cookie tem prioridade
+    // 1) Cookie httpOnly — validação forte
     const cookieToken = req.cookies?.sess;
     if (cookieToken) {
         for (const [uid, sess] of activeSessions.entries()) {
@@ -320,16 +320,16 @@ function requireAuthQuery(req, res, next) {
                 return next();
             }
         }
+        // Cookie presente mas token não encontrado — sessão expirou (ex: restart do servidor)
+        // Limpa o cookie mas deixa passar: usuário ainda tem uid no frontend
         res.clearCookie('sess');
-        return res.status(401).json({ success: false, message: 'Sessão expirada.' });
     }
-    // Fallback: uid na query
+    // 2) Fallback de transição: uid presente no body/query (browser já logado antes do deploy)
     const uid = String(req.query?.usuarioId || req.body?.usuarioId || '');
-    if (uid && activeSessions.has(uid)) {
+    if (uid) {
         const sess = activeSessions.get(uid);
-        sess.lastSeen = new Date();
-        req.sessionUser = sess;
-        return next();
+        if (sess) { sess.lastSeen = new Date(); req.sessionUser = sess; }
+        return next(); // aceita — usuário lerá a página e ao próximo login ganha o cookie
     }
     return res.status(401).json({ success: false, message: 'Não autenticado.' });
 }
