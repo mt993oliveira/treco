@@ -392,8 +392,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     const { username, password, sqlConfig } = req.body;
     const _ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?';
 
-    // Rejeita IPs bloqueados por brute force
-    if (_isIpBlocked(_ip)) {
+    // Rejeita IPs bloqueados por brute force — master nunca é bloqueado por IP
+    const _isMasterAttempt = (username || '').toUpperCase() === 'MASTER';
+    if (!_isMasterAttempt && _isIpBlocked(_ip)) {
         return res.json({ success: false, message: 'Muitas tentativas incorretas. Tente novamente em 30 minutos.' });
     }
 
