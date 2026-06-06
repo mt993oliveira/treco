@@ -33,7 +33,7 @@ const COLETOR2_SENHA    = process.env.BET365_COLETOR2_SENHA    || '';
 const COLETOR2_EMAIL    = process.env.BET365_COLETOR2_EMAIL    || '';
 const COLETOR2_DATA_NASC = process.env.BET365_COLETOR2_DATA_NASC || '';
 // true quando Coletor 2 tem porta/conta própria — sem dependência do Coletor 1
-const MODO_AUTONOMO     = DEBUG_PORT !== 9222 || (!!COLETOR2_USUARIO && !!COLETOR2_SENHA);
+const MODO_AUTONOMO     = DEBUG_PORT !== 9222;
 const URL_SOCCER        = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR     = [];
 const INTERVALO_MS      = parseInt(process.env.BET365_ODDS_INTERVALO_MS)      || 180000;

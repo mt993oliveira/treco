@@ -1650,6 +1650,7 @@
 <!-- ========== VIEW SELECTOR ========== -->
 <div id="view-selector" style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
     <button class="view-btn ativo" id="view-historico" onclick="setView('historico')"><span class="vbtn-icon">📈</span><span class="vbtn-full"> Gráficos e Mosaico</span><span class="vbtn-short"> Gráficos</span></button>
+    <button class="view-btn" id="view-proximos" onclick="setView('proximos')"><span class="vbtn-icon">🕐</span><span class="vbtn-full"> Próximos Jogos</span><span class="vbtn-short"> Próximos</span></button>
     <button class="view-btn" id="view-multi" onclick="setView('multi')"><span class="vbtn-icon">⊞</span><span class="vbtn-full"> Multi Horários</span><span class="vbtn-short"> Horários</span></button>
     <button class="view-btn" id="view-multi-gols" onclick="setView('multi-gols')"><span class="vbtn-icon">⚽</span><span class="vbtn-full"> Multi Gols</span><span class="vbtn-short"> Gols</span></button>
     <button class="view-btn" id="view-multi-linhas" onclick="setView('multi-linhas')"><span class="vbtn-icon">📈</span><span class="vbtn-full"> Multi Linhas</span><span class="vbtn-short"> Linhas</span></button>
@@ -2241,6 +2242,12 @@
         </div>
     </div>
 
+</div>
+
+<!-- ========== VIEW: PRÓXIMOS JOGOS ========== -->
+<div id="view-proximos-content" style="display:none;padding:12px 16px">
+    <div id="proximos-lista"></div>
+    <div id="proximos-detalhe" style="display:none"></div>
 </div>
 
 <!-- ========== VIEW: DIAGNÓSTICO ========== -->
@@ -3687,7 +3694,8 @@ function setView(v) {
     document.getElementById('view-multi-linhas-content').style.display  = v === 'multi-linhas' ? '' : 'none';
     document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
     document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
-    ['analise','historico','multi','multi-gols','multi-linhas','clubes','diagnostico'].forEach(id => {
+    document.getElementById('view-proximos-content').style.display      = v === 'proximos'     ? '' : 'none';
+    ['analise','historico','multi','multi-gols','multi-linhas','clubes','diagnostico','proximos'].forEach(id => {
         const el = document.getElementById('view-' + id);
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
@@ -3698,6 +3706,7 @@ function setView(v) {
     if (v === 'multi-linhas') { renderMultiLinhas(); }
     if (v === 'clubes')       { renderClubes(); }
     if (v === 'diagnostico')  { carregarDiagnostico(); _bfInit(); }
+    if (v === 'proximos')     { renderProximosJogos(); }
 }
 
 const _ANALISE_SECOES_MAP = {
@@ -4549,7 +4558,8 @@ function renderLigas() {
             }
             renderTabela(); _renderAllCharts();
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
-            if (S.view === 'analise') { _faAtualizarStatus(); carregarAnalise(true); }
+            if (S.view === 'analise')  { _faAtualizarStatus(); carregarAnalise(true); }
+            if (S.view === 'proximos') { renderProximosJogos(); }
         };
         c.appendChild(b);
     };
@@ -8863,6 +8873,361 @@ async function renderDetalheClube(nomeTime) {
         </div>
     </div>
     ${_fichaStatusGeral(nomeTime, ultimas)}`;
+}
+
+// ============================================================
+// VIEW: PRÓXIMOS JOGOS
+// ============================================================
+let _proximosCache  = null;
+let _proximosTs     = 0;
+let _proximosLista  = [];
+
+async function renderProximosJogos() {
+    const el = document.getElementById('view-proximos-content');
+    if (!el) return;
+
+    if (!S.todasPartidas.length) {
+        el.innerHTML = '<div style="padding:24px;color:#475569;text-align:center;font-size:13px">Carregando dados históricos...</div>';
+        await carregarHistorico();
+    }
+
+    el.innerHTML = '<div style="padding:24px;color:#475569;text-align:center;font-size:13px">Buscando próximos jogos...</div>';
+
+    try {
+        if (!_proximosCache || Date.now() - _proximosTs > 30000) {
+            const r = await fetch('/api/bet365/eventos?status=AGENDADO');
+            const d = await r.json();
+            _proximosCache = d.success ? (d.data || []) : [];
+            _proximosTs    = Date.now();
+        }
+
+        const ligaAtiva = S.ligaAtiva;
+        let eventos = _proximosCache;
+        if (ligaAtiva) {
+            eventos = eventos.filter(e => {
+                const canon = LIGA_ALIASES[(e.liga || '').toLowerCase()] || e.liga;
+                return canon === ligaAtiva;
+            });
+        }
+        eventos = [...eventos].sort((a, b) => new Date(a.horario || '9999') - new Date(b.horario || '9999'));
+        _proximosLista = eventos;
+
+        if (!eventos.length) {
+            el.innerHTML = `
+                <div style="padding:40px;text-align:center;color:#475569">
+                    <div style="font-size:32px;margin-bottom:10px">🕐</div>
+                    <div style="font-size:14px;font-weight:700;color:#64748b;margin-bottom:6px">Nenhum jogo agendado</div>
+                    <div style="font-size:12px;color:#334155">Aguardando coleta do Coletor 2${ligaAtiva ? ' para ' + ligaAtiva : ''}</div>
+                    <div style="margin-top:14px">
+                        <button onclick="_proximosCache=null;renderProximosJogos()"
+                            style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px">
+                            ↺ Atualizar
+                        </button>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        const cards = eventos.map((e, i) => {
+            const dt      = e.horario ? new Date(e.horario) : null;
+            const diffMin = dt ? Math.round((dt.getTime() - Date.now()) / 60000) : 0;
+            const tempoTxt = diffMin <= 0
+                ? '<span style="color:#1fcc59;font-weight:700">● Ao vivo</span>'
+                : diffMin < 60
+                    ? `<span style="color:#fbbf24;font-weight:700">em ${diffMin} min</span>`
+                    : `<span style="color:#94a3b8">em ${Math.floor(diffMin/60)}h${String(diffMin%60).padStart(2,'0')}m</span>`;
+            const hora    = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '';
+            const oddCasa = parseFloat(e.odd_casa   || 0);
+            const oddEmp  = parseFloat(e.odd_empate || 0);
+            const oddFora = parseFloat(e.odd_fora   || 0);
+            const temOdds = oddCasa > 0;
+            const ligaNome = (LIGA_ALIASES[(e.liga||'').toLowerCase()] || e.liga || '').replace(/virtual/gi,'').trim();
+
+            const oddsHtml = temOdds ? `
+                <div style="display:flex;gap:5px;flex-shrink:0">
+                    <div style="text-align:center;background:#14532d20;border:1px solid #14532d50;border-radius:5px;padding:5px 9px;min-width:46px">
+                        <div style="font-size:13px;font-weight:800;color:#4ade80">${oddCasa.toFixed(2)}</div>
+                        <div style="font-size:9px;color:#475569">1</div>
+                    </div>
+                    <div style="text-align:center;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:5px 9px;min-width:46px">
+                        <div style="font-size:13px;font-weight:800;color:#94a3b8">${oddEmp.toFixed(2)}</div>
+                        <div style="font-size:9px;color:#475569">X</div>
+                    </div>
+                    <div style="text-align:center;background:#3b0a0a20;border:1px solid #3b0a0a50;border-radius:5px;padding:5px 9px;min-width:46px">
+                        <div style="font-size:13px;font-weight:800;color:#f87171">${oddFora.toFixed(2)}</div>
+                        <div style="font-size:9px;color:#475569">2</div>
+                    </div>
+                </div>` : '<div style="font-size:10px;color:#334155;flex-shrink:0">Odds aguardando</div>';
+
+            return `
+            <div onclick="renderDetalheProximo(${i})" id="prox-card-${i}"
+                style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px 16px;
+                cursor:pointer;transition:border-color .15s,background .15s"
+                onmouseover="this.style.borderColor='#334155';this.style.background='#111827'"
+                onmouseout="this.style.borderColor='#1e293b';this.style.background='#0f172a'">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                    <span style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;text-transform:uppercase">${ligaNome}</span>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span style="font-size:11px;color:#64748b">${hora}</span>
+                        <span style="font-size:11px">${tempoTxt}</span>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <div style="flex:1;display:flex;align-items:center;gap:8px;min-width:0">
+                        ${_getClubeFlag(e.time_casa, 24, 18)}
+                        <span style="font-size:14px;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.time_casa}</span>
+                    </div>
+                    ${oddsHtml}
+                    <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0">
+                        <span style="font-size:14px;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">${e.time_fora}</span>
+                        ${_getClubeFlag(e.time_fora, 24, 18)}
+                    </div>
+                </div>
+                <div style="margin-top:7px;font-size:10px;color:#334155;text-align:right">▶ ver análise</div>
+            </div>`;
+        }).join('');
+
+        el.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">
+                <span style="font-size:11px;font-weight:700;color:#475569;letter-spacing:.06em">
+                    🕐 PRÓXIMOS JOGOS${ligaAtiva ? ' — ' + ligaAtiva : ''}
+                    <span style="font-weight:400;color:#334155;margin-left:6px">${eventos.length} agendado${eventos.length !== 1 ? 's' : ''}</span>
+                </span>
+                <button onclick="_proximosCache=null;renderProximosJogos()"
+                    style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:4px 12px;cursor:pointer;font-size:11px">
+                    ↺ Atualizar
+                </button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">${cards}</div>
+            <div id="proximos-detalhe" style="display:none"></div>`;
+
+    } catch (err) {
+        el.innerHTML = `<div style="padding:24px;color:#ef4444;font-size:12px">Erro: ${err.message}</div>`;
+    }
+}
+
+async function renderDetalheProximo(idx) {
+    const evt = _proximosLista[idx];
+    if (!evt) return;
+
+    document.querySelectorAll('[id^="prox-card-"]').forEach((c, i) => {
+        c.style.borderColor = i === idx ? '#7c3aed' : '#1e293b';
+        c.style.background  = i === idx ? '#130d2a' : '#0f172a';
+    });
+
+    const el = document.getElementById('proximos-detalhe');
+    if (!el) return;
+    el.style.display = '';
+    el.innerHTML = '<div style="padding:20px;color:#475569;font-size:12px;text-align:center;margin-top:14px">Carregando análise...</div>';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    const timeCasa = evt.time_casa;
+    const timeFora = evt.time_fora;
+    const ligaDB   = (evt.liga || '').toLowerCase();
+    const ligaCan  = LIGA_ALIASES[ligaDB] || evt.liga || '';
+
+    const map = buildTimesMap(ligaCan || null);
+    const tC  = map.get(timeCasa);
+    const tF  = map.get(timeFora);
+
+    const _tabelaStats = (t, titulo) => {
+        if (!t || !t.partidas.length) return `<div style="padding:12px;text-align:center;color:#334155;font-size:11px">Sem histórico disponível</div>`;
+        const n    = t.partidas.length;
+        const nome = t.nome;
+        const r = (label, fn, corFn) => {
+            const cnt = t.partidas.filter(fn).length;
+            const pct = +(cnt / n * 100).toFixed(1);
+            const cor = corFn ? corFn(pct) : (pct >= 60 ? '#4ade80' : pct >= 40 ? '#fbbf24' : '#f87171');
+            return `<tr style="border-bottom:1px solid #0d1421">
+                <td style="padding:4px 8px;font-size:11px;color:#94a3b8">${label}</td>
+                <td style="padding:4px 8px;text-align:center;font-size:12px;font-weight:700;color:#e2e8f0">${cnt}</td>
+                <td style="padding:4px 8px;text-align:right;font-size:12px;font-weight:800;color:${cor}">${pct}%</td>
+            </tr>`;
+        };
+        const mediaGols  = +((t.gm + t.gs) / n).toFixed(2);
+        const mediaMarca = +(t.gm / n).toFixed(2);
+        return `
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:6px;text-align:center">${titulo} <span style="color:#334155">(${n}j)</span></div>
+        <table style="width:100%;border-collapse:collapse">
+            ${r('Vitórias FT',  p => p.resultado === (p.time_casa === nome ? 'CASA' : 'FORA'), p => p>=60?'#4ade80':p>=40?'#fbbf24':'#f87171')}
+            ${r('Empates FT',   p => p.resultado === 'EMPATE', p => p>=40?'#a5b4fc':p>=25?'#fbbf24':'#94a3b8')}
+            ${r('Derrotas FT',  p => p.resultado !== 'EMPATE' && p.resultado !== (p.time_casa === nome ? 'CASA' : 'FORA'), p => p>=60?'#f87171':p>=40?'#fbbf24':'#4ade80')}
+            <tr><td colspan="3" style="padding:1px 0;background:#0d1421"></td></tr>
+            ${r('Over 1.5 FT',  p => (p.gol_casa||0)+(p.gol_fora||0) > 1.5)}
+            ${r('Over 2.5 FT',  p => (p.gol_casa||0)+(p.gol_fora||0) > 2.5)}
+            ${r('Over 3.5 FT',  p => (p.gol_casa||0)+(p.gol_fora||0) > 3.5)}
+            ${r('Under 1.5 FT', p => (p.gol_casa||0)+(p.gol_fora||0) <= 1.5, p => p<=40?'#4ade80':p<=60?'#fbbf24':'#f87171')}
+            ${r('Under 2.5 FT', p => (p.gol_casa||0)+(p.gol_fora||0) <= 2.5, p => p<=40?'#4ade80':p<=60?'#fbbf24':'#f87171')}
+            ${r('BTTS',         p => (p.gol_casa||0) > 0 && (p.gol_fora||0) > 0)}
+            <tr><td colspan="3" style="padding:1px 0;background:#0d1421"></td></tr>
+            ${r('Marcou gol',   p => p.time_casa === nome ? (p.gol_casa||0) > 0 : (p.gol_fora||0) > 0)}
+            ${r('Não marcou',   p => p.time_casa === nome ? (p.gol_casa||0) === 0 : (p.gol_fora||0) === 0, p => p>=60?'#f87171':p>=40?'#fbbf24':'#4ade80')}
+            ${r('HT Over 1.5',  p => (p.gol_casa_ht||0)+(p.gol_fora_ht||0) > 1.5)}
+        </table>
+        <div style="margin-top:6px;padding:5px 8px;background:#0c1220;border-radius:5px;font-size:10px;color:#94a3b8;text-align:center">
+            Média gols/jogo: <b style="color:#e2e8f0">${mediaGols}</b> · Marca: <b style="color:#e2e8f0">${mediaMarca}</b>
+        </div>`;
+    };
+
+    const h2h = (tC?.partidas || []).filter(p =>
+        p.time_casa === timeFora || p.time_fora === timeFora
+    ).sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida)).slice(0, 20);
+
+    let h2hHtml = '';
+    if (h2h.length) {
+        const h2hVitC = h2h.filter(p =>
+            (p.time_casa === timeCasa && p.resultado === 'CASA') ||
+            (p.time_fora === timeCasa && p.resultado === 'FORA')
+        ).length;
+        const h2hEmp  = h2h.filter(p => p.resultado === 'EMPATE').length;
+        const h2hVitF = h2h.length - h2hVitC - h2hEmp;
+
+        const linhas = h2h.slice(0, 10).map(p => {
+            const pl    = `${p.gol_casa||0}-${p.gol_fora||0}`;
+            const resC  = p.resultado === 'EMPATE' ? 'E' : (p.resultado === 'CASA' ? 'V' : 'D');
+            const cor   = resC==='V'?'#4ade80':resC==='E'?'#a5b4fc':'#f87171';
+            const corBg = resC==='V'?'#14532d':resC==='E'?'#1e1b4b':'#3b0a0a';
+            const dt2   = p.data_partida ? new Date(p.data_partida) : null;
+            const data  = dt2 ? `${pad2(dt2.getUTCDate())}/${pad2(dt2.getUTCMonth()+1)} ${pad2(dt2.getUTCHours())}:${pad2(dt2.getUTCMinutes())}` : '';
+            return `<tr style="border-bottom:1px solid #0d1421">
+                <td style="padding:4px 8px;color:#475569;font-size:10px;white-space:nowrap">${data}</td>
+                <td style="padding:4px 8px;font-size:11px;color:#e2e8f0">${p.time_casa} <span style="color:#334155">×</span> ${p.time_fora}</td>
+                <td style="padding:4px 8px;font-weight:800;text-align:center;font-size:12px;color:#e2e8f0">${pl}</td>
+                <td style="padding:4px 8px;text-align:center">
+                    <span style="background:${corBg};color:${cor};padding:2px 7px;border-radius:3px;font-size:11px;font-weight:800">${resC}</span>
+                </td>
+            </tr>`;
+        }).join('');
+
+        h2hHtml = `
+        <div style="background:#0c1220;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-top:12px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:10px">
+                ⚔️ CONFRONTOS DIRETOS (${h2h.length} jogos)
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+                <div style="text-align:center">
+                    <div style="font-size:22px;font-weight:800;color:#4ade80">${h2hVitC}</div>
+                    <div style="font-size:10px;color:#475569">${timeCasa.split(' ')[0]}</div>
+                </div>
+                <div style="text-align:center">
+                    <div style="font-size:22px;font-weight:800;color:#a5b4fc">${h2hEmp}</div>
+                    <div style="font-size:10px;color:#475569">Empates</div>
+                </div>
+                <div style="text-align:center">
+                    <div style="font-size:22px;font-weight:800;color:#f87171">${h2hVitF}</div>
+                    <div style="font-size:10px;color:#475569">${timeFora.split(' ')[0]}</div>
+                </div>
+                <div style="text-align:center">
+                    <div style="font-size:22px;font-weight:800;color:#60a5fa">${+(h2hVitC/h2h.length*100).toFixed(0)}%</div>
+                    <div style="font-size:10px;color:#475569">% ${timeCasa.split(' ')[0]}</div>
+                </div>
+            </div>
+            <table style="width:100%;border-collapse:collapse">${linhas}</table>
+        </div>`;
+    }
+
+    const ultimasC = (tC?.partidas || [])
+        .sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida)).slice(0, 12);
+    const ultimasF = (tF?.partidas || [])
+        .sort((a, b) => new Date(b.data_partida) - new Date(a.data_partida)).slice(0, 12);
+
+    const _linhaJogo = (p, nome) => {
+        const isC   = p.time_casa === nome;
+        const opn   = isC ? p.time_fora : p.time_casa;
+        const pl    = isC ? `${p.gol_casa||0}-${p.gol_fora||0}` : `${p.gol_fora||0}-${p.gol_casa||0}`;
+        const res   = p.resultado === 'EMPATE' ? 'E' : (isC ? (p.resultado==='CASA'?'V':'D') : (p.resultado==='FORA'?'V':'D'));
+        const cor   = res==='V'?'#4ade80':res==='E'?'#a5b4fc':'#f87171';
+        const corBg = res==='V'?'#14532d':res==='E'?'#1e1b4b':'#3b0a0a';
+        const dt3   = p.data_partida ? new Date(p.data_partida) : null;
+        const data  = dt3 ? `${pad2(dt3.getUTCDate())}/${pad2(dt3.getUTCMonth()+1)} ${pad2(dt3.getUTCHours())}:${pad2(dt3.getUTCMinutes())}` : '';
+        return `<tr style="border-bottom:1px solid #0d1421">
+            <td style="padding:4px 6px;text-align:center">
+                <span style="background:${corBg};color:${cor};display:inline-block;width:22px;height:22px;line-height:22px;
+                    text-align:center;border-radius:4px;font-size:11px;font-weight:800">${res}</span>
+            </td>
+            <td style="padding:4px 6px;font-size:11px">
+                <div style="color:#e2e8f0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">${opn}</div>
+                <div style="color:#475569;font-size:10px">${data} <span style="color:${isC?'#60a5fa':'#f59e0b'};font-weight:700">${isC?'C':'F'}</span></div>
+            </td>
+            <td style="padding:4px 8px;text-align:right;font-size:13px;font-weight:900;color:#e2e8f0;white-space:nowrap">${pl}</td>
+        </tr>`;
+    };
+
+    const jogosC = ultimasC.length ? ultimasC.map(p => _linhaJogo(p, timeCasa)).join('')
+        : `<tr><td colspan="3" style="padding:14px;text-align:center;color:#334155;font-size:11px">Sem jogos</td></tr>`;
+    const jogosF = ultimasF.length ? ultimasF.map(p => _linhaJogo(p, timeFora)).join('')
+        : `<tr><td colspan="3" style="padding:14px;text-align:center;color:#334155;font-size:11px">Sem jogos</td></tr>`;
+
+    const oddCasa = parseFloat(evt.odd_casa   || 0);
+    const oddEmp  = parseFloat(evt.odd_empate || 0);
+    const oddFora = parseFloat(evt.odd_fora   || 0);
+    const temOdds = oddCasa > 0;
+    const dtEvt   = evt.horario ? new Date(evt.horario) : null;
+    const horaEvt = dtEvt ? `${pad2(dtEvt.getUTCHours())}:${pad2(dtEvt.getUTCMinutes())}` : '';
+
+    el.innerHTML = `
+    <div style="background:#0a0f1e;border:1px solid #1e3a5f;border-radius:12px;padding:16px;margin-top:14px">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap">
+            <button onclick="const d=document.getElementById('proximos-detalhe');d.innerHTML='';d.style.display='none';
+                document.querySelectorAll('[id^=prox-card-]').forEach(c=>{c.style.borderColor='#1e293b';c.style.background='#0f172a'})"
+                style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:4px 12px;cursor:pointer;font-size:11px;flex-shrink:0">
+                ← Voltar
+            </button>
+            <div style="text-align:center;flex:1;min-width:200px">
+                <div style="font-size:11px;color:#475569;margin-bottom:3px">${ligaCan.replace(/virtual/gi,'').trim()}${horaEvt ? ' · ' + horaEvt : ''}</div>
+                <div style="font-size:17px;font-weight:900;color:#e2e8f0;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
+                    <span style="display:flex;align-items:center;gap:6px">${_getClubeFlag(timeCasa,22,17)} ${timeCasa}</span>
+                    <span style="color:#334155;font-size:13px">vs</span>
+                    <span style="display:flex;align-items:center;gap:6px">${timeFora} ${_getClubeFlag(timeFora,22,17)}</span>
+                </div>
+            </div>
+            ${temOdds ? `
+            <div style="display:flex;gap:6px;flex-shrink:0">
+                <div style="text-align:center;background:#14532d20;border:1px solid #14532d50;border-radius:5px;padding:5px 10px">
+                    <div style="font-size:14px;font-weight:800;color:#4ade80">${oddCasa.toFixed(2)}</div>
+                    <div style="font-size:9px;color:#475569">1</div>
+                </div>
+                <div style="text-align:center;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:5px 10px">
+                    <div style="font-size:14px;font-weight:800;color:#94a3b8">${oddEmp.toFixed(2)}</div>
+                    <div style="font-size:9px;color:#475569">X</div>
+                </div>
+                <div style="text-align:center;background:#3b0a0a20;border:1px solid #3b0a0a50;border-radius:5px;padding:5px 10px">
+                    <div style="font-size:14px;font-weight:800;color:#f87171">${oddFora.toFixed(2)}</div>
+                    <div style="font-size:9px;color:#475569">2</div>
+                </div>
+            </div>` : ''}
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
+            <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px">
+                ${_tabelaStats(tC, '🏠 ' + timeCasa)}
+            </div>
+            <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px">
+                ${_tabelaStats(tF, '✈️ ' + timeFora)}
+            </div>
+        </div>
+
+        ${h2hHtml}
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+            <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+                <div style="padding:7px 10px;background:#0c1220;font-size:10px;font-weight:700;color:#64748b;letter-spacing:.05em">
+                    📋 ÚLTIMOS JOGOS · ${timeCasa}
+                </div>
+                <table style="width:100%;border-collapse:collapse">${jogosC}</table>
+            </div>
+            <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
+                <div style="padding:7px 10px;background:#0c1220;font-size:10px;font-weight:700;color:#64748b;letter-spacing:.05em">
+                    📋 ÚLTIMOS JOGOS · ${timeFora}
+                </div>
+                <table style="width:100%;border-collapse:collapse">${jogosF}</table>
+            </div>
+        </div>
+
+    </div>`;
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ============================================================
