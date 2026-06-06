@@ -4059,9 +4059,11 @@ async function carregarAnalise(forceRender = false) {
             S.mktTopSel = rRes.top_selecoes || [];
             MKT.dados = { resumo: rRes, mercados: rMkt, tendencias: rTend, ia: rIA };
             if (S.view === 'analise') {
-                renderAnalise(); renderMktResumo(rRes);
-                renderMktValueBets(rRes, 'analise-mkt'); renderMktTendencias(rTend, 'analise-mkt');
-                renderMktGrafico(rMkt, 'analise-mkt', 'chart'); renderMktSugestoesIA(rIA, 'analise-mkt');
+                requestAnimationFrame(() => {
+                    renderAnalise(); renderMktResumo(rRes);
+                    renderMktValueBets(rRes, 'analise-mkt'); renderMktTendencias(rTend, 'analise-mkt');
+                    renderMktGrafico(rMkt, 'analise-mkt', 'chart'); renderMktSugestoesIA(rIA, 'analise-mkt');
+                });
             }
             return;
         }
@@ -4112,12 +4114,14 @@ async function carregarAnalise(forceRender = false) {
         _faAtualizarStatus();
 
         if (S.view === 'analise' || forceRender) {
-            renderAnalise();
-            renderMktResumo(rRes);
-            renderMktValueBets(rRes, 'analise-mkt');
-            renderMktTendencias(rTend, 'analise-mkt');
-            renderMktGrafico(rMkt, 'analise-mkt', 'chart');
-            renderMktSugestoesIA(rIA, 'analise-mkt');
+            requestAnimationFrame(() => {
+                renderAnalise();
+                renderMktResumo(rRes);
+                renderMktValueBets(rRes, 'analise-mkt');
+                renderMktTendencias(rTend, 'analise-mkt');
+                renderMktGrafico(rMkt, 'analise-mkt', 'chart');
+                renderMktSugestoesIA(rIA, 'analise-mkt');
+            });
         }
     } catch(e) {
         if (reqId !== _analiseReqId) return;
@@ -13231,13 +13235,11 @@ function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
     rows.sort((a,b) => b.pct - a.pct);
     const top = rows.slice(0, 25);
 
-    if (MKT[chartKey]) { MKT[chartKey].destroy(); MKT[chartKey] = null; }
-    if (!top.length) { canvas.parentElement.innerHTML = '<div style="color:#334155;padding:24px;text-align:center">Sem dados para os filtros selecionados</div>'; return; }
-
-    // Recria canvas com altura dinâmica para não truncar labels
-    const canvasHeight = Math.max(300, top.length * 28);
-    canvas.parentElement.innerHTML = `<canvas id="${prefix}-${chartKey}" height="${canvasHeight}"></canvas>`;
-    const ctx = document.getElementById(`${prefix}-${chartKey}`).getContext('2d');
+    if (!top.length) {
+        if (MKT[chartKey]) { MKT[chartKey].destroy(); MKT[chartKey] = null; }
+        canvas.parentElement.innerHTML = '<div style="color:#334155;padding:24px;text-align:center">Sem dados para os filtros selecionados</div>';
+        return;
+    }
 
     // Quebra labels longos em duas linhas para o Chart.js não truncar
     const wrapLabel = (str, maxLen = 34) => {
@@ -13248,15 +13250,38 @@ function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
         return [str.slice(0, cut > 0 ? cut : maxLen), str.slice(cut > 0 ? cut + 1 : maxLen)];
     };
 
+    const labels = top.map(r => wrapLabel(r.label));
+    const dataVals = top.map(r => r.pct);
+    const bgColors = top.map(r => r.ve >= 0.95 ? '#14532d' : r.pct >= 60 ? '#1e3a5f' : '#1e293b');
+    const bdColors = top.map(r => r.ve >= 0.95 ? '#4ade80' : r.pct >= 60 ? '#60a5fa' : '#334155');
+
+    // Reutiliza instância existente se o canvas não mudou de tamanho
+    const canvasHeight = Math.max(300, top.length * 28);
+    if (MKT[chartKey] && canvas.height === canvasHeight) {
+        const ds = MKT[chartKey].data.datasets[0];
+        MKT[chartKey].data.labels = labels;
+        ds.data = dataVals;
+        ds.backgroundColor = bgColors;
+        ds.borderColor = bdColors;
+        MKT[chartKey].options.plugins.tooltip.enabled = !S.showLegendas;
+        MKT[chartKey].update('none'); // 'none' = sem animação → mais rápido
+        return;
+    }
+
+    // Canvas precisa ser recriado (altura diferente ou primeira vez)
+    if (MKT[chartKey]) { MKT[chartKey].destroy(); MKT[chartKey] = null; }
+    canvas.parentElement.innerHTML = `<canvas id="${prefix}-${chartKey}" height="${canvasHeight}"></canvas>`;
+    const ctx = document.getElementById(`${prefix}-${chartKey}`).getContext('2d');
+
     MKT[chartKey] = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: top.map(r => wrapLabel(r.label)),
+            labels,
             datasets: [{
                 label: '% de Jogos',
-                data: top.map(r => r.pct),
-                backgroundColor: top.map(r => r.ve >= 0.95 ? '#14532d' : r.pct >= 60 ? '#1e3a5f' : '#1e293b'),
-                borderColor:     top.map(r => r.ve >= 0.95 ? '#4ade80' : r.pct >= 60 ? '#60a5fa' : '#334155'),
+                data: dataVals,
+                backgroundColor: bgColors,
+                borderColor: bdColors,
                 borderWidth: 1,
             }]
         },
@@ -13264,6 +13289,7 @@ function renderMktGrafico(res, prefix = 'mkt', chartKey = 'chart') {
             indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             plugins: {
                 legend: { display: false },
                 tooltip: {

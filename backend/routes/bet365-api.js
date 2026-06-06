@@ -65,6 +65,31 @@ async function getDbPool() {
 
 // bet365_historico_partidas foi removida — toda a lógica usa bet365_resultados_mercados
 
+// ── Cache em memória para endpoints pesados de análise ──────────────────────
+const _analiseApiCache = new Map(); // cacheKey → { data, ts }
+const _ANALISE_CACHE_TTL = 90_000; // 90s — maior que o cache do frontend (60s)
+
+function _apiCacheGet(key) {
+    const e = _analiseApiCache.get(key);
+    if (!e) return null;
+    if (Date.now() - e.ts > _ANALISE_CACHE_TTL) { _analiseApiCache.delete(key); return null; }
+    return e.data;
+}
+function _apiCacheSet(key, data) {
+    _analiseApiCache.set(key, { data, ts: Date.now() });
+    // Evita crescimento ilimitado — descarta entrada mais antiga quando passa de 300
+    if (_analiseApiCache.size > 300) {
+        _analiseApiCache.delete(_analiseApiCache.keys().next().value);
+    }
+}
+// Limpa entradas expiradas a cada 5 minutos
+setInterval(() => {
+    const now = Date.now();
+    for (const [k, v] of _analiseApiCache) {
+        if (now - v.ts > _ANALISE_CACHE_TTL) _analiseApiCache.delete(k);
+    }
+}, 300_000);
+
 /**
  * GET /api/bet365/eventos
  * Retorna todos os eventos ativos
@@ -422,6 +447,10 @@ router.get('/sugestoes', async (req, res) => {
         const nJogosN    = Math.min(420, Math.max(20, parseInt(req.query.nJogos) || 100));
         const ligaFiltro = req.query.liga && req.query.liga !== '' && req.query.liga !== 'all'
             ? ligaParaBanco(req.query.liga) : null;
+
+        const _ck = `sugestoes:${nJogosN}:${ligaFiltro || 'all'}`;
+        const _cached = _apiCacheGet(_ck);
+        if (_cached) return res.json(_cached);
         const pool = await getDbPool();
 
         // Passo 1: ligas + total de eventos por liga (uma única query, usa índice)
@@ -570,7 +599,9 @@ router.get('/sugestoes', async (req, res) => {
             });
         }
 
-        res.json({ success: true, timestamp: new Date().toISOString(), data: resultado });
+        const _resp = { success: true, timestamp: new Date().toISOString(), data: resultado };
+        _apiCacheSet(_ck, _resp);
+        res.json(_resp);
 
     } catch (error) {
         console.error('❌ ERRO API bet365/sugestoes:', error.message);
@@ -1125,6 +1156,11 @@ router.get('/analise/mercados', async (req, res) => {
         const minJogosN = Math.max(1, parseInt(minJogos) || 3);
         const minPctN   = Math.max(0, parseFloat(minPct)  || 0);
         const minVEN    = Math.max(0, parseFloat(minVE)   || 0);
+
+        const _ck = `analise-mkt:${liga||'all'}:${nJogosN}:${minJogosN}:${minPctN}:${tipoMercado}:${soValueBets}:${minVEN}`;
+        const _cached = _apiCacheGet(_ck);
+        if (_cached) return res.json(_cached);
+
         const pool      = await getDbPool();
         const request   = pool.request()
             .input('nJogos',    sql.Int,   nJogosN)
@@ -1227,7 +1263,9 @@ router.get('/analise/mercados', async (req, res) => {
             });
         }
 
-        res.json({ success: true, nJogos: nJogosN, filtros: { minJogos: minJogosN, minPct: minPctN, tipoMercado, soValueBets }, data: agrupado });
+        const _respMkt = { success: true, nJogos: nJogosN, filtros: { minJogos: minJogosN, minPct: minPctN, tipoMercado, soValueBets }, data: agrupado };
+        _apiCacheSet(_ck, _respMkt);
+        res.json(_respMkt);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1254,9 +1292,15 @@ router.get('/analise/tendencias', async (req, res) => {
         const minJogosRecN  = Math.max(1,  parseInt(minJogosRec)  || 3);
         const minVariacaoN  = Math.max(0,  parseFloat(minVariacao) || 3);
 
+        const _ck = `analise-tend:${liga||'all'}:${nRecenteN}:${minJogosHistN}:${minJogosRecN}:${minVariacaoN}`;
+        const _cached = _apiCacheGet(_ck);
+        if (_cached) return res.json(_cached);
+
         const pool    = await getDbPool();
         const req1    = pool.request().input('nRecente', sql.Int, nRecenteN);
-        const req2    = pool.request();
+        // nJogosHist: cap de 1000 eventos para a query all-time — suficiente estatisticamente e evita full scan ilimitado
+        const nJogosHistCap = Math.max(nRecenteN * 3, 500);
+        const req2    = pool.request().input('nJogosHist', sql.Int, nJogosHistCap);
 
         const ligaDb    = ligaParaBanco(liga);
         // ligaW1_base: usado em CTEs com tabela única (sem alias)
@@ -1265,14 +1309,21 @@ router.get('/analise/tendencias', async (req, res) => {
         const ligaW1_join = ligaDb && ligaDb !== 'all' ? 'AND m.liga = @liga' : '';
         const ligaW2      = ligaDb && ligaDb !== 'all' ? (req2.input('liga2', sql.NVarChar(200), ligaDb), 'AND liga = @liga2') : '';
 
-        // Histórico all-time — base rate por mercado/seleção (SEM filtro de dias)
+        // Histórico (cap de @nJogosHist eventos por liga) — base rate por mercado/seleção
         const total = await req2.query(`
-            WITH base AS (
-                SELECT liga, mercado, selecao,
-                       COUNT(DISTINCT evento_id) AS vezes
+            WITH ult_hist AS (
+                SELECT liga, evento_id,
+                       ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
                 FROM bet365_resultados_mercados
                 WHERE 1=1 ${ligaW2}
-                GROUP BY liga, mercado, selecao
+                GROUP BY liga, evento_id
+            ),
+            base AS (
+                SELECT m.liga, m.mercado, m.selecao,
+                       COUNT(DISTINCT m.evento_id) AS vezes
+                FROM bet365_resultados_mercados m
+                INNER JOIN ult_hist u ON u.liga = m.liga AND u.evento_id = m.evento_id AND u.rn <= @nJogosHist
+                GROUP BY m.liga, m.mercado, m.selecao
             )
             SELECT liga, mercado, selecao, vezes,
                    SUM(vezes) OVER (PARTITION BY liga, mercado) AS total_mkt
@@ -1327,7 +1378,9 @@ router.get('/analise/tendencias', async (req, res) => {
         }
 
         tendencias.sort((a, b) => Math.abs(b.variacao) - Math.abs(a.variacao));
-        res.json({ success: true, total: tendencias.length, filtros: { nRecente: nRecenteN, minJogosHist: minJogosHistN, minVariacao: minVariacaoN }, data: tendencias });
+        const _respTend = { success: true, total: tendencias.length, filtros: { nRecente: nRecenteN, minJogosHist: minJogosHistN, minVariacao: minVariacaoN }, data: tendencias };
+        _apiCacheSet(_ck, _respTend);
+        res.json(_respTend);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1343,6 +1396,11 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
         const { liga, nJogos = 200 } = req.query;
         const nJogosN  = Math.min(420, Math.max(20, parseInt(nJogos) || 200));
         const ligaDb   = ligaParaBanco(liga);
+
+        const _ck = `analise-ia:${liga||'all'}:${nJogosN}`;
+        const _cached = _apiCacheGet(_ck);
+        if (_cached) return res.json(_cached);
+
         const pool     = await getDbPool();
         const reqEvt   = pool.request();
         const reqStats = pool.request();
@@ -1445,7 +1503,9 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
             };
         });
 
-        res.json({ success: true, total: sugestoes.length, data: sugestoes });
+        const _respIA = { success: true, total: sugestoes.length, data: sugestoes };
+        _apiCacheSet(_ck, _respIA);
+        res.json(_respIA);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1469,6 +1529,11 @@ router.get('/analise/resumo', async (req, res) => {
         const nJogosN   = Math.min(420, Math.max(20, parseInt(nJogos) || 200));
         const minJogosN = Math.max(1, parseInt(minJogos) || 5);
         const minVEN    = Math.max(0, parseFloat(minVE)  || 0.95);
+
+        const _ck = `analise-resumo:${liga||'all'}:${nJogosN}:${minJogosN}:${minVEN}:${soValueBets}`;
+        const _cached = _apiCacheGet(_ck);
+        if (_cached) return res.json(_cached);
+
         const pool      = await getDbPool();
 
         const ligaDb     = ligaParaBanco(liga);
@@ -1566,7 +1631,7 @@ router.get('/analise/resumo', async (req, res) => {
         ]);
 
         const _dbToCanon = r => ({ ...r, liga: ({ 'World Cup':'Copa do Mundo', 'Premiership':'Premier League' }[r.liga] || r.liga) });
-        res.json({
+        const _respResumo = {
             success:    true,
             timestamp:  new Date().toISOString(),
             filtros:    { nJogos: nJogosN, liga: liga || 'all', minJogos: minJogosN, minVE: minVEN },
@@ -1574,7 +1639,9 @@ router.get('/analise/resumo', async (req, res) => {
             por_liga:   porLiga.recordset.map(_dbToCanon),
             top_selecoes: topMkt.recordset.map(_dbToCanon),
             value_bets: valueBets.recordset.map(_dbToCanon)
-        });
+        };
+        _apiCacheSet(_ck, _respResumo);
+        res.json(_respResumo);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
