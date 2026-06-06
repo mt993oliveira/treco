@@ -5447,7 +5447,7 @@ function _renderChartVazio(canvasEl, chartRef, mensagem, yMin, yMax) {
             ctx.restore();
         }
     };
-    return new Chart(canvasEl.getContext('2d'), {
+    const _ch = new Chart(canvasEl.getContext('2d'), {
         type: 'line',
         data: { labels: _xLabels, datasets: [_emptyDs] },
         options: {
@@ -5469,6 +5469,8 @@ function _renderChartVazio(canvasEl, chartRef, mensagem, yMin, yMax) {
         },
         plugins: [_emptyPlugin]
     });
+    _ch._vazio = true;
+    return _ch;
 }
 
 // renderGrafico removido — Gráfico de Mercados descontinuado
@@ -5829,6 +5831,15 @@ function renderGraficoLinha() {
     const _yMinL = _valsL.length ? Math.max(0,   Math.floor(Math.min(..._valsL) / 5) * 5 - 5)  : 0;
     const _yMaxL = _valsL.length ? Math.min(100,  Math.ceil(Math.max(..._valsL) / 5) * 5 + 5)  : 100;
 
+    if (S._graficoLinha && !S._graficoLinha._vazio) {
+        S._graficoLinha.data.labels = labels;
+        S._graficoLinha.data.datasets = datasets;
+        S._graficoLinha.options.scales.y.min = _yMinL;
+        S._graficoLinha.options.scales.y.max = _yMaxL;
+        S._graficoLinha.options.plugins.tooltip.enabled = !S.linhaShowLegendas;
+        S._graficoLinha.update('none');
+        return;
+    }
     _destruir();
 
     try {
@@ -6063,6 +6074,14 @@ function renderGraficoGols() {
 
     if (tituloEl) tituloEl.textContent = '⚽ Gols por Jogo';
 
+    if (S._graficoGols && !S._graficoGols._vazio) {
+        S._graficoGols.data.labels = labels;
+        S._graficoGols.data.datasets = datasets;
+        S._graficoGols.options.scales.y.min = yMin;
+        S._graficoGols.options.scales.y.max = yMax;
+        S._graficoGols.update('none');
+        return;
+    }
     _destruirGols();
     try { S._graficoGols = new Chart(canvasEl.getContext('2d'), {
         type: 'line',
