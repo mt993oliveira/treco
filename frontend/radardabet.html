@@ -4089,40 +4089,56 @@ async function carregarAnalise(forceRender = false) {
         const tendP = new URLSearchParams({ nJogos: S.fa.nRecente || 20, minJogosHist: 5, minJogosRec: 3, minVariacao: 1 });
         if (liga) tendP.set('liga', liga);
 
-        const [rSug, rMkt, rRes, rTend, rIA] = await Promise.all([
-            fetch(`/api/bet365/sugestoes?${base}`).then(r => r.json()).catch(() => ({ success: false, data: [] })),
-            fetch(`/api/bet365/analise/mercados?${mktP}`).then(r => r.json()).catch(() => ({ data: {} })),
-            fetch(`/api/bet365/analise/resumo?${resP}`).then(r => r.json()).catch(() => ({})),
-            fetch(`/api/bet365/analise/tendencias?${tendP}`).then(r => r.json()).catch(() => ({ data: [] })),
-            fetch(`/api/bet365/analise/sugestoes-avancadas?${base}`).then(r => r.json()).catch(() => ({ data: [] }))
-        ]);
+        // Dispara os 5 fetches em paralelo mas renderiza cada seção assim que
+        // seus próprios dados chegam — sem esperar os mais lentos
+        const pSug  = fetch(`/api/bet365/sugestoes?${base}`).then(r => r.json()).catch(() => ({ success: false, data: [] }));
+        const pMkt  = fetch(`/api/bet365/analise/mercados?${mktP}`).then(r => r.json()).catch(() => ({ data: {} }));
+        const pRes  = fetch(`/api/bet365/analise/resumo?${resP}`).then(r => r.json()).catch(() => ({}));
+        const pTend = fetch(`/api/bet365/analise/tendencias?${tendP}`).then(r => r.json()).catch(() => ({ data: [] }));
+        const pIA   = fetch(`/api/bet365/analise/sugestoes-avancadas?${base}`).then(r => r.json()).catch(() => ({ data: [] }));
 
-        if (reqId !== _analiseReqId) return; // resposta obsoleta
+        // Cada .then() renderiza imediatamente quando o dado chega
+        const _shouldRender = () => (S.view === 'analise' || forceRender) && reqId === _analiseReqId;
 
-        // Salva no cache
+        pSug.then(rSug => {
+            if (!_shouldRender()) return;
+            if (rSug.success) S.sugestoes = rSug.data || [];
+            requestAnimationFrame(() => renderAnalise());
+        });
+
+        pRes.then(rRes => {
+            if (!_shouldRender()) return;
+            S.mktValueBets = rRes.value_bets   || [];
+            S.mktTopSel    = rRes.top_selecoes || [];
+            const vbTit = document.getElementById('analise-vb-titulo');
+            if (vbTit) vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (ult. ${nJogos} jogos)`;
+            requestAnimationFrame(() => { renderMktResumo(rRes); renderMktValueBets(rRes, 'analise-mkt'); });
+        });
+
+        pTend.then(rTend => {
+            if (!_shouldRender()) return;
+            requestAnimationFrame(() => renderMktTendencias(rTend, 'analise-mkt'));
+        });
+
+        pMkt.then(rMkt => {
+            if (!_shouldRender()) return;
+            S.mktDados = rMkt.data || {};
+            requestAnimationFrame(() => renderMktGrafico(rMkt, 'analise-mkt', 'chart'));
+        });
+
+        pIA.then(rIA => {
+            if (!_shouldRender()) return;
+            requestAnimationFrame(() => renderMktSugestoesIA(rIA, 'analise-mkt'));
+        });
+
+        // Aguarda todos para salvar cache e finalizar estado
+        const [rSug, rMkt, rRes, rTend, rIA] = await Promise.all([pSug, pMkt, pRes, pTend, pIA]);
+
+        if (reqId !== _analiseReqId) return; // resposta obsoleta — descarta
+
         _analiseCache = { params: cacheKey, ts: Date.now(), data: { rSug, rMkt, rRes, rTend, rIA } };
-
-        if (rSug.success) S.sugestoes = rSug.data || [];
-        S.mktDados     = rMkt.data || {};
-        S.mktValueBets = rRes.value_bets    || [];
-        S.mktTopSel    = rRes.top_selecoes  || [];
-        MKT.dados      = { resumo: rRes, mercados: rMkt, tendencias: rTend, ia: rIA };
-
-        const vbTit = document.getElementById('analise-vb-titulo');
-        if (vbTit) vbTit.textContent = `💰 VALUE BETS — MERCADOS COM MAIOR RETORNO ESPERADO (ult. ${nJogos} jogos)`;
-
+        MKT.dados = { resumo: rRes, mercados: rMkt, tendencias: rTend, ia: rIA };
         _faAtualizarStatus();
-
-        if (S.view === 'analise' || forceRender) {
-            requestAnimationFrame(() => {
-                renderAnalise();
-                renderMktResumo(rRes);
-                renderMktValueBets(rRes, 'analise-mkt');
-                renderMktTendencias(rTend, 'analise-mkt');
-                renderMktGrafico(rMkt, 'analise-mkt', 'chart');
-                renderMktSugestoesIA(rIA, 'analise-mkt');
-            });
-        }
     } catch(e) {
         if (reqId !== _analiseReqId) return;
         console.error('Erro carregarAnalise:', e);
