@@ -338,11 +338,11 @@ function requireAuthQuery(req, res, next) {
 // API BET365 - Dados em tempo real (tabelas bet365_*)
 // =============================================
 const bet365Routes = require('./routes/bet365-api');
-app.use('/api/bet365', requireAuthQuery, userRateLimit, bet365Routes);
+app.use('/api/bet365', userRateLimit, bet365Routes);
 
 // Simulador de apostas virtuais
 const simuladorRoutes = require('./routes/simulador-api');
-app.use('/api/simulador', requireAuthQuery, userRateLimit, simuladorRoutes);
+app.use('/api/simulador', userRateLimit, simuladorRoutes);
 
 // Kirvano — webhook de pagamento + credenciais
 const kirvanRoutes = require('./routes/kirvano');
