@@ -399,27 +399,30 @@ function lerOddsDOM() {
         return { motivo: 'odds_zeradas', suspended, podNames };
 
     // ── Over/Under 2.5 ───────────────────────────────────────
-    const ou25Pod   = findPod(['over/under', 'gols acima', 'goals over', 'acima/abaixo']);
+    // PT: "Gols Mais/Menos" | EN: "Goals Over/Under"
+    const ou25Pod   = findPod(['mais/menos', 'gols mais', 'over/under', 'goals over', 'gols acima', 'acima/abaixo']);
     const ou25Parts = readParts(ou25Pod);
     let oddOver25 = 0, oddUnder25 = 0;
     for (const p of ou25Parts) {
         const n = p.nome.toLowerCase();
-        if      (n.includes('over')  || n.includes('acima') || n.includes('mais'))  oddOver25  = p.odd;
-        else if (n.includes('under') || n.includes('abaixo') || n.includes('menos')) oddUnder25 = p.odd;
+        if      (n.includes('mais') || n.includes('over')  || n.includes('acima'))  oddOver25  = p.odd;
+        else if (n.includes('menos') || n.includes('under') || n.includes('abaixo')) oddUnder25 = p.odd;
     }
 
     // ── Both Teams to Score (BTTS) ────────────────────────────
-    const bttsPod   = findPod(['both teams', 'ambos marcam']);
+    // PT: "Para o Time Marcar - Sim/Não" | EN: "Both Teams to Score"
+    const bttsPod   = findPod(['para o time marcar', 'time marcar', 'both teams', 'ambos marcam']);
     const bttsParts = readParts(bttsPod);
     let oddBttsSim = 0, oddBttsNao = 0;
     for (const p of bttsParts) {
         const n = p.nome.toLowerCase();
-        if      (n === 'yes' || n === 'sim' || n.includes('yes') || n.includes('sim')) oddBttsSim = p.odd;
-        else if (n === 'no'  || n.includes('não') || n.includes('nao') || n === 'no')  oddBttsNao = p.odd;
+        if      (n === 'sim' || n === 'yes' || n.includes('sim') || n.includes('yes')) oddBttsSim = p.odd;
+        else if (n === 'não' || n === 'nao' || n === 'no'  || n.includes('não'))       oddBttsNao = p.odd;
     }
 
     // ── Half-Time Result ─────────────────────────────────────
-    const htPod   = findPod(['half-time', 'half time', 'intervalo resultado', 'resultado intervalo', 'ht result']);
+    // PT: "Intervalo - Resultado" | EN: "Half-Time Result"
+    const htPod   = findPod(['intervalo - resultado', 'half-time', 'half time', 'ht result', 'resultado intervalo']);
     const htParts = readParts(htPod);
     let oddHtCasa = 0, oddHtEmpate = 0, oddHtFora = 0;
     if (htParts.length >= 3) {
