@@ -6838,6 +6838,7 @@ function renderMultiLinhas() {
 // ============================================================
 // TABELA HISTÓRICA — 1 linha = 1 hora, 20 colunas = jogos daquela hora
 function _renderAllCharts() {
+    if (S.view !== 'historico') return;
     if (S.showLinha) renderGraficoLinha();
     renderGraficoGols();
 }
