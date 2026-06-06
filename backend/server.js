@@ -3,13 +3,16 @@ const sql = require('mssql');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
+const cookieParser = require('cookie-parser');
+const crypto = require('crypto');
 
-// Map de sessões ativas: userId -> { id, usuario, nome, tipo, lastSeen, loginTime, ip, userAgent }
+// Map de sessões ativas: userId -> { id, usuario, nome, tipo, lastSeen, loginTime, ip, userAgent, token }
 const activeSessions = new Map();
 const forcedLogouts  = new Set(); // IDs desconectados pelo admin — próximo ping força logout
 const loginHistory  = new Map(); // String(userId) -> { countToday, lastLoginDate }
 const loginFailures = new Map(); // username_lower -> [{ ip, ts }]
 const _geoCache     = new Map(); // ip -> { city, region, country, org, cachedAt }
+const _loginBlocklist = new Map(); // ip -> { blockedUntil } — IPs bloqueados por brute force
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -60,27 +63,61 @@ app.use(helmet({
   },
   crossOriginEmbedderPolicy: false, // Necessário para permitir recursos externos
 }));
-app.use(mongoSanitize()); // Previne injeção de consulta MongoDB
-app.use(xss()); // Limpa entradas de solicitações de XSS
-app.use(hpp()); // Prevene poluição de parâmetros HTTP
+app.use(mongoSanitize());
+app.use(xss());
+app.use(hpp());
+app.use(cookieParser());
 
-// Limitar requisições por IP
+// Rate limit global por IP — barreira contra varredura e flood
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 2000, // Limite de 2000 requisições por janela
-    message: 'Muitas requisições a partir deste IP, por favor tente novamente mais tarde.',
-    standardHeaders: true, // Retorna informações de limite no cabeçalho `RateLimit-*`
-    legacyHeaders: false, // Desativa o cabeçalho `X-RateLimit-*`
+    windowMs: 15 * 60 * 1000,
+    max: 2000,
+    message: 'Muitas requisições a partir deste IP, tente novamente mais tarde.',
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 app.use(limiter);
 
+// Rate limit específico para login — evita força bruta por IP
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: 'Muitas tentativas de login, tente novamente em 15 minutos.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Rate limit por usuário autenticado — máx 300 req/min por userId
+const _userReqCount = new Map(); // uid -> { count, windowStart }
+function userRateLimit(req, res, next) {
+    const uid = req.sessionUser?.id || req.body?.usuarioId || req.query?.usuarioId;
+    if (!uid) return next();
+    const agora = Date.now();
+    const entry = _userReqCount.get(uid) || { count: 0, windowStart: agora };
+    if (agora - entry.windowStart > 60000) {
+        entry.count = 0;
+        entry.windowStart = agora;
+    }
+    entry.count++;
+    _userReqCount.set(uid, entry);
+    if (entry.count > 300) {
+        console.warn(`[Segurança] Rate limit por usuário: uid=${uid} count=${entry.count}`);
+        return res.status(429).json({ success: false, message: 'Muitas requisições. Aguarde um momento.' });
+    }
+    next();
+}
+
 app.use(express.json());
 
-// ✅ MIDDLEWARE DE DEBUG (opcional, mas útil)
+// Logging enxuto: método + rota + status + tempo (sem headers sensíveis)
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-    console.log('Origin:', req.headers.origin);
-    console.log('Headers:', req.headers);
+    const start = Date.now();
+    res.on('finish', () => {
+        const ms = Date.now() - start;
+        if (!req.url.startsWith('/api/usuarios/ping')) {
+            console.log(`${new Date().toISOString()} ${req.method} ${req.url} ${res.statusCode} ${ms}ms`);
+        }
+    });
     next();
 });
 
@@ -152,7 +189,38 @@ function _trackLoginFail(username, ip) {
     const arr = loginFailures.get(k) || [];
     arr.unshift({ ip: ip || '?', ts: Date.now() });
     loginFailures.set(k, arr.slice(0, 50));
+
+    // Bloqueia o IP por 30min após 5 falhas em 15min
+    const JANELA = 15 * 60 * 1000;
+    const LIMITE = 5;
+    const BLOQUEIO = 30 * 60 * 1000;
+    if (ip && ip !== '?') {
+        const recentes = arr.filter(e => Date.now() - e.ts < JANELA && e.ip === ip);
+        if (recentes.length >= LIMITE) {
+            _loginBlocklist.set(ip, { blockedUntil: Date.now() + BLOQUEIO });
+        }
+    }
 }
+
+function _isIpBlocked(ip) {
+    if (!ip || ip === '?') return false;
+    const entry = _loginBlocklist.get(ip);
+    if (!entry) return false;
+    if (Date.now() > entry.blockedUntil) { _loginBlocklist.delete(ip); return false; }
+    return true;
+}
+
+// Limpa sessões inativas há mais de 8h (roda a cada 30min)
+setInterval(() => {
+    const OITO_HORAS = 8 * 60 * 60 * 1000;
+    const agora = Date.now();
+    for (const [uid, sess] of activeSessions.entries()) {
+        if (sess.tipo !== 'master' && agora - new Date(sess.lastSeen).getTime() > OITO_HORAS) {
+            activeSessions.delete(uid);
+            console.log(`[Segurança] Sessão expirada por inatividade: usuário ${sess.usuario} (${uid})`);
+        }
+    }
+}, 30 * 60 * 1000);
 
 function _parseUA(ua) {
     if (!ua) return { browser: '?', os: '?' };
@@ -208,23 +276,73 @@ async function _registrarAcesso(usuarioId, usuario, tipo, ip, userAgent, geo, du
 }
 // ──────────────────────────────────────────────────────────────
 
-// Middleware para verificar autenticação
+// Middleware de autenticação — valida sessão ativa via cookie (preferido) ou body (legado)
 function requireAuth(req, res, next) {
-    if (!req.body.usuarioId) {
-        return res.json({ success: false, message: 'Usuário não autenticado' });
+    // 1) Token via cookie httpOnly (novo padrão)
+    const cookieToken = req.cookies?.sess;
+    if (cookieToken) {
+        for (const [uid, sess] of activeSessions.entries()) {
+            if (sess.token === cookieToken) {
+                sess.lastSeen = new Date();
+                req.sessionUser = sess;
+                // Garante que req.body.usuarioId existe para compatibilidade com rotas existentes
+                if (!req.body) req.body = {};
+                req.body.usuarioId = req.body.usuarioId || uid;
+                return next();
+            }
+        }
+        // Cookie presente mas token inválido/expirado
+        res.clearCookie('sess');
+        return res.json({ success: false, message: 'Sessão expirada. Faça login novamente.' });
     }
-    next();
+
+    // 2) Fallback legado: usuarioId no body validado contra activeSessions
+    const uid = String(req.body?.usuarioId || '');
+    if (uid && activeSessions.has(uid)) {
+        const sess = activeSessions.get(uid);
+        sess.lastSeen = new Date();
+        req.sessionUser = sess;
+        return next();
+    }
+
+    return res.json({ success: false, message: 'Não autenticado. Faça login novamente.' });
+}
+
+// Middleware para rotas GET que passam usuarioId como query param (ex: /api/bet365/*)
+function requireAuthQuery(req, res, next) {
+    // Cookie tem prioridade
+    const cookieToken = req.cookies?.sess;
+    if (cookieToken) {
+        for (const [uid, sess] of activeSessions.entries()) {
+            if (sess.token === cookieToken) {
+                sess.lastSeen = new Date();
+                req.sessionUser = sess;
+                return next();
+            }
+        }
+        res.clearCookie('sess');
+        return res.status(401).json({ success: false, message: 'Sessão expirada.' });
+    }
+    // Fallback: uid na query
+    const uid = String(req.query?.usuarioId || req.body?.usuarioId || '');
+    if (uid && activeSessions.has(uid)) {
+        const sess = activeSessions.get(uid);
+        sess.lastSeen = new Date();
+        req.sessionUser = sess;
+        return next();
+    }
+    return res.status(401).json({ success: false, message: 'Não autenticado.' });
 }
 
 // =============================================
 // API BET365 - Dados em tempo real (tabelas bet365_*)
 // =============================================
 const bet365Routes = require('./routes/bet365-api');
-app.use('/api/bet365', bet365Routes);
+app.use('/api/bet365', requireAuthQuery, userRateLimit, bet365Routes);
 
 // Simulador de apostas virtuais
 const simuladorRoutes = require('./routes/simulador-api');
-app.use('/api/simulador', simuladorRoutes);
+app.use('/api/simulador', requireAuthQuery, userRateLimit, simuladorRoutes);
 
 // Kirvano — webhook de pagamento + credenciais
 const kirvanRoutes = require('./routes/kirvano');
@@ -269,12 +387,17 @@ app.post('/api/test-connection', async (req, res) => {
     }
 });
 
-// Rota de login - CORRIGIDA PARA BASE64
-app.post('/api/login', async (req, res) => {
+// Rota de login
+app.post('/api/login', loginLimiter, async (req, res) => {
     const { username, password, sqlConfig } = req.body;
+    const _ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?';
+
+    // Rejeita IPs bloqueados por brute force
+    if (_isIpBlocked(_ip)) {
+        return res.json({ success: false, message: 'Muitas tentativas incorretas. Tente novamente em 30 minutos.' });
+    }
 
     try {
-        // Se nenhuma configuração de banco for fornecida, usar as do ambiente
         const dbConfig = sqlConfig || getDatabaseConfigFromEnv();
         await connectSQL(dbConfig);
 
@@ -347,7 +470,8 @@ app.post('/api/login', async (req, res) => {
                 }
 
                 // Registrar sessão ao logar
-                const _loginIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?';
+                const _loginIp = _ip;
+                const sessionToken = crypto.randomUUID();
                 activeSessions.set(String(user.Id), {
                     id: String(user.Id),
                     usuario: user.Usuario,
@@ -357,9 +481,18 @@ app.post('/api/login', async (req, res) => {
                     loginTime: new Date(),
                     ip: _loginIp,
                     userAgent: req.headers['user-agent'] || '',
+                    token: sessionToken,
                 });
                 _trackLoginSuccess(user.Id);
                 _geoLookup(_loginIp).then(geo => _registrarAcesso(user.Id, user.Usuario, 'login_ok', _loginIp, req.headers['user-agent'], geo, null)).catch(()=>{});
+
+                // Cookie httpOnly — enviado automaticamente em todos os requests futuros
+                res.cookie('sess', sessionToken, {
+                    httpOnly: true,
+                    sameSite: 'lax',
+                    secure: process.env.NODE_ENV === 'production',
+                    maxAge: 8 * 60 * 60 * 1000, // 8 horas
+                });
 
                 const { Senha, ...userWithoutPassword } = user;
                 res.json({ success: true, user: userWithoutPassword });
@@ -1462,6 +1595,7 @@ app.post('/api/logout', async (req, res) => {
         activeSessions.delete(String(usuarioId));
         _geoLookup(_lgtIp).then(geo => _registrarAcesso(usuarioId, _lgtSess?.usuario || '?', 'logout', _lgtIp, req.headers['user-agent'], geo, _lgtDur)).catch(()=>{});
     }
+    res.clearCookie('sess');
     res.json({ success: true });
 });
 
@@ -2266,5 +2400,58 @@ server.listen(PORT, () => {
 
         process.on('SIGINT',  async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
         process.on('SIGTERM', async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
+    }
+});
+
+// ── Dashboard de segurança (apenas master) ────────────────────────────────
+app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const check = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        if (!check.recordset.length || check.recordset[0].TipoUsuario !== 'master') {
+            return res.json({ success: false, message: 'Acesso negado' });
+        }
+
+        // Sessões ativas
+        const sessoes = [...activeSessions.values()].map(s => ({
+            id: s.id,
+            usuario: s.usuario,
+            nome: s.nome,
+            tipo: s.tipo,
+            ip: s.ip,
+            loginTime: s.loginTime,
+            lastSeen: s.lastSeen,
+            userAgent: s.userAgent,
+            inativoMin: Math.round((Date.now() - new Date(s.lastSeen).getTime()) / 60000),
+        }));
+
+        // IPs bloqueados
+        const bloqueados = [..._loginBlocklist.entries()]
+            .filter(([, v]) => Date.now() < v.blockedUntil)
+            .map(([ip, v]) => ({ ip, desbloqueiaEm: new Date(v.blockedUntil).toISOString() }));
+
+        // Req/min por usuário (instantâneo)
+        const reqPorUsuario = [..._userReqCount.entries()]
+            .filter(([, v]) => Date.now() - v.windowStart < 60000)
+            .map(([uid, v]) => ({ uid, reqUltimoMin: v.count }))
+            .sort((a, b) => b.reqUltimoMin - a.reqUltimoMin);
+
+        // Últimas 50 tentativas de login no banco
+        const logins = await sql.query`
+            SELECT TOP 50 usuario, tipo, ip, cidade, pais, data_hora, user_agent
+            FROM HistoricoAcessos
+            WHERE tipo IN ('login_ok','login_fail')
+            ORDER BY data_hora DESC
+        `;
+
+        res.json({
+            success: true,
+            sessoesAtivas: sessoes,
+            ipsBlockeados: bloqueados,
+            reqPorUsuario,
+            ultimosLogins: logins.recordset,
+        });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
     }
 });
