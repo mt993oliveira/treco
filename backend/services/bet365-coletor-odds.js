@@ -146,28 +146,274 @@ async function _ensureOddsColumns(pool) {
     console.log('   ✅ [Odds] Colunas de odds extras verificadas/criadas');
 }
 
-// ── Verificação de sessão (não tenta login automático — Bet365 detecta bot) ──
-async function _verificarLoginColetor2(pg) {
-    const jaLogado = await pg.evaluate(() =>
-        ![...document.querySelectorAll('button')].some(b =>
-            ['Login', 'Log In'].includes((b.textContent || '').trim()))
-    ).catch(() => false);
+// ── Helpers de login (mesma lógica do Coletor 1) ────────────────────────────
 
-    if (jaLogado) { console.log('   ✅ [Odds] Sessão ativa — sem necessidade de login'); return; }
+async function _c2ClicarBotaoPorTexto(pg, texto, exato = false) {
+    try {
+        const handle = await pg.evaluateHandle((txt, ex) =>
+            [...document.querySelectorAll('button')].find(b =>
+                ex ? b.textContent.trim() === txt : b.textContent.trim().includes(txt)
+            ) || null, texto, exato);
+        const el = handle.asElement();
+        if (!el) return false;
+        await el.scrollIntoView();
+        await el.hover();
+        await el.click({ delay: 80 });
+        return true;
+    } catch { return false; }
+}
 
-    // Sessão expirada: aguarda login manual (não tenta bot — Bet365 bloqueia)
-    console.log('   ⚠️  [Odds] Sessão expirada! Faça login manualmente no Edge (porta 9223) e aguarde...');
-    for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 10000));
-        const logouAgora = await pg.evaluate(() =>
-            ![...document.querySelectorAll('button')].some(b =>
-                ['Login', 'Log In'].includes((b.textContent || '').trim()))
-        ).catch(() => false);
-        if (logouAgora) { console.log('   ✅ [Odds] Login detectado! Continuando...'); return; }
-        console.log(`   ⏳ [Odds] Aguardando login manual... (${(i + 1) * 10}s)`);
+async function _c2ClicarBotaoSubmitModal(pg) {
+    try {
+        const handle = await pg.evaluateHandle(() => {
+            const dentroForm = [...document.querySelectorAll('form button, form [role="button"]')].find(el => {
+                const t = (el.textContent || el.innerText || '').trim();
+                return t === 'Login' || t === 'Log In';
+            });
+            if (dentroForm) return dentroForm;
+            const submitBtn = [...document.querySelectorAll('button[type="submit"]')].find(el =>
+                (el.textContent || '').trim().toLowerCase().includes('login')
+            );
+            if (submitBtn) return submitBtn;
+            const todos = [...document.querySelectorAll('button, [role="button"]')].filter(el =>
+                (el.textContent || el.innerText || '').trim() === 'Login'
+            );
+            return todos.length > 0 ? todos[todos.length - 1] : null;
+        });
+        const el = handle.asElement();
+        if (!el) return false;
+        await el.scrollIntoView();
+        await el.hover();
+        await el.click({ delay: 80 });
+        return true;
+    } catch { return false; }
+}
+
+async function _c2EncontrarFrameModal(pg) {
+    for (const frame of pg.frames()) {
+        try {
+            const tem = await frame.evaluate(() =>
+                !!document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+            );
+            if (tem) return frame;
+        } catch (_) {}
     }
-    console.log('   ❌ [Odds] Login não detectado após 5min — abortando ciclo');
-    throw new Error('Login manual não realizado a tempo');
+    return null;
+}
+
+async function _c2PreencherConfirmacaoDados(pg, email, dataNasc) {
+    try {
+        if (!dataNasc) { console.log('   ⚠️  [Odds] BET365_COLETOR2_DATA_NASC não configurado'); return false; }
+        const parts = dataNasc.split(/[\/\-\.]/);
+        if (parts.length < 3) { console.log(`   ⚠️  [Odds] Formato inválido: ${dataNasc}`); return false; }
+        const valDia = parts[0].padStart(2, '0');
+        const valMes = parts[1].padStart(2, '0');
+        const valAno = parts[2];
+
+        const emailOk = await pg.evaluate((emailVal) => {
+            const input = document.querySelector('#email')
+                || document.querySelector('.nui-ModalContainer input[type="text"]')
+                || document.querySelector('input[placeholder*="e-mail" i]');
+            if (!input) return false;
+            input.focus();
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+            if (setter) setter.call(input, emailVal); else input.value = emailVal;
+            input.dispatchEvent(new Event('input',  { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+        }, email);
+        console.log(emailOk ? `   ✉️  [Odds] E-mail preenchido: ${email}` : '   ⚠️  [Odds] Campo e-mail não encontrado');
+        await new Promise(r => setTimeout(r, 400));
+
+        const dataOk = await pg.evaluate((dia, mes, ano) => {
+            function set(sel, val) {
+                if (!sel) return false;
+                sel.value = val;
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+                sel.dispatchEvent(new Event('input',  { bubbles: true }));
+                return sel.value === val;
+            }
+            const selDia = document.querySelector('select[aria-label="Dia"]');
+            const selMes = document.querySelector('select[aria-label="Mês"]')
+                || document.querySelector('select[aria-label="Mes"]');
+            const selAno = document.querySelector('select[aria-label="Ano"]');
+            return { dia: set(selDia, dia), mes: set(selMes, mes), ano: set(selAno, ano) };
+        }, valDia, valMes, valAno);
+        console.log(`   📅 [Odds] Data ${valDia}/${valMes}/${valAno} — dia:${dataOk.dia} mês:${dataOk.mes} ano:${dataOk.ano}`);
+        await new Promise(r => setTimeout(r, 800));
+
+        let clicou = false;
+        try {
+            clicou = await pg.evaluate(() => {
+                const modal = document.querySelector('.nui-ModalContainer');
+                if (!modal) return false;
+                const btn = [...modal.querySelectorAll('button')].find(b =>
+                    (b.textContent || '').trim() === 'Login'
+                );
+                if (!btn) return false;
+                btn.click();
+                return true;
+            });
+        } catch(eClick) {
+            if (eClick.message.includes('detached') || eClick.message.includes('Target closed')) {
+                console.log('   ✅ [Odds] Modal fechado após clique — login aceito');
+                return true;
+            }
+            throw eClick;
+        }
+        if (!clicou) console.log('   ⚠️  [Odds] Botão Login não encontrado no modal');
+        return clicou;
+    } catch(e) {
+        console.log('   ❌ [Odds] Erro em _c2PreencherConfirmacaoDados:', e.message);
+        return false;
+    }
+}
+
+async function _c2TentarLogin(pg) {
+    if (!COLETOR2_USUARIO || !COLETOR2_SENHA) {
+        console.log('   ⚠️  [Odds] Credenciais COLETOR2 não configuradas no .env');
+        return false;
+    }
+    try {
+        let inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+        if (!inputUser) {
+            const abrindoModal = await _c2ClicarBotaoPorTexto(pg, 'Login', true)
+                || await _c2ClicarBotaoPorTexto(pg, 'Log In', true);
+            if (abrindoModal) {
+                await new Promise(r => setTimeout(r, 2500));
+                inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+            }
+        }
+        if (inputUser) {
+            await inputUser.click({ clickCount: 3 });
+            await inputUser.type(COLETOR2_USUARIO, { delay: 60 });
+        }
+        const inputPass = await pg.$('input[type="password"]');
+        if (inputPass) {
+            await inputPass.click({ clickCount: 3 });
+            await inputPass.type(COLETOR2_SENHA, { delay: 60 });
+        }
+        const clicou = await _c2ClicarBotaoSubmitModal(pg)
+            || await _c2ClicarBotaoPorTexto(pg, 'Login', true);
+        if (!clicou) { console.log('   ❌ [Odds] Botão Login não encontrado'); return false; }
+
+        await new Promise(r => setTimeout(r, 5000));
+
+        // Modal "Confirme seus dados" (iframe separado)
+        const frameModal = await _c2EncontrarFrameModal(pg);
+        if (frameModal) {
+            console.log('   🔒 [Odds] Modal "Confirme seus dados" detectado — preenchendo...');
+            const preencheu = await _c2PreencherConfirmacaoDados(frameModal, COLETOR2_EMAIL || COLETOR2_USUARIO, COLETOR2_DATA_NASC);
+            if (preencheu) {
+                await new Promise(r => setTimeout(r, 6000));
+                let sumiu = true;
+                try { sumiu = await frameModal.evaluate(() =>
+                    !document.querySelector('.nui-ModalContainer select[aria-label="Dia"]')
+                ); } catch(_) { sumiu = true; }
+                if (sumiu) { console.log('   ✅ [Odds] Modal confirmação resolvido!'); return true; }
+            }
+            console.log('   ⚠️  [Odds] Conta exige verificação (SMS/email) — login manual necessário');
+            return 'verificacao';
+        }
+
+        // Verifica pedido de verificação genérica
+        const pedindoVerif = await pg.evaluate(() => {
+            const txt = (document.body?.innerText || '').toLowerCase();
+            return txt.includes('verifica') || txt.includes('sms') || txt.includes('código de segurança');
+        }).catch(() => false);
+        if (pedindoVerif) {
+            console.log('   ⚠️  [Odds] Conta exige verificação — login manual necessário');
+            return 'verificacao';
+        }
+
+        const ok = await pg.evaluate(() =>
+            ![...document.querySelectorAll('button')].some(b =>
+                (b.textContent || '').trim().includes('Faça Login para Assistir'))
+        ).catch(() => true);
+        return ok;
+    } catch(e) {
+        console.log('   ❌ [Odds] Erro no login:', e.message);
+        return false;
+    }
+}
+
+// ── Verificação e recuperação de sessão ──────────────────────────────────────
+let _ultimoLoginTs2 = 0;
+const COOLDOWN_LOGIN2_MS = 5 * 60 * 1000;
+
+async function _verificarLoginColetor2(pg) {
+    try {
+        await pg.bringToFront();
+
+        // Detecta modal de confirmação em qualquer frame (pode aparecer antes do login)
+        const frameModal = await _c2EncontrarFrameModal(pg);
+        if (frameModal) {
+            console.log('   🔒 [Odds] Modal "Confirme seus dados" detectado — preenchendo...');
+            await _c2PreencherConfirmacaoDados(frameModal, COLETOR2_EMAIL || COLETOR2_USUARIO, COLETOR2_DATA_NASC);
+            await new Promise(r => setTimeout(r, 6000));
+        }
+
+        const temAvisoVirtual = await pg.evaluate(() =>
+            [...document.querySelectorAll('button')].some(b =>
+                (b.textContent || '').trim().includes('Faça Login para Assistir'))
+        ).catch(() => false);
+
+        const temBotaoLogin = await pg.evaluate(() =>
+            [...document.querySelectorAll('button, a, [role="button"]')].some(el => {
+                const t = (el.textContent || el.innerText || '').trim();
+                return t === 'Login' || t === 'Log In';
+            })
+        ).catch(() => false);
+
+        if (!temAvisoVirtual && !temBotaoLogin) {
+            console.log('   ✅ [Odds] Sessão ativa');
+            return;
+        }
+
+        const motivo = temAvisoVirtual ? '"Faça Login para Assistir" detectado' : 'botão "Login" no cabeçalho';
+        console.log(`   ⚠️  [Odds] Sessão expirada (${motivo}) — tentando login automático...`);
+
+        // Anti-duplo-login: se já tentamos nos últimos 5 min, aguarda
+        if (_ultimoLoginTs2 && (Date.now() - _ultimoLoginTs2) < COOLDOWN_LOGIN2_MS) {
+            const s = Math.round((Date.now() - _ultimoLoginTs2) / 1000);
+            console.log(`   ⏳ [Odds] Login em andamento ou aguardando cooldown (${s}s)`);
+            return;
+        }
+        _ultimoLoginTs2 = Date.now();
+
+        const resultado = await _c2TentarLogin(pg);
+        if (resultado === true) {
+            console.log('   ✅ [Odds] Login automático bem-sucedido!');
+            _ultimoLoginTs2 = 0; // reseta cooldown após sucesso
+            // Retorna à página AVR se necessário
+            if (!pg.url().includes('AVR')) {
+                await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+                await new Promise(r => setTimeout(r, 4000));
+            }
+            return;
+        }
+
+        // Login automático não funcionou — aguarda login manual
+        console.log('   ⚠️  [Odds] Login automático falhou ou exige verificação — aguardando login manual no Edge (porta 9223)...');
+        for (let i = 0; i < 30; i++) {
+            await new Promise(r => setTimeout(r, 10000));
+            const logouAgora = await pg.evaluate(() =>
+                ![...document.querySelectorAll('button')].some(b =>
+                    (b.textContent || '').trim().includes('Faça Login para Assistir'))
+                && ![...document.querySelectorAll('button, a, [role="button"]')].some(el => {
+                    const t = (el.textContent || el.innerText || '').trim();
+                    return t === 'Login' || t === 'Log In';
+                })
+            ).catch(() => false);
+            if (logouAgora) { console.log('   ✅ [Odds] Login detectado! Continuando...'); _ultimoLoginTs2 = 0; return; }
+            console.log(`   ⏳ [Odds] Aguardando login manual... (${(i + 1) * 10}s)`);
+        }
+        console.log('   ❌ [Odds] Login não detectado após 5min — abortando ciclo');
+        throw new Error('Sessão Coletor 2 expirada — login não realizado a tempo');
+    } catch(e) {
+        if (isFatalError(e) || e.message.includes('expirada')) throw e;
+        console.warn('   ⚠️  [Odds] _verificarLoginColetor2:', e.message);
+    }
 }
 
 // ── Puppeteer: conecta ao Edge e abre aba própria ────────────
