@@ -1869,7 +1869,9 @@ const CONFIG_DEFAULTS = [
     { chave:'grid_filtroAtivoTxt',  valor:'#ffffff',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado ativo: cor do texto' },
 ];
 
+let _configTableEnsured = false;
 async function _ensureConfigTable(pool) {
+    if (_configTableEnsured) return;
     await pool.request().query(`
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='bet365_config' AND xtype='U')
         CREATE TABLE bet365_config (
@@ -1907,6 +1909,7 @@ async function _ensureConfigTable(pool) {
           AND TRY_CAST(valor AS INT) IS NOT NULL
           AND CAST(valor AS INT) < 20
     `);
+    _configTableEnsured = true;
 }
 
 // Exporta para uso no coletor
