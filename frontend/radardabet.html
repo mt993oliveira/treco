@@ -13489,7 +13489,7 @@ async function salvarPadraoAtual() {
             body: JSON.stringify({ usuarioId: u.Id, nome, filtros })
         });
         const d = await r.json();
-        if (!r.ok) { alert(d.erro || 'Erro ao salvar padrão.'); return; }
+        if (!d.success) { alert(d.message || 'Erro ao salvar padrão.'); return; }
         inp.value = '';
         await _carregarPadroes();
     } catch(e) { alert('Erro ao salvar padrão.'); }
