@@ -146,12 +146,8 @@ async function _ensureOddsColumns(pool) {
     console.log('   ✅ [Odds] Colunas de odds extras verificadas/criadas');
 }
 
-// ── Login autônomo (usado apenas no MODO_AUTONOMO) ───────────
+// ── Verificação de sessão (não tenta login automático — Bet365 detecta bot) ──
 async function _verificarLoginColetor2(pg) {
-    if (!COLETOR2_USUARIO || !COLETOR2_SENHA) {
-        console.log('   ℹ️  [Odds] BET365_COLETOR2_USUARIO não configurado — assumindo sessão ativa');
-        return;
-    }
     const jaLogado = await pg.evaluate(() =>
         ![...document.querySelectorAll('button')].some(b =>
             ['Login', 'Log In'].includes((b.textContent || '').trim()))
@@ -159,88 +155,19 @@ async function _verificarLoginColetor2(pg) {
 
     if (jaLogado) { console.log('   ✅ [Odds] Sessão ativa — sem necessidade de login'); return; }
 
-    console.log(`   🔐 [Odds] Fazendo login com ${COLETOR2_USUARIO}...`);
-
-    // Abre modal de login se os campos ainda não estiverem visíveis
-    let inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
-    if (!inputUser) {
-        await pg.evaluate(() => {
-            for (const btn of [...document.querySelectorAll('button, [role="button"]')]) {
-                const txt = (btn.textContent || '').trim();
-                if (txt === 'Login' || txt === 'Log In') { btn.click(); return; }
-            }
-        });
-        await new Promise(r => setTimeout(r, 2500));
-        inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+    // Sessão expirada: aguarda login manual (não tenta bot — Bet365 bloqueia)
+    console.log('   ⚠️  [Odds] Sessão expirada! Faça login manualmente no Edge (porta 9223) e aguarde...');
+    for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 10000));
+        const logouAgora = await pg.evaluate(() =>
+            ![...document.querySelectorAll('button')].some(b =>
+                ['Login', 'Log In'].includes((b.textContent || '').trim()))
+        ).catch(() => false);
+        if (logouAgora) { console.log('   ✅ [Odds] Login detectado! Continuando...'); return; }
+        console.log(`   ⏳ [Odds] Aguardando login manual... (${(i + 1) * 10}s)`);
     }
-
-    if (!inputUser) { console.log('   ⚠️  [Odds] Campo usuário não encontrado — assumindo sessão ativa'); return; }
-
-    await inputUser.click({ clickCount: 3 });
-    await inputUser.type(COLETOR2_USUARIO, { delay: 60 });
-
-    const inputPass = await pg.$('input[type="password"]');
-    if (inputPass) {
-        await inputPass.click({ clickCount: 3 });
-        await inputPass.type(COLETOR2_SENHA, { delay: 60 });
-    }
-
-    // Submit
-    const clicouSubmit = await pg.evaluate(() => {
-        const sub = document.querySelector('input[type="submit"], button[type="submit"]');
-        if (sub) { sub.click(); return true; }
-        for (const btn of [...document.querySelectorAll('button, [role="button"]')]) {
-            if (['Login', 'Log In'].includes((btn.textContent || '').trim())) { btn.click(); return true; }
-        }
-        return false;
-    });
-    if (!clicouSubmit) { console.log('   ❌ [Odds] Botão submit não encontrado'); return; }
-
-    await new Promise(r => setTimeout(r, 5000));
-
-    // Modal "Confirme seus dados" (e-mail + data de nascimento)
-    const modalAberto = await pg.evaluate(() =>
-        !!document.querySelector('.nui-ModalContainer select[aria-label="Dia"]') ||
-        !!document.querySelector('select[aria-label="Dia"]')
-    ).catch(() => false);
-
-    if (modalAberto && COLETOR2_DATA_NASC && COLETOR2_EMAIL) {
-        console.log('   🔒 [Odds] Modal "Confirme seus dados" — preenchendo...');
-        const parts = COLETOR2_DATA_NASC.split(/[\/\-\.]/);
-        if (parts.length >= 3) {
-            await pg.evaluate((email, dia, mes, ano) => {
-                const emailInput = document.querySelector('#email')
-                    || document.querySelector('.nui-ModalContainer input[type="text"]')
-                    || document.querySelector('input[placeholder*="e-mail" i]');
-                if (emailInput) {
-                    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-                    if (setter) setter.call(emailInput, email); else emailInput.value = email;
-                    emailInput.dispatchEvent(new Event('input',  { bubbles: true }));
-                    emailInput.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-                const setSelect = (sel, val) => {
-                    if (!sel) return;
-                    sel.value = val;
-                    sel.dispatchEvent(new Event('change', { bubbles: true }));
-                };
-                const selects = [...document.querySelectorAll('select')];
-                setSelect(selects.find(s => ['Dia'].includes(s.getAttribute('aria-label') || '')), dia);
-                setSelect(selects.find(s => ['Mês','Mes'].includes(s.getAttribute('aria-label') || '')), mes);
-                setSelect(selects.find(s => ['Ano'].includes(s.getAttribute('aria-label') || '')), ano);
-                const confirmBtn = document.querySelector('.nui-ModalContainer button[type="submit"]')
-                    || [...document.querySelectorAll('button')].find(b =>
-                        (b.textContent || '').trim().toLowerCase().includes('confirm'));
-                if (confirmBtn) confirmBtn.click();
-            }, COLETOR2_EMAIL, parts[0].padStart(2, '0'), parts[1].padStart(2, '0'), parts[2]);
-            await new Promise(r => setTimeout(r, 4000));
-        }
-    }
-
-    const ok = await pg.evaluate(() =>
-        ![...document.querySelectorAll('button')].some(b =>
-            (b.textContent || '').trim().includes('Faça Login para Assistir'))
-    ).catch(() => true);
-    console.log(ok ? '   ✅ [Odds] Login bem-sucedido!' : '   ⚠️  [Odds] Login pode ter falhado — verifique o Edge');
+    console.log('   ❌ [Odds] Login não detectado após 5min — abortando ciclo');
+    throw new Error('Login manual não realizado a tempo');
 }
 
 // ── Puppeteer: conecta ao Edge e abre aba própria ────────────
