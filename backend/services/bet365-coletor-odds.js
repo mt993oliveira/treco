@@ -361,9 +361,10 @@ function lerOddsDOM() {
 
 // ── Hard refresh + volta à liga (reutilizado entre jogos) ────
 async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
-    const navP = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
-    await pg.evaluate(() => location.reload(true));
-    await navP;
+    // pg.reload() é o caminho correto — pg.evaluate(location.reload) detacha o frame imediatamente
+    await pg.reload({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(e => {
+        if (isFatalError(e)) throw e;
+    });
     await new Promise(r => setTimeout(r, 7000));
     const voltou = await pg.evaluate((nome) => {
         const btn = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].find(b =>
@@ -371,7 +372,10 @@ async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
         );
         if (btn) { btn.click(); return true; }
         return false;
-    }, nomeLigaOriginal).catch(() => false);
+    }, nomeLigaOriginal).catch(e => {
+        if (isFatalError(e)) throw e;
+        return false;
+    });
     if (!voltou) { console.log(`   ❌ [${ligaNorm}] Liga não encontrada após refresh`); return false; }
     await new Promise(r => setTimeout(r, 4000));
     try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 15000 }); }
@@ -510,14 +514,10 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
 }
 
 // ── Hard refresh e aguarda ligas ────────────────────────────
-// Usa location.reload(true) via evaluate — idêntico ao Ctrl+F5 do browser,
-// mesmo mecanismo que o Coletor 1 usa e que funciona com a SPA da Bet365.
 async function hardRefresh(pg) {
     try {
         await pg.bringToFront();
-        const navPromise = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-        await pg.evaluate(() => location.reload(true));
-        await navPromise;
+        await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
         await new Promise(r => setTimeout(r, 8000));
         await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
         return true;
@@ -749,8 +749,9 @@ async function ciclo(browser, pg) {
         // Hard refresh após cada liga (exceto a última) — estado limpo antes da próxima aba
         if (i < ligasFiltradas.length - 1) {
             console.log(`   🔄 [Odds] Hard refresh pós-liga ${i + 1}/${ligasFiltradas.length}...`);
+            let refreshOk = false;
             try {
-                await hardRefreshComRetry(pg);
+                refreshOk = await hardRefreshComRetry(pg);
             } catch(err) {
                 if (isFatalError(err)) {
                     if (reconectou) {
@@ -760,11 +761,24 @@ async function ciclo(browser, pg) {
                     try {
                         ({ browser, pg } = await reconectarEdge(browser, 'Odds'));
                         reconectou = true;
+                        refreshOk = true;
                         console.log(`   ✅ [Odds] Reconectado — continuando com próxima liga`);
                     } catch(e2) {
                         console.warn(`   ❌ [Odds] Reconexão falhou: ${e2.message} — abortando ciclo`);
                         return { browser, pg, oddsOk };
                     }
+                }
+            }
+            // Todas as tentativas de refresh falharam sem lançar exceção → sesssão morta
+            if (!refreshOk && !reconectou) {
+                console.warn(`   ⚠️  [Odds] Refresh falhou após 3 tentativas — reconectando...`);
+                try {
+                    ({ browser, pg } = await reconectarEdge(browser, 'Odds'));
+                    reconectou = true;
+                    console.log(`   ✅ [Odds] Reconectado após falha de refresh`);
+                } catch(e2) {
+                    console.warn(`   ❌ [Odds] Reconexão falhou: ${e2.message} — abortando ciclo`);
+                    return { browser, pg, oddsOk };
                 }
             }
         }
