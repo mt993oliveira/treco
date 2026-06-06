@@ -13,9 +13,9 @@ async function _getPool() {
 // Fetch multiple config keys in a single query
 async function _getCfgs(pool, defaults) {
     try {
-        const keys    = Object.keys(defaults);
-        const inList  = keys.map(k => `'${k}'`).join(',');
-        const r       = await pool.request()
+        const keys   = Object.keys(defaults);
+        const inList = keys.map(k => `'${k}'`).join(',');
+        const r      = await pool.request()
             .query(`SELECT chave, valor FROM bet365_config WHERE chave IN (${inList})`);
         const map = { ...defaults };
         r.recordset.forEach(row => { map[row.chave] = row.valor; });
@@ -60,113 +60,144 @@ async function _ensureTable(pool) {
                      creditos, lucro, data_aposta, data_resultado)
     `);
 
-    // Index on bet365_eventos for the resolution JOIN (sargable range on data_partida)
+    // Index on bet365_resultados_mercados for the resolution JOIN
+    // Covers: JOIN on time_casa+time_fora+data_partida, SELECT mercado+selecao
     await pool.request().query(`
         IF NOT EXISTS (SELECT * FROM sys.indexes
-                       WHERE name = 'IX_bet365ev_times_data'
-                         AND object_id = OBJECT_ID('bet365_eventos'))
-        CREATE INDEX IX_bet365ev_times_data
-            ON bet365_eventos (time_casa, time_fora, data_partida)
-            INCLUDE (gol_casa, gol_fora, gol_casa_ht, gol_fora_ht)
+                       WHERE name = 'IX_b365rm_tc_tf_data'
+                         AND object_id = OBJECT_ID('bet365_resultados_mercados'))
+        CREATE INDEX IX_b365rm_tc_tf_data
+            ON bet365_resultados_mercados (time_casa, time_fora, data_partida)
+            INCLUDE (mercado, selecao)
     `);
 
     _tableEnsured = true;
 }
 
-// ── market resolution logic ───────────────────────────────────────────────────
+// ── market resolution (from aggregated row of bet365_resultados_mercados) ─────
+//
+// The resolution query does a GROUP BY (one row per pending bet) aggregating
+// all market results for that game from bet365_resultados_mercados.
+// Each tem_X flag = 1 means we have data for that market type.
+// Each over_X / result_X = 1 means that outcome won.
+// null return = "game not resolved yet" → bet stays pending.
 
-function _resolveMarket(mercado, gCasa, gFora, gCasaHT, gForaHT) {
-    const t   = gCasa + gFora;
-    const tHT = (gCasaHT ?? 0) + (gForaHT ?? 0);
-    const cHT = gCasaHT ?? 0;
-    const fHT = gForaHT ?? 0;
-    switch (mercado) {
-        case 'casa':        return gCasa  > gFora;
-        case 'empate':      return gCasa === gFora;
-        case 'fora':        return gFora  > gCasa;
-        case 'over0.5':     return t  > 0.5;
-        case 'over1.5':     return t  > 1.5;
-        case 'over2.5':     return t  > 2.5;
-        case 'over3.5':     return t  > 3.5;
-        case 'over4.5':     return t  > 4.5;
-        case 'under0.5':    return t  < 0.5;
-        case 'under1.5':    return t  < 1.5;
-        case 'under2.5':    return t  < 2.5;
-        case 'under3.5':    return t  < 3.5;
-        case 'under4.5':    return t  < 4.5;
-        case 'ambas-sim':   return gCasa > 0 && gFora > 0;
-        case 'ambas-nao':   return !(gCasa > 0 && gFora > 0);
-        case 'over0.5-1t':  return tHT > 0.5;
-        case 'over1.5-1t':  return tHT > 1.5;
-        case 'under0.5-1t': return tHT < 0.5;
-        case 'under1.5-1t': return tHT < 1.5;
-        case 'casa-ht':     return cHT  > fHT;
-        case 'empate-ht':   return cHT === fHT;
-        case 'fora-ht':     return fHT  > cHT;
-        default:            return null;
+function _resolveMarketFromRow(row) {
+    switch (row.aposta_mercado) {
+        // ── FT 1X2 ──
+        case 'casa':        return row.tem_resultado ? (row.resultado_casa   === 1) : null;
+        case 'empate':      return row.tem_resultado ? (row.resultado_empate === 1) : null;
+        case 'fora':        return row.tem_resultado ? (row.resultado_fora   === 1) : null;
+
+        // ── FT Over/Under ──
+        case 'over0.5':     return row.tem_over05 ? (row.over05 === 1) : null;
+        case 'under0.5':    return row.tem_over05 ? (row.over05 === 0) : null;
+        case 'over1.5':     return row.tem_over15 ? (row.over15 === 1) : null;
+        case 'under1.5':    return row.tem_over15 ? (row.over15 === 0) : null;
+        case 'over2.5':     return row.tem_over25 ? (row.over25 === 1) : null;
+        case 'under2.5':    return row.tem_over25 ? (row.over25 === 0) : null;
+        case 'over3.5':     return row.tem_over35 ? (row.over35 === 1) : null;
+        case 'under3.5':    return row.tem_over35 ? (row.over35 === 0) : null;
+        case 'over4.5':     return row.tem_over45 ? (row.over45 === 1) : null;
+        case 'under4.5':    return row.tem_over45 ? (row.over45 === 0) : null;
+
+        // ── BTTS ──
+        case 'ambas-sim':   return row.tem_btts ? (row.btts_sim === 1) : null;
+        case 'ambas-nao':   return row.tem_btts ? (row.btts_sim === 0) : null;
+
+        // ── HT 1X2 ('Resultado Intervalo' ou 'Intervalo Resultado' — ambos no banco) ──
+        case 'casa-ht':     return row.tem_ht ? (row.ht_casa   === 1) : null;
+        case 'empate-ht':   return row.tem_ht ? (row.ht_empate === 1) : null;
+        case 'fora-ht':     return row.tem_ht ? (row.ht_fora   === 1) : null;
+
+        // ── HT Over/Under ──
+        case 'over0.5-1t':  return row.tem_ht05 ? (row.ht_over05 === 1) : null;
+        case 'under0.5-1t': return row.tem_ht05 ? (row.ht_over05 === 0) : null;
+        case 'over1.5-1t':  return row.tem_ht15 ? (row.ht_over15 === 1) : null;
+        case 'under1.5-1t': return row.tem_ht15 ? (row.ht_over15 === 0) : null;
+
+        default: return null;
     }
 }
 
-// ── resolution: single JOIN + single batched UPDATE ───────────────────────────
+// ── resolution: single JOIN → GROUP BY → single batched UPDATE ───────────────
 //
-// Before: 1 SELECT (pendentes) + N × (1 SELECT em bet365_eventos + 1 UPDATE)
-// After:  1 JOIN query (tudo de uma vez) + 1 UPDATE em lote para todos os resolvidos
+// Joins simulador_apostas × bet365_resultados_mercados (INNER JOIN = only bets
+// whose game already has collected results). Aggregates all market rows for each
+// pending bet into one row with boolean flags, then resolves each bet in JS.
+// Ends with a single batched UPDATE (CASE WHEN id …) instead of N individual ones.
 
 async function _resolverPendentes(pool, usuarioIdFiltro = null) {
     const filtro = usuarioIdFiltro ? `AND a.usuario_id = ${Number(usuarioIdFiltro)}` : '';
 
-    // Single query: JOIN pendentes × eventos, pick closest event per bet via ROW_NUMBER.
-    // BETWEEN is sargable (uses index on data_partida); ABS(DATEDIFF) only runs on the
-    // tiny filtered set inside the subquery, not on the whole table.
     const resolvable = await pool.request().query(`
-        SELECT t.id, t.mercado, t.creditos, t.odd,
-               t.gol_casa, t.gol_fora, t.gol_casa_ht, t.gol_fora_ht
-        FROM (
-            SELECT
-                a.id, a.mercado, a.creditos, a.odd,
-                e.gol_casa, e.gol_fora, e.gol_casa_ht, e.gol_fora_ht,
-                ROW_NUMBER() OVER (
-                    PARTITION BY a.id
-                    ORDER BY ABS(DATEDIFF(minute, e.data_partida, a.data_jogo))
-                ) AS rn
-            FROM simulador_apostas a
-            INNER JOIN bet365_eventos e
-                ON  e.time_casa   = a.time_casa
-                AND e.time_fora   = a.time_fora
-                AND e.gol_casa    IS NOT NULL
-                AND e.gol_fora    IS NOT NULL
-                AND e.data_partida BETWEEN DATEADD(minute, -90, a.data_jogo)
-                                       AND DATEADD(minute,  90, a.data_jogo)
-            WHERE a.resultado = 'pendente' ${filtro}
-        ) t
-        WHERE t.rn = 1
+        SELECT
+            a.id             AS aposta_id,
+            a.mercado        AS aposta_mercado,
+            a.creditos,
+            a.odd,
+            a.time_casa,
+            a.time_fora,
+            -- FT result
+            MAX(CASE WHEN r.mercado = 'Resultado Final' THEN 1 ELSE 0 END) AS tem_resultado,
+            MAX(CASE WHEN r.mercado = 'Resultado Final' AND r.selecao = a.time_casa THEN 1 ELSE 0 END) AS resultado_casa,
+            MAX(CASE WHEN r.mercado = 'Resultado Final' AND r.selecao = 'Empate'    THEN 1 ELSE 0 END) AS resultado_empate,
+            MAX(CASE WHEN r.mercado = 'Resultado Final' AND r.selecao = a.time_fora THEN 1 ELSE 0 END) AS resultado_fora,
+            -- FT over/under (NOT LIKE '%Intervalo%' to exclude HT markets)
+            MAX(CASE WHEN r.mercado LIKE '%0.5%' AND r.mercado NOT LIKE '%Intervalo%' THEN 1 ELSE 0 END) AS tem_over05,
+            MAX(CASE WHEN r.mercado LIKE '%0.5%' AND r.mercado NOT LIKE '%Intervalo%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over05,
+            MAX(CASE WHEN r.mercado LIKE '%1.5%' AND r.mercado NOT LIKE '%Intervalo%' THEN 1 ELSE 0 END) AS tem_over15,
+            MAX(CASE WHEN r.mercado LIKE '%1.5%' AND r.mercado NOT LIKE '%Intervalo%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over15,
+            MAX(CASE WHEN r.mercado LIKE '%2.5%' AND r.mercado NOT LIKE '%Intervalo%' THEN 1 ELSE 0 END) AS tem_over25,
+            MAX(CASE WHEN r.mercado LIKE '%2.5%' AND r.mercado NOT LIKE '%Intervalo%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over25,
+            MAX(CASE WHEN r.mercado LIKE '%3.5%' AND r.mercado NOT LIKE '%Intervalo%' THEN 1 ELSE 0 END) AS tem_over35,
+            MAX(CASE WHEN r.mercado LIKE '%3.5%' AND r.mercado NOT LIKE '%Intervalo%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over35,
+            MAX(CASE WHEN r.mercado LIKE '%4.5%' AND r.mercado NOT LIKE '%Intervalo%' THEN 1 ELSE 0 END) AS tem_over45,
+            MAX(CASE WHEN r.mercado LIKE '%4.5%' AND r.mercado NOT LIKE '%Intervalo%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over45,
+            -- BTTS
+            MAX(CASE WHEN r.mercado = 'Ambos Marcam' THEN 1 ELSE 0 END) AS tem_btts,
+            MAX(CASE WHEN r.mercado = 'Ambos Marcam' AND r.selecao = 'Sim' THEN 1 ELSE 0 END) AS btts_sim,
+            -- HT result ('Resultado Intervalo' ou 'Intervalo Resultado' — ambos existem no banco)
+            MAX(CASE WHEN r.mercado IN ('Resultado Intervalo','Intervalo Resultado') THEN 1 ELSE 0 END) AS tem_ht,
+            MAX(CASE WHEN r.mercado IN ('Resultado Intervalo','Intervalo Resultado') AND r.selecao = a.time_casa THEN 1 ELSE 0 END) AS ht_casa,
+            MAX(CASE WHEN r.mercado IN ('Resultado Intervalo','Intervalo Resultado') AND r.selecao = 'Empate'    THEN 1 ELSE 0 END) AS ht_empate,
+            MAX(CASE WHEN r.mercado IN ('Resultado Intervalo','Intervalo Resultado') AND r.selecao = a.time_fora THEN 1 ELSE 0 END) AS ht_fora,
+            -- HT over/under
+            MAX(CASE WHEN r.mercado LIKE '%0.5%' AND r.mercado LIKE '%Intervalo%' THEN 1 ELSE 0 END) AS tem_ht05,
+            MAX(CASE WHEN r.mercado LIKE '%0.5%' AND r.mercado LIKE '%Intervalo%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS ht_over05,
+            MAX(CASE WHEN r.mercado LIKE '%1.5%' AND r.mercado LIKE '%Intervalo%' THEN 1 ELSE 0 END) AS tem_ht15,
+            MAX(CASE WHEN r.mercado LIKE '%1.5%' AND r.mercado LIKE '%Intervalo%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS ht_over15
+        FROM simulador_apostas a
+        INNER JOIN bet365_resultados_mercados r
+            ON  r.time_casa    = a.time_casa
+            AND r.time_fora    = a.time_fora
+            AND r.data_partida BETWEEN DATEADD(minute, -90, a.data_jogo)
+                                   AND DATEADD(minute,  90, a.data_jogo)
+        WHERE a.resultado = 'pendente' ${filtro}
+        GROUP BY a.id, a.mercado, a.creditos, a.odd, a.time_casa, a.time_fora
     `);
 
     if (!resolvable.recordset.length) return 0;
 
-    // Resolve each bet in JS, collect results
     const ganhouIds = [];
     const perdeuIds = [];
     const lucros    = {};
 
-    for (const bet of resolvable.recordset) {
-        const ganhou = _resolveMarket(
-            bet.mercado, bet.gol_casa, bet.gol_fora, bet.gol_casa_ht, bet.gol_fora_ht
-        );
-        if (ganhou === null) continue; // unknown market — skip
+    for (const row of resolvable.recordset) {
+        const ganhou = _resolveMarketFromRow(row);
+        if (ganhou === null) continue; // game not yet resolved for this market
         const lucro = ganhou
-            ? +(bet.creditos * (bet.odd - 1)).toFixed(2)
-            : +(-bet.creditos).toFixed(2);
-        if (ganhou) ganhouIds.push(bet.id);
-        else        perdeuIds.push(bet.id);
-        lucros[bet.id] = lucro;
+            ? +(row.creditos * (row.odd - 1)).toFixed(2)
+            : +(-row.creditos).toFixed(2);
+        if (ganhou) ganhouIds.push(row.aposta_id);
+        else        perdeuIds.push(row.aposta_id);
+        lucros[row.aposta_id] = lucro;
     }
 
     const allIds = [...ganhouIds, ...perdeuIds];
     if (!allIds.length) return 0;
 
     // Single batched UPDATE — replaces N individual updates
-    // All values are numeric (DB ids + our own calculations), safe to interpolate
     const ganhouList = ganhouIds.length ? ganhouIds.join(',') : '-1';
     const lucroCase  = allIds
         .map(id => `WHEN ${id} THEN CAST(${lucros[id]} AS DECIMAL(10,2))`)
@@ -199,7 +230,7 @@ async function _getSaldo(pool, usuarioId, saldoInicial) {
                 COUNT(CASE WHEN resultado = 'cancelado' THEN 1 END) AS canceladas
             FROM simulador_apostas WHERE usuario_id = @uid
         `);
-    const s         = r.recordset[0];
+    const s          = r.recordset[0];
     const saldoTotal = +(saldoInicial + Number(s.lucros)).toFixed(2);
     const saldoDisp  = +(saldoTotal   - Number(s.em_jogo)).toFixed(2);
     return {
@@ -222,7 +253,6 @@ router.post('/resumo', async (req, res) => {
         const pool = await _getPool();
         await _ensureTable(pool);
 
-        // Single query for both config keys
         const cfg = await _getCfgs(pool, {
             simulador_saldo_inicial: '100',
             simulador_max_aposta:    '50',
@@ -230,7 +260,6 @@ router.post('/resumo', async (req, res) => {
         const saldoInicial = parseFloat(cfg.simulador_saldo_inicial);
         const maxAposta    = parseFloat(cfg.simulador_max_aposta);
 
-        // Auto-resolve via single JOIN + batch UPDATE (replaces N+1 loop)
         await _resolverPendentes(pool, usuarioId);
 
         const saldo = await _getSaldo(pool, usuarioId, saldoInicial);
@@ -381,7 +410,7 @@ router.post('/admin', async (req, res) => {
                 u.Id, u.NomeCompleto, u.Usuario, u.TipoUsuario,
                 ISNULL(SUM(CASE WHEN a.resultado NOT IN ('pendente','cancelado') THEN a.lucro    ELSE 0 END), 0) AS lucros,
                 ISNULL(SUM(CASE WHEN a.resultado = 'pendente'                   THEN a.creditos ELSE 0 END), 0) AS em_jogo,
-                ISNULL(SUM(a.creditos), 0)  AS total_apostado,
+                ISNULL(SUM(a.creditos), 0) AS total_apostado,
                 COUNT(CASE WHEN a.resultado = 'pendente' THEN 1 END) AS pendentes,
                 COUNT(CASE WHEN a.resultado = 'ganhou'   THEN 1 END) AS ganhas,
                 COUNT(CASE WHEN a.resultado = 'perdeu'   THEN 1 END) AS perdidas,
@@ -394,17 +423,17 @@ router.post('/admin', async (req, res) => {
         `);
 
         const usuarios = r.recordset.map(row => ({
-            id:          row.Id,
-            nome:        row.NomeCompleto,
-            usuario:     row.Usuario,
-            tipo:        row.TipoUsuario,
-            saldoTotal:  +(saldoInicial + Number(row.lucros)).toFixed(2),
-            saldoDisp:   +(saldoInicial + Number(row.lucros) - Number(row.em_jogo)).toFixed(2),
-            emJogo:      +Number(row.em_jogo).toFixed(2),
-            totalApost:  +Number(row.total_apostado).toFixed(2),
-            pendentes:   row.pendentes,
-            ganhas:      row.ganhas,
-            perdidas:    row.perdidas,
+            id:           row.Id,
+            nome:         row.NomeCompleto,
+            usuario:      row.Usuario,
+            tipo:         row.TipoUsuario,
+            saldoTotal:   +(saldoInicial + Number(row.lucros)).toFixed(2),
+            saldoDisp:    +(saldoInicial + Number(row.lucros) - Number(row.em_jogo)).toFixed(2),
+            emJogo:       +Number(row.em_jogo).toFixed(2),
+            totalApost:   +Number(row.total_apostado).toFixed(2),
+            pendentes:    row.pendentes,
+            ganhas:       row.ganhas,
+            perdidas:     row.perdidas,
             ultimaAposta: row.ultima_aposta,
         }));
 
