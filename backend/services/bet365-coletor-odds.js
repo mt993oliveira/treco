@@ -516,10 +516,7 @@ async function diagnosticarPagina(pg, ligaNorm, label) {
 // Serializada e passada ao pg.evaluate() — deve ser auto-contida
 function lerOddsDOM() {
     const allPods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')];
-
-    const podNames = allPods
-        .map(p => (p.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim())
-        .filter(Boolean);
+    const podNames = allPods.map(p => (p.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim()).filter(Boolean);
 
     function findPod(keys) {
         return allPods.find(p => {
@@ -528,12 +525,58 @@ function lerOddsDOM() {
         }) || null;
     }
 
+    // FT usa .srb-ParticipantStackedBorderless; HT usa .srb-ParticipantResponsiveText
     function readParts(pod) {
         if (!pod) return [];
-        return [...pod.querySelectorAll('.srb-ParticipantStackedBorderless')].map(el => ({
-            nome: (el.querySelector('.srb-ParticipantStackedBorderless_Name')?.textContent || '').trim(),
-            odd:  parseFloat(el.querySelector('.srb-ParticipantStackedBorderless_Odds')?.textContent) || 0,
-        }));
+        for (const sel of ['.srb-ParticipantStackedBorderless', '.srb-ParticipantResponsiveText']) {
+            const els = [...pod.querySelectorAll(sel)];
+            if (!els.length) continue;
+            return els.map(el => ({
+                nome: (el.querySelector('[class*="_Name"]')?.textContent || '').trim(),
+                odd:  parseFloat(el.querySelector('[class*="_Odds"]')?.textContent) || 0,
+            }));
+        }
+        return [];
+    }
+
+    // OU usa matriz: headers "Mais de"/"Menos de", linhas "0.5"/"1.5"/"2.5"/"3.5"
+    // Odds em .gl-ParticipantOddsOnly_Odds; precisamos da linha com "2.5"
+    function readOU25(pod) {
+        if (!pod) return { over: 0, under: 0 };
+        const markets = [...pod.querySelectorAll('.gl-Market')];
+        const labelNames = markets.flatMap(m =>
+            [...m.querySelectorAll('.srb-ParticipantLabelCentered_Name')].map(e => e.textContent.trim())
+        );
+        const idx25 = labelNames.findIndex(l => l === '2.5');
+        if (idx25 < 0) return { over: 0, under: 0 };
+        const maisM  = markets.find(m => (m.querySelector('.gl-MarketColumnHeader')?.textContent || '').trim().toLowerCase().includes('mais'));
+        const menosM = markets.find(m => (m.querySelector('.gl-MarketColumnHeader')?.textContent || '').trim().toLowerCase().includes('menos'));
+        const maisOdds  = [...(maisM?.querySelectorAll('.gl-ParticipantOddsOnly_Odds')  || [])];
+        const menosOdds = [...(menosM?.querySelectorAll('.gl-ParticipantOddsOnly_Odds') || [])];
+        return {
+            over:  parseFloat(maisOdds[idx25]?.textContent)  || 0,
+            under: parseFloat(menosOdds[idx25]?.textContent) || 0,
+        };
+    }
+
+    // BTTS usa matriz: colunas "Sim"/"Não", linha "Ambos os Times" = idx 0
+    function readBTTS(pod) {
+        if (!pod) return { sim: 0, nao: 0 };
+        const markets = [...pod.querySelectorAll('.gl-Market')];
+        // Encontra o índice de "Ambos os Times" nas labels
+        const labelNames = markets.flatMap(m =>
+            [...m.querySelectorAll('.srb-ParticipantLabel_Name')].map(e => e.textContent.trim().toLowerCase())
+        );
+        const idxAmbos = labelNames.findIndex(l => l.includes('ambos'));
+        const row = idxAmbos >= 0 ? idxAmbos : 0;
+        const simM = markets.find(m => (m.querySelector('.gl-MarketColumnHeader')?.textContent || '').trim() === 'Sim');
+        const naoM = markets.find(m => ['Não','Nao'].includes((m.querySelector('.gl-MarketColumnHeader')?.textContent || '').trim()));
+        const simOdds = [...(simM?.querySelectorAll('.gl-ParticipantOddsOnly_Odds') || [])];
+        const naoOdds = [...(naoM?.querySelectorAll('.gl-ParticipantOddsOnly_Odds') || [])];
+        return {
+            sim: parseFloat(simOdds[row]?.textContent) || 0,
+            nao: parseFloat(naoOdds[row]?.textContent) || 0,
+        };
     }
 
     // ── Fulltime Result ───────────────────────────────────────
@@ -572,30 +615,15 @@ function lerOddsDOM() {
         return { motivo: 'odds_zeradas', suspended, podNames };
 
     // ── Over/Under 2.5 ───────────────────────────────────────
-    // PT: "Gols Mais/Menos" | EN: "Goals Over/Under"
-    const ou25Pod   = findPod(['mais/menos', 'gols mais', 'over/under', 'goals over', 'gols acima', 'acima/abaixo']);
-    const ou25Parts = readParts(ou25Pod);
-    let oddOver25 = 0, oddUnder25 = 0;
-    for (const p of ou25Parts) {
-        const n = p.nome.toLowerCase();
-        if      (n.includes('mais') || n.includes('over')  || n.includes('acima'))  oddOver25  = p.odd;
-        else if (n.includes('menos') || n.includes('under') || n.includes('abaixo')) oddUnder25 = p.odd;
-    }
+    const ou25Pod = findPod(['mais/menos', 'gols mais', 'over/under', 'goals over']);
+    const ou25    = readOU25(ou25Pod);
 
-    // ── Both Teams to Score (BTTS) ────────────────────────────
-    // PT: "Para o Time Marcar - Sim/Não" | EN: "Both Teams to Score"
-    const bttsPod   = findPod(['para o time marcar', 'time marcar', 'both teams', 'ambos marcam']);
-    const bttsParts = readParts(bttsPod);
-    let oddBttsSim = 0, oddBttsNao = 0;
-    for (const p of bttsParts) {
-        const n = p.nome.toLowerCase();
-        if      (n === 'sim' || n === 'yes' || n.includes('sim') || n.includes('yes')) oddBttsSim = p.odd;
-        else if (n === 'não' || n === 'nao' || n === 'no'  || n.includes('não'))       oddBttsNao = p.odd;
-    }
+    // ── BTTS ─────────────────────────────────────────────────
+    const bttsPod = findPod(['para o time marcar', 'time marcar', 'both teams']);
+    const btts    = readBTTS(bttsPod);
 
-    // ── Half-Time Result ─────────────────────────────────────
-    // PT: "Intervalo - Resultado" | EN: "Half-Time Result"
-    const htPod   = findPod(['intervalo - resultado', 'half-time', 'half time', 'ht result', 'resultado intervalo']);
+    // ── Half-Time Result (usa srb-ParticipantResponsiveText) ─────────────────
+    const htPod   = findPod(['intervalo - resultado', 'half-time', 'half time']);
     const htParts = readParts(htPod);
     let oddHtCasa = 0, oddHtEmpate = 0, oddHtFora = 0;
     if (htParts.length >= 3) {
@@ -606,27 +634,13 @@ function lerOddsDOM() {
         oddHtFora   = htTimes[1]?.odd || 0;
     }
 
-    // Debug temporário: mostra os valores reais de nome/odd que readParts extraiu
-    let debugPods = null;
-    if (ou25Pod && oddOver25 === 0) {
-        const partsInfo = ou25Parts.slice(0, 4).map(p => `nome="${p.nome}" odd=${p.odd}`).join(' | ');
-        // Se parts vazio, mostra o HTML do primeiro elemento filho do pod
-        let htmlSnip = '';
-        if (ou25Parts.length === 0) {
-            const body = ou25Pod.querySelector('[class*="Body"],[class*="Content"],[class*="MarketGroup_"]');
-            const el = body || ou25Pod;
-            htmlSnip = (el.innerHTML || '').replace(/\s+/g,' ').substring(0, 350);
-        }
-        debugPods = { count: ou25Parts.length, parts: partsInfo || '(vazio)', html: htmlSnip };
-    }
-
     return {
         ok: true, suspended, horario, timeCasa, timeFora,
         oddCasa, oddEmpate, oddFora,
-        oddOver25, oddUnder25,
-        oddBttsSim, oddBttsNao,
+        oddOver25:  ou25.over,  oddUnder25: ou25.under,
+        oddBttsSim: btts.sim,   oddBttsNao: btts.nao,
         oddHtCasa, oddHtEmpate, oddHtFora,
-        podNames, debugPods,
+        podNames,
     };
 }
 
@@ -650,10 +664,10 @@ async function expandirPodsExtras(pg) {
         for (const pod of pods) {
             const txt = (pod.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim().toLowerCase();
             if (!keywords.some(k => txt.includes(k))) continue;
-            const temParticipantes = !!pod.querySelector('.srb-ParticipantStackedBorderless');
-            if (temParticipantes) continue;
             const btn = pod.querySelector('.gl-MarketGroupButton');
             if (!btn) continue;
+            // Pod já aberto → não clicar (evita fechar)
+            if (btn.classList.contains('gl-MarketGroup_Open')) continue;
             btn.scrollIntoView({ block: 'center' });
             dispararClique(btn);
             n++;
@@ -771,10 +785,6 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                     console.log(`   ${icon} [${ligaNorm}] ${odds.horario} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} ${label} | 1X2:${odds.oddCasa}/${odds.oddEmpate}/${odds.oddFora}${ou}${bt}${ht}`);
                     if (idx === 0 && odds.podNames && odds.podNames.length) {
                         console.log(`   📦 [${ligaNorm}] pods: ${odds.podNames.join(' | ')}`);
-                    }
-                    if (idx === 0 && odds.debugPods) {
-                        console.log(`   🔍 [${ligaNorm}] OU parts(${odds.debugPods.count}): ${odds.debugPods.parts}`);
-                        if (odds.debugPods.html) console.log(`   🔍 [${ligaNorm}] OU html: ${odds.debugPods.html}`);
                     }
                     resultados.push(odds);
                 }
