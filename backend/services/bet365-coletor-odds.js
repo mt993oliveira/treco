@@ -632,8 +632,9 @@ function lerOddsDOM() {
 
 // ── Expande pods colapsados antes de ler as odds ─────────────
 // Bet365 renderiza apenas o Resultado Final expandido por padrão.
-// OU, BTTS e HT ficam colapsados — precisam de ElementHandle.click() real
-// (mousedown+up) pois o SPA ignora DOM .click() simples.
+// ElementHandle.click() falhava silenciosamente quando o elemento
+// está fora do viewport. Solução: scroll para centro + pg.mouse.click()
+// com coordenadas reais.
 async function expandirPodsExtras(pg) {
     const KEYWORDS = ['mais/menos', 'gols mais', 'para o time marcar', 'time marcar', 'intervalo - resultado'];
     const pods = await pg.$$('.gl-MarketGroupPod.gl-MarketGroup').catch(() => []);
@@ -645,17 +646,20 @@ async function expandirPodsExtras(pg) {
         if (!KEYWORDS.some(k => txt.includes(k))) continue;
         // Só clica se ainda não há participantes (evita fechar o que já está aberto)
         const temParticipantes = await pod.$('.srb-ParticipantStackedBorderless').catch(() => null);
-        if (!temParticipantes) {
-            const btn = await pod.$('.gl-MarketGroupButton').catch(() => null);
-            if (btn) {
-                await btn.scrollIntoView().catch(() => {});
-                await btn.click({ delay: 60 }).catch(() => {});
-                count++;
-                await new Promise(r => setTimeout(r, 400));
-            }
-        }
+        if (temParticipantes) continue;
+        const btn = await pod.$('.gl-MarketGroupButton').catch(() => null);
+        if (!btn) continue;
+        // Scroll para centro do viewport antes de clicar
+        await pg.evaluate(el => el.scrollIntoView({ block: 'center', inline: 'nearest' }), btn).catch(() => {});
+        await new Promise(r => setTimeout(r, 200));
+        const box = await btn.boundingBox().catch(() => null);
+        if (!box) continue;
+        // pg.mouse.click() usa coordenadas reais — mais confiável que ElementHandle.click()
+        await pg.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        count++;
+        await new Promise(r => setTimeout(r, 600));
     }
-    if (count > 0) await new Promise(r => setTimeout(r, 1200));
+    if (count > 0) await new Promise(r => setTimeout(r, 1500));
     return count;
 }
 
