@@ -1885,6 +1885,30 @@ server.listen(PORT, () => {
         } catch(e) { console.warn('⚠️ Schema Usuarios:', e.message); }
     })();
 
+    // Garante colunas extras de odds em bet365_eventos (Coletor 2 expansão)
+    (async () => {
+        try {
+            await connectSQL(getDatabaseConfigFromEnv());
+            const oddCols = [
+                ['odd_over25',   'DECIMAL(10,2)'],
+                ['odd_under25',  'DECIMAL(10,2)'],
+                ['odd_btts_sim', 'DECIMAL(10,2)'],
+                ['odd_btts_nao', 'DECIMAL(10,2)'],
+                ['odd_ht_casa',  'DECIMAL(10,2)'],
+                ['odd_ht_empate','DECIMAL(10,2)'],
+                ['odd_ht_fora',  'DECIMAL(10,2)'],
+            ];
+            for (const [col, type] of oddCols) {
+                await sql.query(`
+                    IF NOT EXISTS (
+                        SELECT 1 FROM sys.columns
+                        WHERE object_id = OBJECT_ID('bet365_eventos') AND name = '${col}'
+                    ) ALTER TABLE bet365_eventos ADD ${col} ${type} NULL
+                `);
+            }
+        } catch(e) { console.warn('⚠️ Schema bet365_eventos odds:', e.message); }
+    })();
+
     // Garante tabela HistoricoAcessos
     (async () => {
         try {

@@ -122,6 +122,30 @@ async function getPool() {
     return pool;
 }
 
+let _colsEnsured = false;
+async function _ensureOddsColumns(pool) {
+    if (_colsEnsured) return;
+    const cols = [
+        ['odd_over25',   'DECIMAL(10,2)'],
+        ['odd_under25',  'DECIMAL(10,2)'],
+        ['odd_btts_sim', 'DECIMAL(10,2)'],
+        ['odd_btts_nao', 'DECIMAL(10,2)'],
+        ['odd_ht_casa',  'DECIMAL(10,2)'],
+        ['odd_ht_empate','DECIMAL(10,2)'],
+        ['odd_ht_fora',  'DECIMAL(10,2)'],
+    ];
+    for (const [col, type] of cols) {
+        await pool.request().query(`
+            IF NOT EXISTS (
+                SELECT 1 FROM sys.columns
+                WHERE object_id = OBJECT_ID('bet365_eventos') AND name = '${col}'
+            ) ALTER TABLE bet365_eventos ADD ${col} ${type} NULL
+        `).catch(() => {});
+    }
+    _colsEnsured = true;
+    console.log('   ✅ [Odds] Colunas de odds extras verificadas/criadas');
+}
+
 // ── Login autônomo (usado apenas no MODO_AUTONOMO) ───────────
 async function _verificarLoginColetor2(pg) {
     if (!COLETOR2_USUARIO || !COLETOR2_SENHA) {
@@ -315,18 +339,39 @@ async function diagnosticarPagina(pg, ligaNorm, label) {
     if (info.btnTextos.length) console.log(`      Mercados: ${info.btnTextos.join(' | ')}`);
 }
 
-// ── Lê odds do pod Fulltime Result no DOM atual ───────────────
+// ── Lê odds de todos os pods relevantes no DOM atual ─────────
 // Serializada e passada ao pg.evaluate() — deve ser auto-contida
 function lerOddsDOM() {
-    const allPods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')]
-        .filter(p => {
-            const txt = p.querySelector('.gl-MarketGroupButton_Text')?.textContent.trim();
-            return txt === 'Fulltime Result' || txt === 'Resultado Final';
-        });
-    if (allPods.length === 0) return { motivo: 'sem_mercado' };
+    const allPods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')];
+
+    const podNames = allPods
+        .map(p => (p.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim())
+        .filter(Boolean);
+
+    function findPod(keys) {
+        return allPods.find(p => {
+            const txt = (p.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim().toLowerCase();
+            return keys.some(k => txt.includes(k));
+        }) || null;
+    }
+
+    function readParts(pod) {
+        if (!pod) return [];
+        return [...pod.querySelectorAll('.srb-ParticipantStackedBorderless')].map(el => ({
+            nome: (el.querySelector('.srb-ParticipantStackedBorderless_Name')?.textContent || '').trim(),
+            odd:  parseFloat(el.querySelector('.srb-ParticipantStackedBorderless_Odds')?.textContent) || 0,
+        }));
+    }
+
+    // ── Fulltime Result ───────────────────────────────────────
+    const ftPodAll = allPods.filter(p => {
+        const txt = (p.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim();
+        return txt === 'Fulltime Result' || txt === 'Resultado Final';
+    });
+    if (ftPodAll.length === 0) return { motivo: 'sem_mercado', podNames };
 
     let ftPod = null, suspended = false;
-    for (const pod of allPods) {
+    for (const pod of ftPodAll) {
         const parts = [...pod.querySelectorAll('.srb-ParticipantStackedBorderless')];
         const allSusp = parts.length > 0 && parts.every(p => p.classList.contains('srb-ParticipantStackedBorderless_Suspended'));
         if (!allSusp) { ftPod = pod; suspended = false; break; }
@@ -338,25 +383,61 @@ function lerOddsDOM() {
         ? selBtn.querySelector('.vr-EventTimesNavBarButton_Text')?.textContent.trim() || selBtn.textContent.trim()
         : null;
 
-    const participantes = [...ftPod.querySelectorAll('.srb-ParticipantStackedBorderless')].map(el => ({
-        nome: el.querySelector('.srb-ParticipantStackedBorderless_Name')?.textContent.trim() || '',
-        odd:  parseFloat(el.querySelector('.srb-ParticipantStackedBorderless_Odds')?.textContent.trim()) || 0,
-    }));
-    if (participantes.length < 3) return { motivo: 'participantes_insuficientes', qtd: participantes.length };
+    const ftParts = readParts(ftPod);
+    if (ftParts.length < 3) return { motivo: 'participantes_insuficientes', qtd: ftParts.length, podNames };
 
     const isEmpate = n => n === 'Draw' || n === 'Empate';
-    const empIdx   = participantes.findIndex(p => isEmpate(p.nome));
-    const times    = participantes.filter(p => !isEmpate(p.nome));
+    const empIdx   = ftParts.findIndex(p => isEmpate(p.nome));
+    const times    = ftParts.filter(p => !isEmpate(p.nome));
     const oddCasa   = times[0]?.odd || 0;
-    const oddEmpate = empIdx >= 0 ? participantes[empIdx].odd : 0;
+    const oddEmpate = empIdx >= 0 ? ftParts[empIdx].odd : 0;
     const oddFora   = times[1]?.odd || 0;
     const timeCasa  = times[0]?.nome || null;
     const timeFora  = times[1]?.nome || null;
 
     if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0)
-        return { motivo: 'odds_zeradas', suspended };
+        return { motivo: 'odds_zeradas', suspended, podNames };
 
-    return { ok: true, suspended, horario, timeCasa, timeFora, oddCasa, oddEmpate, oddFora };
+    // ── Over/Under 2.5 ───────────────────────────────────────
+    const ou25Pod   = findPod(['over/under', 'gols acima', 'goals over', 'acima/abaixo']);
+    const ou25Parts = readParts(ou25Pod);
+    let oddOver25 = 0, oddUnder25 = 0;
+    for (const p of ou25Parts) {
+        const n = p.nome.toLowerCase();
+        if      (n.includes('over')  || n.includes('acima') || n.includes('mais'))  oddOver25  = p.odd;
+        else if (n.includes('under') || n.includes('abaixo') || n.includes('menos')) oddUnder25 = p.odd;
+    }
+
+    // ── Both Teams to Score (BTTS) ────────────────────────────
+    const bttsPod   = findPod(['both teams', 'ambos marcam']);
+    const bttsParts = readParts(bttsPod);
+    let oddBttsSim = 0, oddBttsNao = 0;
+    for (const p of bttsParts) {
+        const n = p.nome.toLowerCase();
+        if      (n === 'yes' || n === 'sim' || n.includes('yes') || n.includes('sim')) oddBttsSim = p.odd;
+        else if (n === 'no'  || n.includes('não') || n.includes('nao') || n === 'no')  oddBttsNao = p.odd;
+    }
+
+    // ── Half-Time Result ─────────────────────────────────────
+    const htPod   = findPod(['half-time', 'half time', 'intervalo resultado', 'resultado intervalo', 'ht result']);
+    const htParts = readParts(htPod);
+    let oddHtCasa = 0, oddHtEmpate = 0, oddHtFora = 0;
+    if (htParts.length >= 3) {
+        const htEmpIdx = htParts.findIndex(p => isEmpate(p.nome));
+        const htTimes  = htParts.filter(p => !isEmpate(p.nome));
+        oddHtCasa   = htTimes[0]?.odd || 0;
+        oddHtEmpate = htEmpIdx >= 0 ? htParts[htEmpIdx].odd : 0;
+        oddHtFora   = htTimes[1]?.odd || 0;
+    }
+
+    return {
+        ok: true, suspended, horario, timeCasa, timeFora,
+        oddCasa, oddEmpate, oddFora,
+        oddOver25, oddUnder25,
+        oddBttsSim, oddBttsNao,
+        oddHtCasa, oddHtEmpate, oddHtFora,
+        podNames,
+    };
 }
 
 // ── Hard refresh + volta à liga (reutilizado entre jogos) ────
@@ -449,11 +530,28 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                     const icon  = odds.suspended ? '📌' : '💰';
                     const label = odds.suspended ? '[race-off]' : '[próximo]';
                     await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
-                                       odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora);
-                    console.log(`   ${icon} [${ligaNorm}] ${odds.horario} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} ${label} | C:${odds.oddCasa} E:${odds.oddEmpate} F:${odds.oddFora}`);
+                                       odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora, {
+                        oddOver25:   odds.oddOver25   || 0,
+                        oddUnder25:  odds.oddUnder25  || 0,
+                        oddBttsSim:  odds.oddBttsSim  || 0,
+                        oddBttsNao:  odds.oddBttsNao  || 0,
+                        oddHtCasa:   odds.oddHtCasa   || 0,
+                        oddHtEmpate: odds.oddHtEmpate || 0,
+                        oddHtFora:   odds.oddHtFora   || 0,
+                    });
+                    const ou  = odds.oddOver25  ? ` | O2.5:${odds.oddOver25}/${odds.oddUnder25}` : '';
+                    const bt  = odds.oddBttsSim ? ` | BTTS:${odds.oddBttsSim}/${odds.oddBttsNao}` : '';
+                    const ht  = odds.oddHtCasa  ? ` | HT:${odds.oddHtCasa}/${odds.oddHtEmpate}/${odds.oddHtFora}` : '';
+                    console.log(`   ${icon} [${ligaNorm}] ${odds.horario} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} ${label} | 1X2:${odds.oddCasa}/${odds.oddEmpate}/${odds.oddFora}${ou}${bt}${ht}`);
+                    if (idx === 0 && odds.podNames && odds.podNames.length) {
+                        console.log(`   📦 [${ligaNorm}] pods: ${odds.podNames.join(' | ')}`);
+                    }
                     resultados.push(odds);
                 }
             } else {
+                if (odds.podNames && odds.podNames.length && odds.motivo === 'sem_mercado') {
+                    console.log(`   📦 [${ligaNorm}] pods disponíveis: ${odds.podNames.join(' | ')}`);
+                }
                 console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — ${odds.motivo || JSON.stringify(odds)}`);
             }
         } catch(e) {
@@ -469,11 +567,14 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
 }
 
 // ── Salva evento no banco (MERGE) ────────────────────────────
-async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpate, oddFora) {
+// extra: { oddOver25, oddUnder25, oddBttsSim, oddBttsNao, oddHtCasa, oddHtEmpate, oddHtFora }
+async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpate, oddFora, extra) {
     const db       = await getPool();
+    await _ensureOddsColumns(db);
     const tcNorm   = normalizarNomeTime(timeCasa);
     const tfNorm   = normalizarNomeTime(timeFora);
     const eventoId = gerarId(liga, tcNorm, tfNorm, horario || '');
+    const ex       = extra || {};
 
     let startDt = new Date();
     if (horario && /^\d{1,2}:\d{2}$/.test(horario)) {
@@ -484,31 +585,50 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
     }
 
     await db.request()
-        .input('id',       sql.BigInt,       eventoId)
-        .input('league',   sql.NVarChar(200), liga)
-        .input('timeCasa', sql.NVarChar(100), tcNorm)
-        .input('timeFora', sql.NVarChar(100), tfNorm)
-        .input('startDt',  sql.DateTime2,     startDt)
-        .input('oddCasa',  sql.Decimal(10,2), oddCasa)
-        .input('oddEmp',   sql.Decimal(10,2), oddEmpate)
-        .input('oddFora',  sql.Decimal(10,2), oddFora)
-        .input('agora',    sql.DateTime2,     new Date())
+        .input('id',         sql.BigInt,       eventoId)
+        .input('league',     sql.NVarChar(200), liga)
+        .input('timeCasa',   sql.NVarChar(100), tcNorm)
+        .input('timeFora',   sql.NVarChar(100), tfNorm)
+        .input('startDt',    sql.DateTime2,     startDt)
+        .input('oddCasa',    sql.Decimal(10,2), oddCasa)
+        .input('oddEmp',     sql.Decimal(10,2), oddEmpate)
+        .input('oddFora',    sql.Decimal(10,2), oddFora)
+        .input('oddOver25',  sql.Decimal(10,2), ex.oddOver25  || 0)
+        .input('oddUnder25', sql.Decimal(10,2), ex.oddUnder25 || 0)
+        .input('oddBttsSim', sql.Decimal(10,2), ex.oddBttsSim || 0)
+        .input('oddBttsNao', sql.Decimal(10,2), ex.oddBttsNao || 0)
+        .input('oddHtCasa',  sql.Decimal(10,2), ex.oddHtCasa  || 0)
+        .input('oddHtEmp',   sql.Decimal(10,2), ex.oddHtEmpate|| 0)
+        .input('oddHtFora',  sql.Decimal(10,2), ex.oddHtFora  || 0)
+        .input('agora',      sql.DateTime2,     new Date())
         .query(`
             MERGE bet365_eventos AS t
             USING (SELECT @id AS id) AS s ON t.id = s.id
             WHEN MATCHED THEN UPDATE SET
-                t.odd_casa   = CASE WHEN @oddCasa > 0 THEN @oddCasa   ELSE t.odd_casa   END,
-                t.odd_empate = CASE WHEN @oddEmp  > 0 THEN @oddEmp    ELSE t.odd_empate END,
-                t.odd_fora   = CASE WHEN @oddFora > 0 THEN @oddFora   ELSE t.odd_fora   END,
+                t.odd_casa    = CASE WHEN @oddCasa    > 0 THEN @oddCasa    ELSE t.odd_casa    END,
+                t.odd_empate  = CASE WHEN @oddEmp     > 0 THEN @oddEmp     ELSE t.odd_empate  END,
+                t.odd_fora    = CASE WHEN @oddFora    > 0 THEN @oddFora    ELSE t.odd_fora    END,
+                t.odd_over25  = CASE WHEN @oddOver25  > 0 THEN @oddOver25  ELSE t.odd_over25  END,
+                t.odd_under25 = CASE WHEN @oddUnder25 > 0 THEN @oddUnder25 ELSE t.odd_under25 END,
+                t.odd_btts_sim= CASE WHEN @oddBttsSim > 0 THEN @oddBttsSim ELSE t.odd_btts_sim END,
+                t.odd_btts_nao= CASE WHEN @oddBttsNao > 0 THEN @oddBttsNao ELSE t.odd_btts_nao END,
+                t.odd_ht_casa = CASE WHEN @oddHtCasa  > 0 THEN @oddHtCasa  ELSE t.odd_ht_casa  END,
+                t.odd_ht_empate= CASE WHEN @oddHtEmp  > 0 THEN @oddHtEmp   ELSE t.odd_ht_empate END,
+                t.odd_ht_fora = CASE WHEN @oddHtFora  > 0 THEN @oddHtFora  ELSE t.odd_ht_fora  END,
                 t.start_time_datetime = @startDt,
                 t.data_atualizacao    = @agora,
                 t.ativo               = 1
             WHEN NOT MATCHED THEN INSERT
                 (id, url, league_name, time_casa, time_fora, status,
                  start_time_datetime, odd_casa, odd_empate, odd_fora,
+                 odd_over25, odd_under25, odd_btts_sim, odd_btts_nao,
+                 odd_ht_casa, odd_ht_empate, odd_ht_fora,
                  data_coleta, data_atualizacao, ativo)
             VALUES (@id, '', @league, @timeCasa, @timeFora, 'AGENDADO',
                     @startDt, @oddCasa, @oddEmp, @oddFora,
+                    NULLIF(@oddOver25,0), NULLIF(@oddUnder25,0),
+                    NULLIF(@oddBttsSim,0), NULLIF(@oddBttsNao,0),
+                    NULLIF(@oddHtCasa,0), NULLIF(@oddHtEmp,0), NULLIF(@oddHtFora,0),
                     @agora, @agora, 1);
         `);
 }

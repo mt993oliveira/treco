@@ -9023,9 +9023,18 @@ function _simRenderUI(el, d, _u) {
                 : diffMin < 60
                     ? `<span style="color:#fbbf24;font-size:12px">em ${diffMin}min</span>`
                     : `<span style="color:#64748b;font-size:12px">${Math.floor(diffMin/60)}h${String(diffMin%60).padStart(2,'0')}m</span>`;
-            const oc = parseFloat(e.odd_casa   || 0);
-            const oe = parseFloat(e.odd_empate || 0);
-            const of_ = parseFloat(e.odd_fora  || 0);
+            const oc   = parseFloat(e.odd_casa    || 0);
+            const oe   = parseFloat(e.odd_empate  || 0);
+            const of_  = parseFloat(e.odd_fora    || 0);
+            const ou25 = parseFloat(e.odd_over25  || 0);
+            const u25  = parseFloat(e.odd_under25 || 0);
+            const bSim = parseFloat(e.odd_btts_sim|| 0);
+            const bNao = parseFloat(e.odd_btts_nao|| 0);
+            const htC  = parseFloat(e.odd_ht_casa || 0);
+            const htE  = parseFloat(e.odd_ht_empate||0);
+            const htF  = parseFloat(e.odd_ht_fora || 0);
+            const temOuBt = (ou25 > 0) || (bSim > 0);
+            const temHt   = htC > 0;
             return `
             <div id="sim-card-${i}" onclick="_simSelecionarJogo(${i})"
                 style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;
@@ -9057,6 +9066,30 @@ function _simRenderUI(el, d, _u) {
                         ${_getClubeFlag(e.time_fora, 26, 19)}
                     </div>
                 </div>
+                ${temOuBt || temHt ? `
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px solid #1e293b40">
+                    ${ou25 > 0 ? `<span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'over2.5')"
+                        style="background:#0a1e3a;border:1px solid #1e4a8a;border-radius:5px;padding:4px 9px;font-size:12px;font-weight:800;color:#38bdf8;cursor:pointer;transition:background .1s"
+                        onmouseover="this.style.background='#0f2d55'" onmouseout="this.style.background='#0a1e3a'">O2.5 ${ou25.toFixed(2)}</span>` : ''}
+                    ${u25 > 0 ? `<span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'under2.5')"
+                        style="background:#1e1a0a;border:1px solid #5a4a10;border-radius:5px;padding:4px 9px;font-size:12px;font-weight:800;color:#fbbf24;cursor:pointer;transition:background .1s"
+                        onmouseover="this.style.background='#2d2810'" onmouseout="this.style.background='#1e1a0a'">U2.5 ${u25.toFixed(2)}</span>` : ''}
+                    ${bSim > 0 ? `<span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'ambas-sim')"
+                        style="background:#0d1f0d;border:1px solid #1a4a1a;border-radius:5px;padding:4px 9px;font-size:12px;font-weight:800;color:#86efac;cursor:pointer;transition:background .1s"
+                        onmouseover="this.style.background='#162814'" onmouseout="this.style.background='#0d1f0d'">BTTS S ${bSim.toFixed(2)}</span>` : ''}
+                    ${bNao > 0 ? `<span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'ambas-nao')"
+                        style="background:#1f0d1f;border:1px solid #4a1a4a;border-radius:5px;padding:4px 9px;font-size:12px;font-weight:800;color:#e879f9;cursor:pointer;transition:background .1s"
+                        onmouseover="this.style.background='#2a1428'" onmouseout="this.style.background='#1f0d1f'">BTTS N ${bNao.toFixed(2)}</span>` : ''}
+                    ${htC > 0 ? `<span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'casa-ht')"
+                        style="background:#0e1a14;border:1px solid #1a3a28;border-radius:5px;padding:4px 9px;font-size:12px;font-weight:800;color:#6ee7b7;cursor:pointer;transition:background .1s"
+                        onmouseover="this.style.background='#14281e'" onmouseout="this.style.background='#0e1a14'">HT C ${htC.toFixed(2)}</span>` : ''}
+                    ${htE > 0 ? `<span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'empate-ht')"
+                        style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:5px;padding:4px 9px;font-size:12px;font-weight:800;color:#cbd5e1;cursor:pointer;transition:background .1s"
+                        onmouseover="this.style.background='#252525'" onmouseout="this.style.background='#1a1a1a'">HT E ${htE.toFixed(2)}</span>` : ''}
+                    ${htF > 0 ? `<span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'fora-ht')"
+                        style="background:#1e0e0e;border:1px solid #4a1a1a;border-radius:5px;padding:4px 9px;font-size:12px;font-weight:800;color:#fca5a5;cursor:pointer;transition:background .1s"
+                        onmouseover="this.style.background='#2a1414'" onmouseout="this.style.background='#1e0e0e'">HT F ${htF.toFixed(2)}</span>` : ''}
+                </div>` : ''}
             </div>`;
         }).join('');
         return `
@@ -9268,12 +9301,21 @@ function _simOnMercadoChange() {
     const mkt = document.getElementById('sim-mercado')?.value;
     const inp = document.getElementById('sim-odd');
     if (!inp) return;
-    // Pre-fill odds for 1X2 markets when event has odds
     if (ev) {
-        if (mkt === 'casa'   && ev.odd_casa)   { inp.value = parseFloat(ev.odd_casa).toFixed(2);   }
-        else if (mkt === 'empate' && ev.odd_empate) { inp.value = parseFloat(ev.odd_empate).toFixed(2); }
-        else if (mkt === 'fora'   && ev.odd_fora)   { inp.value = parseFloat(ev.odd_fora).toFixed(2);   }
-        else inp.value = '';
+        const MAP = {
+            'casa':       ev.odd_casa,
+            'empate':     ev.odd_empate,
+            'fora':       ev.odd_fora,
+            'over2.5':    ev.odd_over25,
+            'under2.5':   ev.odd_under25,
+            'ambas-sim':  ev.odd_btts_sim,
+            'ambas-nao':  ev.odd_btts_nao,
+            'casa-ht':    ev.odd_ht_casa,
+            'empate-ht':  ev.odd_ht_empate,
+            'fora-ht':    ev.odd_ht_fora,
+        };
+        const v = parseFloat(MAP[mkt] || 0);
+        inp.value = v > 1 ? v.toFixed(2) : '';
     }
     _simAtualizarRetorno();
 }

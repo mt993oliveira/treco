@@ -110,6 +110,13 @@ router.get('/eventos', async (req, res) => {
                 e.odd_casa,
                 e.odd_empate,
                 e.odd_fora,
+                e.odd_over25,
+                e.odd_under25,
+                e.odd_btts_sim,
+                e.odd_btts_nao,
+                e.odd_ht_casa,
+                e.odd_ht_empate,
+                e.odd_ht_fora,
                 COUNT(DISTINCT m.id) AS total_mercados
             FROM bet365_eventos e
             LEFT JOIN bet365_mercados m ON m.evento_id = e.id AND m.ativo = 1
@@ -124,7 +131,11 @@ router.get('/eventos', async (req, res) => {
             query += ' AND e.status = @status';
         }
 
-        query += ' GROUP BY e.id, e.time_casa, e.time_fora, e.league_name, e.start_time_datetime, e.status, e.odd_casa, e.odd_empate, e.odd_fora ORDER BY e.start_time_datetime ASC';
+        query += ` GROUP BY e.id, e.time_casa, e.time_fora, e.league_name, e.start_time_datetime, e.status,
+            e.odd_casa, e.odd_empate, e.odd_fora,
+            e.odd_over25, e.odd_under25, e.odd_btts_sim, e.odd_btts_nao,
+            e.odd_ht_casa, e.odd_ht_empate, e.odd_ht_fora
+            ORDER BY e.start_time_datetime ASC`;
 
         const request = pool.request();
 
@@ -1452,7 +1463,10 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
         // Eventos agendados (filtrados por liga se especificada)
         const eventos = await reqEvt.query(`
             SELECT id AS evento_id, league_name AS liga, time_casa, time_fora,
-                   start_time_datetime AS horario, odd_casa, odd_empate, odd_fora
+                   start_time_datetime AS horario,
+                   odd_casa, odd_empate, odd_fora,
+                   odd_over25, odd_under25, odd_btts_sim, odd_btts_nao,
+                   odd_ht_casa, odd_ht_empate, odd_ht_fora
             FROM bet365_eventos
             WHERE ativo = 1 AND status = 'AGENDADO' ${evtLigaWhere}
             ORDER BY start_time_datetime ASC
@@ -1507,10 +1521,17 @@ router.get('/analise/sugestoes-avancadas', async (req, res) => {
                 time_casa:  ev.time_casa,
                 time_fora:  ev.time_fora,
                 horario:    ev.horario,
-                odd_casa:   ev.odd_casa,
-                odd_empate: ev.odd_empate,
-                odd_fora:   ev.odd_fora,
-                sugestoes:  top
+                odd_casa:    ev.odd_casa,
+                odd_empate:  ev.odd_empate,
+                odd_fora:    ev.odd_fora,
+                odd_over25:  ev.odd_over25,
+                odd_under25: ev.odd_under25,
+                odd_btts_sim:ev.odd_btts_sim,
+                odd_btts_nao:ev.odd_btts_nao,
+                odd_ht_casa: ev.odd_ht_casa,
+                odd_ht_empate:ev.odd_ht_empate,
+                odd_ht_fora: ev.odd_ht_fora,
+                sugestoes:   top
             };
         });
 
