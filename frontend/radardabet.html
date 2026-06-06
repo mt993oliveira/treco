@@ -12758,12 +12758,7 @@ function aplicarPadrao(id, opts = {}) {
             TODOS_FILTROS.forEach(x => { S.linhas[x.id] = false; });
             Object.assign(S.linhas, f.linhas);
         }
-        // Aplica o estado do Gráfico de Linha — usa linhasLinha se salvo, senão copia de linhas (padrões antigos)
-        const _linhasLinhaFonte = f.linhasLinha || f.linhas;
-        if (_linhasLinhaFonte) {
-            TODOS_FILTROS.forEach(x => { S.linhasLinha[x.id] = false; });
-            Object.assign(S.linhasLinha, _linhasLinhaFonte);
-        }
+        // Gráfico de Linha não é afetado por padrões — mantém Over 2.5 como padrão fixo
         // Aplica pills do Gráfico de Gols se salvas no padrão
         if (f.linhasGols) {
             FILTROS_GOLS.forEach(x => { S.linhasGols[x.id] = false; });
