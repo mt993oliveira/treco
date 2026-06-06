@@ -102,24 +102,29 @@ router.get('/eventos', async (req, res) => {
         let query = `
             SELECT
                 e.id AS evento_id,
-                e.time_casa,
-                e.time_fora,
+                e.time_casa, e.time_fora,
                 e.league_name AS liga,
                 e.start_time_datetime AS horario,
                 e.status,
-                e.odd_casa,
-                e.odd_empate,
-                e.odd_fora,
-                e.odd_over25,
-                e.odd_under25,
-                e.odd_btts_sim,
-                e.odd_btts_nao,
-                e.odd_ht_casa,
-                e.odd_ht_empate,
-                e.odd_ht_fora,
-                COUNT(DISTINCT m.id) AS total_mercados
+                e.odd_casa, e.odd_empate, e.odd_fora,
+                e.odd_over05, e.odd_under05,
+                e.odd_over15, e.odd_under15,
+                e.odd_over25, e.odd_under25,
+                e.odd_over35, e.odd_under35,
+                e.odd_btts_sim, e.odd_btts_nao,
+                e.odd_ht_casa, e.odd_ht_empate, e.odd_ht_fora,
+                e.odd_htft_11, e.odd_htft_1x, e.odd_htft_12,
+                e.odd_htft_x1, e.odd_htft_xx, e.odd_htft_x2,
+                e.odd_htft_21, e.odd_htft_2x, e.odd_htft_22,
+                e.odd_totgols_01, e.odd_totgols_23, e.odd_totgols_4mais,
+                e.odd_placar_1_0, e.odd_placar_2_0, e.odd_placar_2_1,
+                e.odd_placar_3_0, e.odd_placar_3_1, e.odd_placar_4_0,
+                e.odd_placar_0_0, e.odd_placar_1_1, e.odd_placar_2_2,
+                e.odd_placar_0_1, e.odd_placar_0_2, e.odd_placar_1_2,
+                e.odd_placar_0_3, e.odd_placar_1_3, e.odd_placar_0_4,
+                e.odd_placar_outros,
+                (SELECT COUNT(DISTINCT m.id) FROM bet365_mercados m WHERE m.evento_id = e.id AND m.ativo = 1) AS total_mercados
             FROM bet365_eventos e
-            LEFT JOIN bet365_mercados m ON m.evento_id = e.id AND m.ativo = 1
             WHERE e.ativo = 1
         `;
 
@@ -131,11 +136,7 @@ router.get('/eventos', async (req, res) => {
             query += ' AND e.status = @status';
         }
 
-        query += ` GROUP BY e.id, e.time_casa, e.time_fora, e.league_name, e.start_time_datetime, e.status,
-            e.odd_casa, e.odd_empate, e.odd_fora,
-            e.odd_over25, e.odd_under25, e.odd_btts_sim, e.odd_btts_nao,
-            e.odd_ht_casa, e.odd_ht_empate, e.odd_ht_fora
-            ORDER BY e.start_time_datetime ASC`;
+        query += ` ORDER BY e.start_time_datetime ASC`;
 
         const request = pool.request();
 
@@ -305,14 +306,27 @@ router.get('/eventos-completos', async (req, res) => {
             .query(`
                 SELECT
                     e.id AS evento_id,
-                    e.time_casa,
-                    e.time_fora,
+                    e.time_casa, e.time_fora,
                     e.league_name AS liga,
                     e.start_time_datetime AS horario,
                     e.status,
-                    e.odd_casa,
-                    e.odd_empate,
-                    e.odd_fora
+                    e.odd_casa, e.odd_empate, e.odd_fora,
+                    e.odd_over05, e.odd_under05,
+                    e.odd_over15, e.odd_under15,
+                    e.odd_over25, e.odd_under25,
+                    e.odd_over35, e.odd_under35,
+                    e.odd_btts_sim, e.odd_btts_nao,
+                    e.odd_ht_casa, e.odd_ht_empate, e.odd_ht_fora,
+                    e.odd_htft_11, e.odd_htft_1x, e.odd_htft_12,
+                    e.odd_htft_x1, e.odd_htft_xx, e.odd_htft_x2,
+                    e.odd_htft_21, e.odd_htft_2x, e.odd_htft_22,
+                    e.odd_totgols_01, e.odd_totgols_23, e.odd_totgols_4mais,
+                    e.odd_placar_1_0, e.odd_placar_2_0, e.odd_placar_2_1,
+                    e.odd_placar_3_0, e.odd_placar_3_1, e.odd_placar_4_0,
+                    e.odd_placar_0_0, e.odd_placar_1_1, e.odd_placar_2_2,
+                    e.odd_placar_0_1, e.odd_placar_0_2, e.odd_placar_1_2,
+                    e.odd_placar_0_3, e.odd_placar_1_3, e.odd_placar_0_4,
+                    e.odd_placar_outros
                 FROM bet365_eventos e
                 WHERE e.ativo = 1
                 ORDER BY
