@@ -19,8 +19,16 @@ timeout /t 2 /nobreak > nul
 echo [2b] Limpando cooldown de login (permite reconectar imediatamente apos reinicio)...
 del "%TEMP%\bet365-login-fail.ts" 2>nul
 
-echo [3/4] Fechando Edge na porta 9222...
+echo [3/4] Fechando Edge na porta 9222 (Coletor 1)...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":9222 " 2^>nul') do (
+    if not "%%a"=="0" (
+        echo  Matando PID %%a
+        taskkill /F /PID %%a 2>nul
+    )
+)
+
+echo [3b/4] Fechando Edge na porta 9223 (Coletor 2)...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":9223 " 2^>nul') do (
     if not "%%a"=="0" (
         echo  Matando PID %%a
         taskkill /F /PID %%a 2>nul
