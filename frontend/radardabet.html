@@ -12758,10 +12758,11 @@ function aplicarPadrao(id, opts = {}) {
             TODOS_FILTROS.forEach(x => { S.linhas[x.id] = false; });
             Object.assign(S.linhas, f.linhas);
         }
-        // Aplica o mesmo estado ao Gráfico de Linha — f.linhas é a fonte única
-        if (f.linhas) {
+        // Aplica o estado do Gráfico de Linha — usa linhasLinha se salvo, senão copia de linhas (padrões antigos)
+        const _linhasLinhaFonte = f.linhasLinha || f.linhas;
+        if (_linhasLinhaFonte) {
             TODOS_FILTROS.forEach(x => { S.linhasLinha[x.id] = false; });
-            Object.assign(S.linhasLinha, f.linhas);
+            Object.assign(S.linhasLinha, _linhasLinhaFonte);
         }
         // Aplica pills do Gráfico de Gols se salvas no padrão
         if (f.linhasGols) {
@@ -12874,7 +12875,7 @@ async function salvarPadraoAtual() {
     const inp = document.getElementById('padroes-nome-input');
     const nome = (inp.value || '').trim();
     if (!nome) { inp.focus(); return; }
-    const filtros = JSON.stringify({ linhas: { ...S.linhas }, linhasGols: { ...S.linhasGols }, filtro: S.filtro });
+    const filtros = JSON.stringify({ linhas: { ...S.linhas }, linhasLinha: { ...S.linhasLinha }, linhasGols: { ...S.linhasGols }, filtro: S.filtro });
     try {
         const r = await fetch('/api/usuario/padroes', {
             method: 'POST',
