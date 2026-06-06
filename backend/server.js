@@ -276,7 +276,7 @@ async function _registrarAcesso(usuarioId, usuario, tipo, ip, userAgent, geo, du
 }
 // ──────────────────────────────────────────────────────────────
 
-// Middleware de autenticação — valida sessão ativa via cookie (preferido) ou body (legado)
+// Middleware de autenticação — valida sessão ativa via cookie (preferido) ou body/query (legado)
 function requireAuth(req, res, next) {
     // 1) Token via cookie httpOnly (novo padrão)
     const cookieToken = req.cookies?.sess;
@@ -285,19 +285,17 @@ function requireAuth(req, res, next) {
             if (sess.token === cookieToken) {
                 sess.lastSeen = new Date();
                 req.sessionUser = sess;
-                // Garante que req.body.usuarioId existe para compatibilidade com rotas existentes
                 if (!req.body) req.body = {};
                 req.body.usuarioId = req.body.usuarioId || uid;
                 return next();
             }
         }
-        // Cookie presente mas token inválido/expirado
         res.clearCookie('sess');
         return res.json({ success: false, message: 'Sessão expirada. Faça login novamente.' });
     }
 
-    // 2) Fallback legado: usuarioId no body validado contra activeSessions
-    const uid = String(req.body?.usuarioId || '');
+    // 2) Fallback legado: usuarioId no body ou query validado contra activeSessions
+    const uid = String(req.body?.usuarioId || req.query?.usuarioId || '');
     if (uid && activeSessions.has(uid)) {
         const sess = activeSessions.get(uid);
         sess.lastSeen = new Date();
@@ -1349,7 +1347,7 @@ async function _getMaxPadroes() {
 }
 
 // Listar padrões do usuário
-app.get('/api/usuario/padroes', async (req, res) => {
+app.get('/api/usuario/padroes', requireAuth, async (req, res) => {
     const usuarioId = parseInt(req.query.usuarioId);
     if (!usuarioId) return res.json({ success: false, message: 'usuarioId obrigatório' });
     try {
@@ -1369,7 +1367,7 @@ app.get('/api/usuario/padroes', async (req, res) => {
 });
 
 // Criar padrão
-app.post('/api/usuario/padroes', async (req, res) => {
+app.post('/api/usuario/padroes', requireAuth, async (req, res) => {
     const { usuarioId, nome, filtros } = req.body;
     if (!usuarioId || !nome || !filtros) return res.json({ success: false, message: 'Dados incompletos' });
     try {
@@ -1392,7 +1390,7 @@ app.post('/api/usuario/padroes', async (req, res) => {
 });
 
 // Atualizar padrão (nome/filtros) ou definir principal — propaga para cópias publicadas
-app.put('/api/usuario/padroes/:id', async (req, res) => {
+app.put('/api/usuario/padroes/:id', requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const { usuarioId, nome, filtros, is_principal } = req.body;
     if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
@@ -1414,7 +1412,7 @@ app.put('/api/usuario/padroes/:id', async (req, res) => {
 });
 
 // Apagar padrão — bloqueia se for cópia recebida de um admin (publicado_por IS NOT NULL)
-app.delete('/api/usuario/padroes/:id', async (req, res) => {
+app.delete('/api/usuario/padroes/:id', requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const usuarioId = parseInt(req.body.usuarioId || req.query.usuarioId);
     if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
@@ -1431,7 +1429,7 @@ app.delete('/api/usuario/padroes/:id', async (req, res) => {
 });
 
 // Publicar padrão para todos os usuários ativos (somente master/admin)
-app.post('/api/padroes/publicar/:id', async (req, res) => {
+app.post('/api/padroes/publicar/:id', requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const { usuarioId } = req.body;
     if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
@@ -1469,7 +1467,7 @@ app.post('/api/padroes/publicar/:id', async (req, res) => {
 });
 
 // Remover padrão publicado de todos os usuários (somente master/admin)
-app.delete('/api/padroes/publicar/:id', async (req, res) => {
+app.delete('/api/padroes/publicar/:id', requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const usuarioId = parseInt(req.body.usuarioId || req.query.usuarioId);
     if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
@@ -1491,7 +1489,7 @@ app.delete('/api/padroes/publicar/:id', async (req, res) => {
 });
 
 // Listar todos os padrões de todos os usuários (somente master/admin)
-app.get('/api/admin/padroes', async (req, res) => {
+app.get('/api/admin/padroes', requireAuth, async (req, res) => {
     const usuarioId = parseInt(req.query.usuarioId);
     if (!usuarioId) return res.json({ success: false, message: 'usuarioId obrigatório' });
     try {
@@ -1513,7 +1511,7 @@ app.get('/api/admin/padroes', async (req, res) => {
 });
 
 // Excluir qualquer padrão (somente master/admin)
-app.delete('/api/admin/padroes/:id', async (req, res) => {
+app.delete('/api/admin/padroes/:id', requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const usuarioId = parseInt(req.body.usuarioId || req.query.usuarioId);
     if (!usuarioId || !id) return res.json({ success: false, message: 'Dados incompletos' });
@@ -2179,7 +2177,7 @@ server.listen(PORT, () => {
             _coletorTimer = setTimeout(_cicloColeta, espera * 1000);
         }
 
-        app.get('/api/status-coletor', (req, res) => {
+        app.get('/api/status-coletor', requireAuth, (req, res) => {
             const uptime = process.uptime(), mem = process.memoryUsage(), agora = Date.now();
             const semColeta = coletor365.ultimaColetaSucesso ? Math.round((agora - coletor365.ultimaColetaSucesso) / 1000) : null;
             const fu = s => { const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60); return d>0?`${d}d ${h}h ${m}m`:h>0?`${h}h ${m}m ${sc}s`:`${m}m ${sc}s`; };
