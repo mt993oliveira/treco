@@ -606,17 +606,18 @@ function lerOddsDOM() {
         oddHtFora   = htTimes[1]?.odd || 0;
     }
 
-    // Debug temporário: inspeciona estrutura interna dos pods extras quando odds=0
+    // Debug temporário: mostra os valores reais de nome/odd que readParts extraiu
     let debugPods = null;
-    if (ou25Pod && ou25Parts.length === 0) {
-        const inner = ou25Pod.querySelector('.gl-MarketGroupPod_Body, [class*="Body"], [class*="Content"]');
-        const el = inner || ou25Pod;
-        const firstChild = el.firstElementChild;
-        debugPods = {
-            ouClasses: el.className,
-            firstChildClass: firstChild?.className || 'none',
-            firstChildHtml: (firstChild?.outerHTML || el.innerHTML || '').replace(/\s+/g,' ').substring(0, 400),
-        };
+    if (ou25Pod && oddOver25 === 0) {
+        const partsInfo = ou25Parts.slice(0, 4).map(p => `nome="${p.nome}" odd=${p.odd}`).join(' | ');
+        // Se parts vazio, mostra o HTML do primeiro elemento filho do pod
+        let htmlSnip = '';
+        if (ou25Parts.length === 0) {
+            const body = ou25Pod.querySelector('[class*="Body"],[class*="Content"],[class*="MarketGroup_"]');
+            const el = body || ou25Pod;
+            htmlSnip = (el.innerHTML || '').replace(/\s+/g,' ').substring(0, 350);
+        }
+        debugPods = { count: ou25Parts.length, parts: partsInfo || '(vazio)', html: htmlSnip };
     }
 
     return {
@@ -761,9 +762,8 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                         console.log(`   📦 [${ligaNorm}] pods: ${odds.podNames.join(' | ')}`);
                     }
                     if (idx === 0 && odds.debugPods) {
-                        console.log(`   🔍 [${ligaNorm}] OU pod classes: ${odds.debugPods.ouClasses}`);
-                        console.log(`   🔍 [${ligaNorm}] 1º filho: ${odds.debugPods.firstChildClass}`);
-                        console.log(`   🔍 [${ligaNorm}] HTML: ${odds.debugPods.firstChildHtml}`);
+                        console.log(`   🔍 [${ligaNorm}] OU parts(${odds.debugPods.count}): ${odds.debugPods.parts}`);
+                        if (odds.debugPods.html) console.log(`   🔍 [${ligaNorm}] OU html: ${odds.debugPods.html}`);
                     }
                     resultados.push(odds);
                 }
