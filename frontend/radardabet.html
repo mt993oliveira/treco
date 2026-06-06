@@ -8930,10 +8930,8 @@ async function renderProximosJogos() {
 
         const cards = eventos.map((e, i) => {
             const dt      = e.horario ? new Date(e.horario) : null;
-            // horario foi salvo como "hora Bet365 tratada como UTC" (sem conversão de fuso)
-            // para o countdown bater, comparamos contra a hora local do browser (não UTC real)
-            const _localNow = Date.now() - new Date().getTimezoneOffset() * 60000;
-            const diffMin = dt ? Math.round((dt.getTime() - _localNow) / 60000) : 0;
+            // Bet365 exibe horários em BST (UTC+1 no verão UK); coletor salva como UTC direto → 1h adiantado
+            const diffMin = dt ? Math.round((dt.getTime() - Date.now() - 60*60*1000) / 60000) : 0;
             const tempoTxt = diffMin <= 0
                 ? '<span style="color:#1fcc59;font-weight:700">● Ao vivo</span>'
                 : diffMin < 60
