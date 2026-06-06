@@ -616,6 +616,29 @@ function lerOddsDOM() {
     };
 }
 
+// ── Expande pods colapsados antes de ler as odds ─────────────
+// Bet365 renderiza apenas o Resultado Final expandido por padrão.
+// OU, BTTS e HT ficam colapsados — precisamos clicar o header para ver participantes.
+async function expandirPodsExtras(pg) {
+    const KEYWORDS = ['mais/menos', 'gols mais', 'para o time marcar', 'time marcar', 'intervalo - resultado'];
+    const expandiu = await pg.evaluate((keywords) => {
+        const pods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')];
+        let count = 0;
+        for (const pod of pods) {
+            const txt = (pod.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim().toLowerCase();
+            if (!keywords.some(k => txt.includes(k))) continue;
+            // Só clica se ainda não há participantes visíveis (evita fechar o que já está aberto)
+            const temParticipantes = !!pod.querySelector('.srb-ParticipantStackedBorderless');
+            if (!temParticipantes) {
+                pod.querySelector('.gl-MarketGroupButton')?.click();
+                count++;
+            }
+        }
+        return count;
+    }, KEYWORDS).catch(() => 0);
+    if (expandiu > 0) await new Promise(r => setTimeout(r, 900));
+}
+
 // ── Hard refresh + volta à liga (reutilizado entre jogos) ────
 async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
     // pg.reload() é o caminho correto — pg.evaluate(location.reload) detacha o frame imediatamente
@@ -697,6 +720,8 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                 await diagnosticarPagina(pg, ligaNorm, ` "${horarioAlvo}" sem pods:`);
                 continue; // próximo jogo terá seu próprio refresh
             }
+
+            await expandirPodsExtras(pg);
 
             const odds = await pg.evaluate(lerOddsDOM);
             if (odds.ok) {
