@@ -126,13 +126,30 @@ let _colsEnsured = false;
 async function _ensureOddsColumns(pool) {
     if (_colsEnsured) return;
     const cols = [
-        ['odd_over25',   'DECIMAL(10,2)'],
-        ['odd_under25',  'DECIMAL(10,2)'],
-        ['odd_btts_sim', 'DECIMAL(10,2)'],
-        ['odd_btts_nao', 'DECIMAL(10,2)'],
-        ['odd_ht_casa',  'DECIMAL(10,2)'],
-        ['odd_ht_empate','DECIMAL(10,2)'],
-        ['odd_ht_fora',  'DECIMAL(10,2)'],
+        // Over/Under por linha
+        ['odd_over05',    'DECIMAL(10,2)'], ['odd_under05',   'DECIMAL(10,2)'],
+        ['odd_over15',    'DECIMAL(10,2)'], ['odd_under15',   'DECIMAL(10,2)'],
+        ['odd_over25',    'DECIMAL(10,2)'], ['odd_under25',   'DECIMAL(10,2)'],
+        ['odd_over35',    'DECIMAL(10,2)'], ['odd_under35',   'DECIMAL(10,2)'],
+        // BTTS
+        ['odd_btts_sim',  'DECIMAL(10,2)'], ['odd_btts_nao',  'DECIMAL(10,2)'],
+        // HT Result
+        ['odd_ht_casa',   'DECIMAL(10,2)'], ['odd_ht_empate', 'DECIMAL(10,2)'], ['odd_ht_fora',  'DECIMAL(10,2)'],
+        // HT/FT combinado (9 resultados)
+        ['odd_htft_11',   'DECIMAL(10,2)'], ['odd_htft_1x',   'DECIMAL(10,2)'], ['odd_htft_12',  'DECIMAL(10,2)'],
+        ['odd_htft_x1',   'DECIMAL(10,2)'], ['odd_htft_xx',   'DECIMAL(10,2)'], ['odd_htft_x2',  'DECIMAL(10,2)'],
+        ['odd_htft_21',   'DECIMAL(10,2)'], ['odd_htft_2x',   'DECIMAL(10,2)'], ['odd_htft_22',  'DECIMAL(10,2)'],
+        // Total de Gols (faixas)
+        ['odd_totgols_01',    'DECIMAL(10,2)'], ['odd_totgols_23',    'DECIMAL(10,2)'], ['odd_totgols_4mais', 'DECIMAL(10,2)'],
+        // Resultado Exato
+        ['odd_placar_1_0',    'DECIMAL(10,2)'], ['odd_placar_2_0',    'DECIMAL(10,2)'],
+        ['odd_placar_2_1',    'DECIMAL(10,2)'], ['odd_placar_3_0',    'DECIMAL(10,2)'],
+        ['odd_placar_3_1',    'DECIMAL(10,2)'], ['odd_placar_4_0',    'DECIMAL(10,2)'],
+        ['odd_placar_0_0',    'DECIMAL(10,2)'], ['odd_placar_1_1',    'DECIMAL(10,2)'],
+        ['odd_placar_2_2',    'DECIMAL(10,2)'], ['odd_placar_0_1',    'DECIMAL(10,2)'],
+        ['odd_placar_0_2',    'DECIMAL(10,2)'], ['odd_placar_1_2',    'DECIMAL(10,2)'],
+        ['odd_placar_0_3',    'DECIMAL(10,2)'], ['odd_placar_1_3',    'DECIMAL(10,2)'],
+        ['odd_placar_0_4',    'DECIMAL(10,2)'], ['odd_placar_outros', 'DECIMAL(10,2)'],
     ];
     for (const [col, type] of cols) {
         await pool.request().query(`
@@ -540,30 +557,29 @@ function lerOddsDOM() {
     }
 
     // OU usa matriz: headers "Mais de"/"Menos de", linhas "0.5"/"1.5"/"2.5"/"3.5"
-    // Odds em .gl-ParticipantOddsOnly_Odds; precisamos da linha com "2.5"
-    function readOU25(pod) {
-        if (!pod) return { over: 0, under: 0 };
+    function readOU(pod) {
+        if (!pod) return {};
         const markets = [...pod.querySelectorAll('.gl-Market')];
-        const labelNames = markets.flatMap(m =>
+        const labels = markets.flatMap(m =>
             [...m.querySelectorAll('.srb-ParticipantLabelCentered_Name')].map(e => e.textContent.trim())
         );
-        const idx25 = labelNames.findIndex(l => l === '2.5');
-        if (idx25 < 0) return { over: 0, under: 0 };
         const maisM  = markets.find(m => (m.querySelector('.gl-MarketColumnHeader')?.textContent || '').trim().toLowerCase().includes('mais'));
         const menosM = markets.find(m => (m.querySelector('.gl-MarketColumnHeader')?.textContent || '').trim().toLowerCase().includes('menos'));
         const maisOdds  = [...(maisM?.querySelectorAll('.gl-ParticipantOddsOnly_Odds')  || [])];
         const menosOdds = [...(menosM?.querySelectorAll('.gl-ParticipantOddsOnly_Odds') || [])];
-        return {
-            over:  parseFloat(maisOdds[idx25]?.textContent)  || 0,
-            under: parseFloat(menosOdds[idx25]?.textContent) || 0,
-        };
+        const result = {};
+        for (let i = 0; i < labels.length; i++) {
+            const key = labels[i].replace('.', ''); // '05','15','25','35'
+            result[`over${key}`]  = parseFloat(maisOdds[i]?.textContent)  || 0;
+            result[`under${key}`] = parseFloat(menosOdds[i]?.textContent) || 0;
+        }
+        return result;
     }
 
     // BTTS usa matriz: colunas "Sim"/"Não", linha "Ambos os Times" = idx 0
     function readBTTS(pod) {
         if (!pod) return { sim: 0, nao: 0 };
         const markets = [...pod.querySelectorAll('.gl-Market')];
-        // Encontra o índice de "Ambos os Times" nas labels
         const labelNames = markets.flatMap(m =>
             [...m.querySelectorAll('.srb-ParticipantLabel_Name')].map(e => e.textContent.trim().toLowerCase())
         );
@@ -577,6 +593,63 @@ function lerOddsDOM() {
             sim: parseFloat(simOdds[row]?.textContent) || 0,
             nao: parseFloat(naoOdds[row]?.textContent) || 0,
         };
+    }
+
+    // HT/FT — lista de 9 combinações usando readParts
+    // Bet365 usa nomes: "1/1","1/X","1/2","X/1","X/X","X/2","2/1","2/X","2/2"
+    function readHTFT(pod) {
+        const r = { htft_11:0, htft_1x:0, htft_12:0, htft_x1:0, htft_xx:0, htft_x2:0, htft_21:0, htft_2x:0, htft_22:0 };
+        for (const p of readParts(pod)) {
+            const n = p.nome.replace(/\s+/g,'').toLowerCase();
+            if      (n === '1/1' || n === 'casa/casa')      r.htft_11 = p.odd;
+            else if (n === '1/x' || n === 'casa/empate')    r.htft_1x = p.odd;
+            else if (n === '1/2' || n === 'casa/fora')      r.htft_12 = p.odd;
+            else if (n === 'x/1' || n === 'empate/casa')    r.htft_x1 = p.odd;
+            else if (n === 'x/x' || n === 'empate/empate')  r.htft_xx = p.odd;
+            else if (n === 'x/2' || n === 'empate/fora')    r.htft_x2 = p.odd;
+            else if (n === '2/1' || n === 'fora/casa')      r.htft_21 = p.odd;
+            else if (n === '2/x' || n === 'fora/empate')    r.htft_2x = p.odd;
+            else if (n === '2/2' || n === 'fora/fora')      r.htft_22 = p.odd;
+        }
+        return r;
+    }
+
+    // Total de Gols — faixas 0-1 / 2-3 / 4+
+    function readTotalGols(pod) {
+        const r = { totgols_01: 0, totgols_23: 0, totgols_4mais: 0 };
+        for (const p of readParts(pod)) {
+            const n = p.nome.replace(/\s+/g,'').toLowerCase();
+            if      (n === '0-1' || n === '01')                      r.totgols_01   = p.odd;
+            else if (n === '2-3' || n === '23')                      r.totgols_23   = p.odd;
+            else if (n.startsWith('4') || n.includes('4+') || n === '4emais') r.totgols_4mais = p.odd;
+        }
+        return r;
+    }
+
+    // Resultado Exato — mapeia placar "1-0","2-1" etc. para chaves fixas
+    function readCorrectScore(pod) {
+        const r = {
+            placar_1_0:0, placar_2_0:0, placar_2_1:0, placar_3_0:0, placar_3_1:0, placar_4_0:0,
+            placar_0_0:0, placar_1_1:0, placar_2_2:0,
+            placar_0_1:0, placar_0_2:0, placar_1_2:0, placar_0_3:0, placar_1_3:0, placar_0_4:0,
+            placar_outros:0,
+        };
+        const mapa = {
+            '1-0':r, '2-0':r, '2-1':r, '3-0':r, '3-1':r, '4-0':r,
+            '0-0':r, '1-1':r, '2-2':r,
+            '0-1':r, '0-2':r, '1-2':r, '0-3':r, '1-3':r, '0-4':r,
+        };
+        for (const p of readParts(pod)) {
+            const n = p.nome.trim();
+            const nLow = n.toLowerCase();
+            if (nLow.includes('outro') || nLow.includes('other') || nLow.includes('qualquer')) {
+                r.placar_outros = p.odd;
+            } else if (/^\d-\d$/.test(n)) {
+                const key = 'placar_' + n.replace('-','_');
+                if (key in r) r[key] = p.odd;
+            }
+        }
+        return r;
     }
 
     // ── Fulltime Result ───────────────────────────────────────
@@ -614,15 +687,15 @@ function lerOddsDOM() {
     if (!timeCasa || !timeFora || oddCasa <= 0 || oddEmpate <= 0 || oddFora <= 0)
         return { motivo: 'odds_zeradas', suspended, podNames };
 
-    // ── Over/Under 2.5 ───────────────────────────────────────
-    const ou25Pod = findPod(['mais/menos', 'gols mais', 'over/under', 'goals over']);
-    const ou25    = readOU25(ou25Pod);
+    // ── Over/Under todas as linhas ────────────────────────────
+    const ouPod = findPod(['mais/menos', 'gols mais', 'over/under', 'goals over']);
+    const ou    = readOU(ouPod);
 
     // ── BTTS ─────────────────────────────────────────────────
     const bttsPod = findPod(['para o time marcar', 'time marcar', 'both teams']);
     const btts    = readBTTS(bttsPod);
 
-    // ── Half-Time Result (usa srb-ParticipantResponsiveText) ─────────────────
+    // ── Half-Time Result ─────────────────────────────────────
     const htPod   = findPod(['intervalo - resultado', 'half-time', 'half time']);
     const htParts = readParts(htPod);
     let oddHtCasa = 0, oddHtEmpate = 0, oddHtFora = 0;
@@ -634,12 +707,28 @@ function lerOddsDOM() {
         oddHtFora   = htTimes[1]?.odd || 0;
     }
 
+    // ── HT/FT combinado ──────────────────────────────────────
+    const htftPod = findPod(['intervalo/final', 'half-time/full-time', 'ht/ft', 'resultado intervalo/final']);
+    const htft    = readHTFT(htftPod);
+
+    // ── Total de Gols (faixas) ────────────────────────────────
+    const totGolsPod = findPod(['total de gols', 'total goals', 'número de gols', 'numero de gols']);
+    const totGols    = readTotalGols(totGolsPod);
+
+    // ── Resultado Exato ───────────────────────────────────────
+    const csPod = findPod(['resultado exato', 'correct score', 'placar exato']);
+    const cs    = readCorrectScore(csPod);
+
     return {
         ok: true, suspended, horario, timeCasa, timeFora,
         oddCasa, oddEmpate, oddFora,
-        oddOver25:  ou25.over,  oddUnder25: ou25.under,
-        oddBttsSim: btts.sim,   oddBttsNao: btts.nao,
+        oddOver05: ou.over05||0, oddUnder05: ou.under05||0,
+        oddOver15: ou.over15||0, oddUnder15: ou.under15||0,
+        oddOver25: ou.over25||0, oddUnder25: ou.under25||0,
+        oddOver35: ou.over35||0, oddUnder35: ou.under35||0,
+        oddBttsSim: btts.sim, oddBttsNao: btts.nao,
         oddHtCasa, oddHtEmpate, oddHtFora,
+        ...htft, ...totGols, ...cs,
         podNames,
     };
 }
@@ -770,19 +859,14 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                     const icon  = odds.suspended ? '📌' : '💰';
                     const label = odds.suspended ? '[race-off]' : '[próximo]';
                     await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
-                                       odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora, {
-                        oddOver25:   odds.oddOver25   || 0,
-                        oddUnder25:  odds.oddUnder25  || 0,
-                        oddBttsSim:  odds.oddBttsSim  || 0,
-                        oddBttsNao:  odds.oddBttsNao  || 0,
-                        oddHtCasa:   odds.oddHtCasa   || 0,
-                        oddHtEmpate: odds.oddHtEmpate || 0,
-                        oddHtFora:   odds.oddHtFora   || 0,
-                    });
-                    const ou  = odds.oddOver25  ? ` | O2.5:${odds.oddOver25}/${odds.oddUnder25}` : '';
-                    const bt  = odds.oddBttsSim ? ` | BTTS:${odds.oddBttsSim}/${odds.oddBttsNao}` : '';
-                    const ht  = odds.oddHtCasa  ? ` | HT:${odds.oddHtCasa}/${odds.oddHtEmpate}/${odds.oddHtFora}` : '';
-                    console.log(`   ${icon} [${ligaNorm}] ${odds.horario} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} ${label} | 1X2:${odds.oddCasa}/${odds.oddEmpate}/${odds.oddFora}${ou}${bt}${ht}`);
+                                       odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora, odds);
+                    const ou   = odds.oddOver25   ? ` | O0.5:${odds.oddOver05}/${odds.oddUnder05} O1.5:${odds.oddOver15}/${odds.oddUnder15} O2.5:${odds.oddOver25}/${odds.oddUnder25} O3.5:${odds.oddOver35}/${odds.oddUnder35}` : '';
+                    const bt   = odds.oddBttsSim  ? ` | BTTS:${odds.oddBttsSim}/${odds.oddBttsNao}` : '';
+                    const ht   = odds.oddHtCasa   ? ` | HT:${odds.oddHtCasa}/${odds.oddHtEmpate}/${odds.oddHtFora}` : '';
+                    const hf   = odds.htft_11     ? ` | HT/FT:${odds.htft_11}/${odds.htft_xx}/${odds.htft_22}(+6)` : '';
+                    const tg   = odds.totgols_01  ? ` | TG:${odds.totgols_01}/${odds.totgols_23}/${odds.totgols_4mais}` : '';
+                    const cs   = odds.placar_1_0  ? ` | CS:${odds.placar_1_0}/${odds.placar_0_0}/${odds.placar_0_1}(+${Object.keys(odds).filter(k=>k.startsWith('placar_')&&odds[k]>0).length})` : '';
+                    console.log(`   ${icon} [${ligaNorm}] ${odds.horario} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} ${label} | 1X2:${odds.oddCasa}/${odds.oddEmpate}/${odds.oddFora}${ou}${bt}${ht}${hf}${tg}${cs}`);
                     if (idx === 0 && odds.podNames && odds.podNames.length) {
                         console.log(`   📦 [${ligaNorm}] pods: ${odds.podNames.join(' | ')}`);
                     }
@@ -807,7 +891,6 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
 }
 
 // ── Salva evento no banco (MERGE) ────────────────────────────
-// extra: { oddOver25, oddUnder25, oddBttsSim, oddBttsNao, oddHtCasa, oddHtEmpate, oddHtFora }
 async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpate, oddFora, extra) {
     const db       = await getPool();
     await _ensureOddsColumns(db);
@@ -815,6 +898,7 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
     const tfNorm   = normalizarNomeTime(timeFora);
     const eventoId = gerarId(liga, tcNorm, tfNorm, horario || '');
     const ex       = extra || {};
+    const g = k => ex[k] || 0; // getter com fallback 0
 
     let startDt = new Date();
     if (horario && /^\d{1,2}:\d{2}$/.test(horario)) {
@@ -824,51 +908,111 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
         if (startDt < now) startDt.setUTCDate(startDt.getUTCDate() + 1);
     }
 
+    const D = sql.Decimal(10,2);
     await db.request()
         .input('id',         sql.BigInt,       eventoId)
         .input('league',     sql.NVarChar(200), liga)
         .input('timeCasa',   sql.NVarChar(100), tcNorm)
         .input('timeFora',   sql.NVarChar(100), tfNorm)
         .input('startDt',    sql.DateTime2,     startDt)
-        .input('oddCasa',    sql.Decimal(10,2), oddCasa)
-        .input('oddEmp',     sql.Decimal(10,2), oddEmpate)
-        .input('oddFora',    sql.Decimal(10,2), oddFora)
-        .input('oddOver25',  sql.Decimal(10,2), ex.oddOver25  || 0)
-        .input('oddUnder25', sql.Decimal(10,2), ex.oddUnder25 || 0)
-        .input('oddBttsSim', sql.Decimal(10,2), ex.oddBttsSim || 0)
-        .input('oddBttsNao', sql.Decimal(10,2), ex.oddBttsNao || 0)
-        .input('oddHtCasa',  sql.Decimal(10,2), ex.oddHtCasa  || 0)
-        .input('oddHtEmp',   sql.Decimal(10,2), ex.oddHtEmpate|| 0)
-        .input('oddHtFora',  sql.Decimal(10,2), ex.oddHtFora  || 0)
-        .input('agora',      sql.DateTime2,     new Date())
+        .input('oddCasa',    D, oddCasa)      .input('oddEmp',     D, oddEmpate)    .input('oddFora',    D, oddFora)
+        .input('oddOver05',  D, g('oddOver05')).input('oddUnder05', D, g('oddUnder05'))
+        .input('oddOver15',  D, g('oddOver15')).input('oddUnder15', D, g('oddUnder15'))
+        .input('oddOver25',  D, g('oddOver25')).input('oddUnder25', D, g('oddUnder25'))
+        .input('oddOver35',  D, g('oddOver35')).input('oddUnder35', D, g('oddUnder35'))
+        .input('oddBttsSim', D, g('oddBttsSim')).input('oddBttsNao', D, g('oddBttsNao'))
+        .input('oddHtCasa',  D, g('oddHtCasa')) .input('oddHtEmp',   D, g('oddHtEmpate')).input('oddHtFora',  D, g('oddHtFora'))
+        .input('htft11',     D, g('htft_11'))   .input('htft1x',     D, g('htft_1x'))    .input('htft12',     D, g('htft_12'))
+        .input('htftx1',     D, g('htft_x1'))   .input('htftxx',     D, g('htft_xx'))    .input('htftx2',     D, g('htft_x2'))
+        .input('htft21',     D, g('htft_21'))   .input('htft2x',     D, g('htft_2x'))    .input('htft22',     D, g('htft_22'))
+        .input('tg01',       D, g('totgols_01')).input('tg23',       D, g('totgols_23')) .input('tg4m',       D, g('totgols_4mais'))
+        .input('cs10',       D, g('placar_1_0')).input('cs20',       D, g('placar_2_0')) .input('cs21',       D, g('placar_2_1'))
+        .input('cs30',       D, g('placar_3_0')).input('cs31',       D, g('placar_3_1')) .input('cs40',       D, g('placar_4_0'))
+        .input('cs00',       D, g('placar_0_0')).input('cs11',       D, g('placar_1_1')) .input('cs22',       D, g('placar_2_2'))
+        .input('cs01',       D, g('placar_0_1')).input('cs02',       D, g('placar_0_2')) .input('cs12',       D, g('placar_1_2'))
+        .input('cs03',       D, g('placar_0_3')).input('cs13',       D, g('placar_1_3')) .input('cs04',       D, g('placar_0_4'))
+        .input('csOut',      D, g('placar_outros'))
+        .input('agora',      sql.DateTime2, new Date())
         .query(`
             MERGE bet365_eventos AS t
             USING (SELECT @id AS id) AS s ON t.id = s.id
             WHEN MATCHED THEN UPDATE SET
-                t.odd_casa    = CASE WHEN @oddCasa    > 0 THEN @oddCasa    ELSE t.odd_casa    END,
-                t.odd_empate  = CASE WHEN @oddEmp     > 0 THEN @oddEmp     ELSE t.odd_empate  END,
-                t.odd_fora    = CASE WHEN @oddFora    > 0 THEN @oddFora    ELSE t.odd_fora    END,
-                t.odd_over25  = CASE WHEN @oddOver25  > 0 THEN @oddOver25  ELSE t.odd_over25  END,
-                t.odd_under25 = CASE WHEN @oddUnder25 > 0 THEN @oddUnder25 ELSE t.odd_under25 END,
-                t.odd_btts_sim= CASE WHEN @oddBttsSim > 0 THEN @oddBttsSim ELSE t.odd_btts_sim END,
-                t.odd_btts_nao= CASE WHEN @oddBttsNao > 0 THEN @oddBttsNao ELSE t.odd_btts_nao END,
-                t.odd_ht_casa = CASE WHEN @oddHtCasa  > 0 THEN @oddHtCasa  ELSE t.odd_ht_casa  END,
-                t.odd_ht_empate= CASE WHEN @oddHtEmp  > 0 THEN @oddHtEmp   ELSE t.odd_ht_empate END,
-                t.odd_ht_fora = CASE WHEN @oddHtFora  > 0 THEN @oddHtFora  ELSE t.odd_ht_fora  END,
+                t.odd_casa       = CASE WHEN @oddCasa    > 0 THEN @oddCasa    ELSE t.odd_casa    END,
+                t.odd_empate     = CASE WHEN @oddEmp     > 0 THEN @oddEmp     ELSE t.odd_empate  END,
+                t.odd_fora       = CASE WHEN @oddFora    > 0 THEN @oddFora    ELSE t.odd_fora    END,
+                t.odd_over05     = CASE WHEN @oddOver05  > 0 THEN @oddOver05  ELSE t.odd_over05  END,
+                t.odd_under05    = CASE WHEN @oddUnder05 > 0 THEN @oddUnder05 ELSE t.odd_under05 END,
+                t.odd_over15     = CASE WHEN @oddOver15  > 0 THEN @oddOver15  ELSE t.odd_over15  END,
+                t.odd_under15    = CASE WHEN @oddUnder15 > 0 THEN @oddUnder15 ELSE t.odd_under15 END,
+                t.odd_over25     = CASE WHEN @oddOver25  > 0 THEN @oddOver25  ELSE t.odd_over25  END,
+                t.odd_under25    = CASE WHEN @oddUnder25 > 0 THEN @oddUnder25 ELSE t.odd_under25 END,
+                t.odd_over35     = CASE WHEN @oddOver35  > 0 THEN @oddOver35  ELSE t.odd_over35  END,
+                t.odd_under35    = CASE WHEN @oddUnder35 > 0 THEN @oddUnder35 ELSE t.odd_under35 END,
+                t.odd_btts_sim   = CASE WHEN @oddBttsSim > 0 THEN @oddBttsSim ELSE t.odd_btts_sim END,
+                t.odd_btts_nao   = CASE WHEN @oddBttsNao > 0 THEN @oddBttsNao ELSE t.odd_btts_nao END,
+                t.odd_ht_casa    = CASE WHEN @oddHtCasa  > 0 THEN @oddHtCasa  ELSE t.odd_ht_casa  END,
+                t.odd_ht_empate  = CASE WHEN @oddHtEmp   > 0 THEN @oddHtEmp   ELSE t.odd_ht_empate END,
+                t.odd_ht_fora    = CASE WHEN @oddHtFora  > 0 THEN @oddHtFora  ELSE t.odd_ht_fora  END,
+                t.odd_htft_11    = CASE WHEN @htft11     > 0 THEN @htft11     ELSE t.odd_htft_11  END,
+                t.odd_htft_1x    = CASE WHEN @htft1x     > 0 THEN @htft1x     ELSE t.odd_htft_1x  END,
+                t.odd_htft_12    = CASE WHEN @htft12     > 0 THEN @htft12     ELSE t.odd_htft_12  END,
+                t.odd_htft_x1    = CASE WHEN @htftx1     > 0 THEN @htftx1     ELSE t.odd_htft_x1  END,
+                t.odd_htft_xx    = CASE WHEN @htftxx     > 0 THEN @htftxx     ELSE t.odd_htft_xx  END,
+                t.odd_htft_x2    = CASE WHEN @htftx2     > 0 THEN @htftx2     ELSE t.odd_htft_x2  END,
+                t.odd_htft_21    = CASE WHEN @htft21     > 0 THEN @htft21     ELSE t.odd_htft_21  END,
+                t.odd_htft_2x    = CASE WHEN @htft2x     > 0 THEN @htft2x     ELSE t.odd_htft_2x  END,
+                t.odd_htft_22    = CASE WHEN @htft22     > 0 THEN @htft22     ELSE t.odd_htft_22  END,
+                t.odd_totgols_01    = CASE WHEN @tg01  > 0 THEN @tg01  ELSE t.odd_totgols_01    END,
+                t.odd_totgols_23    = CASE WHEN @tg23  > 0 THEN @tg23  ELSE t.odd_totgols_23    END,
+                t.odd_totgols_4mais = CASE WHEN @tg4m  > 0 THEN @tg4m  ELSE t.odd_totgols_4mais END,
+                t.odd_placar_1_0    = CASE WHEN @cs10  > 0 THEN @cs10  ELSE t.odd_placar_1_0    END,
+                t.odd_placar_2_0    = CASE WHEN @cs20  > 0 THEN @cs20  ELSE t.odd_placar_2_0    END,
+                t.odd_placar_2_1    = CASE WHEN @cs21  > 0 THEN @cs21  ELSE t.odd_placar_2_1    END,
+                t.odd_placar_3_0    = CASE WHEN @cs30  > 0 THEN @cs30  ELSE t.odd_placar_3_0    END,
+                t.odd_placar_3_1    = CASE WHEN @cs31  > 0 THEN @cs31  ELSE t.odd_placar_3_1    END,
+                t.odd_placar_4_0    = CASE WHEN @cs40  > 0 THEN @cs40  ELSE t.odd_placar_4_0    END,
+                t.odd_placar_0_0    = CASE WHEN @cs00  > 0 THEN @cs00  ELSE t.odd_placar_0_0    END,
+                t.odd_placar_1_1    = CASE WHEN @cs11  > 0 THEN @cs11  ELSE t.odd_placar_1_1    END,
+                t.odd_placar_2_2    = CASE WHEN @cs22  > 0 THEN @cs22  ELSE t.odd_placar_2_2    END,
+                t.odd_placar_0_1    = CASE WHEN @cs01  > 0 THEN @cs01  ELSE t.odd_placar_0_1    END,
+                t.odd_placar_0_2    = CASE WHEN @cs02  > 0 THEN @cs02  ELSE t.odd_placar_0_2    END,
+                t.odd_placar_1_2    = CASE WHEN @cs12  > 0 THEN @cs12  ELSE t.odd_placar_1_2    END,
+                t.odd_placar_0_3    = CASE WHEN @cs03  > 0 THEN @cs03  ELSE t.odd_placar_0_3    END,
+                t.odd_placar_1_3    = CASE WHEN @cs13  > 0 THEN @cs13  ELSE t.odd_placar_1_3    END,
+                t.odd_placar_0_4    = CASE WHEN @cs04  > 0 THEN @cs04  ELSE t.odd_placar_0_4    END,
+                t.odd_placar_outros = CASE WHEN @csOut > 0 THEN @csOut ELSE t.odd_placar_outros  END,
                 t.start_time_datetime = @startDt,
                 t.data_atualizacao    = @agora,
                 t.ativo               = 1
             WHEN NOT MATCHED THEN INSERT
-                (id, url, league_name, time_casa, time_fora, status,
-                 start_time_datetime, odd_casa, odd_empate, odd_fora,
-                 odd_over25, odd_under25, odd_btts_sim, odd_btts_nao,
+                (id, url, league_name, time_casa, time_fora, status, start_time_datetime,
+                 odd_casa, odd_empate, odd_fora,
+                 odd_over05, odd_under05, odd_over15, odd_under15,
+                 odd_over25, odd_under25, odd_over35, odd_under35,
+                 odd_btts_sim, odd_btts_nao,
                  odd_ht_casa, odd_ht_empate, odd_ht_fora,
+                 odd_htft_11, odd_htft_1x, odd_htft_12, odd_htft_x1, odd_htft_xx, odd_htft_x2,
+                 odd_htft_21, odd_htft_2x, odd_htft_22,
+                 odd_totgols_01, odd_totgols_23, odd_totgols_4mais,
+                 odd_placar_1_0, odd_placar_2_0, odd_placar_2_1, odd_placar_3_0, odd_placar_3_1, odd_placar_4_0,
+                 odd_placar_0_0, odd_placar_1_1, odd_placar_2_2,
+                 odd_placar_0_1, odd_placar_0_2, odd_placar_1_2, odd_placar_0_3, odd_placar_1_3, odd_placar_0_4,
+                 odd_placar_outros,
                  data_coleta, data_atualizacao, ativo)
-            VALUES (@id, '', @league, @timeCasa, @timeFora, 'AGENDADO',
-                    @startDt, @oddCasa, @oddEmp, @oddFora,
-                    NULLIF(@oddOver25,0), NULLIF(@oddUnder25,0),
-                    NULLIF(@oddBttsSim,0), NULLIF(@oddBttsNao,0),
-                    NULLIF(@oddHtCasa,0), NULLIF(@oddHtEmp,0), NULLIF(@oddHtFora,0),
+            VALUES (@id, '', @league, @timeCasa, @timeFora, 'AGENDADO', @startDt,
+                    @oddCasa, @oddEmp, @oddFora,
+                    NULLIF(@oddOver05,0),NULLIF(@oddUnder05,0),NULLIF(@oddOver15,0),NULLIF(@oddUnder15,0),
+                    NULLIF(@oddOver25,0),NULLIF(@oddUnder25,0),NULLIF(@oddOver35,0),NULLIF(@oddUnder35,0),
+                    NULLIF(@oddBttsSim,0),NULLIF(@oddBttsNao,0),
+                    NULLIF(@oddHtCasa,0),NULLIF(@oddHtEmp,0),NULLIF(@oddHtFora,0),
+                    NULLIF(@htft11,0),NULLIF(@htft1x,0),NULLIF(@htft12,0),
+                    NULLIF(@htftx1,0),NULLIF(@htftxx,0),NULLIF(@htftx2,0),
+                    NULLIF(@htft21,0),NULLIF(@htft2x,0),NULLIF(@htft22,0),
+                    NULLIF(@tg01,0),NULLIF(@tg23,0),NULLIF(@tg4m,0),
+                    NULLIF(@cs10,0),NULLIF(@cs20,0),NULLIF(@cs21,0),NULLIF(@cs30,0),NULLIF(@cs31,0),NULLIF(@cs40,0),
+                    NULLIF(@cs00,0),NULLIF(@cs11,0),NULLIF(@cs22,0),
+                    NULLIF(@cs01,0),NULLIF(@cs02,0),NULLIF(@cs12,0),NULLIF(@cs03,0),NULLIF(@cs13,0),NULLIF(@cs04,0),
+                    NULLIF(@csOut,0),
                     @agora, @agora, 1);
         `);
 }
