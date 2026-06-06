@@ -2408,7 +2408,8 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
         const check = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
-        if (!check.recordset.length || check.recordset[0].TipoUsuario !== 'master') {
+        const tipoReq = (check.recordset[0]?.TipoUsuario || '').toLowerCase();
+        if (!check.recordset.length || !['master','administrador'].includes(tipoReq)) {
             return res.json({ success: false, message: 'Acesso negado' });
         }
 

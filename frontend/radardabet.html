@@ -1129,6 +1129,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 🕐 Histórico
             </button>
+            <button id="ol-tab-seg" onclick="_setOnlineTab('seg')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                🔐 Segurança
+            </button>
         </div>
 
         <!-- Painel: Online Agora -->
@@ -1142,6 +1147,13 @@
             </div>
             <div style="margin-top:10px;font-size:9px;color:#334155;text-align:right">
                 Atualiza a cada 30s · Sessões inativas há mais de 15min são removidas automaticamente
+            </div>
+        </div>
+
+        <!-- Painel: Segurança -->
+        <div id="ol-pane-seg" style="display:none">
+            <div id="ol-seg-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
 
@@ -1381,11 +1393,6 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 🏁 Grade
             </button>
-            <button id="cfg-tab-seguranca" onclick="_cfgSetTab('seguranca')"
-                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
-                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
-                🔐 Segurança
-            </button>
         </div>
 
         <!-- Seção Coleta -->
@@ -1457,12 +1464,6 @@
             </div>
         </div>
 
-        <!-- Seção Segurança -->
-        <div id="cfg-section-seguranca" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
-            <div id="cfg-seguranca-fields">
-                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
-            </div>
-        </div>
 
         <div id="cfg-msg" style="display:none;padding:8px 12px;border-radius:5px;font-size:11px;margin-top:14px"></div>
 
@@ -11643,7 +11644,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade', 'seguranca'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -11653,18 +11654,19 @@ function _cfgSetTab(tab) {
         }
         if (sec) sec.style.display = ativo ? 'block' : 'none';
     });
-    if (tab === 'seguranca') _carregarDashboardSeguranca();
 }
 
 async function _carregarDashboardSeguranca() {
-    const el = document.getElementById('cfg-seguranca-fields');
+    const el = document.getElementById('ol-seg-fields');
     if (!el) return;
+    const _u = _getUser();
+    const isMaster = (_u?.TipoUsuario || '').toLowerCase() === 'master';
     el.innerHTML = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
     try {
         const r = await fetch('/api/admin/seguranca', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: _getUser()?.Id }),
+            body: JSON.stringify({ usuarioId: _u?.Id }),
         });
         const d = await r.json();
         if (!d.success) { el.innerHTML = `<div style="color:#f87171;padding:16px;font-size:12px">${d.message||'Erro'}</div>`; return; }
@@ -11681,7 +11683,7 @@ async function _carregarDashboardSeguranca() {
                     <div style="font-size:12px;font-weight:700;color:#e2e8f0">${s.usuario} <span style="color:#64748b;font-weight:400">${s.nome||''}</span> ${s.tipo==='master'?_tag('MASTER','#f59e0b'):''}</div>
                     <div style="font-size:10px;color:#64748b;margin-top:2px">IP: ${s.ip} · Login: ${_ago(s.loginTime)} · Ativo: ${_ago(s.lastSeen)} · ${s.inativoMin}min inativo</div>
                 </div>
-                ${s.tipo!=='master'?`<button onclick="_segDesconectar('${s.id}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">Desconectar</button>`:''}
+                ${(isMaster && s.tipo!=='master')?`<button onclick="_segDesconectar('${s.id}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">Desconectar</button>`:''}
             </div>`).join('');
 
         // ── IPs bloqueados ──────────────────────────────────────
@@ -12573,7 +12575,7 @@ function fecharOnlineAgora() {
 
 function _setOnlineTab(tab) {
     _onlineCurrentTab = tab;
-    ['online','hist'].forEach(t => {
+    ['online','hist','seg'].forEach(t => {
         const btn  = document.getElementById(`ol-tab-${t}`);
         const pane = document.getElementById(`ol-pane-${t}`);
         if (!btn || !pane) return;
@@ -12587,8 +12589,10 @@ function _setOnlineTab(tab) {
     if (tab === 'online') {
         _carregarOnlineAgora();
         _onlineTimer = setInterval(_carregarOnlineAgora, 30000);
-    } else {
+    } else if (tab === 'hist') {
         _carregarHistoricoAcessos(1);
+    } else if (tab === 'seg') {
+        _carregarDashboardSeguranca();
     }
 }
 
