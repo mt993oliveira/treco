@@ -632,25 +632,31 @@ function lerOddsDOM() {
 
 // ── Expande pods colapsados antes de ler as odds ─────────────
 // Bet365 renderiza apenas o Resultado Final expandido por padrão.
-// OU, BTTS e HT ficam colapsados — precisamos clicar o header para ver participantes.
+// OU, BTTS e HT ficam colapsados — precisam de ElementHandle.click() real
+// (mousedown+up) pois o SPA ignora DOM .click() simples.
 async function expandirPodsExtras(pg) {
     const KEYWORDS = ['mais/menos', 'gols mais', 'para o time marcar', 'time marcar', 'intervalo - resultado'];
-    const expandiu = await pg.evaluate((keywords) => {
-        const pods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')];
-        let count = 0;
-        for (const pod of pods) {
-            const txt = (pod.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim().toLowerCase();
-            if (!keywords.some(k => txt.includes(k))) continue;
-            // Só clica se ainda não há participantes visíveis (evita fechar o que já está aberto)
-            const temParticipantes = !!pod.querySelector('.srb-ParticipantStackedBorderless');
-            if (!temParticipantes) {
-                pod.querySelector('.gl-MarketGroupButton')?.click();
+    const pods = await pg.$$('.gl-MarketGroupPod.gl-MarketGroup').catch(() => []);
+    let count = 0;
+    for (const pod of pods) {
+        const txt = await pod.$eval('.gl-MarketGroupButton_Text',
+            el => el.textContent.trim().toLowerCase()
+        ).catch(() => '');
+        if (!KEYWORDS.some(k => txt.includes(k))) continue;
+        // Só clica se ainda não há participantes (evita fechar o que já está aberto)
+        const temParticipantes = await pod.$('.srb-ParticipantStackedBorderless').catch(() => null);
+        if (!temParticipantes) {
+            const btn = await pod.$('.gl-MarketGroupButton').catch(() => null);
+            if (btn) {
+                await btn.scrollIntoView().catch(() => {});
+                await btn.click({ delay: 60 }).catch(() => {});
                 count++;
+                await new Promise(r => setTimeout(r, 400));
             }
         }
-        return count;
-    }, KEYWORDS).catch(() => 0);
-    if (expandiu > 0) await new Promise(r => setTimeout(r, 900));
+    }
+    if (count > 0) await new Promise(r => setTimeout(r, 1200));
+    return count;
 }
 
 // ── Hard refresh + volta à liga (reutilizado entre jogos) ────
