@@ -3828,7 +3828,8 @@ async function carregarTudo() {
     // carregarHistorico() precisa terminar antes de carregarAnalise()
     // porque só ele define S.ligaAtiva (usado como filtro nos endpoints de análise)
     await carregarHistorico();
-    await carregarAnalise();
+    // Só busca Análise quando a aba está aberta — evita 5 queries a cada 2 min desnecessariamente
+    if (S.view === 'analise') await carregarAnalise();
 }
 
 // ============================================================
@@ -4007,7 +4008,7 @@ function faSet(campo, valor) {
     }
 
     // Todos os filtros recarregam automaticamente quando a aba Análise está aberta
-    if (S.view === 'analise') carregarAnalise();
+    if (S.view === 'analise') _carregarAnaliseDebounced();
 }
 
 // ── Mostra resumo dos filtros ativos ─────────────────────────────────────
@@ -4026,6 +4027,20 @@ function _faAtualizarStatus() {
     el.textContent = partes.join('  ·  ');
 }
 
+// ── Debounce para filtros da Análise ──────────────────────────────
+let _analiseDebounceTimer = null;
+function _carregarAnaliseDebounced() {
+    if (_analiseDebounceTimer) clearTimeout(_analiseDebounceTimer);
+    _analiseDebounceTimer = setTimeout(() => { _analiseDebounceTimer = null; carregarAnalise(); }, 600);
+}
+
+// ── Cache de 60s — evita refetch quando filtros não mudaram ───────
+let _analiseCache = null; // { params, data, ts }
+function _analiseCacheKey() {
+    return JSON.stringify([S.fa.nJogos, S.fa.minJogos, S.fa.minPct, S.fa.tipoMercado,
+                           S.fa.soValueBets, S.fa.minVE, S.fa.nRecente, S.ligaAtiva]);
+}
+
 // ── Carrega TODA a aba Análise de uma vez: 5 endpoints em paralelo ────────
 let _analiseReqId = 0;
 async function carregarAnalise(forceRender = false) {
@@ -4033,6 +4048,23 @@ async function carregarAnalise(forceRender = false) {
     try {
         const nJogos = S.fa.nJogos || 100;
         const liga   = S.ligaAtiva || '';
+
+        // Usa cache se filtros não mudaram e tem menos de 60s
+        const cacheKey = _analiseCacheKey();
+        if (!forceRender && _analiseCache && _analiseCache.params === cacheKey
+                && (Date.now() - _analiseCache.ts) < 60000) {
+            const { rSug, rMkt, rRes, rTend, rIA } = _analiseCache.data;
+            if (rSug.success) S.sugestoes = rSug.data || [];
+            S.mktDados = rMkt.data || {}; S.mktValueBets = rRes.value_bets || [];
+            S.mktTopSel = rRes.top_selecoes || [];
+            MKT.dados = { resumo: rRes, mercados: rMkt, tendencias: rTend, ia: rIA };
+            if (S.view === 'analise') {
+                renderAnalise(); renderMktResumo(rRes);
+                renderMktValueBets(rRes, 'analise-mkt'); renderMktTendencias(rTend, 'analise-mkt');
+                renderMktGrafico(rMkt, 'analise-mkt', 'chart'); renderMktSugestoesIA(rIA, 'analise-mkt');
+            }
+            return;
+        }
 
         const base = new URLSearchParams({ nJogos });
         if (liga) base.set('liga', liga);
@@ -4064,6 +4096,9 @@ async function carregarAnalise(forceRender = false) {
         ]);
 
         if (reqId !== _analiseReqId) return; // resposta obsoleta
+
+        // Salva no cache
+        _analiseCache = { params: cacheKey, ts: Date.now(), data: { rSug, rMkt, rRes, rTend, rIA } };
 
         if (rSug.success) S.sugestoes = rSug.data || [];
         S.mktDados     = rMkt.data || {};
