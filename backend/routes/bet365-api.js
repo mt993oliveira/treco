@@ -313,8 +313,10 @@ router.get('/eventos-completos', async (req, res) => {
 
         // Busca mercados de todos os eventos em uma única query (evita N+1)
         if (eventos.length > 0) {
-            const ids = eventos.map(e => String(BigInt(e.evento_id))).join(',');
-            const allMkts = await pool.request().query(`
+            const mktReq = pool.request();
+            eventos.forEach((e, i) => mktReq.input(`eid${i}`, sql.BigInt, BigInt(e.evento_id)));
+            const placeholders = eventos.map((_, i) => `@eid${i}`).join(',');
+            const allMkts = await mktReq.query(`
                 SELECT
                     m.evento_id,
                     m.nome AS mercado_nome,
@@ -323,7 +325,7 @@ router.get('/eventos-completos', async (req, res) => {
                     o.valor AS odd
                 FROM bet365_mercados m
                 JOIN bet365_odds o ON o.mercado_id = m.id AND o.ativo = 1
-                WHERE m.evento_id IN (${ids}) AND m.ativo = 1
+                WHERE m.evento_id IN (${placeholders}) AND m.ativo = 1
                 ORDER BY m.evento_id, m.tipo, o.nome
             `);
 
@@ -836,6 +838,13 @@ router.get('/historico-mercados', async (req, res) => {
         const { liga, horas = 24, incluirFuturos = 'false' } = req.query;
         const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 720);
         const comFuturos = incluirFuturos === 'true';
+
+        // Cache de 45s — múltiplos usuários com mesmos filtros compartilham 1 query
+        // (dados mudam a cada ~3min pelo coletor, então 45s de staleness é aceitável)
+        const _ck = `hist:${horasNum}:${liga||'all'}:${comFuturos}`;
+        const _cached = _apiCacheGet(_ck);
+        if (_cached) return res.json(_cached);
+
         const pool = await getDbPool();
 
         const request = pool.request();
@@ -1128,7 +1137,9 @@ router.get('/historico-mercados', async (req, res) => {
             .map(([l, total]) => ({ liga: l, total }))
             .sort((a, b) => b.total - a.total);
 
-        res.json({ success: true, total: partidas.length, horas: horasNum, ligas, partidas });
+        const _respHist = { success: true, total: partidas.length, horas: horasNum, ligas, partidas };
+        _apiCacheSet(_ck, _respHist);
+        res.json(_respHist);
     } catch (error) {
         console.error('❌ ERRO API bet365/historico-mercados:', error.message);
         res.status(500).json({ success: false, error: error.message });

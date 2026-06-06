@@ -217,12 +217,6 @@ function requireAuth(req, res, next) {
 }
 
 // =============================================
-// API BETANO - desativada (projeto atual é somente Bet365)
-// =============================================
-// const betanoRoutes = require('./routes/betano-api');
-// app.use('/api/betano', betanoRoutes);
-
-// =============================================
 // API BET365 - Dados em tempo real (tabelas bet365_*)
 // =============================================
 const bet365Routes = require('./routes/bet365-api');
@@ -1525,8 +1519,10 @@ app.post('/api/usuarios/online-detalhe', requireAuth, async (req, res) => {
         let ultimoAcessoMap = {};
         if (ids.length) {
             try {
-                const idList = ids.map(id => `'${String(id).replace(/'/g,"''")}'`).join(',');
-                const uaRes  = await sql.query(`SELECT Id, UltimoAcesso FROM Usuarios WHERE Id IN (${idList})`);
+                const uaReq = sql.request();
+                ids.forEach((id, i) => uaReq.input(`uid${i}`, sql.Int, parseInt(String(id), 10)));
+                const uaPlaceholders = ids.map((_, i) => `@uid${i}`).join(',');
+                const uaRes = await uaReq.query(`SELECT Id, UltimoAcesso FROM Usuarios WHERE Id IN (${uaPlaceholders})`);
                 uaRes.recordset.forEach(r => { ultimoAcessoMap[String(r.Id)] = r.UltimoAcesso; });
             } catch(_) {}
         }
@@ -1846,58 +1842,10 @@ global.wsBroadcast = (dados) => {
     });
 };
 
-// Garante colunas extras em betano_eventos ao iniciar o servidor (desativado — projeto somente Bet365)
-async function garantirSchemaEventos() { return; // desativado
-    try {
-        const cfg = getDatabaseConfigFromEnv();
-        const pool = await sql.connect({
-            user: cfg.username, password: cfg.password,
-            server: cfg.server, database: cfg.database,
-            port: cfg.port,
-            options: { encrypt: cfg.encrypt, trustServerCertificate: true }
-        });
-
-        // ── SEM LIMPEZA AUTOMÁTICA: preserva todos os dados (incluindo 0x0 válidos) ──
-        // A limpeza deve ser feita manualmente se necessário, nunca automática ao iniciar
-        const colunas = [
-            ["gol_casa",               "INT DEFAULT 0"],
-            ["gol_fora",               "INT DEFAULT 0"],
-            ["minuto_jogo",            "NVARCHAR(20)"],
-            ["odd_casa",               "DECIMAL(10,2) DEFAULT 0"],
-            ["odd_empate",             "DECIMAL(10,2) DEFAULT 0"],
-            ["odd_fora",               "DECIMAL(10,2) DEFAULT 0"],
-            ["posse_bola_casa",        "DECIMAL(5,2) DEFAULT 0"],
-            ["posse_bola_fora",        "DECIMAL(5,2) DEFAULT 0"],
-            ["chutes_casa",            "INT DEFAULT 0"],
-            ["chutes_fora",            "INT DEFAULT 0"],
-            ["chutes_gol_casa",        "INT DEFAULT 0"],
-            ["chutes_gol_fora",        "INT DEFAULT 0"],
-            ["escanteios_casa",        "INT DEFAULT 0"],
-            ["escanteios_fora",        "INT DEFAULT 0"],
-            ["cartoes_amarelos_casa",  "INT DEFAULT 0"],
-            ["cartoes_amarelos_fora",  "INT DEFAULT 0"],
-            ["cartoes_vermelhos_casa", "INT DEFAULT 0"],
-            ["cartoes_vermelhos_fora", "INT DEFAULT 0"],
-            ["estatisticas_json",      "NVARCHAR(MAX)"],
-        ];
-        for (const [col, tipo] of colunas) {
-            await pool.query(`
-                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('betano_eventos') AND name='${col}')
-                    ALTER TABLE betano_eventos ADD ${col} ${tipo}
-            `);
-        }
-        console.log('✅ Schema betano_eventos verificado');
-        await pool.close();
-    } catch (err) {
-        console.warn('⚠️ garantirSchemaEventos:', err.message);
-    }
-}
-
 server.listen(PORT, () => {
     console.log(`🚀 Backend rodando na porta ${PORT}`);
     console.log(`🌐 Acesse: http://localhost:${PORT}`);
     console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
-    garantirSchemaEventos();
     // Garante colunas de licença e Telefone na tabela Usuarios
     (async () => {
         try {
