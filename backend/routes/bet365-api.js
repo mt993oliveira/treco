@@ -1725,7 +1725,11 @@ const CONFIG_DEFAULTS = [
     { chave:'default_mosaico_gols',         valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'⚽ Linha ativado por padrão no Mosaico' },
     { chave:'default_so_value_bets',        valor:'false', tipo:'boolean', grupo:'frontend', descricao:'Apenas value bets por padrão (Análise)' },
     { chave:'default_legendas',             valor:'false', tipo:'boolean', grupo:'frontend', descricao:'💬 Legendas (suprimir tooltips) ativado por padrão no gráfico' },
-    { chave:'analise_liberar_user',         valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Liberar "Análise & Sugestões" para usuários tipo User' },
+    { chave:'analise_liberar_user',    valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Análise & Sugestões: liberar para 👤 User' },
+    { chave:'analise_liberar_bronze',  valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Análise & Sugestões: liberar para 🥉 Bronze' },
+    { chave:'analise_liberar_prata',   valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Análise & Sugestões: liberar para 🥈 Prata' },
+    { chave:'analise_liberar_gold',    valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Análise & Sugestões: liberar para 🥇 Gold' },
+    { chave:'analise_liberar_premium', valor:'false', tipo:'boolean', grupo:'frontend', descricao:'📊 Análise & Sugestões: liberar para 💎 Premium' },
     // ── Mosaico — colunas esquerda ──
     { chave:'mosaico_hora_largura',         valor:'22',    tipo:'number',  grupo:'frontend', descricao:'Mosaico: min-width da coluna HORA (px)' },
     { chave:'mosaico_mostrar_data_jogos',   valor:'true',  tipo:'boolean', grupo:'frontend', descricao:'Mosaico: exibir data DD/MM e contagem de jogos' },

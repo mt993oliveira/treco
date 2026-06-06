@@ -668,6 +668,41 @@
         [data-theme="mint"]  [style*="color: rgb(51, 65, 85)"] ,[data-theme="rose"]       [style*="color: rgb(51, 65, 85)"],
         [data-theme="cream"] [style*="color: rgb(51, 65, 85)"] { color: var(--border-color) !important; }
 
+        /* color:#cbd5e1 — texto de ranking (Multi views) */
+        [data-theme="light"] [style*="color:#cbd5e1"],[data-theme="light-blue"] [style*="color:#cbd5e1"],
+        [data-theme="mint"]  [style*="color:#cbd5e1"],[data-theme="rose"]       [style*="color:#cbd5e1"],
+        [data-theme="cream"] [style*="color:#cbd5e1"],
+        [data-theme="light"] [style*="color: rgb(203, 213, 225)"],[data-theme="light-blue"] [style*="color: rgb(203, 213, 225)"],
+        [data-theme="mint"]  [style*="color: rgb(203, 213, 225)"],[data-theme="rose"]       [style*="color: rgb(203, 213, 225)"],
+        [data-theme="cream"] [style*="color: rgb(203, 213, 225)"] { color: var(--text-secondary) !important; }
+
+        /* ── Views Multi Horários / Gols / Linhas / Próximos ──────────── */
+        /* bg:#0a1020 — célula sem resultado no mini-mosaico */
+        [data-theme]:not([data-theme="dark"]) [style*="background:#0a1020"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: #0a1020"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(10, 16, 32)"]
+            { background: var(--bg-th) !important; }
+        /* bg:#111827 — hover card Próximos Jogos */
+        [data-theme]:not([data-theme="dark"]) [style*="background:#111827"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: #111827"],
+        [data-theme]:not([data-theme="dark"]) [style*="background: rgb(17, 24, 39)"]
+            { background: var(--bg-card) !important; }
+        /* border-right interno do mini-mosaico */
+        [data-theme]:not([data-theme="dark"]) [style*="border-right:1px solid #0a0f1e"],
+        [data-theme]:not([data-theme="dark"]) [style*="border-right: 1px solid #0a0f1e"]
+            { border-right-color: var(--bg-page) !important; }
+        [data-theme]:not([data-theme="dark"]) [style*="border-right:1px solid #0d1526"],
+        [data-theme]:not([data-theme="dark"]) [style*="border-right: 1px solid #0d1526"]
+            { border-right-color: var(--bg-page) !important; }
+        /* border-bottom das linhas do mini-mosaico */
+        [data-theme]:not([data-theme="dark"]) [style*="border-bottom:1px solid #0a0f1e"],
+        [data-theme]:not([data-theme="dark"]) [style*="border-bottom: 1px solid #0a0f1e"]
+            { border-bottom-color: var(--bg-page) !important; }
+        /* border-right 2px — coluna HH sticky */
+        [data-theme]:not([data-theme="dark"]) [style*="border-right:2px solid #1e293b"],
+        [data-theme]:not([data-theme="dark"]) [style*="border-right: 2px solid #1e293b"]
+            { border-right-color: var(--border-subtle) !important; }
+
         /* temas claros — sub-btn texto legível */
         [data-theme="light"] #sub-btn-gols,[data-theme="light-blue"] #sub-btn-gols,
         [data-theme="mint"]  #sub-btn-gols,[data-theme="rose"]       #sub-btn-gols,[data-theme="cream"] #sub-btn-gols,
@@ -3096,10 +3131,10 @@ async function carregarConfigLigas(_tentativa) {
             const _u = _getUser();
             const _tipo = (_u?.TipoUsuario || '').toLowerCase();
             const _isElevated = _tipo === 'master' || _tipo === 'admin' || _tipo === 'administrador';
-            const _liberarUser = cfg.analise_liberar_user === 'true';
+            const _cfgMap = { user: cfg.analise_liberar_user, bronze: cfg.analise_liberar_bronze, prata: cfg.analise_liberar_prata, gold: cfg.analise_liberar_gold, premium: cfg.analise_liberar_premium };
             const _btnA = document.getElementById('view-analise');
             if (_btnA) {
-                const _show = _isElevated || _liberarUser;
+                const _show = _isElevated || (_cfgMap[_tipo] === 'true');
                 _btnA.style.display = _show ? '' : 'none';
                 if (!_show && S.view === 'analise') setView('historico');
             }
@@ -6482,6 +6517,12 @@ function _makeSyncPlugin(groupId) {
 function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
     const chartKey = ligaKey + '_' + metricaId;
     _destroyMiniChart(_mGolsCharts, chartKey);
+    const _temaAtual   = document.documentElement.getAttribute('data-theme') || localStorage.getItem('rdbt_tema') || 'dark';
+    const _isLightMini = ['light','light-blue','mint','rose','cream'].includes(_temaAtual);
+    const _isMedMini   = ['slate','steel','charcoal','dusk','ocean'].includes(_temaAtual);
+    const _gridCMini   = _isLightMini ? '#94a3b8' : (_isMedMini ? '#374f6b' : '#2d3f55');
+    const _tickCMini   = _isLightMini ? '#475569' : (_isMedMini ? '#94a3b8' : '#64748b');
+    const _bgTtMini    = _isLightMini ? 'rgba(240,245,255,0.9)' : (_isMedMini ? 'rgba(26,32,48,0.85)' : 'rgba(15,23,42,0.85)');
     const fi = FILTROS_GOLS.find(f => f.id === metricaId);
     if (!fi || !canvasEl) return null;
     const _parseMs = p => new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getTime();
@@ -6537,7 +6578,7 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
             plugins:{
                 legend:{ display:false },
                 tooltip:{ enabled:true,
-                    backgroundColor:'rgba(15,23,42,0.85)', borderColor:'#334155', borderWidth:1,
+                    backgroundColor:_bgTtMini, borderColor:'#334155', borderWidth:1,
                     titleColor:'#94a3b8', bodyColor:'#cbd5e1',
                     filter: item => !item.dataset._isRef,
                     callbacks:{ title:items=>items[0]?.label||'', label:item=>` ${item.dataset.label}: ${item.raw}` }
@@ -6546,8 +6587,8 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
             scales:{
                 x:{ display:false },
                 y:{ min:yMin, max:yMax,
-                    ticks:{ color:'#475569', font:{size:9} },
-                    grid:{ color:'#1e293b', lineWidth:0.5 },
+                    ticks:{ color:_tickCMini, font:{size:9} },
+                    grid:{ color:_gridCMini, lineWidth:0.5 },
                     border:{ color:'#334155' } }
             }
         }
@@ -6560,6 +6601,12 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
 function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
     const chartKey = ligaKey + '_' + filtroId;
     _destroyMiniChart(_mLinhaCharts, chartKey);
+    const _temaAtual   = document.documentElement.getAttribute('data-theme') || localStorage.getItem('rdbt_tema') || 'dark';
+    const _isLightMini = ['light','light-blue','mint','rose','cream'].includes(_temaAtual);
+    const _isMedMini   = ['slate','steel','charcoal','dusk','ocean'].includes(_temaAtual);
+    const _gridCMini   = _isLightMini ? '#94a3b8' : (_isMedMini ? '#374f6b' : '#2d3f55');
+    const _tickCMini   = _isLightMini ? '#475569' : (_isMedMini ? '#94a3b8' : '#64748b');
+    const _bgTtMini    = _isLightMini ? 'rgba(240,245,255,0.9)' : (_isMedMini ? 'rgba(26,32,48,0.85)' : 'rgba(15,23,42,0.85)');
     const fi = TODOS_FILTROS.find(f => f.id === filtroId);
     if (!fi || !canvasEl) return null;
     const _parseMs = p => new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getTime();
@@ -6607,7 +6654,7 @@ function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
             plugins:{
                 legend:{ display:false },
                 tooltip:{ enabled:true,
-                    backgroundColor:'rgba(15,23,42,0.85)', borderColor:'#334155', borderWidth:1,
+                    backgroundColor:_bgTtMini, borderColor:'#334155', borderWidth:1,
                     titleColor:'#94a3b8', bodyColor:'#cbd5e1',
                     filter: item => !item.dataset._isRef,
                     callbacks:{ title:items=>items[0]?.label||'', label:item=>` ${item.dataset._filtroLabel || item.dataset.label}: ${item.raw}%` }
@@ -6616,8 +6663,8 @@ function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
             scales:{
                 x:{ display:false },
                 y:{ min:yMin, max:yMax,
-                    ticks:{ color:'#475569', font:{size:9}, callback: v=>v+'%' },
-                    grid:{ color:'#1e293b', lineWidth:0.5 },
+                    ticks:{ color:_tickCMini, font:{size:9}, callback: v=>v+'%' },
+                    grid:{ color:_gridCMini, lineWidth:0.5 },
                     border:{ color:'#334155' } }
             }
         }
@@ -10997,7 +11044,11 @@ const _CFG_LABELS = {
     default_janela_recente:     'Janela recente padrão em jogos (Análise)',
     default_so_value_bets:      'Apenas value bets por padrão (Análise)',
     default_legendas:           '💬 Legendas (suprimir tooltips) ativado por padrão no gráfico',
-    analise_liberar_user:       '📊 Liberar "Análise & Sugestões" para usuários tipo User',
+    analise_liberar_user:    '📊 Análise & Sugestões: liberar para 👤 User',
+    analise_liberar_bronze:  '📊 Análise & Sugestões: liberar para 🥉 Bronze',
+    analise_liberar_prata:   '📊 Análise & Sugestões: liberar para 🥈 Prata',
+    analise_liberar_gold:    '📊 Análise & Sugestões: liberar para 🥇 Gold',
+    analise_liberar_premium: '📊 Análise & Sugestões: liberar para 💎 Premium',
     liga_img_largura:           '🏆 Ligas — largura da imagem no desktop (px)',
     liga_img_altura:            '🏆 Ligas — altura da imagem no desktop (px)',
     padroes_visivel_bronze:     '📋 Padrões: exibir para 🥉 Bronze',
@@ -13414,6 +13465,8 @@ function _atualizarCoresCharts(temaId) {
         const charts = [
             typeof S !== 'undefined' && S._graficoGols,
             typeof S !== 'undefined' && S._graficoLinha,
+            ...Object.values(_mGolsCharts),
+            ...Object.values(_mLinhaCharts),
         ].filter(Boolean);
 
         charts.forEach(ch => {
