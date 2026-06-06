@@ -606,13 +606,26 @@ function lerOddsDOM() {
         oddHtFora   = htTimes[1]?.odd || 0;
     }
 
+    // Debug temporário: inspeciona estrutura interna dos pods extras quando odds=0
+    let debugPods = null;
+    if (ou25Pod && ou25Parts.length === 0) {
+        const inner = ou25Pod.querySelector('.gl-MarketGroupPod_Body, [class*="Body"], [class*="Content"]');
+        const el = inner || ou25Pod;
+        const firstChild = el.firstElementChild;
+        debugPods = {
+            ouClasses: el.className,
+            firstChildClass: firstChild?.className || 'none',
+            firstChildHtml: (firstChild?.outerHTML || el.innerHTML || '').replace(/\s+/g,' ').substring(0, 400),
+        };
+    }
+
     return {
         ok: true, suspended, horario, timeCasa, timeFora,
         oddCasa, oddEmpate, oddFora,
         oddOver25, oddUnder25,
         oddBttsSim, oddBttsNao,
         oddHtCasa, oddHtEmpate, oddHtFora,
-        podNames,
+        podNames, debugPods,
     };
 }
 
@@ -746,6 +759,11 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                     console.log(`   ${icon} [${ligaNorm}] ${odds.horario} ${normalizarNomeTime(odds.timeCasa)} × ${normalizarNomeTime(odds.timeFora)} ${label} | 1X2:${odds.oddCasa}/${odds.oddEmpate}/${odds.oddFora}${ou}${bt}${ht}`);
                     if (idx === 0 && odds.podNames && odds.podNames.length) {
                         console.log(`   📦 [${ligaNorm}] pods: ${odds.podNames.join(' | ')}`);
+                    }
+                    if (idx === 0 && odds.debugPods) {
+                        console.log(`   🔍 [${ligaNorm}] OU pod classes: ${odds.debugPods.ouClasses}`);
+                        console.log(`   🔍 [${ligaNorm}] 1º filho: ${odds.debugPods.firstChildClass}`);
+                        console.log(`   🔍 [${ligaNorm}] HTML: ${odds.debugPods.firstChildHtml}`);
                     }
                     resultados.push(odds);
                 }
