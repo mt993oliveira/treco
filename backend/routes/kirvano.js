@@ -5,7 +5,7 @@ const sql        = require('mssql');
 const nodemailer = require('nodemailer');
 const { getDbPool } = require('./bet365-api');
 
-// ── Envia e-mail para o cliente via SMTP (Gmail App Password) ────
+// ── Envia e-mail para o cliente via Brevo SMTP ───────────────────
 async function _enviarEmailCliente({ para, nome, usuario, senha, dataExpiracao, renovacao }) {
     const mailUser = process.env.MAIL_USER;
     const mailPass = process.env.MAIL_PASS;
@@ -15,7 +15,9 @@ async function _enviarEmailCliente({ para, nome, usuario, senha, dataExpiracao, 
         return;
     }
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        secure: false,
         auth: { user: mailUser, pass: mailPass }
     });
     const expFmt = dataExpiracao
