@@ -9077,7 +9077,7 @@ function _simRenderUI(el, d, _u) {
                 ? `<span style="color:#fbbf24;font-size:11px">pendente</span>`
                 : res === 'cancelado'
                     ? `<span style="color:#64748b;font-size:11px">cancelado</span>`
-                    : `<span style="color:${corL};font-weight:700;font-size:12px">${a.lucro > 0 ? '+' : ''}${a.lucro} cr</span>`;
+                    : `<span style="color:${corL};font-weight:700;font-size:12px">${a.lucro > 0 ? '+R$ ' : '-R$ '}${Math.abs(a.lucro).toFixed(2)}</span>`;
             const dj = new Date(a.data_jogo);
             const h  = `${pad2(dj.getUTCHours())}:${pad2(dj.getUTCMinutes())}`;
             const cancelBtn = res === 'pendente'
@@ -9089,7 +9089,7 @@ function _simRenderUI(el, d, _u) {
                 <span style="font-size:14px;flex-shrink:0">${icon}</span>
                 <div style="flex:1;min-width:0">
                     <div style="color:#e2e8f0;font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.time_casa} x ${a.time_fora}</div>
-                    <div style="color:#64748b;font-size:10px">${_SIM_MKT_LABEL[a.mercado]||a.mercado} &nbsp;·&nbsp; odd ${parseFloat(a.odd).toFixed(2)} &nbsp;·&nbsp; ${a.creditos} cr &nbsp;·&nbsp; ${h}</div>
+                    <div style="color:#64748b;font-size:10px">${_SIM_MKT_LABEL[a.mercado]||a.mercado} &nbsp;·&nbsp; odd ${parseFloat(a.odd).toFixed(2)} &nbsp;·&nbsp; R$ ${parseFloat(a.creditos).toFixed(2)} &nbsp;·&nbsp; ${h}</div>
                 </div>
                 <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:0">
                     ${lucroTxt}${cancelBtn}
@@ -9104,20 +9104,20 @@ function _simRenderUI(el, d, _u) {
     <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px">
 
         <!-- Saldo / Painel -->
-        <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
             <div>
-                <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.07em;margin-bottom:4px">💰 SALDO DISPONÍVEL</div>
-                <div style="font-size:30px;font-weight:900;color:#1fcc59;line-height:1">${d.saldoDisp} <span style="font-size:14px;color:#64748b">cr</span></div>
-                <div style="font-size:10px;color:#475569;margin-top:3px">
-                    Total: <b style="color:#94a3b8">${d.saldoTotal}</b> cr &nbsp;|&nbsp;
-                    Em jogo: <b style="color:#fbbf24">${d.emJogo}</b> cr
-                    ${d.pendentes > 0 ? `<span style="color:#475569"> (${d.pendentes} pendente${d.pendentes !== 1 ? 's' : ''})</span>` : ''}
+                <div style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:.08em;margin-bottom:5px">💰 SALDO DISPONÍVEL</div>
+                <div style="font-size:32px;font-weight:900;color:#1fcc59;line-height:1"><span style="font-size:18px;font-weight:700;opacity:.8">R$</span> ${d.saldoDisp}</div>
+                <div style="font-size:11px;color:#64748b;margin-top:5px">
+                    Total: <b style="color:#cbd5e1">R$ ${d.saldoTotal}</b> &nbsp;·&nbsp;
+                    Em jogo: <b style="color:#fbbf24">R$ ${d.emJogo}</b>
+                    ${d.pendentes > 0 ? `<span style="color:#64748b"> (${d.pendentes} pendente${d.pendentes !== 1 ? 's' : ''})</span>` : ''}
                 </div>
             </div>
             <div style="text-align:right">
-                <div style="font-size:10px;color:#475569;margin-bottom:2px">ROI acumulado</div>
-                <div style="font-size:22px;font-weight:900;color:${roiCor}">${roiStr} cr</div>
-                <div style="font-size:10px;color:#475569;margin-top:2px">${d.ganhas}🟢 &nbsp;${d.perdidas}🔴 &nbsp;${d.pendentes}🟡</div>
+                <div style="font-size:10px;color:#64748b;margin-bottom:3px">ROI acumulado</div>
+                <div style="font-size:24px;font-weight:900;color:${roiCor}">${roi >= 0 ? '+' : ''}R$ ${Math.abs(roi).toFixed(2)}</div>
+                <div style="font-size:11px;color:#64748b;margin-top:3px">${d.ganhas}🟢 &nbsp;${d.perdidas}🔴 &nbsp;${d.pendentes}🟡</div>
                 ${adminBtn}
             </div>
         </div>
@@ -9132,49 +9132,49 @@ function _simRenderUI(el, d, _u) {
         </div>
 
         <!-- Formulário de nova aposta -->
-        <div id="sim-form" style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px 16px">
-            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.07em;margin-bottom:10px">✚ NOVA APOSTA</div>
+        <div id="sim-form" style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:14px 18px">
+            <div style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:.08em;margin-bottom:12px">✚ NOVA APOSTA</div>
 
-            <div id="sim-jogo-sel" style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:7px 10px;font-size:11px;color:#64748b;margin-bottom:8px">
-                ↑ Selecione um jogo acima
+            <div id="sim-jogo-sel" style="background:#0f172a;border:1px solid #334155;border-radius:6px;padding:9px 12px;font-size:12px;color:#475569;margin-bottom:12px">
+                ↑ Selecione um jogo acima para apostar
             </div>
 
-            <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;flex-direction:column;gap:10px">
 
-                <div style="display:grid;grid-template-columns:1fr 90px;gap:8px">
+                <div style="display:grid;grid-template-columns:1fr 100px;gap:10px">
                     <div>
-                        <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">Mercado</label>
+                        <label style="font-size:11px;font-weight:600;color:#94a3b8;display:block;margin-bottom:5px">Mercado</label>
                         <select id="sim-mercado" onchange="_simOnMercadoChange()"
-                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:12px;padding:6px 8px;outline:none;cursor:pointer">
-                            <optgroup label="1X2 FT">
+                            style="width:100%;background:#0f172a;border:1px solid #475569;color:#e2e8f0;border-radius:6px;font-size:13px;padding:8px 10px;outline:none;cursor:pointer">
+                            <optgroup label="── 1X2 FT ──">
                                 <option value="casa">1 Casa</option>
                                 <option value="empate">X Empate</option>
                                 <option value="fora">2 Fora</option>
                             </optgroup>
-                            <optgroup label="Over FT">
+                            <optgroup label="── Over FT ──">
                                 <option value="over0.5">Over 0.5</option>
                                 <option value="over1.5">Over 1.5</option>
                                 <option value="over2.5">Over 2.5</option>
                                 <option value="over3.5">Over 3.5</option>
                                 <option value="over4.5">Over 4.5</option>
                             </optgroup>
-                            <optgroup label="Under FT">
+                            <optgroup label="── Under FT ──">
                                 <option value="under0.5">Under 0.5</option>
                                 <option value="under1.5">Under 1.5</option>
                                 <option value="under2.5">Under 2.5</option>
                                 <option value="under3.5">Under 3.5</option>
                                 <option value="under4.5">Under 4.5</option>
                             </optgroup>
-                            <optgroup label="Ambas Marcam">
+                            <optgroup label="── Ambas Marcam ──">
                                 <option value="ambas-sim">Ambas Sim</option>
                                 <option value="ambas-nao">Ambas Não</option>
                             </optgroup>
-                            <optgroup label="1X2 HT">
+                            <optgroup label="── 1X2 HT ──">
                                 <option value="casa-ht">1 Casa HT</option>
                                 <option value="empate-ht">X Empate HT</option>
                                 <option value="fora-ht">2 Fora HT</option>
                             </optgroup>
-                            <optgroup label="Over/Under HT">
+                            <optgroup label="── Over/Under HT ──">
                                 <option value="over0.5-1t">Over 0.5 HT</option>
                                 <option value="over1.5-1t">Over 1.5 HT</option>
                                 <option value="under0.5-1t">Under 0.5 HT</option>
@@ -9183,27 +9183,27 @@ function _simRenderUI(el, d, _u) {
                         </select>
                     </div>
                     <div>
-                        <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">Odd</label>
-                        <input id="sim-odd" type="number" min="1.01" step="0.01" placeholder="ex: 2.10"
+                        <label style="font-size:11px;font-weight:600;color:#94a3b8;display:block;margin-bottom:5px">Odd</label>
+                        <input id="sim-odd" type="number" min="1.01" step="0.01" placeholder="1.85"
                             oninput="_simAtualizarRetorno()"
-                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:12px;padding:6px 8px;outline:none;box-sizing:border-box">
+                            style="width:100%;background:#0f172a;border:1px solid #475569;color:#e2e8f0;border-radius:6px;font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box">
                     </div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end">
-                    <div>
-                        <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">
-                            Créditos <span style="color:#334155">(1–${maxCred})</span>
-                        </label>
+                <div>
+                    <label style="font-size:11px;font-weight:600;color:#94a3b8;display:block;margin-bottom:5px">
+                        Valor (R$) <span style="font-weight:400;color:#475569">máx. R$ ${maxCred}</span>
+                    </label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center">
                         <input id="sim-creditos" type="number" min="1" max="${maxCred}" step="1" value="10"
                             oninput="_simAtualizarRetorno()"
-                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:12px;padding:6px 8px;outline:none;box-sizing:border-box">
+                            style="width:100%;background:#0f172a;border:1px solid #475569;color:#e2e8f0;border-radius:6px;font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box">
+                        <div id="sim-retorno" style="color:#64748b;font-size:12px;text-align:right">Retorno: —</div>
                     </div>
-                    <div id="sim-retorno" style="color:#64748b;font-size:11px;padding-bottom:8px;text-align:right">Retorno: —</div>
                 </div>
 
                 <button id="sim-btn" onclick="_simApostar()"
-                    style="background:#1fcc59;color:#0a0f1e;font-weight:900;font-size:13px;border:none;border-radius:6px;padding:10px;cursor:pointer;width:100%;transition:opacity .15s">
+                    style="background:#1fcc59;color:#0a0f1e;font-weight:900;font-size:14px;border:none;border-radius:7px;padding:12px;cursor:pointer;width:100%;letter-spacing:.03em;transition:opacity .15s">
                     ▶ APOSTAR
                 </button>
                 <div id="sim-msg" style="display:none;font-size:12px;text-align:center;padding:2px 0"></div>
@@ -9287,10 +9287,10 @@ function _simAtualizarRetorno() {
         const retorno = +(cred * odd).toFixed(2);
         const lucro   = +(cred * (odd - 1)).toFixed(2);
         retEl.innerHTML =
-            `<span style="color:#1fcc59;font-weight:700">+${lucro} cr</span> ` +
-            `<span style="color:#64748b">(retorno ${retorno})</span>`;
+            `<span style="color:#1fcc59;font-weight:800;font-size:13px">+R$ ${lucro}</span><br>` +
+            `<span style="color:#64748b;font-size:10px">retorno R$ ${retorno}</span>`;
     } else {
-        retEl.textContent = 'Retorno: —';
+        retEl.innerHTML = '<span style="color:#475569">Retorno: —</span>';
     }
 }
 
@@ -9388,11 +9388,11 @@ async function renderSimuladorAdmin() {
                     <div style="font-size:12px;font-weight:700;color:#e2e8f0">${u.nome || u.usuario}</div>
                     <div style="font-size:10px;color:#475569">${u.tipo}</div>
                 </td>
-                <td style="padding:7px 8px;font-size:13px;font-weight:900;color:#1fcc59;text-align:right">${u.saldoDisp}</td>
-                <td style="padding:7px 8px;font-size:12px;font-weight:700;color:${roiCor};text-align:right">${roi >= 0 ? '+' : ''}${roi}</td>
+                <td style="padding:7px 8px;font-size:13px;font-weight:900;color:#1fcc59;text-align:right">R$ ${u.saldoDisp}</td>
+                <td style="padding:7px 8px;font-size:12px;font-weight:700;color:${roiCor};text-align:right">${roi >= 0 ? '+R$ ' : '-R$ '}${Math.abs(roi).toFixed(2)}</td>
                 <td style="padding:7px 8px;font-size:11px;color:#64748b;text-align:center">${win}</td>
                 <td style="padding:7px 8px;font-size:11px;color:#fbbf24;text-align:center">${u.pendentes}</td>
-                <td style="padding:7px 8px;font-size:11px;color:#475569;text-align:right">${u.totalApost}</td>
+                <td style="padding:7px 8px;font-size:11px;color:#475569;text-align:right">R$ ${u.totalApost}</td>
             </tr>`;
         }).join('');
 
