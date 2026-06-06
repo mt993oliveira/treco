@@ -1,8 +1,42 @@
-const express = require('express');
-const router  = express.Router();
-const bcrypt  = require('bcryptjs');
-const sql     = require('mssql');
+const express    = require('express');
+const router     = express.Router();
+const bcrypt     = require('bcryptjs');
+const sql        = require('mssql');
+const nodemailer = require('nodemailer');
 const { getDbPool } = require('./bet365-api');
+
+// ── Envia e-mail para o cliente via SMTP (Gmail App Password) ────
+async function _enviarEmailCliente({ para, nome, usuario, senha, dataExpiracao, renovacao }) {
+    const mailUser = process.env.MAIL_USER;
+    const mailPass = process.env.MAIL_PASS;
+    const mailFrom = process.env.MAIL_FROM || `Radar da Bet <${mailUser}>`;
+    if (!mailUser || !mailPass) {
+        console.warn('[Kirvano] MAIL_USER/MAIL_PASS não configurados — e-mail não enviado');
+        return;
+    }
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: mailUser, pass: mailPass }
+    });
+    const expFmt = dataExpiracao
+        ? new Date(dataExpiracao).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' })
+        : '—';
+
+    let assunto, corpo;
+    if (renovacao) {
+        assunto = '✅ Sua licença Radar da Bet foi renovada!';
+        corpo = `Olá, ${nome}!\n\nSua licença foi renovada com sucesso.\n\nAcesso válido até: ${expFmt}\nUsuário: ${usuario}\n\nAcesse agora: https://radardabet.com.br\n\nQualquer dúvida, responda este e-mail.\n\nRadar da Bet`;
+    } else {
+        assunto = '🎯 Seu acesso ao Radar da Bet está pronto!';
+        corpo = `Olá, ${nome}!\n\nSeu acesso foi criado com sucesso. Guarde essas informações:\n\nUsuário: ${usuario}\nSenha:   ${senha}\nAcesso válido até: ${expFmt}\n\nAcesse agora: https://radardabet.com.br\n\n⚠️ Recomendamos alterar sua senha no primeiro acesso.\n\nQualquer dúvida, responda este e-mail.\n\nRadar da Bet`;
+    }
+    try {
+        await transporter.sendMail({ from: mailFrom, to: para, subject: assunto, text: corpo });
+        console.log(`[Kirvano] E-mail enviado para ${para}`);
+    } catch (e) {
+        console.error(`[Kirvano] Falha ao enviar e-mail para ${para}:`, e.message);
+    }
+}
 
 const KIRVANO_TOKEN  = 'radarbet_kirvano_2026_xK9mP3qL';
 const PLANO_DIAS     = 30;
@@ -169,7 +203,7 @@ router.post('/webhook', async (req, res) => {
             usuarioId = existente.recordset[0].Id;
             const fimAtual = existente.recordset[0].DataFimLicenca;
             const base = (fimAtual && new Date(fimAtual) > new Date()) ? new Date(fimAtual) : new Date();
-            const dataExpiracao = new Date(base.getTime() + PLANO_DIAS * 86400000);
+            dataExpiracao = new Date(base.getTime() + PLANO_DIAS * 86400000);
             await pool.request()
                 .input('id',     sql.Int,       usuarioId)
                 .input('expira', sql.DateTime2, dataExpiracao)
@@ -179,18 +213,20 @@ router.post('/webhook', async (req, res) => {
                 .query(`SELECT Usuario FROM Usuarios WHERE Id = @id`);
             usuarioLogin = uRow.recordset[0]?.Usuario || '';
             console.log(`[Kirvano] Licença renovada: ${emailCliente} até ${dataExpiracao.toISOString()} (base: ${base.toISOString()})`);
+            // Envia e-mail de renovação para o cliente
+            _enviarEmailCliente({ para: emailCliente, nome: nomeCliente, usuario: usuarioLogin, dataExpiracao, renovacao: true });
         } else {
             // Cria novo usuário
-            usuarioLogin = await _gerarLogin(pool, emailCliente);
-            const senha  = _gerarSenha();
-            usuarioId    = await _criarUsuario(pool, {
+            usuarioLogin    = await _gerarLogin(pool, emailCliente);
+            const senhaGerada = _gerarSenha();
+            usuarioId       = await _criarUsuario(pool, {
                 nome: nomeCliente, email: emailCliente,
-                login: usuarioLogin, senha, dataExpiracao
+                login: usuarioLogin, senha: senhaGerada, dataExpiracao
             });
-            // Guarda senha em texto por 24h para exibir na tela de boas-vindas
+            // Guarda senha em texto para exibir na tela de boas-vindas
             await pool.request()
                 .input('id',    sql.Int,      usuarioId)
-                .input('senha', sql.NVarChar, senha)
+                .input('senha', sql.NVarChar, senhaGerada)
                 .query(`
                     MERGE kirvano_credenciais_temp AS t
                     USING (SELECT @id AS id, @senha AS s) AS src ON t.usuario_id = src.id
@@ -198,6 +234,8 @@ router.post('/webhook', async (req, res) => {
                     WHEN NOT MATCHED THEN INSERT (usuario_id, senha_plain) VALUES (src.id, src.s);
                 `);
             console.log(`[Kirvano] Usuário criado: ${usuarioLogin} / ${emailCliente}`);
+            // Envia e-mail de boas-vindas com credenciais para o cliente
+            _enviarEmailCliente({ para: emailCliente, nome: nomeCliente, usuario: usuarioLogin, senha: senhaGerada, dataExpiracao, renovacao: false });
         }
 
         // Registra assinatura

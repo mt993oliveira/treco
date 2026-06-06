@@ -186,39 +186,56 @@ async function buscarCredenciais() {
 
     const btn = document.getElementById('btn-buscar');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner">⏳</span> Buscando...';
     esconderMensagens();
 
-    try {
-        const r = await fetch('/api/kirvano/credenciais?email=' + encodeURIComponent(email));
-        const d = await r.json();
+    // Tenta até 4x com intervalo de 4s para cobrir o caso em que o webhook ainda não processou
+    const MAX_TENTATIVAS = 4;
+    const INTERVALO_MS   = 4000;
 
-        if (!d.success) {
-            mostrarErro(d.error || 'Não foi possível encontrar seu acesso.');
-            btn.disabled = false;
-            btn.textContent = 'Buscar meu acesso';
-            return;
+    for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+        const ultima = tentativa === MAX_TENTATIVAS;
+        btn.innerHTML = tentativa === 1
+            ? '<span class="spinner">⏳</span> Buscando...'
+            : `<span class="spinner">⏳</span> Aguardando confirmação... (${tentativa}/${MAX_TENTATIVAS})`;
+
+        try {
+            const r = await fetch('/api/kirvano/credenciais?email=' + encodeURIComponent(email));
+            const d = await r.json();
+
+            if (d.success) {
+                // Exibe credenciais
+                document.getElementById('res-usuario').textContent = d.usuario;
+                document.getElementById('res-senha').textContent   = d.senha;
+                if (d.expira_em) {
+                    const exp = new Date(d.expira_em);
+                    const fmt = exp.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+                    document.getElementById('res-expira').innerHTML =
+                        `Seu acesso é válido até <strong>${fmt}</strong> (30 dias).`;
+                }
+                document.getElementById('step1').style.display    = 'none';
+                document.getElementById('resultado').style.display = 'block';
+                return;
+            }
+
+            // Não encontrou ainda — se não é a última tentativa, aguarda e tenta de novo
+            if (!ultima) {
+                mostrarInfo(`Confirmando seu pagamento... aguarde ${INTERVALO_MS / 1000}s`);
+                await new Promise(res => setTimeout(res, INTERVALO_MS));
+                esconderMensagens();
+                continue;
+            }
+
+            // Última tentativa sem sucesso
+            mostrarErro(d.error || 'Não foi possível encontrar seu acesso. Verifique o e-mail e tente novamente ou entre em contato com o suporte.');
+
+        } catch(e) {
+            if (ultima) mostrarErro('Erro de conexão. Tente novamente em instantes.');
+            else await new Promise(res => setTimeout(res, INTERVALO_MS));
         }
-
-        // Exibe credenciais
-        document.getElementById('res-usuario').textContent = d.usuario;
-        document.getElementById('res-senha').textContent   = d.senha;
-
-        if (d.expira_em) {
-            const exp = new Date(d.expira_em);
-            const fmt = exp.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
-            document.getElementById('res-expira').innerHTML =
-                `Seu acesso é válido até <strong>${fmt}</strong> (30 dias).`;
-        }
-
-        document.getElementById('step1').style.display    = 'none';
-        document.getElementById('resultado').style.display = 'block';
-
-    } catch(e) {
-        mostrarErro('Erro de conexão. Tente novamente em instantes.');
-        btn.disabled = false;
-        btn.textContent = 'Buscar meu acesso';
     }
+
+    btn.disabled = false;
+    btn.textContent = 'Buscar meu acesso';
 }
 
 function copiar(id, el) {
@@ -233,6 +250,12 @@ function copiar(id, el) {
 
 function mostrarErro(msg) {
     const el = document.getElementById('msg-erro');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function mostrarInfo(msg) {
+    const el = document.getElementById('msg-info');
     el.textContent = msg;
     el.style.display = 'block';
 }
