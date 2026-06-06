@@ -1215,7 +1215,9 @@ app.get('/api/usuario/padroes', async (req, res) => {
             WHERE user_id = ${usuarioId}
             ORDER BY is_principal DESC, data_criacao ASC
         `;
-        const limite = await _getMaxPadroes();
+        const uRow = (await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id=${usuarioId}`).recordset[0];
+        const isMaster = (uRow?.TipoUsuario || '').toLowerCase() === 'master';
+        const limite = isMaster ? null : await _getMaxPadroes();
         res.json({ success: true, padroes: r.recordset, limite });
     } catch(e) { res.json({ success: false, message: e.message }); }
 });
@@ -1227,9 +1229,13 @@ app.post('/api/usuario/padroes', async (req, res) => {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
         await _ensurePadroesTable();
-        const limite = await _getMaxPadroes();
-        const cnt = (await sql.query`SELECT COUNT(*) AS n FROM user_padroes_grafico WHERE user_id=${usuarioId}`).recordset[0].n;
-        if (cnt >= limite) return res.json({ success: false, message: `Limite de ${limite} padrões atingido` });
+        const uRow = (await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id=${usuarioId}`).recordset[0];
+        const isMaster = (uRow?.TipoUsuario || '').toLowerCase() === 'master';
+        if (!isMaster) {
+            const limite = await _getMaxPadroes();
+            const cnt = (await sql.query`SELECT COUNT(*) AS n FROM user_padroes_grafico WHERE user_id=${usuarioId}`).recordset[0].n;
+            if (cnt >= limite) return res.json({ success: false, message: `Limite de ${limite} padrões atingido` });
+        }
         const fs = typeof filtros === 'string' ? filtros : JSON.stringify(filtros);
         const r = await sql.query`
             INSERT INTO user_padroes_grafico (user_id, nome, filtros)
