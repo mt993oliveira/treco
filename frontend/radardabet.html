@@ -8940,7 +8940,8 @@ let _proximosLista  = [];
 // SIMULADOR DE APOSTAS VIRTUAIS
 // ============================================================
 
-let _simResumo = null; // cached /api/simulador/resumo response
+let _simResumo      = null; // cached /api/simulador/resumo response
+let _simSelectedIdx = null; // índice do jogo selecionado nos cards
 
 // Nomes legíveis para cada mercado apostável
 const _SIM_MKT_LABEL = {
@@ -9001,15 +9002,70 @@ function _simRenderUI(el, d, _u) {
            </button>`
         : '';
 
-    // ── Jogos disponíveis (com odds coletadas) ──────────────────────────────
+    // ── Jogos disponíveis (com odds coletadas) agrupados por liga ────────────
     const eventosDisp = (_proximosCache || []).filter(e => e.odd_casa > 0);
-    const jogosOpts = eventosDisp.length
-        ? eventosDisp.map((e, i) => {
-            const dt = e.horario ? new Date(e.horario) : null;
-            const h  = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '';
-            return `<option value="${i}">${h} ${e.time_casa} x ${e.time_fora}</option>`;
-          }).join('')
-        : '<option value="">— sem jogos agendados com odds —</option>';
+
+    // Agrupa por liga mantendo índice original para _simSelecionarJogo(i)
+    const byLiga = new Map();
+    eventosDisp.forEach((e, i) => {
+        const ligaKey = LIGA_ALIASES[(e.liga||'').toLowerCase()] || e.liga || '—';
+        if (!byLiga.has(ligaKey)) byLiga.set(ligaKey, []);
+        byLiga.get(ligaKey).push({ e, i });
+    });
+
+    const jogosHtml = eventosDisp.length ? [...byLiga.entries()].map(([ligaKey, jogos]) => {
+        const cardsHtml = jogos.map(({ e, i }) => {
+            const dt      = e.horario ? new Date(e.horario) : null;
+            const diffMin = dt ? Math.round((dt.getTime() - Date.now() - 60*60*1000) / 60000) : 0;
+            const hora    = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '';
+            const tempoTxt = diffMin <= 0
+                ? '<span style="color:#1fcc59;font-size:9px;font-weight:700">● ao vivo</span>'
+                : diffMin < 60
+                    ? `<span style="color:#fbbf24;font-size:9px">em ${diffMin}min</span>`
+                    : `<span style="color:#64748b;font-size:9px">${Math.floor(diffMin/60)}h${String(diffMin%60).padStart(2,'0')}m</span>`;
+            const oc = parseFloat(e.odd_casa   || 0);
+            const oe = parseFloat(e.odd_empate || 0);
+            const of_ = parseFloat(e.odd_fora  || 0);
+            return `
+            <div id="sim-card-${i}" onclick="_simSelecionarJogo(${i})"
+                style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;
+                cursor:pointer;transition:border-color .15s,background .15s;user-select:none"
+                onmouseover="if(${i}!==_simSelectedIdx){this.style.borderColor='#334155'}"
+                onmouseout="if(${i}!==_simSelectedIdx){this.style.borderColor='#1e293b'}">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+                    <span style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;text-transform:uppercase">${hora}</span>
+                    ${tempoTxt}
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <div style="flex:1;display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden">
+                        ${_getClubeFlag(e.time_casa, 22, 16)}
+                        <span style="font-size:13px;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.time_casa}</span>
+                    </div>
+                    <div style="display:flex;gap:3px;flex-shrink:0">
+                        <span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'casa')"
+                            style="background:#14532d20;border:1px solid #14532d50;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:800;color:#4ade80;cursor:pointer;transition:background .1s"
+                            onmouseover="this.style.background='#14532d50'" onmouseout="this.style.background='#14532d20'">${oc.toFixed(2)}</span>
+                        <span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'empate')"
+                            style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:800;color:#94a3b8;cursor:pointer;transition:background .1s"
+                            onmouseover="this.style.background='#293548'" onmouseout="this.style.background='#1e293b'">${oe.toFixed(2)}</span>
+                        <span onclick="event.stopPropagation();_simSelecionarJogoMkt(${i},'fora')"
+                            style="background:#3b0a0a20;border:1px solid #3b0a0a50;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:800;color:#f87171;cursor:pointer;transition:background .1s"
+                            onmouseover="this.style.background='#3b0a0a50'" onmouseout="this.style.background='#3b0a0a20'">${of_.toFixed(2)}</span>
+                    </div>
+                    <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0;overflow:hidden">
+                        <span style="font-size:13px;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">${e.time_fora}</span>
+                        ${_getClubeFlag(e.time_fora, 22, 16)}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+        return `
+        <div style="margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.07em;text-transform:uppercase;margin-bottom:5px;padding:0 2px">${ligaKey}</div>
+            <div style="display:flex;flex-direction:column;gap:5px">${cardsHtml}</div>
+        </div>`;
+    }).join('')
+    : '<div style="color:#334155;font-size:12px;padding:12px 0;text-align:center">Nenhum jogo agendado com odds</div>';
 
     // ── Histórico de apostas ────────────────────────────────────────────────
     const histHtml = d.apostas.length
@@ -9066,20 +9122,24 @@ function _simRenderUI(el, d, _u) {
             </div>
         </div>
 
-        <!-- Formulário de nova aposta -->
+        <!-- Jogos agrupados por liga -->
         <div style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px 16px">
+            <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.07em;margin-bottom:10px">
+                🕐 JOGOS AGENDADOS
+                <span style="font-weight:400;color:#334155;margin-left:6px">${eventosDisp.length} com odds</span>
+            </div>
+            <div id="sim-jogos-lista">${jogosHtml}</div>
+        </div>
+
+        <!-- Formulário de nova aposta -->
+        <div id="sim-form" style="background:#0a0f1e;border:1px solid #1e293b;border-radius:8px;padding:12px 16px">
             <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.07em;margin-bottom:10px">✚ NOVA APOSTA</div>
 
-            <div style="display:flex;flex-direction:column;gap:8px">
+            <div id="sim-jogo-sel" style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:7px 10px;font-size:11px;color:#64748b;margin-bottom:8px">
+                ↑ Selecione um jogo acima
+            </div>
 
-                <div>
-                    <label style="font-size:10px;color:#64748b;display:block;margin-bottom:3px">Jogo</label>
-                    <select id="sim-jogo" onchange="_simOnJogoChange()"
-                        style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:12px;padding:6px 8px;outline:none;cursor:pointer">
-                        <option value="">— selecione um jogo agendado —</option>
-                        ${jogosOpts}
-                    </select>
-                </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
 
                 <div style="display:grid;grid-template-columns:1fr 90px;gap:8px">
                     <div>
@@ -9165,11 +9225,40 @@ function _simRenderUI(el, d, _u) {
 // ── Eventos do formulário ─────────────────────────────────────────────────────
 
 function _simGetEvento() {
-    const sel = document.getElementById('sim-jogo');
-    if (!sel || sel.value === '') return null;
-    const idx = parseInt(sel.value);
+    if (_simSelectedIdx === null) return null;
     const evs = (_proximosCache || []).filter(e => e.odd_casa > 0);
-    return evs[idx] || null;
+    return evs[_simSelectedIdx] || null;
+}
+
+function _simSelecionarJogo(i) {
+    _simSelectedIdx = i;
+    const evs = (_proximosCache || []).filter(e => e.odd_casa > 0);
+    evs.forEach((_, j) => {
+        const c = document.getElementById(`sim-card-${j}`);
+        if (!c) return;
+        c.style.borderColor = j === i ? '#4ade80' : '#1e293b';
+        c.style.background  = j === i ? '#0a2a14' : '#0f172a';
+    });
+    // Atualiza label do jogo selecionado no formulário
+    const ev  = evs[i];
+    const lbl = document.getElementById('sim-jogo-sel');
+    if (lbl && ev) {
+        const dt  = ev.horario ? new Date(ev.horario) : null;
+        const h   = dt ? `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` : '';
+        const liga = LIGA_ALIASES[(ev.liga||'').toLowerCase()] || ev.liga || '';
+        lbl.style.color = '#e2e8f0';
+        lbl.innerHTML   = `<span style="color:#4ade80;font-weight:700">✔</span>&ensp;<b>${ev.time_casa}</b> <span style="color:#475569">×</span> <b>${ev.time_fora}</b>&ensp;<span style="color:#64748b;font-size:10px">${h}${liga ? ' · ' + liga : ''}</span>`;
+    }
+    _simOnMercadoChange();
+    // Rola suavemente para o formulário de aposta
+    const form = document.getElementById('sim-form');
+    if (form) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function _simSelecionarJogoMkt(i, mkt) {
+    _simSelecionarJogo(i);
+    const sel = document.getElementById('sim-mercado');
+    if (sel) { sel.value = mkt; _simOnMercadoChange(); }
 }
 
 function _simOnJogoChange()   { _simOnMercadoChange(); }
