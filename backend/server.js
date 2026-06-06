@@ -1164,12 +1164,24 @@ async function _ensurePadroesTable() {
             data_atualizacao DATETIME2      DEFAULT GETUTCDATE()
         )
     `;
+    // Garante filtros NVARCHAR(MAX): dropa DEFAULT constraint antes de alterar (SQL Server exige)
     try {
+        const _dfRow = await sql.query`
+            SELECT dc.name FROM sys.default_constraints dc
+            JOIN sys.columns c ON dc.parent_object_id=c.object_id AND dc.parent_column_id=c.column_id
+            JOIN sys.objects o ON c.object_id=o.object_id
+            WHERE o.name='user_padroes_grafico' AND c.name='filtros'
+              AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                          WHERE TABLE_NAME='user_padroes_grafico' AND COLUMN_NAME='filtros'
+                          AND CHARACTER_MAXIMUM_LENGTH IS NOT NULL AND CHARACTER_MAXIMUM_LENGTH<>-1)`;
+        const _dfName = _dfRow.recordset[0]?.name;
+        if (_dfName) await sql.query(`ALTER TABLE user_padroes_grafico DROP CONSTRAINT [${_dfName}]`);
         await sql.query`
-            IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+            IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
                        WHERE TABLE_NAME='user_padroes_grafico' AND COLUMN_NAME='filtros'
-                       AND CHARACTER_MAXIMUM_LENGTH=2000)
+                       AND CHARACTER_MAXIMUM_LENGTH IS NOT NULL AND CHARACTER_MAXIMUM_LENGTH<>-1)
             ALTER TABLE user_padroes_grafico ALTER COLUMN filtros NVARCHAR(MAX) NOT NULL`;
+        if (_dfName) await sql.query`ALTER TABLE user_padroes_grafico ADD DEFAULT ('{}') FOR filtros`;
     } catch(_) {}
     // Coluna publicado_por: referência ao padrão original quando é uma cópia publicada pelo admin
     try {
