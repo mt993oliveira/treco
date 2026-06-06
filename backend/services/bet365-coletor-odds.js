@@ -27,7 +27,13 @@ const http   = require('http');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const DEBUG_PORT   = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9222;
+const DEBUG_PORT        = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9222;
+const COLETOR2_USUARIO  = process.env.BET365_COLETOR2_USUARIO  || '';
+const COLETOR2_SENHA    = process.env.BET365_COLETOR2_SENHA    || '';
+const COLETOR2_EMAIL    = process.env.BET365_COLETOR2_EMAIL    || '';
+const COLETOR2_DATA_NASC = process.env.BET365_COLETOR2_DATA_NASC || '';
+// true quando Coletor 2 tem porta/conta própria — sem dependência do Coletor 1
+const MODO_AUTONOMO     = DEBUG_PORT !== 9222 || (!!COLETOR2_USUARIO && !!COLETOR2_SENHA);
 const URL_SOCCER        = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR     = [];
 const INTERVALO_MS      = parseInt(process.env.BET365_ODDS_INTERVALO_MS)      || 180000;
@@ -116,6 +122,103 @@ async function getPool() {
     return pool;
 }
 
+// ── Login autônomo (usado apenas no MODO_AUTONOMO) ───────────
+async function _verificarLoginColetor2(pg) {
+    if (!COLETOR2_USUARIO || !COLETOR2_SENHA) {
+        console.log('   ℹ️  [Odds] BET365_COLETOR2_USUARIO não configurado — assumindo sessão ativa');
+        return;
+    }
+    const jaLogado = await pg.evaluate(() =>
+        ![...document.querySelectorAll('button')].some(b =>
+            ['Login', 'Log In'].includes((b.textContent || '').trim()))
+    ).catch(() => false);
+
+    if (jaLogado) { console.log('   ✅ [Odds] Sessão ativa — sem necessidade de login'); return; }
+
+    console.log(`   🔐 [Odds] Fazendo login com ${COLETOR2_USUARIO}...`);
+
+    // Abre modal de login se os campos ainda não estiverem visíveis
+    let inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+    if (!inputUser) {
+        await pg.evaluate(() => {
+            for (const btn of [...document.querySelectorAll('button, [role="button"]')]) {
+                const txt = (btn.textContent || '').trim();
+                if (txt === 'Login' || txt === 'Log In') { btn.click(); return; }
+            }
+        });
+        await new Promise(r => setTimeout(r, 2500));
+        inputUser = await pg.$('input[type="text"]:not([type="hidden"])');
+    }
+
+    if (!inputUser) { console.log('   ⚠️  [Odds] Campo usuário não encontrado — assumindo sessão ativa'); return; }
+
+    await inputUser.click({ clickCount: 3 });
+    await inputUser.type(COLETOR2_USUARIO, { delay: 60 });
+
+    const inputPass = await pg.$('input[type="password"]');
+    if (inputPass) {
+        await inputPass.click({ clickCount: 3 });
+        await inputPass.type(COLETOR2_SENHA, { delay: 60 });
+    }
+
+    // Submit
+    const clicouSubmit = await pg.evaluate(() => {
+        const sub = document.querySelector('input[type="submit"], button[type="submit"]');
+        if (sub) { sub.click(); return true; }
+        for (const btn of [...document.querySelectorAll('button, [role="button"]')]) {
+            if (['Login', 'Log In'].includes((btn.textContent || '').trim())) { btn.click(); return true; }
+        }
+        return false;
+    });
+    if (!clicouSubmit) { console.log('   ❌ [Odds] Botão submit não encontrado'); return; }
+
+    await new Promise(r => setTimeout(r, 5000));
+
+    // Modal "Confirme seus dados" (e-mail + data de nascimento)
+    const modalAberto = await pg.evaluate(() =>
+        !!document.querySelector('.nui-ModalContainer select[aria-label="Dia"]') ||
+        !!document.querySelector('select[aria-label="Dia"]')
+    ).catch(() => false);
+
+    if (modalAberto && COLETOR2_DATA_NASC && COLETOR2_EMAIL) {
+        console.log('   🔒 [Odds] Modal "Confirme seus dados" — preenchendo...');
+        const parts = COLETOR2_DATA_NASC.split(/[\/\-\.]/);
+        if (parts.length >= 3) {
+            await pg.evaluate((email, dia, mes, ano) => {
+                const emailInput = document.querySelector('#email')
+                    || document.querySelector('.nui-ModalContainer input[type="text"]')
+                    || document.querySelector('input[placeholder*="e-mail" i]');
+                if (emailInput) {
+                    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+                    if (setter) setter.call(emailInput, email); else emailInput.value = email;
+                    emailInput.dispatchEvent(new Event('input',  { bubbles: true }));
+                    emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                const setSelect = (sel, val) => {
+                    if (!sel) return;
+                    sel.value = val;
+                    sel.dispatchEvent(new Event('change', { bubbles: true }));
+                };
+                const selects = [...document.querySelectorAll('select')];
+                setSelect(selects.find(s => ['Dia'].includes(s.getAttribute('aria-label') || '')), dia);
+                setSelect(selects.find(s => ['Mês','Mes'].includes(s.getAttribute('aria-label') || '')), mes);
+                setSelect(selects.find(s => ['Ano'].includes(s.getAttribute('aria-label') || '')), ano);
+                const confirmBtn = document.querySelector('.nui-ModalContainer button[type="submit"]')
+                    || [...document.querySelectorAll('button')].find(b =>
+                        (b.textContent || '').trim().toLowerCase().includes('confirm'));
+                if (confirmBtn) confirmBtn.click();
+            }, COLETOR2_EMAIL, parts[0].padStart(2, '0'), parts[1].padStart(2, '0'), parts[2]);
+            await new Promise(r => setTimeout(r, 4000));
+        }
+    }
+
+    const ok = await pg.evaluate(() =>
+        ![...document.querySelectorAll('button')].some(b =>
+            (b.textContent || '').trim().includes('Faça Login para Assistir'))
+    ).catch(() => true);
+    console.log(ok ? '   ✅ [Odds] Login bem-sucedido!' : '   ⚠️  [Odds] Login pode ter falhado — verifique o Edge');
+}
+
 // ── Puppeteer: conecta ao Edge e abre aba própria ────────────
 async function conectarEdge() {
     const wsUrl = await new Promise((resolve, reject) => {
@@ -132,6 +235,24 @@ async function conectarEdge() {
     });
     const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null, protocolTimeout: 60000 });
 
+    // MODO_AUTONOMO: porta própria (ex: 9223), sem dependência do Coletor 1
+    if (MODO_AUTONOMO) {
+        const pages = await browser.pages();
+        let pg = pages.find(p => { try { return p.url().includes('bet365') && p.url().includes('AVR'); } catch(_) { return false; } });
+        if (!pg) {
+            pg = pages.length > 0 ? pages[0] : await browser.newPage();
+            await pg.bringToFront();
+            await pg.evaluate(url => { location.href = url; }, URL_SOCCER);
+            await new Promise(r => setTimeout(r, 15000));
+            if (!pg.url().includes('AVR')) await new Promise(r => setTimeout(r, 10000));
+        }
+        await pg.bringToFront();
+        console.log(`   ✅ [Odds] Aba pronta (porta ${DEBUG_PORT}): ${pg.url().substring(0, 60)}`);
+        await _verificarLoginColetor2(pg);
+        return { browser, pg };
+    }
+
+    // MODO_COMPARTILHADO (porta 9222): Coletor 1 usa a primeira aba AVR, Coletor 2 usa a última.
     // Encontra abas AVR — Coletor 1 usa a primeira, Coletor 2 usa a última.
     // O iniciar-tudo.bat abre 2 abas AVR desde o início; se só houver 1, abre a segunda aqui.
     let pages = await browser.pages();
