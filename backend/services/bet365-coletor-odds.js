@@ -869,9 +869,16 @@ async function run() {
 
     const duracaoS = Math.round((Date.now() - inicio) / 1000);
     console.log(`============================================`);
-    console.log(`✅ [Odds] Coleta concluída em ${duracaoS}s — encerrando`);
+    console.log(`✅ [Odds] Ciclo concluído em ${duracaoS}s`);
     console.log(`============================================`);
-    process.exit(0);
 }
 
-run().catch(e => { console.error('❌ [Odds] Fatal:', e.message); process.exit(1); });
+async function main() {
+    while (true) {
+        await run().catch(e => console.error('❌ [Odds] Erro no ciclo:', e.message));
+        console.log(`⏳ [Odds] Próximo ciclo em ${Math.round(INTERVALO_MS / 1000)}s...`);
+        await new Promise(r => setTimeout(r, INTERVALO_MS));
+    }
+}
+
+main();
