@@ -4599,8 +4599,9 @@ function renderLigas() {
             }
             renderTabela(); _renderAllCharts();
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
-            if (S.view === 'analise')  { _faAtualizarStatus(); carregarAnalise(true); }
+            if (S.view === 'analise')   { _faAtualizarStatus(); carregarAnalise(true); }
             if (S.view === 'proximos') { renderProximosJogos(); }
+            if (S.view === 'simulador') { renderSimulador(); }
         };
         c.appendChild(b);
     };
