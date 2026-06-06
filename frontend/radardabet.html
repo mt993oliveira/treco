@@ -9011,7 +9011,12 @@ function _simRenderUI(el, d, _u) {
         : '';
 
     // ── Jogos disponíveis (com odds coletadas) agrupados por liga ────────────
-    const eventosDisp = (_proximosCache || []).filter(e => e.odd_casa > 0);
+    const eventosDisp = (_proximosCache || []).filter(e => {
+        if (!(e.odd_casa > 0)) return false;
+        if (!S.ligaAtiva) return true;
+        const lc = LIGA_ALIASES[(e.liga||'').toLowerCase()] || e.liga || '';
+        return lc === S.ligaAtiva;
+    });
 
     // Agrupa por liga mantendo índice original para _simSelecionarJogo(i)
     const byLiga = new Map();
@@ -9329,13 +9334,23 @@ function _simRenderUI(el, d, _u) {
 
 function _simGetEvento() {
     if (_simSelectedIdx === null) return null;
-    const evs = (_proximosCache || []).filter(e => e.odd_casa > 0);
+    const evs = (_proximosCache || []).filter(e => {
+        if (!(e.odd_casa > 0)) return false;
+        if (!S.ligaAtiva) return true;
+        const lc = LIGA_ALIASES[(e.liga||'').toLowerCase()] || e.liga || '';
+        return lc === S.ligaAtiva;
+    });
     return evs[_simSelectedIdx] || null;
 }
 
 function _simSelecionarJogo(i) {
     _simSelectedIdx = i;
-    const evs = (_proximosCache || []).filter(e => e.odd_casa > 0);
+    const evs = (_proximosCache || []).filter(e => {
+        if (!(e.odd_casa > 0)) return false;
+        if (!S.ligaAtiva) return true;
+        const lc = LIGA_ALIASES[(e.liga||'').toLowerCase()] || e.liga || '';
+        return lc === S.ligaAtiva;
+    });
     evs.forEach((_, j) => {
         const c = document.getElementById(`sim-card-${j}`);
         if (!c) return;
