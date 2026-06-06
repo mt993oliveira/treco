@@ -631,35 +631,36 @@ function lerOddsDOM() {
 }
 
 // ── Expande pods colapsados antes de ler as odds ─────────────
-// Bet365 renderiza apenas o Resultado Final expandido por padrão.
-// ElementHandle.click() falhava silenciosamente quando o elemento
-// está fora do viewport. Solução: scroll para centro + pg.mouse.click()
-// com coordenadas reais.
+// Dispara sequência completa de eventos de ponteiro via evaluate —
+// frameworks Vue/React verificam pointerdown+mousedown+click em sequência.
 async function expandirPodsExtras(pg) {
-    const KEYWORDS = ['mais/menos', 'gols mais', 'para o time marcar', 'time marcar', 'intervalo - resultado'];
-    const pods = await pg.$$('.gl-MarketGroupPod.gl-MarketGroup').catch(() => []);
-    let count = 0;
-    for (const pod of pods) {
-        const txt = await pod.$eval('.gl-MarketGroupButton_Text',
-            el => el.textContent.trim().toLowerCase()
-        ).catch(() => '');
-        if (!KEYWORDS.some(k => txt.includes(k))) continue;
-        // Só clica se ainda não há participantes (evita fechar o que já está aberto)
-        const temParticipantes = await pod.$('.srb-ParticipantStackedBorderless').catch(() => null);
-        if (temParticipantes) continue;
-        const btn = await pod.$('.gl-MarketGroupButton').catch(() => null);
-        if (!btn) continue;
-        // Scroll para centro do viewport antes de clicar
-        await pg.evaluate(el => el.scrollIntoView({ block: 'center', inline: 'nearest' }), btn).catch(() => {});
-        await new Promise(r => setTimeout(r, 200));
-        const box = await btn.boundingBox().catch(() => null);
-        if (!box) continue;
-        // pg.mouse.click() usa coordenadas reais — mais confiável que ElementHandle.click()
-        await pg.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-        count++;
-        await new Promise(r => setTimeout(r, 600));
-    }
-    if (count > 0) await new Promise(r => setTimeout(r, 1500));
+    const count = await pg.evaluate((keywords) => {
+        function dispararClique(el) {
+            const opts = { bubbles: true, cancelable: true, view: window };
+            el.dispatchEvent(new PointerEvent('pointerover',  { ...opts }));
+            el.dispatchEvent(new MouseEvent ('mouseover',     { ...opts }));
+            el.dispatchEvent(new PointerEvent('pointerdown',  { ...opts }));
+            el.dispatchEvent(new MouseEvent ('mousedown',     { ...opts }));
+            el.dispatchEvent(new PointerEvent('pointerup',    { ...opts }));
+            el.dispatchEvent(new MouseEvent ('mouseup',       { ...opts }));
+            el.dispatchEvent(new MouseEvent ('click',         { ...opts }));
+        }
+        const pods = [...document.querySelectorAll('.gl-MarketGroupPod.gl-MarketGroup')];
+        let n = 0;
+        for (const pod of pods) {
+            const txt = (pod.querySelector('.gl-MarketGroupButton_Text')?.textContent || '').trim().toLowerCase();
+            if (!keywords.some(k => txt.includes(k))) continue;
+            const temParticipantes = !!pod.querySelector('.srb-ParticipantStackedBorderless');
+            if (temParticipantes) continue;
+            const btn = pod.querySelector('.gl-MarketGroupButton');
+            if (!btn) continue;
+            btn.scrollIntoView({ block: 'center' });
+            dispararClique(btn);
+            n++;
+        }
+        return n;
+    }, ['mais/menos', 'gols mais', 'para o time marcar', 'time marcar', 'intervalo - resultado']).catch(() => 0);
+    if (count > 0) await new Promise(r => setTimeout(r, 1800));
     return count;
 }
 
