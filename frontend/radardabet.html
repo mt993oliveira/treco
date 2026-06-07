@@ -3682,9 +3682,10 @@ function checa(j, fid) {
         case 'ht-fora':   return rht === 'FORA';
 
         // ── HT gols ──
-        case 'ht-over':  return htOk && (ch + fh) >= 2;
-        case 'ht-under': return htOk && (ch + fh) <= 1;
-        case 'ht-gols':  return htOk && (ch + fh) > 0;
+        // ht_outro=true (OUT) = placar HT não padrão (2-1, 1-2, 3-0…) = sempre 3+ gols
+        case 'ht-over':  return (htOk && (ch + fh) >= 2) || j.ht_outro === true;
+        case 'ht-under': return htOk && (ch + fh) <= 1;          // OUT nunca é ≤1 gol
+        case 'ht-gols':  return (htOk && (ch + fh) > 0) || j.ht_outro === true;
 
         // ── HT/FT duplo resultado ──
         case 'htft-cc': return rht === 'CASA'   && rft === 'CASA';
