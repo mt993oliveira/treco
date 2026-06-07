@@ -6950,6 +6950,32 @@ function renderTabela() {
     // futuros ascendentes no topo (16h acima de 15h) + histórico descendente abaixo
     const gsDesc = [...gsFuturos].reverse().concat([...gsHist].reverse());
 
+    // ── Pré-cálculo BTTS (destaque de células, sem linha separada) ─────────
+    let _bttsCols = new Set(), _bttsTargetKey = null, _ttBtts = '';
+    if (_bttsMosaicoAtivo && gsHist.length >= 2) {
+        // Referência: última hora COMPLETA com >= 3 jogos — pula a hora atual (em andamento)
+        let _hRef = null;
+        for (let _si = gsHist.length - 2; _si >= 0; _si--) {
+            const _dc = new Set((gsHist[_si].jogos||[]).map(j=>`${j.time_casa}|${j.time_fora}`)).size;
+            if (_dc >= 3) { _hRef = gsHist[_si]; break; }
+        }
+        if (_hRef) {
+            const _db = new Map();
+            (_hRef.jogos||[]).forEach(j => { const k=`${j.time_casa}|${j.time_fora}`; if(!_db.has(k)) _db.set(k,j); });
+            let _bN=0, _bT=0;
+            _db.forEach(j => { if(!j.resultado||j.resultado_estimado) return; _bT++; if((j.gol_casa??-1)>=1&&(j.gol_fora??-1)>=1) _bN++; });
+            if (_bT >= 3 && _bN/_bT*100 <= _bttsMosaicoPct) {
+                const _c0=Math.max(0,_bN-2), _c1=Math.max(0,_bN-1), _c2=Math.min(N-1,_bN);
+                _bttsCols = new Set([_c0,_c1,_c2]);
+                _ttBtts = `🎯 BTTS: ${_bN} de ${_bT} jogos (${Math.round(_bN/_bT*100)}%) · sugestão colunas ${_c0+1}, ${_c1+1}, ${_c2+1}`;
+                // Linha alvo: próximos se visível, senão hora atual (último gsHist)
+                _bttsTargetKey = gsFuturos.length > 0
+                    ? gsFuturos[gsFuturos.length-1].key
+                    : gsHist[gsHist.length-1].key;
+            }
+        }
+    }
+
     // Acumuladores para o painel "LINHAS SELECIONADAS"
     const selHits    = Array(N).fill(0);
     const selTotal   = Array(N).fill(0);
@@ -7066,6 +7092,8 @@ function renderTabela() {
 
         // Células dos jogos — uma por slot de 3 minutos
         const cells = Array.from({length: N}, (_, ci) => {
+            const _isBttsHere = _bttsCols.size > 0 && _bttsTargetKey === grupo.key && _bttsCols.has(ci);
+            const _bttsExtraStyle = _isBttsHere ? `box-shadow:inset 0 0 0 2px #22c55e;background:rgba(34,197,94,.10);` : '';
             const j = slotMap[ci];
 
             if (!j) {
@@ -7084,7 +7112,7 @@ function renderTabela() {
                     const ccOC = corOdd(agOC), ccOF = corOdd(agOF);
                     const _abTc = tc, _abTf = tf; // tc/tf já são strings normalizadas — abbrev é TDZ aqui
                     if (S.showNomes && S.showOdds) {
-                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${_celulaW}px">
+                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${_celulaW}px;${_bttsExtraStyle}">
                             ${agOC > 0 ? `<span style="display:block;font-size:var(--fs-prox);font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
                             <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
                             <span style="display:block;font-size:var(--fs-prox);font-weight:800;text-align:center">—</span>
@@ -7093,14 +7121,14 @@ function renderTabela() {
                         </td>`;
                     }
                     if (S.showNomes) {
-                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${_celulaW}px">
+                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${_celulaW}px;${_bttsExtraStyle}">
                             <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
                             <span style="display:block;font-size:var(--fs-prox);font-weight:800;text-align:center">—</span>
                             <span data-action="clube" data-clube="${_abTf}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tf}</span>
                         </td>`;
                     }
                     if (S.showOdds) {
-                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${_celulaW}px;cursor:default">
+                        return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${_celulaW}px;cursor:default;${_bttsExtraStyle}">
                             <span style="display:block;font-size:var(--fs-prox);font-weight:800;color:${ccOC};text-align:center">${fmtA(agOC)}</span>
                             <span style="display:flex;gap:2px;margin-top:1px">
                                 <span style="flex:1;text-align:center;font-size:var(--fs-prox);font-weight:700;color:${ccOC}">${fmtA(agOC)}</span>
@@ -7109,9 +7137,13 @@ function renderTabela() {
                         </td>`;
                     }
                     // padrão: sem nomes e sem odds → só traço no centro
-                    return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${_celulaW}px;cursor:default">
+                    return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${_celulaW}px;cursor:default;${_bttsExtraStyle}">
                         <span style="display:block;font-size:var(--fs-prox);font-weight:800;text-align:center">—</span>
                     </td>`;
+                }
+                // Célula vazia: destaque BTTS se for a coluna sugerida na linha alvo
+                if (_isBttsHere) {
+                    return `<td style="min-width:${_celulaW}px;${_bttsExtraStyle}text-align:center;font-size:11px;color:#22c55e;cursor:default" title="${_ttBtts}">🎯</td>`;
                 }
                 return `<td class="c-vazio" style="opacity:.3"></td>`;
             }
@@ -7262,54 +7294,6 @@ function renderTabela() {
 
         tbody.appendChild(tr);
     });
-
-    // ── Linha de Sugestão BTTS ─────────────────────────────────────
-    if (_bttsMosaicoAtivo && gsHist.length > 0) {
-        // Usa o slot mais recente com >= 10 jogos para evitar instabilidade na virada de hora
-        let _hAnt = null;
-        for (let _si = gsHist.length - 1; _si >= 0; _si--) {
-            if ((gsHist[_si].jogos || []).length >= 10) { _hAnt = gsHist[_si]; break; }
-        }
-        if (!_hAnt) _hAnt = gsHist[gsHist.length - 1]; // fallback se nenhum slot tiver 10+
-        const _dedupBtts = new Map();
-        (_hAnt.jogos || []).forEach(j => {
-            const k = `${j.time_casa}|${j.time_fora}`;
-            if (!_dedupBtts.has(k)) _dedupBtts.set(k, j);
-        });
-        let _bttsN = 0, _bttsT = 0;
-        _dedupBtts.forEach(j => {
-            if (!j.resultado || j.resultado_estimado) return;
-            _bttsT++;
-            if ((j.gol_casa ?? -1) >= 1 && (j.gol_fora ?? -1) >= 1) _bttsN++;
-        });
-        if (_bttsT > 0 && _bttsN / _bttsT * 100 <= _bttsMosaicoPct) {
-            // Colunas são 1-indexadas pelo usuário: BTTS=15 → colunas 14, 15, 16
-            // Em 0-indexed (ci): bttsN-2, bttsN-1, bttsN
-            const _c0 = Math.max(0, _bttsN - 2);
-            const _c1 = Math.max(0, _bttsN - 1);
-            const _c2 = Math.min(N - 1, _bttsN);
-            const _pct = Math.round(_bttsN / _bttsT * 100);
-            const _ttBtts = `${_bttsN} BTTS de ${_bttsT} jogos (${_pct}%) na hora anterior · sugestão: colunas ${_c0+1}, ${_c1+1}, ${_c2+1}`;
-            const _bttsCells = Array.from({length: N}, (_, ci) => {
-                const _inRange = ci === _c0 || ci === _c1 || ci === _c2;
-                return _inRange
-                    ? `<td style="background:rgba(34,197,94,.10);box-shadow:inset 0 0 0 2px #22c55e;text-align:center;font-size:9px;font-weight:900;color:#22c55e;padding:2px;min-width:${_celulaW}px;line-height:1" title="${_ttBtts}">🎯</td>`
-                    : `<td style="min-width:${_celulaW}px;opacity:.15"></td>`;
-            }).join('');
-            const _bttsRow = document.createElement('tr');
-            _bttsRow.innerHTML = `
-                <td style="position:sticky;left:0;background:#0c1220;z-index:5;min-width:${S._mosaicoHoraLarg}px;
-                    padding:2px 3px;text-align:center;font-size:8px;color:#22c55e;font-weight:800;line-height:1.3;
-                    border-right:1px solid #1e293b" title="${_ttBtts}">
-                    🎯<br>BTTS<br><span style="font-size:10px">${_bttsN}</span>
-                </td>
-                ${_bttsCells}`;
-            // Insere APÓS a hora atual (1ª linha histórica) e ANTES da hora de referência
-            // Layout: [próximos?] → hora atual → 🎯 BTTS → hora referência → ...
-            const _bttsAnchor = tbody.children[gsFuturos.length + 1] || null;
-            tbody.insertBefore(_bttsRow, _bttsAnchor);
-        }
-    }
 
     // Delegação de clique na grid — nomes de clube e placar
     tbody.onclick = handleGridClick;
