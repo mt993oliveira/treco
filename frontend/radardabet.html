@@ -3120,18 +3120,20 @@ async function carregarConfigLigas(_tentativa) {
             const chave = 'chart_cor_' + f.id.replace(/[^a-zA-Z0-9]/g, '_');
             if (cfg[chave]) S._chartCores[f.id] = cfg[chave];
         });
-        // Cores das séries do Gráfico de Gols
-        FILTROS_GOLS.forEach(f => {
-            const chave = 'chart_cor_' + f.id.replace(/[^a-zA-Z0-9]/g, '_');
-            if (cfg[chave]) S._chartCores[f.id] = cfg[chave];
-        });
-        // Cores dos novos gráficos (Gols e Par/Ímpar)
+        // Cores dos novos gráficos (Linha e Par/Ímpar)
         if (cfg.grafico_gols_barra) S._chartCores['_gols_barra'] = cfg.grafico_gols_barra;
         if (cfg.grafico_gols_mm)    S._chartCores['_gols_mm']    = cfg.grafico_gols_mm;
         if (cfg.grafico_par_cor)    S._chartCores['_par']        = cfg.grafico_par_cor;
         if (cfg.grafico_impar_cor)  S._chartCores['_impar']      = cfg.grafico_impar_cor;
-        // Cores personalizadas do usuário (localStorage) sobrescrevem defaults do sistema
+        // Cores personalizadas do usuário — gráfico de linha (namespace separado)
         { const _u = _getUser(); if (_u) { try { const uc = JSON.parse(localStorage.getItem('chartCores_' + _u.Id) || '{}'); Object.assign(S._chartCores, uc); } catch(e) {} } }
+        // Cores do Gráfico de Gols — namespace próprio para não contaminar o gráfico de linha
+        S._chartCoresGols = {};
+        FILTROS_GOLS.forEach(f => {
+            const chave = 'chart_cor_' + f.id.replace(/[^a-zA-Z0-9]/g, '_');
+            if (cfg[chave]) S._chartCoresGols[f.id] = cfg[chave];
+        });
+        { const _u = _getUser(); if (_u) { try { const ug = JSON.parse(localStorage.getItem('chartCoresGols_' + _u.Id) || '{}'); Object.assign(S._chartCoresGols, ug); } catch(e) {} } }
         // Altura do painel do gráfico
         S._grafAltura = parseInt(cfg.grafico_altura) || 300;
         { const gw = document.getElementById('grafico')?.parentElement;
@@ -3161,7 +3163,7 @@ async function carregarConfigLigas(_tentativa) {
                  'rdbt_showPct','rdbt_showGols','rdbt_filtroMosaico',
                  'rdbt_showProximos','showLegendas','gridCores']
                     .forEach(k => localStorage.removeItem(k));
-                if (_u?.Id) localStorage.removeItem('chartCores_' + _u.Id);
+                if (_u?.Id) { localStorage.removeItem('chartCores_' + _u.Id); localStorage.removeItem('chartCoresGols_' + _u.Id); }
                 localStorage.setItem('rdbt_config_versao', cfg.config_versao);
             }
         }
@@ -3517,7 +3519,8 @@ const S = {
     _graficoLinha: null,
     _grafAltura:     300,
     _grafGolsAltura: 260,
-    _chartCores:   {},
+    _chartCores:     {},
+    _chartCoresGols: {},
     view:          'historico',
     _analiseSecoes: { ia:true, desempenho:true, detalhe:true, valuebets:true, tendencias:true, frequencia:true },
     showMosaico:   true,   // toggle independente
@@ -6144,7 +6147,7 @@ function renderGraficoGols() {
         const brutosAll = _extrairGolsAll(f.id);
         const rolSumAll = _rollingSumAll(brutosAll);
         const rolSum    = rolSumAll.slice(_offsetGols);
-        const cor = (S._chartCores?.[f.id]) || f.cor;
+        const cor = (S._chartCoresGols?.[f.id]) || f.cor;
         const _rBase = S.grafGolsPontoRaio || 4;
         const _rGols = S.grafGolsFlat
             ? rolSum.map((v, i, a) => (i > 0 && v === a[i-1]) ? 0 : _rBase)
@@ -8227,9 +8230,13 @@ function _atualizarCfgCoresGrafico() {
     const c = document.getElementById('cfg-cores-grafico-fields');
     if (!c) return;
     const u = _getUser();
-    let userCores = {};
-    if (u) { try { userCores = JSON.parse(localStorage.getItem('chartCores_' + u.Id) || '{}'); } catch(e) {} }
-    const _corItem = (id, label, cor) => {
+    let userCores = {};     // cores do gráfico de linha
+    let userCoresGols = {}; // cores do gráfico de gols (namespace separado)
+    if (u) {
+        try { userCores     = JSON.parse(localStorage.getItem('chartCores_'     + u.Id) || '{}'); } catch(e) {}
+        try { userCoresGols = JSON.parse(localStorage.getItem('chartCoresGols_' + u.Id) || '{}'); } catch(e) {}
+    }
+    const _corItemLinha = (id, label, cor) => {
         const idKey = 'gc-chart-' + id.replace(/[^a-zA-Z0-9]/g, '_');
         const val = userCores[id] || S._chartCores[id] || cor;
         return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #080e18">
@@ -8240,15 +8247,26 @@ function _atualizarCfgCoresGrafico() {
             <span style="font-size:10px;color:#e2e8f0;flex:1">${label}</span>
         </div>`;
     };
+    const _corItemGols = (id, label, cor) => {
+        const idKey = 'gc-gols-' + id.replace(/[^a-zA-Z0-9]/g, '_');
+        const val = userCoresGols[id] || S._chartCoresGols[id] || cor;
+        return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #080e18">
+            <input type="color" id="${idKey}" value="${val}"
+                oninput="_saveCoresGraficoLocal()"
+                style="width:26px;height:20px;border:1px solid #334155;border-radius:3px;background:none;cursor:pointer;padding:0;flex-shrink:0">
+            <div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${val}"></div>
+            <span style="font-size:10px;color:#e2e8f0;flex:1">${label}</span>
+        </div>`;
+    };
     const _golsSection = `<div style="margin-bottom:10px">
         <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid #1e293b">⚽ GRÁFICO DE GOLS</div>
-        ${FILTROS_GOLS.filter(f => f.id !== 'gols-equi').map(f => _corItem(f.id, f.label, f.cor)).join('')}
+        ${FILTROS_GOLS.filter(f => f.id !== 'gols-equi').map(f => _corItemGols(f.id, f.label, f.cor)).join('')}
     </div>`;
     c.innerHTML = _golsSection + GRUPOS_LEGENDA.map(grupo => {
         const items = grupo.ids.map(id => {
             const f = TODOS_FILTROS.find(x => x.id === id);
             if (!f) return '';
-            return _corItem(id, f.label, f.cor);
+            return _corItemLinha(id, f.label, f.cor);
         }).join('');
         return `<div style="margin-bottom:10px">
             <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid #1e293b">${grupo.label.toUpperCase()}</div>
@@ -8260,23 +8278,34 @@ function _atualizarCfgCoresGrafico() {
 function _saveCoresGraficoLocal() {
     const u = _getUser();
     if (!u) return;
-    // Parte das cores já salvas para não apagar séries fora do painel atual
+    // Gráfico de linha — namespace chartCores_userId
     let cores = {};
     try { cores = JSON.parse(localStorage.getItem('chartCores_' + u.Id) || '{}'); } catch(e) {}
-    [...TODOS_FILTROS, ...FILTROS_GOLS].forEach(f => {
+    TODOS_FILTROS.forEach(f => {
         const inp = document.getElementById('gc-chart-' + f.id.replace(/[^a-zA-Z0-9]/g, '_'));
         if (inp) cores[f.id] = inp.value;
     });
     localStorage.setItem('chartCores_' + u.Id, JSON.stringify(cores));
     Object.assign(S._chartCores, cores);
+    // Gráfico de gols — namespace chartCoresGols_userId (separado para não contaminar)
+    let coresGols = {};
+    try { coresGols = JSON.parse(localStorage.getItem('chartCoresGols_' + u.Id) || '{}'); } catch(e) {}
+    FILTROS_GOLS.forEach(f => {
+        const inp = document.getElementById('gc-gols-' + f.id.replace(/[^a-zA-Z0-9]/g, '_'));
+        if (inp) coresGols[f.id] = inp.value;
+    });
+    localStorage.setItem('chartCoresGols_' + u.Id, JSON.stringify(coresGols));
+    Object.assign(S._chartCoresGols, coresGols);
     _renderAllCharts();
     renderGraficoGols();
 }
 
 function _resetCoresGrafico() {
     const u = _getUser();
-    if (u) localStorage.removeItem('chartCores_' + u.Id);
-    // Recarrega cores do servidor
+    if (u) {
+        localStorage.removeItem('chartCores_'     + u.Id);
+        localStorage.removeItem('chartCoresGols_' + u.Id);
+    }
     const idEl = document.getElementById('cfg-cores-grafico-fields');
     if (idEl) idEl.innerHTML = '<div style="color:#64748b;font-size:10px;text-align:center;padding:8px">Recarregando...</div>';
     _loadConfigSistema().then(() => _atualizarCfgCoresGrafico());
