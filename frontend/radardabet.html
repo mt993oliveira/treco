@@ -2994,7 +2994,7 @@ async function carregarConfigLigas(_tentativa) {
         // Sincroniza visual dos botões do header
         const _sb = id => document.getElementById(id);
         if (_sb('btn-proximos-jogos'))  _sb('btn-proximos-jogos').classList.toggle('ativo',  S.showProximos);
-        _syncBttsMosaico(cfg.alerta_btts_mosaico);
+        _syncBttsMosaico(cfg.alerta_btts_mosaico, cfg.alerta_btts_mosaico_botao);
         if (_sb('btn-exibir-clubes'))   _sb('btn-exibir-clubes').classList.toggle('ativo',   S.showNomes);
         if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
         if (_sb('btn-exibir-ht'))       _sb('btn-exibir-ht').classList.toggle('ativo',       S.showHT);
@@ -3263,7 +3263,7 @@ async function _aplicarConfigFrontend() {
             if (c.header_subtitle_cor)     _subEl.style.color   = c.header_subtitle_cor;
         }
         if (c.alerta_popup_ativo !== undefined)  _alertaPopupAtivo  = c.alerta_popup_ativo  !== 'false';
-        _syncBttsMosaico(c.alerta_btts_mosaico);
+        _syncBttsMosaico(c.alerta_btts_mosaico, c.alerta_btts_mosaico_botao);
         console.log('[Config] ✅ aplicada com sucesso — tema:', c.default_tema, '| subtitle:', c.header_subtitle_texto);
 
     } catch(e) {
@@ -12248,7 +12248,8 @@ async function _loadConfigSistema() {
             `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
                 <span style="font-size:11px;font-weight:700;color:#e2e8f0">🎯 Sugestão BTTS no Mosaico</span>
             </div>` +
-            _toggleHtml({ chave:'alerta_btts_mosaico', valor: cfgAlertas.alerta_btts_mosaico ?? 'true', descricao:'Linha de sugestão no topo do Mosaico: destaca colunas N-1, N, N+1 quando BTTS ≤ 50% na hora anterior' }) +
+            _toggleHtml({ chave:'alerta_btts_mosaico',       valor: cfgAlertas.alerta_btts_mosaico       ?? 'true', descricao:'Exibir linha de sugestão na grid (destaca colunas N-1, N, N+1 quando BTTS ≤ 50% na hora anterior)' }) +
+            _toggleHtml({ chave:'alerta_btts_mosaico_botao', valor: cfgAlertas.alerta_btts_mosaico_botao ?? 'true', descricao:'Exibir botão "🎯 Ambas Marcam" no toolbar do Mosaico (permite cada usuário ligar/desligar individualmente)' }) +
             `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
                 <span style="font-size:11px;font-weight:700;color:#e2e8f0">📱 Telegram</span>
             </div>` +
@@ -12517,7 +12518,7 @@ async function salvarConfigSistema() {
             if (payload.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(payload.alerta_visual_duracao_s) || 15;
             if (payload.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(payload.alerta_liga_piscar_s) || 30;
             if (payload.alerta_popup_ativo !== undefined) _alertaPopupAtivo = payload.alerta_popup_ativo !== 'false';
-            if (payload.alerta_btts_mosaico !== undefined) { _syncBttsMosaico(payload.alerta_btts_mosaico); if (S.view === 'historico' && S.showMosaico) renderTabela(); }
+            if (payload.alerta_btts_mosaico !== undefined || payload.alerta_btts_mosaico_botao !== undefined) { _syncBttsMosaico(payload.alerta_btts_mosaico ?? S._cfgRaw?.alerta_btts_mosaico, payload.alerta_btts_mosaico_botao ?? S._cfgRaw?.alerta_btts_mosaico_botao); if (S.view === 'historico' && S.showMosaico) renderTabela(); }
             // Atualiza menu de ligas imediatamente
             await carregarConfigLigas();
             renderLigas();
@@ -14040,12 +14041,20 @@ let _alertaLigaPiscarDuracao = 30;
 let _alertaLigaPiscarTimers = {};
 let _alertaPopupAtivo = true; // controlado por alerta_popup_ativo no config do sistema
 let _bttsMosaicoAtivo = true; // controlado por alerta_btts_mosaico no config do sistema
-function _syncBttsMosaico(masterCfg) {
-    const _master = (masterCfg ?? 'true') !== 'false';
-    const _ls = localStorage.getItem('rdbt_bttsMosaico');
-    _bttsMosaicoAtivo = _master && (_ls === null ? true : _ls === 'true');
+function _syncBttsMosaico(rowCfg, botaoCfg) {
+    const _masterRow = (rowCfg   ?? 'true') !== 'false'; // linha BTTS na grid
+    const _masterBtn = (botaoCfg ?? 'true') !== 'false'; // botão no toolbar
     const _btn = document.getElementById('btn-btts-mosaico');
-    if (_btn) { _btn.style.display = _master ? '' : 'none'; _btn.classList.toggle('ativo', _bttsMosaicoAtivo); }
+    if (_btn) _btn.style.display = _masterBtn ? '' : 'none';
+    if (_masterBtn) {
+        // botão visível → preferência do usuário controla a linha
+        const _ls = localStorage.getItem('rdbt_bttsMosaico');
+        _bttsMosaicoAtivo = _masterRow && (_ls === null ? true : _ls === 'true');
+    } else {
+        // botão oculto → master decide diretamente se linha aparece
+        _bttsMosaicoAtivo = _masterRow;
+    }
+    if (_btn) _btn.classList.toggle('ativo', _bttsMosaicoAtivo);
 }
 
 async function _carregarAlertaCfgRuntime() {

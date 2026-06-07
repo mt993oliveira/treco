@@ -1857,7 +1857,8 @@ const CONFIG_DEFAULTS = [
     { chave:'alerta_visual_duracao_s',      valor:'15',   tipo:'number',  grupo:'alertas', descricao:'Duração da notificação de alerta na tela (segundos)' },
     { chave:'alerta_liga_piscar_s',         valor:'30',   tipo:'number',  grupo:'alertas', descricao:'Duração do piscar da borda da liga quando alerta dispara (segundos)' },
     { chave:'alerta_popup_ativo',           valor:'true', tipo:'boolean', grupo:'alertas', descricao:'Exibir popup de alerta visual (quando desativado, apenas a liga pisca; MASTER sempre vê o popup)' },
-    { chave:'alerta_btts_mosaico',          valor:'true', tipo:'boolean', grupo:'alertas', descricao:'🎯 Sugestão BTTS no Mosaico — destacar colunas N-1, N, N+1 quando BTTS ≤ 50% na hora anterior' },
+    { chave:'alerta_btts_mosaico',          valor:'true', tipo:'boolean', grupo:'alertas', descricao:'🎯 Sugestão BTTS no Mosaico — exibir linha de destaque na grid quando BTTS ≤ 50% na hora anterior' },
+    { chave:'alerta_btts_mosaico_botao',   valor:'true', tipo:'boolean', grupo:'alertas', descricao:'🎯 Sugestão BTTS — exibir botão "Ambas Marcam" no toolbar do Mosaico (permite usuário ligar/desligar)' },
     // ── Seções da Análise ──
     { chave:'show_secao_ia',                valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: IA — Sugestões para Próximos Jogos' },
     { chave:'show_secao_value_bets',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Value Bets' },
