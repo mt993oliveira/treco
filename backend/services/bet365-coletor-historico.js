@@ -165,10 +165,12 @@ function gerarMercadoId(eventoId, mercado, selecao) {
 }
 
 // ── Competições para extra.bet365.bet.br ─────────────────────
+// compNome deve ser exatamente como aparece na UI do Bet365 após selecionar data
+// Fallback: se compNome não encontrado, tenta com o próprio nome da chave (ligaNorm)
 const LIGA_COMP_EXTRA = {
-    'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
+    'World Cup':                { compId: '20120650', compNome: 'World Cup' },
     'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
-    'Premiership':              { compId: '20120653', compNome: 'Premier League' },
+    'Premiership':              { compId: '20120653', compNome: 'Premiership' },
     'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
     'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
 };
@@ -209,6 +211,7 @@ async function _clicarEl(pg, el) {
 }
 
 // Helper: procura elemento por texto (lista de seletores CSS) e clica via mouse
+// Retorna o texto encontrado ou false
 async function _clicarPorTexto(pg, sels, texto) {
     for (const sel of sels) {
         const els = await pg.$$(sel);
@@ -216,11 +219,24 @@ async function _clicarPorTexto(pg, sels, texto) {
             const txt = await pg.evaluate(e => e.textContent.trim(), el).catch(() => '');
             if (txt.toLowerCase().includes(texto.toLowerCase())) {
                 await _clicarEl(pg, el);
-                return true;
+                return txt;
             }
         }
     }
     return false;
+}
+
+// Helper: lista todos os textos visíveis nos seletores (para debug quando falha)
+async function _listarTextosVisiveis(pg, sels) {
+    const textos = new Set();
+    for (const sel of sels) {
+        const els = await pg.$$(sel).catch(() => []);
+        for (const el of els) {
+            const txt = await pg.evaluate(e => e.textContent.trim(), el).catch(() => '');
+            if (txt && txt.length > 1 && txt.length < 80) textos.add(txt);
+        }
+    }
+    return [...textos];
 }
 
 // Navega como humano: home → Encontrar um Resultado → Futebol Virtual → data → competição
@@ -352,14 +368,24 @@ async function navegarParaLiga(novaPg, ligaNorm, ligaInfo, dataAlvo) {
     await novaPg.waitForFunction(() => {
         return !!document.querySelector(
             '[data-state="competition"],.results-state__competition-list,.results-state__entry');
-    }, { timeout: 12000 }).catch(() => {});
-    await delayHumano(600);
+    }, { timeout: 15000 }).catch(() => {});
+    await delayHumano(1000);
 
-    const compOk = await _clicarPorTexto(novaPg,
-        ['.results-state__competition','.results-state__entry','.results-state__link','li','button','a'],
-        ligaInfo.compNome);
+    const COMP_SELS = ['.results-state__competition','.results-state__entry','.results-state__link','li','button','a'];
 
-    if (!compOk) throw new Error(`[navegarParaLiga] Competição "${ligaInfo.compNome}" não encontrada na lista`);
+    // Tenta com compNome; se falhar, tenta com ligaNorm como fallback
+    let compOk = await _clicarPorTexto(novaPg, COMP_SELS, ligaInfo.compNome);
+    if (!compOk && ligaNorm !== ligaInfo.compNome) {
+        console.warn(`   ⚠️  [${ligaNorm}] "${ligaInfo.compNome}" não encontrado — tentando com "${ligaNorm}"`);
+        compOk = await _clicarPorTexto(novaPg, COMP_SELS, ligaNorm);
+    }
+
+    if (!compOk) {
+        const disponiveis = await _listarTextosVisiveis(novaPg, COMP_SELS);
+        console.error(`   ❌ [${ligaNorm}] Competições visíveis na página: ${disponiveis.join(' | ') || '(nenhuma)'}`);
+        throw new Error(`[navegarParaLiga] Competição "${ligaInfo.compNome}" não encontrada na lista`);
+    }
+    console.log(`   ✅ [${ligaNorm}] Competição selecionada: "${compOk}"`);
     await delayHumano(1500);
 
     // 6. Aguarda lista de jogos
