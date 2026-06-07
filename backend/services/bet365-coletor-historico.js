@@ -482,68 +482,102 @@ async function navegarParaLiga(novaPg, ligaNorm, ligaInfo, dataAlvo) {
     console.log(`   📸 [${ligaNorm}] Screenshot pós-data: ${ssPath}`);
 
     // 5. Selecionar competição
-    // Estratégia A: abre dropdown "Escolher uma competição" → clica na opção correta
-    let compOk = false;
+    // O modal mostra entradas como divs no formato "Competition - DD Mês"
+    // ex: "World Cup - 7 Junho", com campo "Procurar competições" para filtrar.
+    const MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                         'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const dataPT = `${dd} ${MESES_NOMES[mm-1]}`; // ex: "7 Junho"
+
     const nomesBusca = [ligaInfo.compNome, ...(ligaNorm !== ligaInfo.compNome ? [ligaNorm] : [])];
+    let compOk = false;
 
-    // 5a. Tenta via dropdown "Escolher uma competição"
-    const dropdownAberto = await novaPg.evaluate(() => {
-        const el = [...document.querySelectorAll('button,div,span,a')]
-            .find(e => /escolher uma competi/i.test(e.textContent.trim()) && e.children.length <= 2);
-        if (el) { el.click(); return true; }
-        return false;
-    });
-    if (dropdownAberto) {
-        console.log(`   🔽 [${ligaNorm}] Dropdown "Escolher uma competição" aberto`);
-        await delayHumano(800);
-    }
-
-    // 5b. Tenta com os nomes da competição — busca em elementos folha (sem filhos) por match exato
-    for (const nome of nomesBusca) {
+    for (const nomeBusca of nomesBusca) {
         if (compOk) break;
-        // Tenta match exato em elemento folha
-        compOk = await novaPg.evaluate((n) => {
-            const all = [...document.querySelectorAll('li,button,a,span,div,option')];
+
+        // 5a. Digita no campo "Procurar competições" para filtrar a lista
+        const inputEl = await novaPg.evaluate((n) => {
+            const inp = [...document.querySelectorAll('input')]
+                .find(i => /procurar|buscar|search|competi/i.test(i.placeholder || '') &&
+                           i.offsetParent !== null);
+            if (!inp) return false;
+            inp.focus();
+            // Native setter React-compatible
+            const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+            setter.call(inp, '');
+            inp.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+        }, nomeBusca);
+
+        if (inputEl) {
+            // Limpa e digita o nome
+            await novaPg.keyboard.type(nomeBusca, { delay: 60 + Math.floor(Math.random() * 40) });
+            console.log(`   🔍 [${ligaNorm}] Procurando "${nomeBusca}" no campo de busca`);
+            await delayHumano(1000);
+        } else {
+            console.log(`   ℹ️  [${ligaNorm}] Campo "Procurar competições" não encontrado — busca direta na lista`);
+        }
+
+        // 5b. Clica na entrada que bate com liga + data (ex: "World Cup - 7 Junho")
+        //     Entradas são divs/li — usamos evaluate + click() JS, ou fallback puppeteer
+        const entradaTexto = await novaPg.evaluate((nomeLiga, dataPTStr) => {
+            // Busca qualquer elemento cujo texto contenha o nome da liga (case-insensitive)
+            // e cujo tamanho do texto seja compatível com uma entrada de lista (<= 60 chars)
+            const all = [...document.querySelectorAll('div,li,a,button,span')];
+
+            // Prioridade 1: liga + data exata (ex: "World Cup - 7 Junho")
             for (const el of all) {
                 const txt = el.textContent.trim();
-                if (txt.toLowerCase() === n.toLowerCase()) {
+                if (txt.length > 60) continue;
+                if (txt.toLowerCase().includes(nomeLiga.toLowerCase()) &&
+                    txt.toLowerCase().includes(dataPTStr.toLowerCase())) {
+                    el.click(); return txt;
+                }
+            }
+            // Prioridade 2: qualquer entrada da liga (primeira encontrada, qualquer data)
+            for (const el of all) {
+                const txt = el.textContent.trim();
+                if (txt.length > 5 && txt.length <= 60 &&
+                    txt.toLowerCase().includes(nomeLiga.toLowerCase()) &&
+                    /\d+\s+\w+/.test(txt)) {
                     el.click(); return txt;
                 }
             }
             return false;
-        }, nome);
-        if (compOk) {
-            console.log(`   ✅ [${ligaNorm}] Competição selecionada (exato): "${compOk}"`);
-        }
-    }
+        }, nomeBusca, dataPT);
 
-    // 5c. Fallback: inclui match parcial nos seletores específicos de competição
-    if (!compOk) {
-        const COMP_SELS = [
-            '.results-state__competition', '.results-state__entry', '.results-state__link',
-            '[data-state="competition"]', '[class*="competition"]', '[class*="Competition"]',
-            'li', 'button', 'a'
-        ];
-        for (const nome of nomesBusca) {
-            if (compOk) break;
-            compOk = await _clicarPorTexto(novaPg, COMP_SELS, nome);
-            if (compOk) console.log(`   ✅ [${ligaNorm}] Competição selecionada (parcial): "${compOk}"`);
+        if (entradaTexto) {
+            compOk = entradaTexto;
+            console.log(`   ✅ [${ligaNorm}] Competição selecionada: "${entradaTexto}"`);
+        }
+
+        // 5c. Fallback puppeteer: scroll + _clicarPorTexto em divs
+        if (!compOk) {
+            // Tenta rolar o modal para encontrar a entrada
+            await novaPg.evaluate(() => {
+                const modal = document.querySelector(
+                    '.results-modal__content, [class*="modal"], [class*="search-result"]');
+                if (modal) modal.scrollTop += 400;
+                else window.scrollBy(0, 400);
+            });
+            await delayHumano(500);
+
+            compOk = await _clicarPorTexto(novaPg, ['div','li','a','button'], nomeBusca);
+            if (compOk) console.log(`   ✅ [${ligaNorm}] Competição selecionada (scroll): "${compOk}"`);
         }
     }
 
     if (!compOk) {
         const ssPathFail = `C:/PRODUCAO/debug-coletor3-c-fail.png`;
         await novaPg.screenshot({ path: ssPathFail, fullPage: false }).catch(() => {});
-        // Log de folhas de texto curto para diagnóstico
         const textosFolha = await novaPg.evaluate(() =>
-            [...document.querySelectorAll('li,button,a,span,option')]
+            [...document.querySelectorAll('div,li,a,button,span')]
                 .map(e => e.textContent.trim())
-                .filter(t => t.length >= 2 && t.length <= 60 && !/^[\d\s]+$/.test(t))
+                .filter(t => t.length >= 3 && t.length <= 60 && !/^[\d\s]+$/.test(t))
                 .filter((t, i, arr) => arr.indexOf(t) === i)
-                .slice(0, 80)
+                .slice(0, 100)
         );
         console.error(`   ❌ [${ligaNorm}] Screenshot de falha: ${ssPathFail}`);
-        console.error(`   ❌ [${ligaNorm}] Textos folha (amostra): ${textosFolha.join(' | ')}`);
+        console.error(`   ❌ [${ligaNorm}] Textos div/li (amostra): ${textosFolha.join(' | ')}`);
         throw new Error(`[navegarParaLiga] Competição "${ligaInfo.compNome}" não encontrada na lista`);
     }
     await delayHumano(1500);
