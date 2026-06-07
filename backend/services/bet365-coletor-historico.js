@@ -292,7 +292,10 @@ async function navegarParaLiga(novaPg, ligaNorm, ligaInfo, dataAlvo) {
     }
 
     if (!esporteOk) throw new Error('[navegarParaLiga] "Futebol Virtual" não encontrado no modal de esportes');
-    await delayHumano(1200);
+    await delayHumano(1500);
+    // Screenshot pós-esporte para diagnóstico
+    await novaPg.screenshot({ path: `C:/PRODUCAO/debug-coletor3-a-esporte.png`, fullPage: false }).catch(() => {});
+    console.log(`   📸 [${ligaNorm}] Screenshot pós-esporte: debug-coletor3-a-esporte.png`);
 
     // 4. Selecionar data no calendário
     const [yyyy, mm, dd] = dataAlvo.split('-').map(Number);
@@ -362,30 +365,80 @@ async function navegarParaLiga(novaPg, ligaNorm, ligaInfo, dataAlvo) {
     }
     if (confirmBtn) { await _clicarEl(novaPg, confirmBtn); }
     else console.warn(`   ⚠️  [${ligaNorm}] Botão confirmar data não encontrado`);
-    await delayHumano(1500);
+    await delayHumano(2000);
 
-    // 5. Selecionar competição na lista
-    await novaPg.waitForFunction(() => {
-        return !!document.querySelector(
-            '[data-state="competition"],.results-state__competition-list,.results-state__entry');
-    }, { timeout: 15000 }).catch(() => {});
-    await delayHumano(1000);
+    // Screenshot e URL pós-confirmação de data
+    const urlAposData = await novaPg.url();
+    console.log(`   🔗 [${ligaNorm}] URL pós-data: ${urlAposData}`);
+    const ssPath = `C:/PRODUCAO/debug-coletor3-b-data.png`;
+    await novaPg.screenshot({ path: ssPath, fullPage: false }).catch(() => {});
+    console.log(`   📸 [${ligaNorm}] Screenshot pós-data: ${ssPath}`);
 
-    const COMP_SELS = ['.results-state__competition','.results-state__entry','.results-state__link','li','button','a'];
+    // 5. Selecionar competição
+    // Estratégia A: abre dropdown "Escolher uma competição" → clica na opção correta
+    let compOk = false;
+    const nomesBusca = [ligaInfo.compNome, ...(ligaNorm !== ligaInfo.compNome ? [ligaNorm] : [])];
 
-    // Tenta com compNome; se falhar, tenta com ligaNorm como fallback
-    let compOk = await _clicarPorTexto(novaPg, COMP_SELS, ligaInfo.compNome);
-    if (!compOk && ligaNorm !== ligaInfo.compNome) {
-        console.warn(`   ⚠️  [${ligaNorm}] "${ligaInfo.compNome}" não encontrado — tentando com "${ligaNorm}"`);
-        compOk = await _clicarPorTexto(novaPg, COMP_SELS, ligaNorm);
+    // 5a. Tenta via dropdown "Escolher uma competição"
+    const dropdownAberto = await novaPg.evaluate(() => {
+        const el = [...document.querySelectorAll('button,div,span,a')]
+            .find(e => /escolher uma competi/i.test(e.textContent.trim()) && e.children.length <= 2);
+        if (el) { el.click(); return true; }
+        return false;
+    });
+    if (dropdownAberto) {
+        console.log(`   🔽 [${ligaNorm}] Dropdown "Escolher uma competição" aberto`);
+        await delayHumano(800);
+    }
+
+    // 5b. Tenta com os nomes da competição — busca em elementos folha (sem filhos) por match exato
+    for (const nome of nomesBusca) {
+        if (compOk) break;
+        // Tenta match exato em elemento folha
+        compOk = await novaPg.evaluate((n) => {
+            const all = [...document.querySelectorAll('li,button,a,span,div,option')];
+            for (const el of all) {
+                const txt = el.textContent.trim();
+                if (txt.toLowerCase() === n.toLowerCase()) {
+                    el.click(); return txt;
+                }
+            }
+            return false;
+        }, nome);
+        if (compOk) {
+            console.log(`   ✅ [${ligaNorm}] Competição selecionada (exato): "${compOk}"`);
+        }
+    }
+
+    // 5c. Fallback: inclui match parcial nos seletores específicos de competição
+    if (!compOk) {
+        const COMP_SELS = [
+            '.results-state__competition', '.results-state__entry', '.results-state__link',
+            '[data-state="competition"]', '[class*="competition"]', '[class*="Competition"]',
+            'li', 'button', 'a'
+        ];
+        for (const nome of nomesBusca) {
+            if (compOk) break;
+            compOk = await _clicarPorTexto(novaPg, COMP_SELS, nome);
+            if (compOk) console.log(`   ✅ [${ligaNorm}] Competição selecionada (parcial): "${compOk}"`);
+        }
     }
 
     if (!compOk) {
-        const disponiveis = await _listarTextosVisiveis(novaPg, COMP_SELS);
-        console.error(`   ❌ [${ligaNorm}] Competições visíveis na página: ${disponiveis.join(' | ') || '(nenhuma)'}`);
+        const ssPathFail = `C:/PRODUCAO/debug-coletor3-c-fail.png`;
+        await novaPg.screenshot({ path: ssPathFail, fullPage: false }).catch(() => {});
+        // Log de folhas de texto curto para diagnóstico
+        const textosFolha = await novaPg.evaluate(() =>
+            [...document.querySelectorAll('li,button,a,span,option')]
+                .map(e => e.textContent.trim())
+                .filter(t => t.length >= 2 && t.length <= 60 && !/^[\d\s]+$/.test(t))
+                .filter((t, i, arr) => arr.indexOf(t) === i)
+                .slice(0, 80)
+        );
+        console.error(`   ❌ [${ligaNorm}] Screenshot de falha: ${ssPathFail}`);
+        console.error(`   ❌ [${ligaNorm}] Textos folha (amostra): ${textosFolha.join(' | ')}`);
         throw new Error(`[navegarParaLiga] Competição "${ligaInfo.compNome}" não encontrada na lista`);
     }
-    console.log(`   ✅ [${ligaNorm}] Competição selecionada: "${compOk}"`);
     await delayHumano(1500);
 
     // 6. Aguarda lista de jogos
