@@ -27,7 +27,6 @@ start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --no-first-run ^
   --no-default-browser-check ^
   --user-data-dir="C:\Users\Administrador\AppData\Local\Microsoft\Edge\BetColetor" ^
-  "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/" ^
   "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/"
 
 echo [2/4] Abrindo Edge porta 9223 — Coletor 2 (odds, conta propria)...
