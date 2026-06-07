@@ -7271,9 +7271,11 @@ function renderTabela() {
             if ((j.gol_casa ?? -1) >= 1 && (j.gol_fora ?? -1) >= 1) _bttsN++;
         });
         if (_bttsT > 0 && _bttsN / _bttsT <= 0.50) {
-            const _c0 = Math.max(0, _bttsN - 1);
-            const _c1 = Math.min(N - 1, _bttsN);
-            const _c2 = Math.min(N - 1, _bttsN + 1);
+            // Colunas são 1-indexadas pelo usuário: BTTS=15 → colunas 14, 15, 16
+            // Em 0-indexed (ci): bttsN-2, bttsN-1, bttsN
+            const _c0 = Math.max(0, _bttsN - 2);
+            const _c1 = Math.max(0, _bttsN - 1);
+            const _c2 = Math.min(N - 1, _bttsN);
             const _pct = Math.round(_bttsN / _bttsT * 100);
             const _ttBtts = `${_bttsN} BTTS de ${_bttsT} jogos (${_pct}%) na hora anterior · sugestão: colunas ${_c0+1}, ${_c1+1}, ${_c2+1}`;
             const _bttsCells = Array.from({length: N}, (_, ci) => {
