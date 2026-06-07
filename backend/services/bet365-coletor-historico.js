@@ -165,12 +165,12 @@ function gerarMercadoId(eventoId, mercado, selecao) {
 }
 
 // ── Competições para extra.bet365.bet.br ─────────────────────
-// compNome deve ser exatamente como aparece na UI do Bet365 após selecionar data
-// Fallback: se compNome não encontrado, tenta com o próprio nome da chave (ligaNorm)
+// compNome = nome que aparece na UI do Bet365 em PT (usado no campo "Procurar competições")
+// ligaNorm (chave) é o fallback caso compNome não seja encontrado
 const LIGA_COMP_EXTRA = {
-    'World Cup':                { compId: '20120650', compNome: 'World Cup' },
+    'World Cup':                { compId: '20120650', compNome: 'Copa do Mundo' },
     'Euro Cup':                 { compId: '20700663', compNome: 'Euro Cup' },
-    'Premiership':              { compId: '20120653', compNome: 'Premiership' },
+    'Premiership':              { compId: '20120653', compNome: 'Premier League' },
     'Express Cup':              { compId: '20940364', compNome: 'Express Cup' },
     'Super Liga Sul-Americana': { compId: '20849528', compNome: 'Super Liga Sul-Americana' },
 };
