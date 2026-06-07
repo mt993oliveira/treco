@@ -3127,12 +3127,11 @@ async function carregarConfigLigas(_tentativa) {
         if (cfg.grafico_impar_cor)  S._chartCores['_impar']      = cfg.grafico_impar_cor;
         // Cores personalizadas do usuário — gráfico de linha (namespace separado)
         { const _u = _getUser(); if (_u) { try { const uc = JSON.parse(localStorage.getItem('chartCores_' + _u.Id) || '{}'); Object.assign(S._chartCores, uc); } catch(e) {} } }
-        // Cores do Gráfico de Gols — namespace próprio para não contaminar o gráfico de linha
+        // Cores do Gráfico de Gols — começa sempre pelos defaults do código (f.cor),
+        // depois aplica só as escolhas explícitas do usuário (localStorage).
+        // Ignora DB para evitar que valores antigos/incorretos contaminem os defaults.
         S._chartCoresGols = {};
-        FILTROS_GOLS.forEach(f => {
-            const chave = 'chart_cor_' + f.id.replace(/[^a-zA-Z0-9]/g, '_');
-            if (cfg[chave]) S._chartCoresGols[f.id] = cfg[chave];
-        });
+        FILTROS_GOLS.forEach(f => { S._chartCoresGols[f.id] = f.cor; });
         { const _u = _getUser(); if (_u) { try { const ug = JSON.parse(localStorage.getItem('chartCoresGols_' + _u.Id) || '{}'); Object.assign(S._chartCoresGols, ug); } catch(e) {} } }
         // Altura do painel do gráfico
         S._grafAltura = parseInt(cfg.grafico_altura) || 300;
@@ -8249,7 +8248,7 @@ function _atualizarCfgCoresGrafico() {
     };
     const _corItemGols = (id, label, cor) => {
         const idKey = 'gc-gols-' + id.replace(/[^a-zA-Z0-9]/g, '_');
-        const val = userCoresGols[id] || S._chartCoresGols[id] || cor;
+        const val = userCoresGols[id] || cor;
         return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #080e18">
             <input type="color" id="${idKey}" value="${val}"
                 oninput="_saveCoresGraficoLocal()"
