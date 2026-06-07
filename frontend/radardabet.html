@@ -3119,6 +3119,11 @@ async function carregarConfigLigas(_tentativa) {
             const chave = 'chart_cor_' + f.id.replace(/[^a-zA-Z0-9]/g, '_');
             if (cfg[chave]) S._chartCores[f.id] = cfg[chave];
         });
+        // Cores das séries do Gráfico de Gols
+        FILTROS_GOLS.forEach(f => {
+            const chave = 'chart_cor_' + f.id.replace(/[^a-zA-Z0-9]/g, '_');
+            if (cfg[chave]) S._chartCores[f.id] = cfg[chave];
+        });
         // Cores dos novos gráficos (Gols e Par/Ímpar)
         if (cfg.grafico_gols_barra) S._chartCores['_gols_barra'] = cfg.grafico_gols_barra;
         if (cfg.grafico_gols_mm)    S._chartCores['_gols_mm']    = cfg.grafico_gols_mm;
@@ -3561,8 +3566,8 @@ const FILTROS_GOLS = [
     { id:'gols-total', label:'Gols',     cor:'#e2e8f0', desc:'Total de gols por jogo (casa + fora)' },
     { id:'gols-casa',  label:'Casa',     cor:'#4ade80', desc:'Gols marcados pelo time da casa' },
     { id:'gols-fora',  label:'Fora',     cor:'#fb923c', desc:'Gols marcados pelo time visitante' },
-    { id:'gols-1t',    label:'Gols 1T',  cor:'#60a5fa', desc:'Gols no primeiro tempo' },
-    { id:'gols-2t',    label:'Gols 2T',  cor:'#a78bfa', desc:'Gols no segundo tempo' },
+    { id:'gols-1t',    label:'Gols 1T',  cor:'#facc15', desc:'Gols no primeiro tempo' },
+    { id:'gols-2t',    label:'Gols 2T',  cor:'#ef4444', desc:'Gols no segundo tempo' },
     { id:'gols-equi',  label:'Equil.',   cor:'#1fcc59', dashed:true, desc:'Linha de referência (média do período)' },
 ];
 S.linhasGols = {};
@@ -6137,7 +6142,7 @@ function renderGraficoGols() {
         const brutosAll = _extrairGolsAll(f.id);
         const rolSumAll = _rollingSumAll(brutosAll);
         const rolSum    = rolSumAll.slice(_offsetGols);
-        const cor = f.cor;
+        const cor = (S._chartCores?.[f.id]) || f.cor;
         const _rBase = S.grafGolsPontoRaio || 4;
         const _rGols = S.grafGolsFlat
             ? rolSum.map((v, i, a) => (i > 0 && v === a[i-1]) ? 0 : _rBase)
@@ -8222,19 +8227,26 @@ function _atualizarCfgCoresGrafico() {
     const u = _getUser();
     let userCores = {};
     if (u) { try { userCores = JSON.parse(localStorage.getItem('chartCores_' + u.Id) || '{}'); } catch(e) {} }
-    c.innerHTML = GRUPOS_LEGENDA.map(grupo => {
+    const _corItem = (id, label, cor) => {
+        const idKey = 'gc-chart-' + id.replace(/[^a-zA-Z0-9]/g, '_');
+        const val = userCores[id] || S._chartCores[id] || cor;
+        return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #080e18">
+            <input type="color" id="${idKey}" value="${val}"
+                oninput="_saveCoresGraficoLocal()"
+                style="width:26px;height:20px;border:1px solid #334155;border-radius:3px;background:none;cursor:pointer;padding:0;flex-shrink:0">
+            <div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${val}"></div>
+            <span style="font-size:10px;color:#e2e8f0;flex:1">${label}</span>
+        </div>`;
+    };
+    const _golsSection = `<div style="margin-bottom:10px">
+        <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid #1e293b">⚽ GRÁFICO DE GOLS</div>
+        ${FILTROS_GOLS.filter(f => f.id !== 'gols-equi').map(f => _corItem(f.id, f.label, f.cor)).join('')}
+    </div>`;
+    c.innerHTML = _golsSection + GRUPOS_LEGENDA.map(grupo => {
         const items = grupo.ids.map(id => {
             const f = TODOS_FILTROS.find(x => x.id === id);
             if (!f) return '';
-            const idKey = 'gc-chart-' + id.replace(/[^a-zA-Z0-9]/g, '_');
-            const val = userCores[id] || S._chartCores[id] || f.cor;
-            return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #080e18">
-                <input type="color" id="${idKey}" value="${val}"
-                    oninput="_saveCoresGraficoLocal()"
-                    style="width:26px;height:20px;border:1px solid #334155;border-radius:3px;background:none;cursor:pointer;padding:0;flex-shrink:0">
-                <div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${val}"></div>
-                <span style="font-size:10px;color:#e2e8f0;flex:1">${f.label}</span>
-            </div>`;
+            return _corItem(id, f.label, f.cor);
         }).join('');
         return `<div style="margin-bottom:10px">
             <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid #1e293b">${grupo.label.toUpperCase()}</div>
@@ -8247,13 +8259,14 @@ function _saveCoresGraficoLocal() {
     const u = _getUser();
     if (!u) return;
     const cores = {};
-    TODOS_FILTROS.forEach(f => {
+    [...TODOS_FILTROS, ...FILTROS_GOLS].forEach(f => {
         const inp = document.getElementById('gc-chart-' + f.id.replace(/[^a-zA-Z0-9]/g, '_'));
         if (inp) cores[f.id] = inp.value;
     });
     localStorage.setItem('chartCores_' + u.Id, JSON.stringify(cores));
     Object.assign(S._chartCores, cores);
     _renderAllCharts();
+    renderGraficoGols();
 }
 
 function _resetCoresGrafico() {
