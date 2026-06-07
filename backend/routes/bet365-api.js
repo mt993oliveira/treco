@@ -1811,6 +1811,8 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_ponto_desce_cor', valor:'#ef4444', tipo:'text',    grupo:'grafico', descricao:'📈 Gráfico: cor da bolinha quando desce (hex)' },
     { chave:'grafico_ponto_flat_visivel',  valor:'true',  tipo:'boolean', grupo:'grafico',  descricao:'● Plano: exibir o botão nos gráficos de Linha e Mercados' },
     { chave:'grafico_ponto_flat',          valor:'true',  tipo:'boolean', grupo:'grafico',  descricao:'● Plano: vir habilitado por padrão (ocultar bolinhas sem variação)' },
+    { chave:'grafico_gols_flat_visivel',   valor:'true',  tipo:'boolean', grupo:'grafico',  descricao:'⚽ Gráfico de Gols: exibir o botão ● Plano na toolbar' },
+    { chave:'grafico_gols_flat',           valor:'true',  tipo:'boolean', grupo:'grafico',  descricao:'⚽ Gráfico de Gols: ocultar bolinhas sem variação (● Plano) por padrão' },
     { chave:'grafico_ponto_cores_visivel', valor:'true',  tipo:'boolean', grupo:'grafico',  descricao:'🟢 Cores: exibir o botão de cores (verde/vermelho) nos gráficos de Linha e Mercados' },
     { chave:'grafico_ponto_cores',         valor:'false', tipo:'boolean', grupo:'grafico',  descricao:'🟢 Cores: vir habilitado por padrão (colorir bolinhas verde=hit / vermelho=miss)' },
     { chave:'grafico_pct_cor',         valor:'#ef4444', tipo:'text',    grupo:'grafico', descricao:'% Gráfico: cor do texto de porcentagem nas linhas' },
