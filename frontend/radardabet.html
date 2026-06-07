@@ -5994,7 +5994,7 @@ function renderGraficoLinha() {
                                 const ft  = _LINHA_GOLS_FT[i];
                                 const ht  = _LINHA_GOLS_HT[i];
                                 const golsStr = (ft != null && ft > 0)
-                                    ? `   FT: ${ft}⚽${ht > 0 ? `  1T: ${ht}⚽` : ''}`
+                                    ? `   FT: ${ft}⚽${ht > 0 ? `  1T: ${ht}⚽  2T: ${ft - ht}⚽` : ''}`
                                     : '';
                                 return ` ${lbl}: ${ctx.raw}%${hit}${golsStr}`;
                             }
@@ -8260,7 +8260,9 @@ function _atualizarCfgCoresGrafico() {
 function _saveCoresGraficoLocal() {
     const u = _getUser();
     if (!u) return;
-    const cores = {};
+    // Parte das cores já salvas para não apagar séries fora do painel atual
+    let cores = {};
+    try { cores = JSON.parse(localStorage.getItem('chartCores_' + u.Id) || '{}'); } catch(e) {}
     [...TODOS_FILTROS, ...FILTROS_GOLS].forEach(f => {
         const inp = document.getElementById('gc-chart-' + f.id.replace(/[^a-zA-Z0-9]/g, '_'));
         if (inp) cores[f.id] = inp.value;
