@@ -7303,10 +7303,9 @@ function renderTabela() {
                     🎯<br>BTTS<br><span style="font-size:10px">${_bttsN}</span>
                 </td>
                 ${_bttsCells}`;
-            // Insere após linhas de próximos jogos (futuras) — não deve ficar acima delas
-            const _bttsAnchor = gsFuturos.length > 0
-                ? (tbody.children[gsFuturos.length] || null)
-                : tbody.firstChild;
+            // Insere APÓS a hora atual (1ª linha histórica) e ANTES da hora de referência
+            // Layout: [próximos?] → hora atual → 🎯 BTTS → hora referência → ...
+            const _bttsAnchor = tbody.children[gsFuturos.length + 1] || null;
             tbody.insertBefore(_bttsRow, _bttsAnchor);
         }
     }
