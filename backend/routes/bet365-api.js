@@ -1964,6 +1964,11 @@ async function _ensureConfigTable(pool) {
           AND TRY_CAST(valor AS INT) IS NOT NULL
           AND CAST(valor AS INT) < 20
     `);
+    // Migração: cor padrão de Gols Total era cinza (#e2e8f0), agora é azul (#60a5fa).
+    await pool.request().query(`
+        UPDATE bet365_config SET valor = '#60a5fa'
+        WHERE chave = 'chart_cor_gols_total' AND valor = '#e2e8f0'
+    `);
     _configTableEnsured = true;
 }
 
