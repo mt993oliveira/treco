@@ -1089,13 +1089,23 @@ class Bet365Coletor {
             }
             if (!recarregouOk) {
                 console.log('   ❌ Não foi possível recarregar — navegando de volta para URL virtual...');
-                try {
-                    await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
-                    await this._delay(this._cfgNum('delay_pos_reload_ms', 8000));
-                    await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
-                    console.log('   ✅ Navegação de recuperação OK — ligas voltaram');
-                } catch(e) {
-                    console.log(`   ❌ Recuperação falhou (${e.message.substring(0, 60)}) — próxima liga pode não aparecer`);
+                let recuperouMidCiclo = false;
+                for (let rt = 1; rt <= 2; rt++) {
+                    try {
+                        await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                        await this._delay(12000); // mais tempo que o reload normal
+                        await this._verificarSessao(pg);
+                        await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                        console.log('   ✅ Navegação de recuperação OK — ligas voltaram');
+                        recuperouMidCiclo = true;
+                        break;
+                    } catch(e) {
+                        console.log(`   ❌ Recuperação tentativa ${rt}/2 falhou: ${e.message.substring(0, 60)}`);
+                        if (rt < 2) await this._delay(5000);
+                    }
+                }
+                if (!recuperouMidCiclo) {
+                    console.log('   ⚠️  Recuperação mid-ciclo falhou — próximas ligas podem não aparecer');
                 }
             }
         }
@@ -1997,6 +2007,21 @@ class Bet365Coletor {
                         ligasOk = true;
                         break;
                     } catch(_) {}
+                }
+            }
+
+            if (!ligasOk) {
+                // Último recurso: goto() forçado na URL do futebol virtual + espera maior
+                console.log('   🔁 Último recurso — navegando direto para URL virtual...');
+                try {
+                    await this.page.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                    await this._delay(12000);
+                    await this._verificarSessao(this.page);
+                    await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                    ligasOk = true;
+                    console.log('   ✅ Recuperação por goto OK — ligas voltaram');
+                } catch(e) {
+                    console.log(`   ❌ Recuperação por goto falhou: ${e.message.substring(0, 60)}`);
                 }
             }
 
