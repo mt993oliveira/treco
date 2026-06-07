@@ -3045,6 +3045,8 @@ async function carregarConfigLigas(_tentativa) {
         if (cfg.grafico_ponto_cores !== undefined)         S.grafPontoCores        = cfg.grafico_ponto_cores !== 'false';
         if (cfg.grafico_ponto_cores_visivel !== undefined) S.grafPontoCoresVisivel = cfg.grafico_ponto_cores_visivel !== 'false';
         if (cfg.grafico_gols_flat !== undefined)           S.grafGolsFlat          = cfg.grafico_gols_flat !== 'false';
+        if (cfg.grafico_gols_ponto_raio)   S.grafGolsPontoRaio  = parseFloat(cfg.grafico_gols_ponto_raio)  || 4;
+        if (cfg.grafico_gols_ponto_borda)  S.grafGolsPontoBorda = parseFloat(cfg.grafico_gols_ponto_borda) || 1.5;
         if (cfg.grafico_gols_flat_visivel !== undefined) {
             const _bgfv = cfg.grafico_gols_flat_visivel !== 'false';
             const _bgfb = document.getElementById('btn-gols-flat');
@@ -3500,6 +3502,8 @@ const S = {
     grafGolsMM:    false,
     grafGolsShowGols: true,
     grafGolsFlat:  true,
+    grafGolsPontoRaio:  4,
+    grafGolsPontoBorda: 1.5,
     _graficoGols:  null,
     _graficoLinha: null,
     _grafAltura:     300,
@@ -6112,7 +6116,7 @@ function renderGraficoGols() {
         const rolSumAll = _rollingSumAll(brutosAll);
         const rolSum    = rolSumAll.slice(_offsetGols);
         const cor = f.cor;
-        const _rBase = S.grafPontoRaio || 4;
+        const _rBase = S.grafGolsPontoRaio || 4;
         const _rGols = S.grafGolsFlat
             ? rolSum.map((v, i, a) => (i > 0 && v === a[i-1]) ? 0 : _rBase)
             : _rBase;
@@ -6124,7 +6128,7 @@ function renderGraficoGols() {
             pointRadius: _rGols,
             pointHoverRadius: _rBase + 3,
             pointBackgroundColor: cor,
-            pointBorderWidth: S.grafPontoBorda || 1.5,
+            pointBorderWidth: S.grafGolsPontoBorda || 1.5,
             tension: 0.2,
             _metricId: f.id
         });
@@ -11916,6 +11920,8 @@ const _CFG_LABELS = {
     grafico_ponto_flat:          '● Plano: vir habilitado por padrão (ocultar bolinhas sem variação)',
     grafico_gols_flat:           '⚽ Gráfico de Gols: ocultar bolinhas sem variação (● Plano) por padrão',
     grafico_gols_flat_visivel:   '⚽ Gráfico de Gols: exibir o botão ● Plano na toolbar',
+    grafico_gols_ponto_raio:     '⚽ Gráfico de Gols: raio das bolinhas (px)',
+    grafico_gols_ponto_borda:    '⚽ Gráfico de Gols: espessura da borda das bolinhas (px)',
     grafico_ponto_cores_visivel: '🟢 Cores: exibir o botão de cores (verde/vermelho) nos gráficos de Linha e Mercados',
     grafico_ponto_cores:         '🟢 Cores: vir habilitado por padrão (colorir bolinhas verde=hit / vermelho=miss)',
     grafico_pills_default:   '📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados',
