@@ -12514,7 +12514,7 @@ async function salvarConfigSistema() {
             if (payload.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(payload.alerta_visual_duracao_s) || 15;
             if (payload.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(payload.alerta_liga_piscar_s) || 30;
             if (payload.alerta_popup_ativo !== undefined) _alertaPopupAtivo = payload.alerta_popup_ativo !== 'false';
-            if (payload.alerta_btts_mosaico !== undefined) _bttsMosaicoAtivo = payload.alerta_btts_mosaico !== 'false';
+            if (payload.alerta_btts_mosaico !== undefined) { _bttsMosaicoAtivo = payload.alerta_btts_mosaico !== 'false'; if (S.view === 'historico' && S.showMosaico) renderTabela(); }
             // Atualiza menu de ligas imediatamente
             await carregarConfigLigas();
             renderLigas();
