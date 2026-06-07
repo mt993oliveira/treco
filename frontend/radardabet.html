@@ -5962,12 +5962,21 @@ function renderGraficoLinha() {
                                 return `${hora}  ${j.time_casa||''}  ×  ${j.time_fora||''}${ht}  (FT: ${j.gol_casa}-${j.gol_fora})`;
                             },
                             label: ctx => {
-                                if (ctx.dataset._isRef) return null;
+                                if (ctx.dataset._isRef || ctx.dataset._isMA) return null;
                                 const i   = ctx.dataIndex;
                                 const fid = ctx.dataset._filtroId;
                                 const hit = fid ? (_LINHA_HITS[fid]?.[i] ? ' ✓' : ' ✗') : '';
                                 const lbl = ctx.dataset._filtroLabel || ctx.dataset.label;
-                                return ` ${lbl}: ${ctx.raw}%${hit}`;
+                                const j   = _LINHA_SERIE[i];
+                                let golsStr = '';
+                                if (j && j.gol_casa != null && j.gol_fora != null) {
+                                    const ft = j.gol_casa + j.gol_fora;
+                                    const htDisp = j.gol_casa_ht != null && j.gol_fora_ht != null;
+                                    golsStr = htDisp
+                                        ? `   FT: ${ft}⚽  1T: ${j.gol_casa_ht + j.gol_fora_ht}⚽`
+                                        : `   FT: ${ft}⚽`;
+                                }
+                                return ` ${lbl}: ${ctx.raw}%${hit}${golsStr}`;
                             }
                         }
                     },
