@@ -299,73 +299,180 @@ async function navegarParaLiga(novaPg, ligaNorm, ligaInfo, dataAlvo) {
 
     // 4. Selecionar data no calendário
     const [yyyy, mm, dd] = dataAlvo.split('-').map(Number);
-    const DIAS_EN  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const MESES_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const MESES_PT = {'Janeiro':1,'Fevereiro':2,'Março':3,'Abril':4,'Maio':5,'Junho':6,
                       'Julho':7,'Agosto':8,'Setembro':9,'Outubro':10,'Novembro':11,'Dezembro':12};
-    const dataObj  = new Date(Date.UTC(yyyy, mm-1, dd));
-    const ariaLabel = `${DIAS_EN[dataObj.getUTCDay()]} ${MESES_EN[mm-1]} ${dd} ${yyyy}`;
+    const ddStr = String(dd).padStart(2,'0');
+    const mmStr = String(mm).padStart(2,'0');
 
-    await novaPg.waitForSelector('.date-picker__day, .date-picker__time-frame', { timeout: 10000 });
-    await delayHumano(600);
+    // Aguarda aparecimento de qualquer elemento de data
+    await novaPg.waitForSelector(
+        '.date-picker__day, .date-picker__time-frame, input[placeholder*="De"], input[placeholder*="de"]',
+        { timeout: 10000 }
+    ).catch(() => {});
+    await delayHumano(800);
 
-    // Navega até o mês correto (até 24 meses atrás)
-    for (let tentMes = 0; tentMes < 24; tentMes++) {
-        const diaEl = await novaPg.$(`button.date-picker__day[aria-label="${ariaLabel}"]`);
-        if (diaEl) break;
-
-        const { mesAtual, anoAtual } = await novaPg.evaluate((mPT) => {
-            const el = document.querySelector('.date-picker__month,[class*="month-title"],[class*="month"]');
-            if (!el) return { mesAtual: null, anoAtual: null };
-            const m = el.textContent.trim().match(/(\w+)\s+(\d{4})/);
-            if (!m) return { mesAtual: null, anoAtual: null };
-            return { mesAtual: mPT[m[1]] || null, anoAtual: parseInt(m[2]) };
-        }, MESES_PT);
-
-        if (anoAtual && mesAtual && (anoAtual < yyyy || (anoAtual === yyyy && mesAtual < mm))) break;
-
-        const prevEl = await novaPg.$('.date-picker__navigation-prev,.date-picker__prev');
-        if (!prevEl) break;
-        await _clicarEl(novaPg, prevEl);
-        await delayHumano(500);
+    // Helper: clica num dia no calendário buscando por texto (dd) ou por aria-label
+    async function _clicarDiaNoCalendario(numDia) {
+        const ddPad = String(numDia).padStart(2,'0');
+        const ddStr2 = String(numDia);
+        // Tenta via aria-label (formato "dd mmm yyyy" ou "d/m/yyyy")
+        let found = await novaPg.evaluate((d, dp) => {
+            const sels = [
+                `button.date-picker__day[aria-label*="${d}"]`,
+                `button.date-picker__day[aria-label*="${dp}"]`,
+                `button[class*="day"][aria-label*="${d}"]`,
+            ];
+            for (const sel of sels) {
+                const els = [...document.querySelectorAll(sel)];
+                for (const el of els) {
+                    if (!el.disabled && !el.classList.contains('date-picker__day--disabled')) {
+                        el.click(); return true;
+                    }
+                }
+            }
+            // Fallback: busca botão com texto exato do dia, não desabilitado
+            const todos = [...document.querySelectorAll('button.date-picker__day, button[class*="day"]')];
+            for (const el of todos) {
+                const txt = el.textContent.trim();
+                if ((txt === d || txt === dp) && !el.disabled &&
+                    !el.classList.contains('date-picker__day--disabled')) {
+                    el.click(); return true;
+                }
+            }
+            return false;
+        }, ddStr2, ddPad);
+        return found;
     }
 
-    // Clica no dia — "Data de"
-    async function _encontrarDia() {
-        const el = await novaPg.$(`button.date-picker__day[aria-label="${ariaLabel}"]`);
-        if (el) return el;
-        // Fallback por número do dia
-        const todos = await novaPg.$$('button.date-picker__day,.date-picker__day');
-        for (const d of todos) {
-            const txt = await novaPg.evaluate(e => e.textContent.trim(), d).catch(() => '');
-            const dis = await novaPg.evaluate(e =>
-                e.disabled || e.classList.contains('date-picker__day--disabled'), d).catch(() => true);
-            if (txt === String(dd) && !dis) return d;
+    // Helper: navega calendário até o mês/ano correto
+    async function _navegarCalendario() {
+        for (let tentMes = 0; tentMes < 24; tentMes++) {
+            // Verifica se o mês atual é o desejado
+            const { mesAtual, anoAtual } = await novaPg.evaluate((mPT) => {
+                const el = document.querySelector(
+                    '.date-picker__month,[class*="month-title"],[class*="month"],[class*="Month"]');
+                if (!el) return { mesAtual: null, anoAtual: null };
+                const m = el.textContent.trim().match(/(\w+)\s+(\d{4})/);
+                if (!m) return { mesAtual: null, anoAtual: null };
+                return { mesAtual: mPT[m[1]] || null, anoAtual: parseInt(m[2]) };
+            }, MESES_PT).catch(() => ({ mesAtual: null, anoAtual: null }));
+
+            if (mesAtual === mm && anoAtual === yyyy) break;
+            if (anoAtual && mesAtual && (anoAtual < yyyy || (anoAtual === yyyy && mesAtual < mm))) break;
+
+            const prevEl = await novaPg.$('.date-picker__navigation-prev,.date-picker__prev,[class*="prev"]');
+            if (!prevEl) break;
+            await _clicarEl(novaPg, prevEl);
+            await delayHumano(500);
         }
-        return null;
     }
 
-    const diaDeEl = await _encontrarDia();
-    if (!diaDeEl) throw new Error(`[navegarParaLiga] Dia ${dd}/${mm}/${yyyy} não encontrado no calendário`);
-    await _clicarEl(novaPg, diaDeEl);
-    await delayHumano(500);
+    // ── Estratégia 1: campos de texto De/Até (inputs visíveis) ───────────
+    const usouInputs = await novaPg.evaluate((ddS, mmS, yyyyS) => {
+        const dateStr = `${ddS}/${mmS}/${yyyyS}`;
+        // Procura inputs visíveis que pareçam "De" e "Até"
+        const inputs = [...document.querySelectorAll('input')]
+            .filter(inp => inp.offsetParent !== null && !inp.disabled);
+        // Filtra inputs que tenham placeholder "dd/mm/aaaa" ou data-like
+        const dateInputs = inputs.filter(inp =>
+            /dd|mm|data|de|at/i.test(inp.placeholder || '') ||
+            inp.type === 'date' ||
+            inp.closest('[class*="date"]') !== null
+        );
+        if (dateInputs.length >= 2) {
+            // Usa setter nativo (React-compatible)
+            const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+            [dateInputs[0], dateInputs[1]].forEach(inp => {
+                inp.focus();
+                setter.call(inp, dateStr);
+                inp.dispatchEvent(new Event('input',  { bubbles: true }));
+                inp.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            return true;
+        }
+        return false;
+    }, ddStr, mmStr, String(yyyy));
 
-    // Clica no mesmo dia — "Data até"
-    const diaAteEl = await _encontrarDia();
-    if (diaAteEl) { await _clicarEl(novaPg, diaAteEl); await delayHumano(500); }
+    if (usouInputs) {
+        console.log(`   📅 [${ligaNorm}] Datas preenchidas via input: ${ddStr}/${mmStr}/${yyyy}`);
+        await delayHumano(600);
+    } else {
+        // ── Estratégia 2: calendário — clica campo De, seleciona dia, clica campo Até, seleciona dia ──
 
-    // Confirma a data
-    let confirmBtn = await novaPg.$('.date-picker__confirm');
-    if (!confirmBtn) {
-        const btns = await novaPg.$$('button');
+        // Passo 4a: Ativa campo "De" (Data inicial)
+        const campoDeAtivado = await novaPg.evaluate(() => {
+            // Tenta clicar no frame/label "De" / "Data de" / "Início"
+            const candidates = [...document.querySelectorAll(
+                '.date-picker__time-frame, [class*="from"], [class*="inicio"], [class*="De"], input')];
+            for (const el of candidates) {
+                const txt = (el.textContent || el.placeholder || el.getAttribute('aria-label') || '').toLowerCase();
+                if (/\bde\b|^de$|data de|início|from/i.test(txt) && el.offsetParent !== null) {
+                    el.click(); return true;
+                }
+            }
+            // Fallback: clica no primeiro frame/time-frame visível
+            const tf = document.querySelector('.date-picker__time-frame');
+            if (tf) { tf.click(); return true; }
+            return false;
+        });
+        if (campoDeAtivado) await delayHumano(400);
+        console.log(`   📅 [${ligaNorm}] Campo De ${campoDeAtivado ? 'ativado' : '(fallback)'} — navegando ao mês`);
+
+        await _navegarCalendario();
+        const clicouDe = await _clicarDiaNoCalendario(dd);
+        console.log(`   📅 [${ligaNorm}] Data inicial (${ddStr}/${mmStr}/${yyyy}): ${clicouDe ? '✅' : '❌'}`);
+        await delayHumano(600);
+
+        // Passo 4b: Ativa campo "Até" (Data final)
+        const campoAteAtivado = await novaPg.evaluate(() => {
+            const candidates = [...document.querySelectorAll(
+                '.date-picker__time-frame, [class*="to"], [class*="fim"], [class*="Ate"], input')];
+            for (const el of candidates) {
+                const txt = (el.textContent || el.placeholder || el.getAttribute('aria-label') || '').toLowerCase();
+                if (/\baté\b|^até$|data até|fim|to$/i.test(txt) && el.offsetParent !== null) {
+                    el.click(); return true;
+                }
+            }
+            // Fallback: segundo frame/time-frame visível
+            const frames = [...document.querySelectorAll('.date-picker__time-frame')]
+                .filter(el => el.offsetParent !== null);
+            if (frames.length >= 2) { frames[1].click(); return true; }
+            if (frames.length === 1) { frames[0].click(); return true; }
+            return false;
+        });
+        if (campoAteAtivado) await delayHumano(400);
+        console.log(`   📅 [${ligaNorm}] Campo Até ${campoAteAtivado ? 'ativado' : '(fallback)'} — clicando dia`);
+
+        await _navegarCalendario();
+        const clicouAte = await _clicarDiaNoCalendario(dd);
+        console.log(`   📅 [${ligaNorm}] Data final   (${ddStr}/${mmStr}/${yyyy}): ${clicouAte ? '✅' : '❌'}`);
+        await delayHumano(600);
+    }
+
+    // Screenshot pós-datas para conferir estado
+    await novaPg.screenshot({ path: 'C:/PRODUCAO/debug-coletor3-a2-datas.png', fullPage: false }).catch(() => {});
+    console.log(`   📸 [${ligaNorm}] Screenshot pós-datas: debug-coletor3-a2-datas.png`);
+
+    // Confirma o intervalo de datas
+    const confirmadoData = await novaPg.evaluate(() => {
+        // Busca botão cujo texto seja exatamente "Confirmar Intervalo de Datas" ou variações
+        const btns = [...document.querySelectorAll('button')];
         for (const btn of btns) {
-            const txt = await novaPg.evaluate(e => e.textContent.trim(), btn).catch(() => '');
-            if (/confirmar|atualizar/i.test(txt)) { confirmBtn = btn; break; }
+            if (/confirmar.*interv|confirmar.*data|atualizar.*data/i.test(btn.textContent.trim())) {
+                btn.click(); return btn.textContent.trim();
+            }
         }
+        // Fallback seletor de classe
+        const cf = document.querySelector('.date-picker__confirm');
+        if (cf) { cf.click(); return 'via seletor'; }
+        return null;
+    });
+    if (confirmadoData) {
+        console.log(`   ✅ [${ligaNorm}] Data confirmada: "${confirmadoData}"`);
+    } else {
+        console.warn(`   ⚠️  [${ligaNorm}] Botão confirmar data não encontrado`);
     }
-    if (confirmBtn) { await _clicarEl(novaPg, confirmBtn); }
-    else console.warn(`   ⚠️  [${ligaNorm}] Botão confirmar data não encontrado`);
-    await delayHumano(2000);
+    await delayHumano(2500);
 
     // Screenshot e URL pós-confirmação de data
     const urlAposData = await novaPg.url();
