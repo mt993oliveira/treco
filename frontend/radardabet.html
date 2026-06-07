@@ -2064,6 +2064,9 @@
             <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
             <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
             <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
+            <button class="acao-btn" id="btn-btts-mosaico" style="display:none"
+                onclick="_bttsMosaicoAtivo=!_bttsMosaicoAtivo;localStorage.setItem('rdbt_bttsMosaico',_bttsMosaicoAtivo);document.getElementById('btn-btts-mosaico').classList.toggle('ativo',_bttsMosaicoAtivo);renderTabela()"
+                title="Exibir sugestão de Ambas Marcam no Mosaico">🎯 Ambas Marcam</button>
             <button class="acao-btn" id="btn-exibir-clubes" onclick="S.showNomes=!S.showNomes;localStorage.setItem('rdbt_showNomes',S.showNomes);document.getElementById('btn-exibir-clubes').classList.toggle('ativo',S.showNomes);renderTabela()" title="Mostrar nomes dos clubes na grade">🏷️ Exibir Clubes</button>
             <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;localStorage.setItem('rdbt_showOdds',S.showOdds);document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds Pagas</button>
             <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;localStorage.setItem('rdbt_showHT',S.showHT);document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
@@ -2991,6 +2994,7 @@ async function carregarConfigLigas(_tentativa) {
         // Sincroniza visual dos botões do header
         const _sb = id => document.getElementById(id);
         if (_sb('btn-proximos-jogos'))  _sb('btn-proximos-jogos').classList.toggle('ativo',  S.showProximos);
+        _syncBttsMosaico(cfg.alerta_btts_mosaico);
         if (_sb('btn-exibir-clubes'))   _sb('btn-exibir-clubes').classList.toggle('ativo',   S.showNomes);
         if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
         if (_sb('btn-exibir-ht'))       _sb('btn-exibir-ht').classList.toggle('ativo',       S.showHT);
@@ -3259,7 +3263,7 @@ async function _aplicarConfigFrontend() {
             if (c.header_subtitle_cor)     _subEl.style.color   = c.header_subtitle_cor;
         }
         if (c.alerta_popup_ativo !== undefined)  _alertaPopupAtivo  = c.alerta_popup_ativo  !== 'false';
-        if (c.alerta_btts_mosaico !== undefined) _bttsMosaicoAtivo  = c.alerta_btts_mosaico !== 'false';
+        _syncBttsMosaico(c.alerta_btts_mosaico);
         console.log('[Config] ✅ aplicada com sucesso — tema:', c.default_tema, '| subtitle:', c.header_subtitle_texto);
 
     } catch(e) {
@@ -12216,7 +12220,6 @@ async function _loadConfigSistema() {
         if (cfgAlertas.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(cfgAlertas.alerta_visual_duracao_s) || 15;
         if (cfgAlertas.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(cfgAlertas.alerta_liga_piscar_s) || 30;
         if (cfgAlertas.alerta_popup_ativo !== undefined) _alertaPopupAtivo = cfgAlertas.alerta_popup_ativo !== 'false';
-        if (cfgAlertas.alerta_btts_mosaico !== undefined) _bttsMosaicoAtivo = cfgAlertas.alerta_btts_mosaico !== 'false';
 
         const ativadoD = dAlertas.find(d => d.chave === 'alerta_ativado') || { chave:'alerta_ativado', valor:'true' };
 
@@ -12514,7 +12517,7 @@ async function salvarConfigSistema() {
             if (payload.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(payload.alerta_visual_duracao_s) || 15;
             if (payload.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(payload.alerta_liga_piscar_s) || 30;
             if (payload.alerta_popup_ativo !== undefined) _alertaPopupAtivo = payload.alerta_popup_ativo !== 'false';
-            if (payload.alerta_btts_mosaico !== undefined) { _bttsMosaicoAtivo = payload.alerta_btts_mosaico !== 'false'; if (S.view === 'historico' && S.showMosaico) renderTabela(); }
+            if (payload.alerta_btts_mosaico !== undefined) { _syncBttsMosaico(payload.alerta_btts_mosaico); if (S.view === 'historico' && S.showMosaico) renderTabela(); }
             // Atualiza menu de ligas imediatamente
             await carregarConfigLigas();
             renderLigas();
@@ -14037,6 +14040,13 @@ let _alertaLigaPiscarDuracao = 30;
 let _alertaLigaPiscarTimers = {};
 let _alertaPopupAtivo = true; // controlado por alerta_popup_ativo no config do sistema
 let _bttsMosaicoAtivo = true; // controlado por alerta_btts_mosaico no config do sistema
+function _syncBttsMosaico(masterCfg) {
+    const _master = (masterCfg ?? 'true') !== 'false';
+    const _ls = localStorage.getItem('rdbt_bttsMosaico');
+    _bttsMosaicoAtivo = _master && (_ls === null ? true : _ls === 'true');
+    const _btn = document.getElementById('btn-btts-mosaico');
+    if (_btn) { _btn.style.display = _master ? '' : 'none'; _btn.classList.toggle('ativo', _bttsMosaicoAtivo); }
+}
 
 async function _carregarAlertaCfgRuntime() {
     try {
