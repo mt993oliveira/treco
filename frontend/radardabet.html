@@ -3047,6 +3047,7 @@ async function carregarConfigLigas(_tentativa) {
         if (cfg.grafico_gols_flat !== undefined)           S.grafGolsFlat          = cfg.grafico_gols_flat !== 'false';
         if (cfg.grafico_gols_ponto_raio)   S.grafGolsPontoRaio  = parseFloat(cfg.grafico_gols_ponto_raio)  || 4;
         if (cfg.grafico_gols_ponto_borda)  S.grafGolsPontoBorda = parseFloat(cfg.grafico_gols_ponto_borda) || 1.5;
+        if (cfg.grafico_gols_label_cor)    S._grafGolsLabelCor  = cfg.grafico_gols_label_cor;
         if (cfg.grafico_gols_flat_visivel !== undefined) {
             const _bgfv = cfg.grafico_gols_flat_visivel !== 'false';
             const _bgfb = document.getElementById('btn-gols-flat');
@@ -3504,6 +3505,7 @@ const S = {
     grafGolsFlat:  true,
     grafGolsPontoRaio:  4,
     grafGolsPontoBorda: 1.5,
+    _grafGolsLabelCor: '#1d4ed8',
     _graficoGols:  null,
     _graficoLinha: null,
     _grafAltura:     300,
@@ -5734,6 +5736,8 @@ let _LINHA_SERIE        = [];
 let _LINHA_HITS         = {};
 let _LINHA_TODAS_SORTED = [];
 let _LINHA_OFFSET       = 0;
+let _LINHA_GOLS_FT      = [];  // soma rolante de gols FT para tooltip
+let _LINHA_GOLS_HT      = [];  // soma rolante de gols HT para tooltip
 
 function _previewPillLinha(f) {
     if (S.linhaMarcaDagua) return;
@@ -5920,6 +5924,19 @@ function renderGraficoLinha() {
     _LINHA_TODAS_SORTED = todasSorted;
     _LINHA_OFFSET       = offset;
 
+    // Soma rolante de gols para exibir no tooltip (mesma janela do gráfico de gols)
+    const _nGJ = S.grafGolsJanela || 20;
+    _LINHA_GOLS_FT = serieDisplay.map((_, i) => {
+        const sl = serieDisplay.slice(Math.max(0, i - _nGJ + 1), i + 1);
+        return sl.filter(j => j.gol_casa != null && j.gol_fora != null)
+                 .reduce((a, j) => a + j.gol_casa + j.gol_fora, 0);
+    });
+    _LINHA_GOLS_HT = serieDisplay.map((_, i) => {
+        const sl = serieDisplay.slice(Math.max(0, i - _nGJ + 1), i + 1);
+        return sl.filter(j => j.gol_casa_ht != null && j.gol_fora_ht != null)
+                 .reduce((a, j) => a + j.gol_casa_ht + j.gol_fora_ht, 0);
+    });
+
     // Amplitude dinâmica — ajusta min/max ao intervalo real dos dados (igual ao Gráfico de Gols)
     const _valsL = datasets.filter(d => !d._isRef && !d._isMA && !d._isEquilibrio).flatMap(d => d.data).filter(v => v != null);
     const _yMinL = _valsL.length ? Math.max(0,   Math.floor(Math.min(..._valsL) / 5) * 5 - 5)  : 0;
@@ -5967,15 +5984,11 @@ function renderGraficoLinha() {
                                 const fid = ctx.dataset._filtroId;
                                 const hit = fid ? (_LINHA_HITS[fid]?.[i] ? ' ✓' : ' ✗') : '';
                                 const lbl = ctx.dataset._filtroLabel || ctx.dataset.label;
-                                const j   = _LINHA_SERIE[i];
-                                let golsStr = '';
-                                if (j && j.gol_casa != null && j.gol_fora != null) {
-                                    const ft = j.gol_casa + j.gol_fora;
-                                    const htDisp = j.gol_casa_ht != null && j.gol_fora_ht != null;
-                                    golsStr = htDisp
-                                        ? `   FT: ${ft}⚽  1T: ${j.gol_casa_ht + j.gol_fora_ht}⚽`
-                                        : `   FT: ${ft}⚽`;
-                                }
+                                const ft  = _LINHA_GOLS_FT[i];
+                                const ht  = _LINHA_GOLS_HT[i];
+                                const golsStr = (ft != null && ft > 0)
+                                    ? `   FT: ${ft}⚽${ht > 0 ? `  1T: ${ht}⚽` : ''}`
+                                    : '';
                                 return ` ${lbl}: ${ctx.raw}%${hit}${golsStr}`;
                             }
                         }
@@ -6023,7 +6036,7 @@ const golsLabelPlugin = {
             const step = total > 60 ? 3 : total > 30 ? 2 : 1;
             ctx.save();
             ctx.font = 'bold 8px sans-serif';
-            ctx.fillStyle = ds.borderColor;
+            ctx.fillStyle = S._grafGolsLabelCor || '#1d4ed8';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#000';
             ctx.shadowBlur = 2;
@@ -11931,6 +11944,7 @@ const _CFG_LABELS = {
     grafico_gols_flat_visivel:   '⚽ Gráfico de Gols: exibir o botão ● Plano na toolbar',
     grafico_gols_ponto_raio:     '⚽ Gráfico de Gols: raio das bolinhas (px)',
     grafico_gols_ponto_borda:    '⚽ Gráfico de Gols: espessura da borda das bolinhas (px)',
+    grafico_gols_label_cor:      '⚽ Gráfico de Gols: cor dos números ⚽ Gols sobre as bolinhas (hex)',
     grafico_ponto_cores_visivel: '🟢 Cores: exibir o botão de cores (verde/vermelho) nos gráficos de Linha e Mercados',
     grafico_ponto_cores:         '🟢 Cores: vir habilitado por padrão (colorir bolinhas verde=hit / vermelho=miss)',
     grafico_pills_default:   '📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados',
