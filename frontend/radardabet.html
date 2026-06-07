@@ -3047,7 +3047,8 @@ async function carregarConfigLigas(_tentativa) {
         if (cfg.grafico_gols_flat !== undefined)           S.grafGolsFlat          = cfg.grafico_gols_flat !== 'false';
         if (cfg.grafico_gols_ponto_raio)   S.grafGolsPontoRaio  = parseFloat(cfg.grafico_gols_ponto_raio)  || 4;
         if (cfg.grafico_gols_ponto_borda)  S.grafGolsPontoBorda = parseFloat(cfg.grafico_gols_ponto_borda) || 1.5;
-        if (cfg.grafico_gols_label_cor)    S._grafGolsLabelCor  = cfg.grafico_gols_label_cor;
+        if (cfg.grafico_gols_label_cor)      S._grafGolsLabelCor  = cfg.grafico_gols_label_cor;
+        if (cfg.grafico_gols_label_tamanho) S._grafGolsLabelSize = parseInt(cfg.grafico_gols_label_tamanho) || 8;
         if (cfg.grafico_gols_flat_visivel !== undefined) {
             const _bgfv = cfg.grafico_gols_flat_visivel !== 'false';
             const _bgfb = document.getElementById('btn-gols-flat');
@@ -3510,7 +3511,8 @@ const S = {
     grafGolsFlat:  true,
     grafGolsPontoRaio:  4,
     grafGolsPontoBorda: 1.5,
-    _grafGolsLabelCor: '#1d4ed8',
+    _grafGolsLabelCor:  '#1d4ed8',
+    _grafGolsLabelSize: 8,
     _graficoGols:  null,
     _graficoLinha: null,
     _grafAltura:     300,
@@ -6040,7 +6042,7 @@ const golsLabelPlugin = {
             // Espaçamento automático: evita sobreposição em séries longas
             const step = total > 60 ? 3 : total > 30 ? 2 : 1;
             ctx.save();
-            ctx.font = 'bold 8px sans-serif';
+            ctx.font = `bold ${S._grafGolsLabelSize || 8}px sans-serif`;
             ctx.fillStyle = S._grafGolsLabelCor || '#1d4ed8';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#000';
@@ -11958,6 +11960,7 @@ const _CFG_LABELS = {
     grafico_gols_ponto_raio:     '⚽ Gráfico de Gols: raio das bolinhas (px)',
     grafico_gols_ponto_borda:    '⚽ Gráfico de Gols: espessura da borda das bolinhas (px)',
     grafico_gols_label_cor:      '⚽ Gráfico de Gols: cor dos números ⚽ Gols sobre as bolinhas (hex)',
+    grafico_gols_label_tamanho:  '⚽ Gráfico de Gols: tamanho da fonte dos números ⚽ Gols (px)',
     grafico_ponto_cores_visivel: '🟢 Cores: exibir o botão de cores (verde/vermelho) nos gráficos de Linha e Mercados',
     grafico_ponto_cores:         '🟢 Cores: vir habilitado por padrão (colorir bolinhas verde=hit / vermelho=miss)',
     grafico_pills_default:   '📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados',
