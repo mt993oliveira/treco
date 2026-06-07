@@ -3044,6 +3044,12 @@ async function carregarConfigLigas(_tentativa) {
         if (cfg.grafico_ponto_flat_visivel !== undefined)  S.grafPontoFlatVisivel  = cfg.grafico_ponto_flat_visivel !== 'false';
         if (cfg.grafico_ponto_cores !== undefined)         S.grafPontoCores        = cfg.grafico_ponto_cores !== 'false';
         if (cfg.grafico_ponto_cores_visivel !== undefined) S.grafPontoCoresVisivel = cfg.grafico_ponto_cores_visivel !== 'false';
+        if (cfg.grafico_gols_flat !== undefined)           S.grafGolsFlat          = cfg.grafico_gols_flat !== 'false';
+        if (cfg.grafico_gols_flat_visivel !== undefined) {
+            const _bgfv = cfg.grafico_gols_flat_visivel !== 'false';
+            const _bgfb = document.getElementById('btn-gols-flat');
+            if (_bgfb) _bgfb.style.display = _bgfv ? '' : 'none';
+        }
         if (cfg.grafico_pct_cor) S._grafPctCor = cfg.grafico_pct_cor;
         if (cfg.grafico_pct_tamanho) S._grafPctTamanho = parseInt(cfg.grafico_pct_tamanho) || 8;
         if (cfg.grafico_pills_default !== undefined) {
@@ -3052,7 +3058,8 @@ async function carregarConfigLigas(_tentativa) {
         // Sincroniza classes dos botões com o estado carregado
         [['grafPontoFlat','btn-linha-flat'],
          ['grafPontoCores','btn-linha-cores'],
-         ['linhaShowPills','btn-linha-pills']].forEach(([k,id]) => {
+         ['linhaShowPills','btn-linha-pills'],
+         ['grafGolsFlat','btn-gols-flat']].forEach(([k,id]) => {
             const b = document.getElementById(id);
             if (b) b.classList.toggle('ativo', !!S[k]);
         });
@@ -11907,6 +11914,8 @@ const _CFG_LABELS = {
     grafico_ponto_desce_cor: '📈 Gráfico: cor da bolinha quando desce',
     grafico_ponto_flat_visivel:  '● Plano: exibir o botão nos gráficos de Linha e Mercados',
     grafico_ponto_flat:          '● Plano: vir habilitado por padrão (ocultar bolinhas sem variação)',
+    grafico_gols_flat:           '⚽ Gráfico de Gols: ocultar bolinhas sem variação (● Plano) por padrão',
+    grafico_gols_flat_visivel:   '⚽ Gráfico de Gols: exibir o botão ● Plano na toolbar',
     grafico_ponto_cores_visivel: '🟢 Cores: exibir o botão de cores (verde/vermelho) nos gráficos de Linha e Mercados',
     grafico_ponto_cores:         '🟢 Cores: vir habilitado por padrão (colorir bolinhas verde=hit / vermelho=miss)',
     grafico_pills_default:   '📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados',
