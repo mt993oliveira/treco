@@ -1803,7 +1803,7 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_mm2_dash',    valor:'8,4',   tipo:'text',  grupo:'grafico', descricao:'📈 MM longa: padrão tracejado (ex: "8,4" ou "0" = sólido)' },
     { chave:'grafico_gols_barra',              valor:'#22c55e', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor das barras' },
     { chave:'grafico_gols_mm',                 valor:'#60a5fa', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor da MM' },
-    { chave:'chart_cor_gols_total',            valor:'#e2e8f0', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor da linha Gols Total' },
+    { chave:'chart_cor_gols_total',            valor:'#60a5fa', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor da linha Gols Total' },
     { chave:'chart_cor_gols_casa',             valor:'#4ade80', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor da linha Casa' },
     { chave:'chart_cor_gols_fora',             valor:'#fb923c', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor da linha Fora' },
     { chave:'chart_cor_gols_1t',               valor:'#facc15', tipo:'text', grupo:'grafico', descricao:'⚽ Gráfico de Gols: cor da linha Gols 1T (padrão amarelo)' },
