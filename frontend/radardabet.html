@@ -7264,7 +7264,12 @@ function renderTabela() {
 
     // ── Linha de Sugestão BTTS ─────────────────────────────────────
     if (_bttsMosaicoAtivo && gsHist.length > 0) {
-        const _hAnt = gsHist[gsHist.length - 1];
+        // Usa o slot mais recente com >= 10 jogos para evitar instabilidade na virada de hora
+        let _hAnt = null;
+        for (let _si = gsHist.length - 1; _si >= 0; _si--) {
+            if ((gsHist[_si].jogos || []).length >= 10) { _hAnt = gsHist[_si]; break; }
+        }
+        if (!_hAnt) _hAnt = gsHist[gsHist.length - 1]; // fallback se nenhum slot tiver 10+
         const _dedupBtts = new Map();
         (_hAnt.jogos || []).forEach(j => {
             const k = `${j.time_casa}|${j.time_fora}`;
