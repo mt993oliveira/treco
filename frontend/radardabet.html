@@ -7298,7 +7298,11 @@ function renderTabela() {
                     🎯<br>BTTS<br><span style="font-size:10px">${_bttsN}</span>
                 </td>
                 ${_bttsCells}`;
-            tbody.insertBefore(_bttsRow, tbody.firstChild);
+            // Insere após linhas de próximos jogos (futuras) — não deve ficar acima delas
+            const _bttsAnchor = gsFuturos.length > 0
+                ? (tbody.children[gsFuturos.length] || null)
+                : tbody.firstChild;
+            tbody.insertBefore(_bttsRow, _bttsAnchor);
         }
     }
 

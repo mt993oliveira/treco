@@ -774,16 +774,21 @@ async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
         if (isFatalError(e)) throw e;
     });
     await new Promise(r => setTimeout(r, 7000));
-    const voltou = await pg.evaluate((nome) => {
-        const btn = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].find(b =>
-            b.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome
-        );
-        if (btn) { btn.click(); return true; }
-        return false;
-    }, nomeLigaOriginal).catch(e => {
-        if (isFatalError(e)) throw e;
-        return false;
-    });
+    // Tenta até 2x — aba pode desaparecer brevemente na transição entre rodadas
+    let voltou = false;
+    for (let _t = 0; _t < 2 && !voltou; _t++) {
+        if (_t > 0) await new Promise(r => setTimeout(r, 5000));
+        voltou = await pg.evaluate((nome) => {
+            const btn = [...document.querySelectorAll('.vrl-MeetingsHeaderButton')].find(b =>
+                b.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim() === nome
+            );
+            if (btn) { btn.click(); return true; }
+            return false;
+        }, nomeLigaOriginal).catch(e => {
+            if (isFatalError(e)) throw e;
+            return false;
+        });
+    }
     if (!voltou) { console.log(`   ❌ [${ligaNorm}] Liga não encontrada após refresh`); return false; }
     await new Promise(r => setTimeout(r, 4000));
     try { await pg.waitForSelector('.vr-EventTimesNavBarButton', { timeout: 15000 }); }
@@ -1124,6 +1129,12 @@ async function ciclo(browser, pg) {
         const key  = LIGA_CONFIG_KEY[norm];
         return key ? cfgLigas[key] !== 'false' : true;
     });
+    // Copa do Mundo vai para o final — normalmente está entre rodadas no início do ciclo;
+    // processar por último (~10-15 min depois) garante que a nova rodada já estará disponível.
+    const _wcIdx = ligasFiltradas.findIndex(l => normalizarNomeLiga(l) === 'World Cup');
+    if (_wcIdx >= 0 && _wcIdx < ligasFiltradas.length - 1) {
+        ligasFiltradas.push(ligasFiltradas.splice(_wcIdx, 1)[0]);
+    }
     console.log(`   📋 [Odds] ${ligasFiltradas.length} liga(s): ${ligasFiltradas.join(' | ')}`);
 
     let oddsOk = 0;
