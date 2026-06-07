@@ -1979,6 +1979,7 @@
                 <div style="display:flex;gap:6px;align-items:center">
                     <button id="btn-gols-mm" class="acao-btn" onclick="_gToggle('grafGolsMM','btn-gols-mm')" title="Exibe média móvel de gols">📈 MM</button>
                     <button id="btn-gols-gols" class="acao-btn ativo" onclick="_gToggle('grafGolsShowGols','btn-gols-gols')" title="Exibe quantidade de gols no lugar de %">⚽ Gols</button>
+                    <button id="btn-gols-flat" class="acao-btn ativo" onclick="_toggleGolsFlat()" title="Exibir bolinhas quando o valor não muda (linha plana)">● Plano</button>
                     <button class="acao-btn" onclick="resetZoomGols()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
                 </div>
             </div>
@@ -3491,6 +3492,7 @@ const S = {
     horasMosaico:  null,
     grafGolsMM:    false,
     grafGolsShowGols: true,
+    grafGolsFlat:  true,
     _graficoGols:  null,
     _graficoLinha: null,
     _grafAltura:     300,
@@ -5379,6 +5381,13 @@ function _togglePontoFlat() {
     if (S.showLinha) renderGraficoLinha();
 }
 
+function _toggleGolsFlat() {
+    S.grafGolsFlat = !S.grafGolsFlat;
+    const b = document.getElementById('btn-gols-flat');
+    if (b) b.classList.toggle('ativo', S.grafGolsFlat);
+    renderGraficoGols();
+}
+
 function _togglePontoCores() {
     S.grafPontoCores = !S.grafPontoCores;
     const b = document.getElementById('btn-linha-cores');
@@ -6096,12 +6105,20 @@ function renderGraficoGols() {
         const rolSumAll = _rollingSumAll(brutosAll);
         const rolSum    = rolSumAll.slice(_offsetGols);
         const cor = f.cor;
+        const _rBase = S.grafPontoRaio || 4;
+        const _rGols = S.grafGolsFlat
+            ? rolSum.map((v, i, a) => (i > 0 && v === a[i-1]) ? 0 : _rBase)
+            : _rBase;
         datasets.push({
             type: 'line', label: `${f.label} soma${n}j`,
             data: rolSum,
             borderColor: cor, backgroundColor: 'transparent',
-            borderWidth: 2, pointRadius: 2, pointHoverRadius: 5,
-            pointBackgroundColor: cor, tension: 0.2,
+            borderWidth: 2,
+            pointRadius: _rGols,
+            pointHoverRadius: _rBase + 3,
+            pointBackgroundColor: cor,
+            pointBorderWidth: S.grafPontoBorda || 1.5,
+            tension: 0.2,
             _metricId: f.id
         });
 
