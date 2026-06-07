@@ -68,6 +68,18 @@ async function getDbPool() {
 // ── Cache em memória para endpoints pesados de análise ──────────────────────
 const _analiseApiCache = new Map(); // cacheKey → { data, ts }
 const _ANALISE_CACHE_TTL = 90_000; // 90s — maior que o cache do frontend (60s)
+// TTL de historico-mercados — lido de bet365_config.historico_cache_segundos a cada 30s
+let _histCacheTTLms = 10_000;
+async function _loadHistCacheTTL() {
+    try {
+        const p = await getDbPool();
+        const r = await p.request().query("SELECT valor FROM bet365_config WHERE chave = 'historico_cache_segundos'");
+        const v = parseInt(r.recordset[0]?.valor);
+        if (!isNaN(v) && v >= 0) _histCacheTTLms = v * 1000;
+    } catch(_) {}
+}
+_loadHistCacheTTL();
+setInterval(_loadHistCacheTTL, 30_000);
 
 function _apiCacheGet(key) {
     const e = _analiseApiCache.get(key);
@@ -864,11 +876,9 @@ router.get('/historico-mercados', async (req, res) => {
         const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 720);
         const comFuturos = incluirFuturos === 'true';
 
-        // Cache de 45s — múltiplos usuários com mesmos filtros compartilham 1 query
-        // (dados mudam a cada ~3min pelo coletor, então 45s de staleness é aceitável)
         const _ck = `hist:${horasNum}:${liga||'all'}:${comFuturos}`;
-        const _cached = _apiCacheGet(_ck);
-        if (_cached) return res.json(_cached);
+        const _ce = _analiseApiCache.get(_ck);
+        if (_ce && Date.now() - _ce.ts <= _histCacheTTLms) return res.json(_ce.data);
 
         const pool = await getDbPool();
 
