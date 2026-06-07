@@ -6952,19 +6952,22 @@ function renderTabela() {
 
     // ── Pré-cálculo BTTS (destaque de células, sem linha separada) ─────────
     let _bttsCols = new Set(), _bttsTargetKey = null, _ttBtts = '';
-    if (_bttsMosaicoAtivo && gsHist.length >= 2) {
-        // Referência: última hora COMPLETA com >= 3 jogos — pula a hora atual (em andamento)
+    if (_bttsMosaicoAtivo && gsHist.length > 0) {
+        // Referência: última hora COMPLETA (pula a hora atual em andamento)
+        // Prefere slot com >= 3 jogos; fallback para qualquer slot anterior com >= 1 jogo
+        const _idxAtual = gsHist.length - 1;
         let _hRef = null;
-        for (let _si = gsHist.length - 2; _si >= 0; _si--) {
-            const _dc = new Set((gsHist[_si].jogos||[]).map(j=>`${j.time_casa}|${j.time_fora}`)).size;
-            if (_dc >= 3) { _hRef = gsHist[_si]; break; }
+        for (let _si = _idxAtual - 1; _si >= 0; _si--) {
+            if ((gsHist[_si].jogos||[]).length >= 1) { _hRef = gsHist[_si]; break; }
         }
+        // Se não há slot anterior (só 1 slot histórico), usa o próprio slot atual como referência
+        if (!_hRef) _hRef = gsHist[_idxAtual];
         if (_hRef) {
             const _db = new Map();
             (_hRef.jogos||[]).forEach(j => { const k=`${j.time_casa}|${j.time_fora}`; if(!_db.has(k)) _db.set(k,j); });
             let _bN=0, _bT=0;
             _db.forEach(j => { if(!j.resultado||j.resultado_estimado) return; _bT++; if((j.gol_casa??-1)>=1&&(j.gol_fora??-1)>=1) _bN++; });
-            if (_bT >= 3 && _bN/_bT*100 <= _bttsMosaicoPct) {
+            if (_bT > 0 && _bN/_bT*100 <= _bttsMosaicoPct) {
                 const _c0=Math.max(0,_bN-2), _c1=Math.max(0,_bN-1), _c2=Math.min(N-1,_bN);
                 _bttsCols = new Set([_c0,_c1,_c2]);
                 _ttBtts = `🎯 BTTS: ${_bN} de ${_bT} jogos (${Math.round(_bN/_bT*100)}%) · sugestão colunas ${_c0+1}, ${_c1+1}, ${_c2+1}`;
