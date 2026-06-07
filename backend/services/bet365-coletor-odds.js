@@ -798,7 +798,7 @@ async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
 
 // ── Itera TODOS os botões de horário e coleta odds de cada jogo ─
 // Hard refresh antes de cada jogo (exceto o primeiro) — garante estado limpo.
-async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
+async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal, jaColetados = new Set()) {
     const resultados = [];
 
     const lerHorarios = () => pg.evaluate(() =>
@@ -811,11 +811,19 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
     console.log(`   🕐 [${ligaNorm}] ${horarios.length} horário(s): ${horarios.join(' | ')}`);
     if (horarios.length === 0) return resultados;
 
+    let primeiroNaoSkipped = true;
     for (let idx = 0; idx < horarios.length; idx++) {
         const horarioAlvo = horarios[idx];
+
+        // Pula jogo já coletado neste intervalo sem navegar (economiza refresh + espera)
+        if (jaColetados.has(`${ligaNorm}|${horarioAlvo}`)) {
+            console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — já coletado, pulando`);
+            continue;
+        }
+
         try {
-            // Hard refresh antes de cada jogo (exceto o primeiro)
-            if (idx > 0) {
+            // Hard refresh antes de cada jogo (exceto o primeiro não-skipped)
+            if (!primeiroNaoSkipped) {
                 let ok = await _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal);
                 if (!ok) {
                     console.log(`   🔄 [${ligaNorm}] "${horarioAlvo}" — retry refresh...`);
@@ -839,6 +847,8 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                 btn.click();
                 return true;
             }, horarioAlvo);
+
+            primeiroNaoSkipped = false; // próximos jogos farão hard refresh
 
             if (!clicou) {
                 console.log(`   ⏭️  [${ligaNorm}] "${horarioAlvo}" — jogo já ao vivo (não encontrado após refresh)`);
@@ -865,6 +875,7 @@ async function lerTodasAsOdds(pg, ligaNorm, nomeLigaOriginal) {
                     const label = odds.suspended ? '[race-off]' : '[próximo]';
                     await salvarEvento(ligaNorm, odds.timeCasa, odds.timeFora,
                                        odds.horario, odds.oddCasa, odds.oddEmpate, odds.oddFora, odds);
+                    jaColetados.add(`${ligaNorm}|${horarioAlvo}`); // marca como coletado p/ evitar retry
                     const ou   = odds.oddOver25   ? ` | O0.5:${odds.oddOver05}/${odds.oddUnder05} O1.5:${odds.oddOver15}/${odds.oddUnder15} O2.5:${odds.oddOver25}/${odds.oddUnder25} O3.5:${odds.oddOver35}/${odds.oddUnder35}` : '';
                     const bt   = odds.oddBttsSim  ? ` | BTTS:${odds.oddBttsSim}/${odds.oddBttsNao}` : '';
                     const ht   = odds.oddHtCasa   ? ` | HT:${odds.oddHtCasa}/${odds.oddHtEmpate}/${odds.oddHtFora}` : '';
@@ -1123,6 +1134,21 @@ async function ciclo(browser, pg) {
         rows.recordset.forEach(r => { if (r.chave) cfgLigas[r.chave] = r.valor; });
     } catch(_) { /* se DB falhar, não bloqueia — assume todas ativas */ }
 
+    // Set de jogos já coletados neste intervalo — uma só query, skip sem navegar
+    const jaColetados = new Set();
+    try {
+        const db    = await getPool();
+        const desde = new Date(Date.now() - INTERVALO_MS);
+        const res   = await db.request()
+            .input('desde', sql.DateTime2, desde)
+            .query(`SELECT league_name, CONVERT(VARCHAR(5), start_time_datetime, 108) AS hora
+                    FROM bet365_eventos
+                    WHERE data_atualizacao >= @desde AND ativo = 1`);
+        res.recordset.forEach(r => jaColetados.add(`${r.league_name}|${r.hora}`));
+        if (jaColetados.size > 0)
+            console.log(`   🗂️  [Odds] ${jaColetados.size} slot(s) já coletado(s) — serão pulados`);
+    } catch(_) { /* não bloqueia */ }
+
     const ligasFiltradas = ligas.filter(l => {
         if (LIGAS_IGNORAR.some(ig => l.toLowerCase().includes(ig))) return false;
         const norm = normalizarNomeLiga(l);
@@ -1234,7 +1260,7 @@ async function ciclo(browser, pg) {
                     await diagnosticarPagina(pg, ligaNorm, ' pods não carregaram:');
                 }
 
-                const todasOdds = await lerTodasAsOdds(pg, ligaNorm, nomeLiga);
+                const todasOdds = await lerTodasAsOdds(pg, ligaNorm, nomeLiga, jaColetados);
                 if (todasOdds.length === 0) {
                     console.log(`   ⏭️  [${ligaNorm}] — sem odds disponíveis`);
                 } else {
@@ -1355,7 +1381,7 @@ async function ciclo(browser, pg) {
                     );
                 } catch(_) {}
 
-                const todasOdds = await lerTodasAsOdds(pg, ligaNorm, nomeLiga);
+                const todasOdds = await lerTodasAsOdds(pg, ligaNorm, nomeLiga, jaColetados);
                 if (todasOdds.length > 0) {
                     oddsOk += todasOdds.length;
                     console.log(`   ✅ [${ligaNorm}] Retry: ${todasOdds.length} jogo(s) coletado(s)`);
