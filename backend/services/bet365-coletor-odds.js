@@ -422,7 +422,19 @@ async function _verificarLoginColetor2(pg) {
                     return t === 'Login' || t === 'Log In';
                 })
             ).catch(() => false);
-            if (logouAgora) { console.log('   ✅ [Odds] Login detectado! Continuando...'); _ultimoLoginTs2 = 0; return; }
+            if (logouAgora) {
+                console.log('   ✅ [Odds] Login detectado! Continuando...');
+                _ultimoLoginTs2 = 0;
+                // Bet365 redireciona para home após login — volta para AVR
+                try {
+                    if (!pg.url().includes('AVR')) {
+                        console.log('   🔄 [Odds] Redirecionando para página virtual pós-login...');
+                        await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                        await new Promise(r => setTimeout(r, 8000));
+                    }
+                } catch(_) {}
+                return;
+            }
             console.log(`   ⏳ [Odds] Aguardando login manual... (${(i + 1) * 10}s)`);
         }
         console.log('   ❌ [Odds] Login não detectado após 5min — abortando ciclo');
@@ -1112,8 +1124,21 @@ async function ciclo(browser, pg) {
         } catch(_) {}
     }
 
+    // Último recurso: goto forçado + verifica sessão (igual ao Coletor 1)
     if (!_ligasVisiveis) {
-        console.log('   ⚠️ [Odds] Ligas não encontradas após refresh — pulando ciclo');
+        console.log('   🔁 [Odds] Último recurso — goto forçado para URL virtual...');
+        try {
+            await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await new Promise(r => setTimeout(r, 10000));
+            await _verificarLoginColetor2(pg);
+            await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 30000 });
+            _ligasVisiveis = true;
+            console.log('   ✅ [Odds] Recuperação por goto OK — ligas voltaram');
+        } catch(_) {}
+    }
+
+    if (!_ligasVisiveis) {
+        console.log('   ⚠️ [Odds] Ligas não encontradas após goto forçado — pulando ciclo');
         return { oddsOk: 0 };
     }
 
