@@ -27,6 +27,8 @@ const http   = require('http');
 const dotenv = require('dotenv');
 dotenv.config();
 
+const { dispararAlerta } = require('./alertas');
+
 const DEBUG_PORT        = parseInt(process.env.BET365_ODDS_DEBUG_PORT) || 9222;
 const COLETOR2_USUARIO  = process.env.BET365_COLETOR2_USUARIO  || '';
 const COLETOR2_SENHA    = process.env.BET365_COLETOR2_SENHA    || '';
@@ -120,6 +122,21 @@ async function getPool() {
     pool = await sql.connect(DB_CFG);
     console.log('   ✅ [Odds] Banco conectado');
     return pool;
+}
+
+// Config do sistema (token Telegram, etc.) — recarrega a cada 5 min
+let _cfg2 = null, _cfg2LoadTs = 0;
+async function _getCfg2() {
+    if (_cfg2 && Date.now() - _cfg2LoadTs < 5 * 60 * 1000) return _cfg2;
+    try {
+        const p = await getPool();
+        const r = await p.request().query('SELECT chave, valor FROM bet365_config');
+        const cfg = {};
+        r.recordset.forEach(row => { if (row.chave) cfg[row.chave] = row.valor; });
+        _cfg2 = cfg;
+        _cfg2LoadTs = Date.now();
+    } catch(_) {}
+    return _cfg2 || {};
 }
 
 let _colsEnsured = false;
@@ -355,8 +372,10 @@ async function _c2TentarLogin(pg) {
 }
 
 // ── Verificação e recuperação de sessão ──────────────────────────────────────
-let _ultimoLoginTs2 = 0;
+let _ultimoLoginTs2      = 0;
+let _ultimoAlertaLogin2  = 0;
 const COOLDOWN_LOGIN2_MS = 5 * 60 * 1000;
+const THROTTLE_ALERTA_MS = 10 * 60 * 1000;
 
 async function _verificarLoginColetor2(pg) {
     try {
@@ -388,7 +407,18 @@ async function _verificarLoginColetor2(pg) {
         }
 
         const motivo = temAvisoVirtual ? '"Faça Login para Assistir" detectado' : 'botão "Login" no cabeçalho';
+        const agora  = new Date().toLocaleTimeString('pt-BR');
         console.log(`   ⚠️  [Odds] Sessão expirada (${motivo}) — tentando login automático...`);
+
+        // Alerta Telegram: sessão expirou (throttle 10 min)
+        if (Date.now() - _ultimoAlertaLogin2 >= THROTTLE_ALERTA_MS) {
+            _getCfg2().then(cfg2 => getPool().catch(() => null).then(p =>
+                dispararAlerta(cfg2, p,
+                    '⚠️ Sessão Coletor 2 (Odds) expirou',
+                    `Sessão expirada — ${motivo}.\n🔄 Tentando login automático...\n🕐 ${agora}`
+                ).catch(() => {})
+            )).catch(() => {});
+        }
 
         // Anti-duplo-login: se já tentamos nos últimos 5 min, aguarda
         if (_ultimoLoginTs2 && (Date.now() - _ultimoLoginTs2) < COOLDOWN_LOGIN2_MS) {
@@ -401,11 +431,18 @@ async function _verificarLoginColetor2(pg) {
         const resultado = await _c2TentarLogin(pg);
         if (resultado === true) {
             console.log('   ✅ [Odds] Login automático bem-sucedido!');
-            _ultimoLoginTs2 = 0; // reseta cooldown após sucesso
+            _ultimoLoginTs2     = 0;
+            _ultimoAlertaLogin2 = Date.now();
+            _getCfg2().then(cfg2 => getPool().catch(() => null).then(p =>
+                dispararAlerta(cfg2, p,
+                    '🔐 Sessão Coletor 2 (Odds) restaurada',
+                    `Login automático realizado com sucesso.\n✅ Coleta de odds continuando normalmente.\n🕐 ${agora}`
+                ).catch(() => {})
+            )).catch(() => {});
             // Retorna à página AVR se necessário
             if (!pg.url().includes('AVR')) {
                 await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-                await new Promise(r => setTimeout(r, 4000));
+                await new Promise(r => setTimeout(r, 8000));
             }
             return;
         }
@@ -424,7 +461,14 @@ async function _verificarLoginColetor2(pg) {
             ).catch(() => false);
             if (logouAgora) {
                 console.log('   ✅ [Odds] Login detectado! Continuando...');
-                _ultimoLoginTs2 = 0;
+                _ultimoLoginTs2     = 0;
+                _ultimoAlertaLogin2 = Date.now();
+                _getCfg2().then(cfg2 => getPool().catch(() => null).then(p =>
+                    dispararAlerta(cfg2, p,
+                        '🔐 Sessão Coletor 2 (Odds) restaurada (manual)',
+                        `Login manual detectado.\n✅ Coleta de odds continuando normalmente.\n🕐 ${agora}`
+                    ).catch(() => {})
+                )).catch(() => {});
                 // Bet365 redireciona para home após login — volta para AVR
                 try {
                     if (!pg.url().includes('AVR')) {
@@ -437,7 +481,13 @@ async function _verificarLoginColetor2(pg) {
             }
             console.log(`   ⏳ [Odds] Aguardando login manual... (${(i + 1) * 10}s)`);
         }
-        console.log('   ❌ [Odds] Login não detectado após 5min — abortando ciclo');
+        console.log('   ❌ [Odds] Login não detectado após 5min — intervenção manual necessária');
+        _getCfg2().then(cfg2 => getPool().catch(() => null).then(p =>
+            dispararAlerta(cfg2, p,
+                '❌ Sessão Coletor 2 (Odds) — login não realizado',
+                `Login não detectado após 5 minutos.\n⚠️ Coleta de odds parada — faça login manualmente no Edge (porta 9223).\n🕐 ${agora}`
+            ).catch(() => {})
+        )).catch(() => {});
         throw new Error('Sessão Coletor 2 expirada — login não realizado a tempo');
     } catch(e) {
         if (isFatalError(e) || e.message.includes('expirada')) throw e;
@@ -1051,6 +1101,8 @@ async function hardRefresh(pg) {
         await pg.bringToFront();
         await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
         await new Promise(r => setTimeout(r, 8000));
+        // Verifica sessão após reload — Bet365 pode redirecionar para login (igual ao Coletor 1)
+        await _verificarLoginColetor2(pg);
         await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: 20000 });
         return true;
     } catch(err) {
