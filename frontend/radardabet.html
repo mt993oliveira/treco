@@ -2069,6 +2069,9 @@
             <button class="acao-btn" id="btn-btts-mosaico" style="display:none"
                 onclick="_bttsMosaicoAtivo=!_bttsMosaicoAtivo;localStorage.setItem('rdbt_bttsMosaico',_bttsMosaicoAtivo);document.getElementById('btn-btts-mosaico').classList.toggle('ativo',_bttsMosaicoAtivo);renderTabela()"
                 title="Exibir sugestão de Ambas Marcam no Mosaico">🎯 Ambas Marcam</button>
+            <button class="acao-btn" id="btn-over25-mosaico" style="display:none"
+                onclick="_over25MosaicoAtivo=!_over25MosaicoAtivo;localStorage.setItem('rdbt_over25Mosaico',_over25MosaicoAtivo);document.getElementById('btn-over25-mosaico').classList.toggle('ativo',_over25MosaicoAtivo);renderTabela()"
+                title="Exibir sugestão de Over 2.5 no Mosaico">⚽ Over 2.5</button>
             <button class="acao-btn" id="btn-exibir-clubes" onclick="S.showNomes=!S.showNomes;localStorage.setItem('rdbt_showNomes',S.showNomes);document.getElementById('btn-exibir-clubes').classList.toggle('ativo',S.showNomes);renderTabela()" title="Mostrar nomes dos clubes na grade">🏷️ Exibir Clubes</button>
             <button class="acao-btn" id="btn-exibir-odds" onclick="S.showOdds=!S.showOdds;localStorage.setItem('rdbt_showOdds',S.showOdds);document.getElementById('btn-exibir-odds').classList.toggle('ativo',S.showOdds);renderTabela()" title="Mostrar odds na grade">💹 Exibir Odds Pagas</button>
             <button class="acao-btn" id="btn-exibir-ht" onclick="S.showHT=!S.showHT;localStorage.setItem('rdbt_showHT',S.showHT);document.getElementById('btn-exibir-ht').classList.toggle('ativo',S.showHT);renderTabela()" title="Mostrar placar do intervalo (HT) na grade">🔍 Exibir HT</button>
@@ -2996,8 +2999,10 @@ async function carregarConfigLigas(_tentativa) {
         // Sincroniza visual dos botões do header
         const _sb = id => document.getElementById(id);
         if (_sb('btn-proximos-jogos'))  _sb('btn-proximos-jogos').classList.toggle('ativo',  S.showProximos);
-        if (cfg.alerta_btts_mosaico_pct !== undefined) _bttsMosaicoPct = Math.max(1, Math.min(100, parseInt(cfg.alerta_btts_mosaico_pct) || 50));
+        if (cfg.alerta_btts_mosaico_pct  !== undefined) _bttsMosaicoPct  = Math.max(1, Math.min(100, parseInt(cfg.alerta_btts_mosaico_pct)  || 50));
         _syncBttsMosaico(cfg.alerta_btts_mosaico, cfg.alerta_btts_mosaico_botao);
+        if (cfg.alerta_over25_mosaico_pct !== undefined) _over25MosaicoPct = Math.max(1, Math.min(100, parseInt(cfg.alerta_over25_mosaico_pct) || 50));
+        _syncOver25Mosaico(cfg.alerta_over25_mosaico, cfg.alerta_over25_mosaico_botao);
         if (_sb('btn-exibir-clubes'))   _sb('btn-exibir-clubes').classList.toggle('ativo',   S.showNomes);
         if (_sb('btn-exibir-odds'))     _sb('btn-exibir-odds').classList.toggle('ativo',     S.showOdds);
         if (_sb('btn-exibir-ht'))       _sb('btn-exibir-ht').classList.toggle('ativo',       S.showHT);
@@ -3283,8 +3288,10 @@ async function _aplicarConfigFrontend() {
             if (c.header_subtitle_cor)     _subEl.style.color   = c.header_subtitle_cor;
         }
         if (c.alerta_popup_ativo !== undefined)  _alertaPopupAtivo  = c.alerta_popup_ativo  !== 'false';
-        if (c.alerta_btts_mosaico_pct !== undefined) _bttsMosaicoPct = Math.max(1, Math.min(100, parseInt(c.alerta_btts_mosaico_pct) || 50));
+        if (c.alerta_btts_mosaico_pct  !== undefined) _bttsMosaicoPct  = Math.max(1, Math.min(100, parseInt(c.alerta_btts_mosaico_pct)  || 50));
         _syncBttsMosaico(c.alerta_btts_mosaico, c.alerta_btts_mosaico_botao);
+        if (c.alerta_over25_mosaico_pct !== undefined) _over25MosaicoPct = Math.max(1, Math.min(100, parseInt(c.alerta_over25_mosaico_pct) || 50));
+        _syncOver25Mosaico(c.alerta_over25_mosaico, c.alerta_over25_mosaico_botao);
         console.log('[Config] ✅ aplicada com sucesso — tema:', c.default_tema, '| subtitle:', c.header_subtitle_texto);
 
     } catch(e) {
@@ -7039,6 +7046,31 @@ function renderTabela() {
         }
     }
 
+    // ── Pré-cálculo Over 2.5 (destaque de células, sem linha separada) ──────
+    let _over25Cols = new Set(), _over25TargetKey = null, _ttOver25 = '';
+    if (_over25MosaicoAtivo && gsHist.length > 0) {
+        const _idxAtual2 = gsHist.length - 1;
+        let _hRef2 = null;
+        for (let _si = _idxAtual2 - 1; _si >= 0; _si--) {
+            if ((gsHist[_si].jogos||[]).length >= 1) { _hRef2 = gsHist[_si]; break; }
+        }
+        if (!_hRef2) _hRef2 = gsHist[_idxAtual2];
+        if (_hRef2) {
+            const _db2 = new Map();
+            (_hRef2.jogos||[]).forEach(j => { const k=`${j.time_casa}|${j.time_fora}`; if(!_db2.has(k)) _db2.set(k,j); });
+            let _o25N=0, _o25T=0;
+            _db2.forEach(j => { if(!j.resultado||j.resultado_estimado) return; _o25T++; if((j.gol_casa??0)+(j.gol_fora??0) > 2) _o25N++; });
+            if (_o25T > 0 && _o25N/_o25T*100 <= _over25MosaicoPct) {
+                const _oc0=Math.max(0,_o25N-2), _oc1=Math.max(0,_o25N-1), _oc2=Math.min(N-1,_o25N);
+                _over25Cols = new Set([_oc0,_oc1,_oc2]);
+                _ttOver25 = `⚽ Over 2.5: ${_o25N} de ${_o25T} jogos (${Math.round(_o25N/_o25T*100)}%) · sugestão colunas ${_oc0+1}, ${_oc1+1}, ${_oc2+1}`;
+                _over25TargetKey = gsFuturos.length > 0
+                    ? gsFuturos[gsFuturos.length-1].key
+                    : gsHist[gsHist.length-1].key;
+            }
+        }
+    }
+
     // Acumuladores para o painel "LINHAS SELECIONADAS"
     const selHits    = Array(N).fill(0);
     const selTotal   = Array(N).fill(0);
@@ -7155,8 +7187,16 @@ function renderTabela() {
 
         // Células dos jogos — uma por slot de 3 minutos
         const cells = Array.from({length: N}, (_, ci) => {
-            const _isBttsHere = _bttsCols.size > 0 && _bttsTargetKey === grupo.key && _bttsCols.has(ci);
-            const _bttsExtraStyle = _isBttsHere ? `box-shadow:inset 0 0 0 2px #22c55e;background:rgba(34,197,94,.10);` : '';
+            const _isBttsHere   = _bttsCols.size   > 0 && _bttsTargetKey   === grupo.key && _bttsCols.has(ci);
+            const _isOver25Here = _over25Cols.size > 0 && _over25TargetKey === grupo.key && _over25Cols.has(ci);
+            let _bttsExtraStyle = '';
+            if (_isBttsHere && _isOver25Here) {
+                _bttsExtraStyle = 'box-shadow:inset 0 0 0 3px #a855f7;background:rgba(168,85,247,.12);';
+            } else if (_isBttsHere) {
+                _bttsExtraStyle = 'box-shadow:inset 0 0 0 2px #22c55e;background:rgba(34,197,94,.10);';
+            } else if (_isOver25Here) {
+                _bttsExtraStyle = 'box-shadow:inset 0 0 0 2px #f97316;background:rgba(249,115,22,.10);';
+            }
             const j = slotMap[ci];
 
             if (!j) {
@@ -7204,9 +7244,12 @@ function renderTabela() {
                         <span style="display:block;font-size:var(--fs-prox);font-weight:800;text-align:center">—</span>
                     </td>`;
                 }
-                // Célula vazia: destaque BTTS se for a coluna sugerida na linha alvo
-                if (_isBttsHere) {
-                    return `<td style="min-width:${_celulaW}px;${_bttsExtraStyle}text-align:center;font-size:11px;color:#22c55e;cursor:default" title="${_ttBtts}">🎯</td>`;
+                // Célula vazia: destaque BTTS / Over 2.5 se for a coluna sugerida na linha alvo
+                if (_isBttsHere || _isOver25Here) {
+                    const _sugIcon  = (_isBttsHere && _isOver25Here) ? '🎯⚽' : _isBttsHere ? '🎯' : '⚽';
+                    const _sugColor = (_isBttsHere && _isOver25Here) ? '#a855f7' : _isBttsHere ? '#22c55e' : '#f97316';
+                    const _sugTt    = [_isBttsHere ? _ttBtts : '', _isOver25Here ? _ttOver25 : ''].filter(Boolean).join(' | ');
+                    return `<td style="min-width:${_celulaW}px;${_bttsExtraStyle}text-align:center;font-size:11px;color:${_sugColor};cursor:default" title="${_sugTt}">${_sugIcon}</td>`;
                 }
                 return `<td class="c-vazio" style="opacity:.3"></td>`;
             }
@@ -12356,6 +12399,15 @@ async function _loadConfigSistema() {
                     style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
                 'Exibe a sugestão quando a % de Ambas Marcam na hora anterior for menor ou igual a este valor · Padrão: 50%') +
             `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
+                <span style="font-size:11px;font-weight:700;color:#e2e8f0">⚽ Sugestão Over 2.5 no Mosaico</span>
+            </div>` +
+            _toggleHtml({ chave:'alerta_over25_mosaico',       valor: cfgAlertas.alerta_over25_mosaico       ?? 'true', descricao:'Exibir linha de sugestão na grid (destaca colunas N-1, N, N+1 quando Over 2.5 ≤ 50% na hora anterior)' }) +
+            _toggleHtml({ chave:'alerta_over25_mosaico_botao', valor: cfgAlertas.alerta_over25_mosaico_botao ?? 'true', descricao:'Exibir botão "⚽ Over 2.5" no toolbar do Mosaico (permite cada usuário ligar/desligar individualmente)' }) +
+            fldWrap('LIMITE % DE OVER 2.5 (padrão: 50)',
+                `<input type="number" id="cfg-alerta_over25_mosaico_pct" value="${escHtml(cfgAlertas.alerta_over25_mosaico_pct||'50')}" min="1" max="100"
+                    style="${inpStyle}" onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#334155'">`,
+                'Exibe a sugestão quando a % de Over 2.5 na hora anterior for menor ou igual a este valor · Padrão: 50%') +
+            `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
                 <span style="font-size:11px;font-weight:700;color:#e2e8f0">📱 Telegram</span>
             </div>` +
             fldWrap('TOKEN DO BOT',
@@ -12623,7 +12675,8 @@ async function salvarConfigSistema() {
             if (payload.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(payload.alerta_visual_duracao_s) || 15;
             if (payload.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(payload.alerta_liga_piscar_s) || 30;
             if (payload.alerta_popup_ativo !== undefined) _alertaPopupAtivo = payload.alerta_popup_ativo !== 'false';
-            if (payload.alerta_btts_mosaico !== undefined || payload.alerta_btts_mosaico_botao !== undefined) { _syncBttsMosaico(payload.alerta_btts_mosaico ?? S._cfgRaw?.alerta_btts_mosaico, payload.alerta_btts_mosaico_botao ?? S._cfgRaw?.alerta_btts_mosaico_botao); if (S.view === 'historico' && S.showMosaico) renderTabela(); }
+            if (payload.alerta_btts_mosaico   !== undefined || payload.alerta_btts_mosaico_botao   !== undefined) { _syncBttsMosaico(payload.alerta_btts_mosaico   ?? S._cfgRaw?.alerta_btts_mosaico,   payload.alerta_btts_mosaico_botao   ?? S._cfgRaw?.alerta_btts_mosaico_botao);   if (S.view === 'historico' && S.showMosaico) renderTabela(); }
+            if (payload.alerta_over25_mosaico !== undefined || payload.alerta_over25_mosaico_botao !== undefined) { _syncOver25Mosaico(payload.alerta_over25_mosaico ?? S._cfgRaw?.alerta_over25_mosaico, payload.alerta_over25_mosaico_botao ?? S._cfgRaw?.alerta_over25_mosaico_botao); if (S.view === 'historico' && S.showMosaico) renderTabela(); }
             // Atualiza menu de ligas imediatamente
             await carregarConfigLigas();
             renderLigas();
@@ -14145,8 +14198,23 @@ let _alertaVisDuracao = 15;
 let _alertaLigaPiscarDuracao = 30;
 let _alertaLigaPiscarTimers = {};
 let _alertaPopupAtivo = true; // controlado por alerta_popup_ativo no config do sistema
-let _bttsMosaicoAtivo = true; // controlado por alerta_btts_mosaico no config do sistema
-let _bttsMosaicoPct  = 50;   // threshold % — controlado por alerta_btts_mosaico_pct
+let _bttsMosaicoAtivo  = true;
+let _bttsMosaicoPct   = 50;
+let _over25MosaicoAtivo = true;
+let _over25MosaicoPct   = 50;
+function _syncOver25Mosaico(rowCfg, botaoCfg) {
+    const _masterRow = (rowCfg   ?? 'true') !== 'false';
+    const _masterBtn = (botaoCfg ?? 'true') !== 'false';
+    const _btn = document.getElementById('btn-over25-mosaico');
+    if (_btn) _btn.style.display = _masterBtn ? '' : 'none';
+    if (_masterBtn) {
+        const _ls = localStorage.getItem('rdbt_over25Mosaico');
+        _over25MosaicoAtivo = _masterRow && (_ls === null ? true : _ls === 'true');
+    } else {
+        _over25MosaicoAtivo = _masterRow;
+    }
+    if (_btn) _btn.classList.toggle('ativo', _over25MosaicoAtivo);
+}
 function _syncBttsMosaico(rowCfg, botaoCfg) {
     const _masterRow = (rowCfg   ?? 'true') !== 'false'; // linha BTTS na grid
     const _masterBtn = (botaoCfg ?? 'true') !== 'false'; // botão no toolbar
