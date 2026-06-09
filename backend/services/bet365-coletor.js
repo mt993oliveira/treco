@@ -241,6 +241,7 @@ class Bet365Coletor {
         this._reinicioAgendado     = false; // evita agendar múltiplos reinícios simultâneos
         this._ultimaColetaProximos = new Map(); // liga → timestamp da última busca de próximos
         this._ligasFalhadasConsec    = 0;   // contador de falhas consecutivas "Ligas não apareceram"
+        this._edgeSemPortaConsec   = 0;    // contador de falhas consecutivas "Edge não encontrado na porta"
         this._proximaColetaPermitida = 0;   // backoff: timestamp mínimo para próxima tentativa
         this._ciclosSemResultados    = 0;   // contador de ciclos consecutivos com 0 resultados
     }
@@ -529,7 +530,39 @@ class Bet365Coletor {
         }
 
         // Modo manual: conecta ao Edge já aberto pelo usuário
-        const endpoint = await this._getEdgeEndpoint();
+        let endpoint;
+        try {
+            endpoint = await this._getEdgeEndpoint();
+            this._edgeSemPortaConsec = 0; // sucesso — reseta contador
+        } catch(errPorta) {
+            this._edgeSemPortaConsec++;
+            console.log(`   ⚠️  Edge não encontrado na porta ${DEBUG_PORT} (${this._edgeSemPortaConsec}x): ${errPorta.message}`);
+            // Após 3 falhas consecutivas: Edge reiniciou sem debug port (crash recovery) → reinicia tudo
+            if (this._edgeSemPortaConsec >= 3 && !this._reinicioAgendado && this._cfgBool('coletor_auto_restart', true)) {
+                this._reinicioAgendado = true;
+                console.log(`   🔄 Edge sem porta debug após ${this._edgeSemPortaConsec} tentativas — disparando reinício automático em 5s...`);
+                const pool = await this.conectarBanco().catch(() => null);
+                const agora = new Date().toLocaleTimeString('pt-BR');
+                if (pool) {
+                    dispararAlerta(this.cfg, pool,
+                        '🔄 Edge caiu — reinício automático',
+                        `Edge não encontrado na porta ${DEBUG_PORT} (${this._edgeSemPortaConsec}x).\nReiniciando Edge + Node automaticamente.\n🕐 ${agora}`
+                    ).catch(() => {});
+                }
+                setTimeout(() => {
+                    try {
+                        const { spawn } = require('child_process');
+                        const batPath = require('path').join(__dirname, '..', '..', 'reiniciar-tudo.bat');
+                        spawn('cmd.exe', ['/c', batPath], { detached: true, stdio: 'ignore' }).unref();
+                        console.log('   🔄 reiniciar-tudo.bat disparado — encerrando processo...');
+                    } catch(batErr) {
+                        console.warn('   ⚠️  Erro ao disparar reiniciar-tudo.bat:', batErr.message);
+                    }
+                    process.exit(0);
+                }, 5000);
+            }
+            throw errPorta;
+        }
         console.log(`🌐 Conectando ao Edge (${endpoint.Browser})...`);
 
         this.browser = await puppeteer.connect({

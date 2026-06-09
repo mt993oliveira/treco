@@ -26,6 +26,7 @@ start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --remote-debugging-port=9222 ^
   --no-first-run ^
   --no-default-browser-check ^
+  --disable-session-crashed-bubble ^
   --user-data-dir="C:\Users\Administrador\AppData\Local\Microsoft\Edge\BetColetor" ^
   "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/"
 
@@ -34,6 +35,7 @@ start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --remote-debugging-port=9223 ^
   --no-first-run ^
   --no-default-browser-check ^
+  --disable-session-crashed-bubble ^
   --user-data-dir="C:\Users\Administrador\AppData\Local\Microsoft\Edge\BetColetorOdds" ^
   "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/"
 

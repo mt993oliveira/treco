@@ -376,6 +376,8 @@ let _ultimoLoginTs2      = 0;
 let _ultimoAlertaLogin2  = 0;
 const COOLDOWN_LOGIN2_MS = 5 * 60 * 1000;
 const THROTTLE_ALERTA_MS = 10 * 60 * 1000;
+let _edgeSemPortaConsec2 = 0; // contador de falhas "Edge não encontrado na porta"
+let _reinicioAgendado2   = false;
 
 async function _verificarLoginColetor2(pg) {
     try {
@@ -506,9 +508,29 @@ async function conectarEdge() {
                 catch(e) { reject(e); }
             });
         });
-        req.on('error', reject);
+        req.on('error', (err) => {
+            _edgeSemPortaConsec2++;
+            console.log(`   ⚠️  [Odds] Edge não encontrado na porta ${DEBUG_PORT} (${_edgeSemPortaConsec2}x)`);
+            if (_edgeSemPortaConsec2 >= 3 && !_reinicioAgendado2) {
+                _reinicioAgendado2 = true;
+                console.log(`   🔄 [Odds] Edge sem porta debug após ${_edgeSemPortaConsec2} tentativas — disparando reinício automático em 5s...`);
+                setTimeout(() => {
+                    try {
+                        const { spawn } = require('child_process');
+                        const batPath = require('path').join(__dirname, '..', '..', 'reiniciar-tudo.bat');
+                        spawn('cmd.exe', ['/c', batPath], { detached: true, stdio: 'ignore' }).unref();
+                        console.log('   🔄 [Odds] reiniciar-tudo.bat disparado — encerrando processo...');
+                    } catch(batErr) {
+                        console.warn('   ⚠️  [Odds] Erro ao disparar reiniciar-tudo.bat:', batErr.message);
+                    }
+                    process.exit(0);
+                }, 5000);
+            }
+            reject(err);
+        });
         req.setTimeout(5000, () => { req.destroy(); reject(new Error(`timeout porta ${DEBUG_PORT}`)); });
     });
+    _edgeSemPortaConsec2 = 0; // sucesso — reseta contador
     const browser = await puppeteer.connect({ browserWSEndpoint: wsUrl, defaultViewport: null, protocolTimeout: 60000 });
 
     // MODO_AUTONOMO: porta própria (ex: 9223), sem dependência do Coletor 1
