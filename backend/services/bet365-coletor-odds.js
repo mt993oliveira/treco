@@ -853,13 +853,12 @@ async function expandirPodsExtras(pg) {
 
 // ── Hard refresh + volta à liga (reutilizado entre jogos) ────
 async function _refreshEVoltarLiga(pg, ligaNorm, nomeLigaOriginal) {
-    // Usar goto(URL_SOCCER) em vez de reload — clicar num jogo muda o hash da URL para a
-    // página de detalhe do jogo, onde .vrl-MeetingsHeaderButton não existe no DOM.
-    // goto força volta à página principal do AVR independente da URL atual.
-    await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(e => {
+    // pg.reload() é o caminho correto — pg.evaluate(location.reload) detacha o frame imediatamente
+    console.log(`   🔍 [${ligaNorm}] URL antes do reload: ${pg.url().substring(0, 80)}`);
+    await pg.reload({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(e => {
         if (isFatalError(e)) throw e;
     });
-    await new Promise(r => setTimeout(r, 8000));
+    await new Promise(r => setTimeout(r, 7000));
     // Tenta até 2x — aba pode desaparecer brevemente na transição entre rodadas
     let voltou = false;
     for (let _t = 0; _t < 2 && !voltou; _t++) {
@@ -1123,8 +1122,7 @@ async function salvarEvento(liga, timeCasa, timeFora, horario, oddCasa, oddEmpat
 async function hardRefresh(pg) {
     try {
         await pg.bringToFront();
-        // goto em vez de reload — garante retorno à URL base do AVR mesmo vindo de detalhe de jogo
-        await pg.goto(URL_SOCCER, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await pg.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
         await new Promise(r => setTimeout(r, 8000));
         // Verifica sessão após reload — Bet365 pode redirecionar para login (igual ao Coletor 1)
         await _verificarLoginColetor2(pg);
