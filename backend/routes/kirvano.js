@@ -158,7 +158,8 @@ router.post('/webhook', async (req, res) => {
 
     // Apenas processa compra aprovada ou assinatura ativa
     const isAprovado = ['purchase.approved', 'subscription.active',
-                        'PURCHASE_APPROVED', 'SUBSCRIPTION_ACTIVE'].includes(evento);
+                        'PURCHASE_APPROVED', 'SUBSCRIPTION_ACTIVE',
+                        'SALE_APPROVED'].includes(evento);
     if (!isAprovado) {
         if (pool) await _logWebhook(pool, { evento, email: emailCliente, action: 'ignored', payload });
         return res.json({ received: true, action: 'ignored', evento });
