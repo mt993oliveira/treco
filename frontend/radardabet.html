@@ -7047,7 +7047,7 @@ function renderTabela() {
             if (_bT > 0 && _bN/_bT*100 <= _bttsMosaicoPct) {
                 const _c0=Math.max(0,_bN-2), _c1=Math.max(0,_bN-1), _c2=Math.min(N-1,_bN);
                 _bttsCols = new Set([_c0,_c1,_c2]);
-                _ttBtts = `🎯 Ambas: ${_bN} de ${_bT} jogos (${Math.round(_bN/_bT*100)}%) · sugestão colunas ${_c0+1}, ${_c1+1}, ${_c2+1}`;
+                _ttBtts = '🎯 Ambas Marcam';
                 // Linha alvo: próximos se visível, senão hora atual (último gsHist)
                 _bttsTargetKey = gsFuturos.length > 0
                     ? gsFuturos[gsFuturos.length-1].key
@@ -7073,7 +7073,7 @@ function renderTabela() {
             if (_o25T > 0 && _o25N/_o25T*100 <= _over25MosaicoPct) {
                 const _oc0=Math.max(0,_o25N-2), _oc1=Math.max(0,_o25N-1), _oc2=Math.min(N-1,_o25N);
                 _over25Cols = new Set([_oc0,_oc1,_oc2]);
-                _ttOver25 = `⚽ Over 2.5: ${_o25N} de ${_o25T} jogos (${Math.round(_o25N/_o25T*100)}%) · sugestão colunas ${_oc0+1}, ${_oc1+1}, ${_oc2+1}`;
+                _ttOver25 = '⚽ Over 2.5';
                 _over25TargetKey = gsFuturos.length > 0
                     ? gsFuturos[gsFuturos.length-1].key
                     : gsHist[gsHist.length-1].key;
