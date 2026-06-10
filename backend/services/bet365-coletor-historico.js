@@ -48,6 +48,18 @@ function _ontemStr() {
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 }
 const DATA_ALVO    = process.env.BET365_HIST_DATA     || _ontemStr();
+
+// Impede execução com data futura — causa pré-datação de registros no banco
+{
+    const _alvoMs   = new Date(DATA_ALVO + 'T12:00:00Z').getTime();
+    const _diffDias = (_alvoMs - Date.now()) / 86400000;
+    if (_diffDias > 0.5) {
+        console.error(`❌ DATA_ALVO=${DATA_ALVO} está ${Math.ceil(_diffDias)} dia(s) no futuro.`);
+        console.error(`   O Coletor 3 só coleta datas passadas. Use BET365_HIST_DATA com uma data <= hoje.`);
+        process.exit(1);
+    }
+}
+
 const HORA_INI     = process.env.BET365_HIST_HORA_INI || null;
 const HORA_FIM     = process.env.BET365_HIST_HORA_FIM || null;
 const LIGAS_FILTRO = process.env.BET365_HIST_LIGAS
