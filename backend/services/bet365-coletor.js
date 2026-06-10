@@ -594,6 +594,21 @@ class Bet365Coletor {
     // SCREENSHOTS — captura tela dos resultados para validação
     // ─────────────────────────────────────────────────────────────
 
+    async _tirarScreenshotFalha(pg, motivo) {
+        try {
+            if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+            const agora    = new Date();
+            const ts       = `${agora.getUTCFullYear()}-${String(agora.getUTCMonth()+1).padStart(2,'0')}-${String(agora.getUTCDate()).padStart(2,'0')}` +
+                             `_${String(agora.getUTCHours()).padStart(2,'0')}-${String(agora.getUTCMinutes()).padStart(2,'0')}-${String(agora.getUTCSeconds()).padStart(2,'0')}`;
+            const motivoLimpo = motivo.replace(/[^a-zA-Z0-9_]/g, '_').substring(0, 40);
+            const filename  = `FALHA_${ts}_${motivoLimpo}.png`;
+            await pg.screenshot({ path: path.join(SCREENSHOT_DIR, filename), fullPage: false });
+            console.log(`   📸 Screenshot: ${filename}`);
+        } catch(e) {
+            console.warn(`   ⚠️  Screenshot falhou: ${e.message}`);
+        }
+    }
+
     async _tirarScreenshot(pg, ligaNome) {
         if (!SCREENSHOT_ATIVO) return;
         try {
@@ -1117,6 +1132,7 @@ class Bet365Coletor {
                     break; // ligas apareceram, continua para próxima liga
                 } catch(e) {
                     console.log(`   ⚠️  Ligas não apareceram após Ctrl+F5 (${r}/2), verificando sessão...`);
+                    await this._tirarScreenshotFalha(pg, `f5_mid_r${r}`);
                     await this._verificarSessao(pg);
                 }
             }
@@ -1134,11 +1150,13 @@ class Bet365Coletor {
                         break;
                     } catch(e) {
                         console.log(`   ❌ Recuperação tentativa ${rt}/2 falhou: ${e.message.substring(0, 60)}`);
+                        await this._tirarScreenshotFalha(pg, `recuperacao_mid_rt${rt}`);
                         if (rt < 2) await this._delay(5000);
                     }
                 }
                 if (!recuperouMidCiclo) {
                     console.log('   ⚠️  Recuperação mid-ciclo falhou — próximas ligas podem não aparecer');
+                    await this._tirarScreenshotFalha(pg, 'recuperacao_mid_ciclo_final');
                 }
             }
         }
@@ -1542,6 +1560,7 @@ class Bet365Coletor {
                     }
                 }
                 console.log('   ⚠️  Não conseguiu resolver modal de confirmação — prosseguindo verificação normal...');
+                await this._tirarScreenshotFalha(pg, 'modal_confirmacao_nao_resolvido');
             }
 
             // ── Detecta estado da sessão ──────────────────────────────────────────
@@ -1676,6 +1695,7 @@ class Bet365Coletor {
 
         } catch(e) {
             console.warn('   ⚠️  _verificarSessao:', e.message);
+            await this._tirarScreenshotFalha(pg, 'verificar_sessao_erro').catch(() => {});
         }
     }
 
@@ -2032,6 +2052,7 @@ class Bet365Coletor {
                         await this._delay(this._cfgNum('delay_pos_reload_ms', 8000));
                     } catch(reloadErr) {
                         console.log(`   ⚠️  Hard refresh falhou: ${reloadErr.message}`);
+                        await this._tirarScreenshotFalha(this.page, `hard_refresh_falhou_t${tentativa}`);
                     }
                     // Verifica sessão APÓS cada reload — pode ter expirado durante a navegação
                     await this._verificarSessao(this.page);
@@ -2039,7 +2060,9 @@ class Bet365Coletor {
                         await this.page.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
                         ligasOk = true;
                         break;
-                    } catch(_) {}
+                    } catch(_) {
+                        await this._tirarScreenshotFalha(this.page, `ligas_nao_apareceram_t${tentativa}`);
+                    }
                 }
             }
 
@@ -2055,10 +2078,12 @@ class Bet365Coletor {
                     console.log('   ✅ Recuperação por goto OK — ligas voltaram');
                 } catch(e) {
                     console.log(`   ❌ Recuperação por goto falhou: ${e.message.substring(0, 60)}`);
+                    await this._tirarScreenshotFalha(this.page, 'recuperacao_goto_falhou');
                 }
             }
 
             if (!ligasOk) {
+                await this._tirarScreenshotFalha(this.page, 'ligas_nao_apareceram_FINAL');
                 throw new Error('Ligas não apareceram após login + 2 recarregamentos — intervenção manual necessária');
             }
 
