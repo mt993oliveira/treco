@@ -14217,12 +14217,23 @@ function _verificarAlertas() {
         } catch(e) {}
     }
     if (disparados.length) _mostrarNotificacaoAlerta(disparados);
+
+    // Para piscar ligas que não estão mais em nenhum alerta ativo
+    const _ligasAindaAtivas = new Set(disparados.flatMap(d => d.ligas || []));
+    _alertaLigasAtivas.forEach(liga => {
+        if (!_ligasAindaAtivas.has(liga)) {
+            const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(liga)}"]`);
+            if (tab) tab.classList.remove('liga-alerta-ativa');
+            _alertaLigasAtivas.delete(liga);
+        }
+    });
 }
 
 let _alertaAutoFecharTimer = null;
 let _alertaVisDuracao = 15;
 let _alertaLigaPiscarDuracao = 30;
 let _alertaLigaPiscarTimers = {};
+let _alertaLigasAtivas = new Set(); // ligas com alerta ativo (piscar contínuo)
 let _alertaPopupAtivo = true; // controlado por alerta_popup_ativo no config do sistema
 let _bttsMosaicoAtivo  = true;
 let _bttsMosaicoPct   = 50;
@@ -14274,17 +14285,13 @@ function _mostrarNotificacaoAlerta(alertas) {
     // Salva ligas disparadas por id para uso em aplicarPadrao
     alertas.forEach(a => { _alertaLigasMap[a.id] = a.ligas || []; });
 
-    // Piscar ligas de todos os alertas (silenciosos ou não)
+    // Piscar ligas de todos os alertas (silenciosos ou não) — piscar contínuo enquanto alerta válido
     const ligasAlertadasAll = new Set(alertas.flatMap(a => a.ligas || []));
     ligasAlertadasAll.forEach(liga => {
         const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(liga)}"]`);
         if (!tab) return;
         tab.classList.add('liga-alerta-ativa');
-        if (_alertaLigaPiscarTimers[liga]) clearTimeout(_alertaLigaPiscarTimers[liga]);
-        _alertaLigaPiscarTimers[liga] = setTimeout(() => {
-            tab.classList.remove('liga-alerta-ativa');
-            delete _alertaLigaPiscarTimers[liga];
-        }, _alertaLigaPiscarDuracao * 1000);
+        _alertaLigasAtivas.add(liga);
     });
 
     // Verifica se o popup está habilitado (MASTER sempre vê, independente da config)
@@ -14334,13 +14341,7 @@ function _fecharNotificacaoAlerta() {
     if (_alertaAutoFecharTimer) { clearTimeout(_alertaAutoFecharTimer); _alertaAutoFecharTimer = null; }
     const el = document.getElementById('alerta-notif');
     if (el) el.style.display = 'none';
-    // Interrompe piscar de todas as ligas imediatamente
-    Object.keys(_alertaLigaPiscarTimers).forEach(liga => {
-        clearTimeout(_alertaLigaPiscarTimers[liga]);
-        const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(liga)}"]`);
-        if (tab) tab.classList.remove('liga-alerta-ativa');
-    });
-    _alertaLigaPiscarTimers = {};
+    // Não para o piscar: as abas continuam piscando enquanto o alerta permanecer válido
 }
 
 // ============================================================
