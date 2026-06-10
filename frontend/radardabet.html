@@ -9860,6 +9860,10 @@ async function renderProximosJogos() {
             return;
         }
 
+        // Destaques filtrados: ranking dos clubes que jogarão a seguir
+        const _timesProx = new Set(eventos.flatMap(e => [e.time_casa, e.time_fora].filter(Boolean)));
+        const _destaquesProxHtml = _renderDestaquesProximos(_timesProx);
+
         const cards = eventos.map((e, i) => {
             const dt      = e.horario ? new Date(e.horario) : null;
             // Bet365 exibe horários em BST (UTC+1 no verão UK); coletor salva como UTC direto → 1h adiantado
@@ -9931,6 +9935,7 @@ async function renderProximosJogos() {
                     ↺ Atualizar
                 </button>
             </div>
+            ${_destaquesProxHtml}
             <div style="display:flex;flex-direction:column;gap:8px">${cards}</div>
             <div id="proximos-detalhe" style="display:none"></div>`;
 
@@ -10327,6 +10332,72 @@ function _renderDestaques(liga) {
     const ligaLabel = liga ? ` — ${liga}` : '';
     return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:14px">
         <div style="padding:8px 14px;background:#0c1220;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.06em">⭐ DESTAQUES — ÚLTIMAS 24 HORAS${ligaLabel}</div>
+        ${linhas.join('')}
+    </div>`;
+}
+
+// ============================================================
+// DESTAQUES FILTRADOS PARA PRÓXIMOS JOGOS
+// ============================================================
+function _renderDestaquesProximos(timesProximos) {
+    if (!timesProximos.size) return '';
+    const corte  = Date.now() - 24 * 3600 * 1000;
+    const recente = S.todasPartidas.filter(p =>
+        p.data_partida && new Date(p.data_partida).getTime() >= corte
+    );
+    if (recente.length < 5) return '';
+
+    const tMap = new Map();
+    recente.forEach(p => {
+        [p.time_casa, p.time_fora].forEach((nome, idx) => {
+            if (!nome) return;
+            if (!tMap.has(nome)) tMap.set(nome, { nome, jogos:0, vit:0, under25:0, under35:0, btts_nao:0, casa_nao:0, vis_nao:0, empate_gols:0 });
+            const s = tMap.get(nome);
+            const gc = p.gol_casa||0, gf = p.gol_fora||0, tot = gc+gf;
+            const isC = idx === 0;
+            s.jogos++;
+            if (isC ? p.resultado==='CASA' : p.resultado==='FORA') s.vit++;
+            if (tot < 3) s.under25++;
+            if (tot < 4) s.under35++;
+            if (!(gc > 0 && gf > 0)) s.btts_nao++;
+            if (gc === 0) s.casa_nao++;
+            if (gf === 0) s.vis_nao++;
+            if (p.resultado === 'EMPATE' && tot >= 2 && tot <= 4) s.empate_gols++;
+        });
+    });
+
+    const times = [...tMap.values()].filter(t => t.jogos >= 3);
+    if (!times.length) return '';
+
+    const mercados = [
+        { nome: 'Venceu FT',                pct: t => t.vit         / t.jogos },
+        { nome: 'Under 3.5',                pct: t => t.under35     / t.jogos },
+        { nome: 'Ambas não marcam',         pct: t => t.btts_nao    / t.jogos },
+        { nome: 'Under 2.5',                pct: t => t.under25     / t.jogos },
+        { nome: 'Time Casa Não Marca',      pct: t => t.casa_nao    / t.jogos },
+        { nome: 'Time Visitante Não Marca', pct: t => t.vis_nao     / t.jogos },
+        { nome: 'Empates com Gols',         pct: t => t.empate_gols / t.jogos },
+    ];
+
+    const linhas = [];
+    mercados.forEach(m => {
+        const ranking = [...times].sort((a, b) => m.pct(b) - m.pct(a));
+        ranking.forEach((t, i) => {
+            if (!timesProximos.has(t.nome)) return;
+            if (m.pct(t) < 0.4) return;
+            if (i >= 10) return; // só exibe se for top 10 no mercado
+            linhas.push(`<div class="destaque-row">
+                ⭐ <b style="color:#e2e8f0">${t.nome}</b>
+                <span style="color:#64748b"> está em ${i+1}º no mercado</span>
+                <b style="color:#fbbf24"> ${m.nome}</b>
+                <span style="color:#64748b"> nas últimas 24 horas.</span> ⭐
+            </div>`);
+        });
+    });
+
+    if (!linhas.length) return '';
+    return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:14px">
+        <div style="padding:8px 14px;background:#0c1220;font-size:11px;font-weight:700;color:#fbbf24;letter-spacing:.06em">⭐ DESTAQUES DOS PRÓXIMOS JOGOS — ÚLTIMAS 24 HORAS</div>
         ${linhas.join('')}
     </div>`;
 }
