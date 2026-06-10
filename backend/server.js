@@ -1750,13 +1750,13 @@ app.post('/api/usuarios/historico-acessos', requireAuth, async (req, res) => {
         const cntReq = sqlConnectionPool.request();
         const mainReq = sqlConnectionPool.request();
         const wheres = [];
-        if (usuario)    { wheres.push('(usuario LIKE @usuario OR ip LIKE @usuario)'); cntReq.input('usuario', sql.NVarChar, `%${usuario}%`); mainReq.input('usuario', sql.NVarChar, `%${usuario}%`); }
-        if (tipo)       { wheres.push('tipo = @tipo');       cntReq.input('tipo', sql.NVarChar, tipo);       mainReq.input('tipo', sql.NVarChar, tipo); }
-        if (dataInicio) { wheres.push('data_hora >= @di');   cntReq.input('di', sql.DateTime2, new Date(dataInicio)); mainReq.input('di', sql.DateTime2, new Date(dataInicio)); }
-        if (dataFim)    { wheres.push('data_hora <= @df');   cntReq.input('df', sql.DateTime2, new Date(dataFim));    mainReq.input('df', sql.DateTime2, new Date(dataFim)); }
+        if (usuario)    { wheres.push('(h.usuario LIKE @usuario OR h.ip LIKE @usuario)'); cntReq.input('usuario', sql.NVarChar, `%${usuario}%`); mainReq.input('usuario', sql.NVarChar, `%${usuario}%`); }
+        if (tipo)       { wheres.push('h.tipo = @tipo');       cntReq.input('tipo', sql.NVarChar, tipo);       mainReq.input('tipo', sql.NVarChar, tipo); }
+        if (dataInicio) { wheres.push('h.data_hora >= @di');   cntReq.input('di', sql.DateTime2, new Date(dataInicio)); mainReq.input('di', sql.DateTime2, new Date(dataInicio)); }
+        if (dataFim)    { wheres.push('h.data_hora <= @df');   cntReq.input('df', sql.DateTime2, new Date(dataFim));    mainReq.input('df', sql.DateTime2, new Date(dataFim)); }
         const w = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
 
-        const cntResult = await cntReq.query(`SELECT COUNT(*) AS total FROM HistoricoAcessos ${w}`);
+        const cntResult = await cntReq.query(`SELECT COUNT(*) AS total FROM HistoricoAcessos h ${w}`);
         const total = cntResult.recordset[0].total;
 
         mainReq.input('off', sql.Int, off);
