@@ -4041,10 +4041,11 @@ async function carregarHistorico() {
         }
 
         renderLigas();
-        if (S.view === 'historico')    { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); _verificarAlertas(); }
+        if (S.view === 'historico')    { renderFiltros(); renderLegenda(); renderTabela(); _renderAllCharts(); }
         if (S.view === 'multi')        { renderMultiHorarios(); }
         if (S.view === 'multi-gols')   { renderMultiGols(); }
         if (S.view === 'multi-linhas') { renderMultiLinhas(); }
+        _verificarAlertas();
 
     } catch (e) {
         console.error('carregarHistorico:', e.message);
