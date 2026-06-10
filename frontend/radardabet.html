@@ -10379,23 +10379,28 @@ function _renderDestaquesProximos(timesProximos) {
         { nome: 'Empates com Gols',         pct: t => t.empate_gols / t.jogos },
     ];
 
-    const linhas = [];
+    const itens = [];
     mercados.forEach(m => {
         const ranking = [...times].sort((a, b) => m.pct(b) - m.pct(a));
         ranking.forEach((t, i) => {
             if (!timesProximos.has(t.nome)) return;
             if (m.pct(t) < 0.4) return;
-            if (i >= 10) return; // só exibe se for top 10 no mercado
-            linhas.push(`<div class="destaque-row">
-                ⭐ <b style="color:#e2e8f0">${t.nome}</b>
-                <span style="color:#64748b"> está em ${i+1}º no mercado</span>
-                <b style="color:#fbbf24"> ${m.nome}</b>
-                <span style="color:#64748b"> nas últimas 24 horas.</span> ⭐
-            </div>`);
+            if (i >= 10) return;
+            itens.push({ nome: t.nome, pos: i + 1, mercado: m.nome });
         });
     });
 
-    if (!linhas.length) return '';
+    if (!itens.length) return '';
+
+    // Ordena por nome do clube para agrupar visualmente
+    itens.sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+
+    const linhas = itens.map(it => `<div class="destaque-row">
+        ⭐ <b style="color:#e2e8f0">${it.nome}</b>
+        <span style="color:#64748b"> está em ${it.pos}º no mercado</span>
+        <b style="color:#fbbf24"> ${it.mercado}</b>
+        <span style="color:#64748b"> nas últimas 24 horas.</span> ⭐
+    </div>`);
     return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:14px">
         <div style="padding:8px 14px;background:#0c1220;font-size:11px;font-weight:700;color:#fbbf24;letter-spacing:.06em">⭐ DESTAQUES DOS PRÓXIMOS JOGOS — ÚLTIMAS 24 HORAS</div>
         ${linhas.join('')}
