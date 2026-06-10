@@ -51,15 +51,10 @@ html:not(:has(.slide:target)) #s0{display:block}
 .stat{background:#0f172a;border:1px solid #1e293b;border-radius:7px;padding:8px 12px;min-width:70px}
 .stat-v{font-size:20px;font-weight:800;display:block}
 .stat-l{font-size:9px;color:#64748b}
-.ia-box{background:#052e16;border:1px solid #166534;border-radius:8px;padding:12px;margin-top:8px}
-.ia-label{font-size:9px;font-weight:700;color:#4ade80;text-transform:uppercase;margin-bottom:5px}
 .cta-grande{font-size:48px;font-weight:900;color:#1fcc59;margin-bottom:8px;animation:flutu 3s ease-in-out infinite}
 @keyframes flutu{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 .btn-wpp{display:inline-flex;align-items:center;gap:8px;background:#1fcc59;color:#000;font-size:14px;font-weight:700;padding:12px 22px;border-radius:9px;text-decoration:none;margin:6px;min-height:44px}
 .btn-site{display:inline-flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #1e293b;color:#f1f5f9;font-size:14px;font-weight:700;padding:12px 22px;border-radius:9px;text-decoration:none;margin:6px;min-height:44px}
-.hm{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;margin-top:8px}
-.hc{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700}
-.hv{background:#14532d;color:#4ade80}.hd{background:#3b0a0a;color:#f87171}.he{background:#1e1b4b;color:#a5b4fc}
 .lista-item{display:flex;align-items:center;gap:9px;padding:9px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:7px;font-size:12px;margin-bottom:7px}
 .tipo-badge{display:inline-block;border-radius:5px;padding:2px 7px;font-size:9px;font-weight:700;margin-bottom:4px}
 .tipo-free{background:rgba(14,165,233,.15);color:#7dd3fc;border:1px solid rgba(14,165,233,.2)}
@@ -71,29 +66,33 @@ html:not(:has(.slide:target)) #s0{display:block}
 .divisor-txt{font-size:10px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
 .ok{background:#1fcc59}.warn{background:#fbbf24}
+.chip{display:inline-flex;align-items:center;gap:5px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:#94a3b8}
+.chip-verde{border-color:#166534;color:#4ade80;background:#052e16}
+.sugestao-demo{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:11px;line-height:1.6}
+.sep-admin{background:#2e1065;border:1px solid #5b21b6;border-radius:8px;padding:12px 16px;margin:14px 0;display:flex;align-items:center;gap:10px}
 </style>
 </head>
 <body>
 <div class="hdr">
   <div class="logo">● Radar da Bet</div>
-  <span id="ctr">Geral · 10 slides</span>
+  <span id="ctr">1 / 12</span>
   <span class="tag">🌐 Geral</span>
 </div>
-<div class="prog-bg"><div id="prog" style="width:10%"></div></div>
+<div class="prog-bg"><div id="prog" style="width:8.33%"></div></div>
 
-<!-- SLIDE 1 -->
+<!-- SLIDE 1 — CAPA -->
 <div class="slide" id="s0">
   <div style="text-align:center;padding:24px 0 10px">
     <div class="badge badge-v">📈 Apresentação Completa</div>
     <div class="capa-titulo"><span class="destaque">Radar da Bet</span></div>
     <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:18px">A plataforma inteligente de análise de futebol virtual — para clientes e administradores.</p>
     <div class="pilulas" style="justify-content:center">
-      <span class="pilula">⚡ Tempo Real</span><span class="pilula">🧠 IA</span><span class="pilula">🏆 5 Ligas</span><span class="pilula">🛡️ Admin</span>
+      <span class="pilula">⚡ Tempo Real</span><span class="pilula">🧠 Sugestões</span><span class="pilula">🏆 5 Ligas</span><span class="pilula">🛡️ Admin</span>
     </div>
   </div>
   <div class="grade" style="margin-top:10px">
-    <div class="bloco" style="text-align:center;border-color:rgba(31,204,89,.2)"><div style="font-size:20px;margin-bottom:6px">👤</div><div style="font-size:12px;font-weight:700;color:#1fcc59">Para Clientes</div><div style="font-size:10px;color:#64748b;margin-top:3px">Análise, histórico e sugestões IA</div></div>
-    <div class="bloco" style="text-align:center;border-color:rgba(124,58,237,.2)"><div style="font-size:20px;margin-bottom:6px">🛡️</div><div style="font-size:12px;font-weight:700;color:#a78bfa">Para Admins</div><div style="font-size:10px;color:#64748b;margin-top:3px">Usuários, licenças e diagnóstico</div></div>
+    <div class="bloco" style="text-align:center;border-color:rgba(31,204,89,.2)"><div style="font-size:20px;margin-bottom:6px">👤</div><div style="font-size:12px;font-weight:700;color:#1fcc59">Para Clientes</div><div style="font-size:10px;color:#64748b;margin-top:3px">Análise, gráficos, sugestões, simulador e muito mais</div></div>
+    <div class="bloco" style="text-align:center;border-color:rgba(124,58,237,.2)"><div style="font-size:20px;margin-bottom:6px">🛡️</div><div style="font-size:12px;font-weight:700;color:#a78bfa">Para Admins</div><div style="font-size:10px;color:#64748b;margin-top:3px">Usuários, licenças, coletores e diagnóstico</div></div>
   </div>
   <div class="nav-slide">
     <div class="btn-ghost"></div>
@@ -101,16 +100,18 @@ html:not(:has(.slide:target)) #s0{display:block}
   </div>
 </div>
 
-<!-- SLIDE 2 -->
+<!-- SLIDE 2 — VISÃO GERAL -->
 <div class="slide" id="s1">
   <div class="lbl-v">Visão Geral</div>
   <div class="titulo">O que é o Radar da Bet?</div>
-  <div class="desc">Uma plataforma completa para analisar padrões em futebol virtual com dados em tempo real.</div>
+  <div class="desc">Uma plataforma completa com múltiplos módulos de análise para futebol virtual com dados em tempo real.</div>
   <div class="grade">
-    <div class="bloco"><span class="emoji">💾</span><div class="t1">Dados ao Vivo</div><div class="t2">Resultados coletados automaticamente a cada 2 minutos.</div></div>
-    <div class="bloco"><span class="emoji">🔥</span><div class="t1">Heatmap</div><div class="t2">Visualize padrões de vitória, derrota e empate.</div></div>
-    <div class="bloco"><span class="emoji">🤖</span><div class="t1">Sugestões IA</div><div class="t2">Algoritmo aponta as melhores oportunidades.</div></div>
-    <div class="bloco"><span class="emoji">📋</span><div class="t1">Histórico</div><div class="t2">60+ jogos por time com filtros avançados.</div></div>
+    <div class="bloco"><span class="emoji">📊</span><div class="t1">Mosaico Histórico</div><div class="t2">Grade com resultados por hora + sugestões Over 2.5 e Ambas.</div></div>
+    <div class="bloco"><span class="emoji">📈</span><div class="t1">Gráficos</div><div class="t2">Linha e gols com média móvel, zoom e legendas.</div></div>
+    <div class="bloco"><span class="emoji">🕐</span><div class="t1">Próximos Jogos</div><div class="t2">Odds ao vivo + ranking dos clubes que vão jogar.</div></div>
+    <div class="bloco"><span class="emoji">🎮</span><div class="t1">Simulador</div><div class="t2">Simule apostas com base em dados históricos reais.</div></div>
+    <div class="bloco"><span class="emoji">⊞</span><div class="t1">Multi Análises</div><div class="t2">Multi Horários, Multi Gols e Multi Linhas.</div></div>
+    <div class="bloco"><span class="emoji">⚽</span><div class="t1">Clubes</div><div class="t2">Ranking, destaques, ficha completa e H2H.</div></div>
   </div>
   <div class="barra-stat">
     <div class="stat"><span class="stat-v" style="color:#1fcc59">5</span><span class="stat-l">Ligas</span></div>
@@ -123,7 +124,7 @@ html:not(:has(.slide:target)) #s0{display:block}
   </div>
 </div>
 
-<!-- SLIDE 3 -->
+<!-- SLIDE 3 — LIGAS -->
 <div class="slide" id="s2">
   <div class="lbl-v">Cobertura</div>
   <div class="titulo">5 Ligas Disponíveis</div>
@@ -139,35 +140,20 @@ html:not(:has(.slide:target)) #s0{display:block}
   </div>
 </div>
 
-<!-- SLIDE 4 -->
+<!-- SLIDE 4 — GRÁFICOS & MOSAICO -->
 <div class="slide" id="s3">
   <div class="lbl-v">Para Clientes</div>
-  <div class="titulo">Análise &amp; Sugestões</div>
-  <div class="desc">Cards por liga com % de Over, heatmap e recomendações de IA.</div>
-  <div class="barra-stat">
-    <div class="stat"><span class="stat-v" style="color:#4ade80">73%</span><span class="stat-l">Over 0.5</span></div>
-    <div class="stat"><span class="stat-v" style="color:#fbbf24">61%</span><span class="stat-l">Over 1.5</span></div>
-    <div class="stat"><span class="stat-v" style="color:#60a5fa">48%</span><span class="stat-l">Over 2.5</span></div>
-    <div class="stat"><span class="stat-v" style="color:#c4b5fd">32%</span><span class="stat-l">Over 3.5</span></div>
-  </div>
-  <div class="ia-box">
-    <div class="ia-label">🤖 Sugestão IA — Premier League</div>
-    <div style="font-size:13px;color:#e2e8f0;margin-bottom:4px">Manchester City × Arsenal</div>
-    <div style="font-size:11px;color:#64748b">Over 2.5 gols · Confiança: <b style="color:#4ade80">87%</b></div>
-  </div>
+  <div class="titulo">📈 Gráficos & Mosaico</div>
+  <div class="desc">Grade visual de resultados por hora com sugestões automáticas e gráficos interativos.</div>
   <div class="bloco">
-    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:6px">HEATMAP — Últimos 20 resultados</div>
-    <div class="hm">
-      <div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div><div class="hc hv">V</div><div class="hc he">E</div>
-      <div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div>
-      <div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc he">E</div>
-      <div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div>
-    </div>
-    <div style="display:flex;gap:12px;margin-top:8px;font-size:10px">
-      <span><span style="color:#4ade80">■</span> Vitória</span>
-      <span><span style="color:#f87171">■</span> Derrota</span>
-      <span><span style="color:#a5b4fc">■</span> Empate</span>
-    </div>
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">SUGESTÕES AUTOMÁTICAS NO MOSAICO</div>
+    <div class="sugestao-demo"><span style="color:#22c55e">🎯</span> <b style="color:#e2e8f0">Ambas Marcam</b> <span style="color:#64748b">· 8 de 20 jogos (40%) · colunas 7, 8, 9</span></div>
+    <div class="sugestao-demo"><span style="color:#f97316">⚽</span> <b style="color:#e2e8f0">Over 2.5</b> <span style="color:#64748b">· 6 de 20 jogos (30%) · colunas 5, 6, 7</span></div>
+    <div style="font-size:11px;color:#64748b;margin-top:6px">Quando ambas coincidem na mesma coluna → <b style="color:#a855f7">destaque roxo 🎯⚽</b></div>
+  </div>
+  <div class="grade">
+    <div class="bloco"><span class="emoji">📈</span><div class="t1">Gráfico Linha</div><div class="t2">Evolução de % por mercado com MM e zoom.</div></div>
+    <div class="bloco"><span class="emoji">⚽</span><div class="t1">Gráfico Gols</div><div class="t2">Soma rolante com legenda e média móvel.</div></div>
   </div>
   <div class="nav-slide">
     <a href="#s2" class="btn-v">← Voltar</a>
@@ -175,81 +161,113 @@ html:not(:has(.slide:target)) #s0{display:block}
   </div>
 </div>
 
-<!-- SLIDE 5 -->
+<!-- SLIDE 5 — PRÓXIMOS JOGOS -->
 <div class="slide" id="s4">
   <div class="lbl-v">Para Clientes</div>
-  <div class="titulo">Histórico &amp; Clubes</div>
-  <div class="desc">Dados individuais de cada time com filtros avançados.</div>
-  <div class="lista-item">🔍 <span>Filtros Over 0.5 até 4.5</span></div>
-  <div class="lista-item">📅 <span>Período de 7 a 180 dias</span></div>
-  <div class="lista-item">🏠 <span>Casa / Fora / Todos</span></div>
-  <div class="divisor"><div class="divisor-line"></div><div class="divisor-txt">Estatísticas por Clube</div><div class="divisor-line"></div></div>
-  <div class="grade">
-    <div class="bloco"><span class="emoji">📊</span><div class="t1">Aproveitamento</div><div class="t2">% vitórias, empates e derrotas por período.</div></div>
-    <div class="bloco"><span class="emoji">⚽</span><div class="t1">Média de Gols</div><div class="t2">Gols marcados e sofridos por partida.</div></div>
-    <div class="bloco"><span class="emoji">📈</span><div class="t1">Tendência</div><div class="t2">Forma atual: subindo, estável ou caindo.</div></div>
-    <div class="bloco"><span class="emoji">🔁</span><div class="t1">Sequências</div><div class="t2">Séries de vitórias ou derrotas consecutivas.</div></div>
+  <div class="titulo">🕐 Próximos Jogos</div>
+  <div class="desc">Jogos agendados com odds em tempo real e ranking dos clubes que vão entrar em campo.</div>
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">EXEMPLO DE CARD</div>
+    <div style="background:#0c1220;border-radius:8px;padding:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="font-size:11px;font-weight:700;color:#64748b">COPA DO MUNDO</span><span style="font-size:12px;color:#fbbf24;font-weight:700">em 8 min</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="font-size:16px;font-weight:800">Brasil</span>
+        <div style="display:flex;gap:6px">
+          <div style="background:#052e16;border:1px solid #166534;border-radius:6px;padding:6px 10px;text-align:center"><div style="font-size:16px;font-weight:800;color:#4ade80">1.85</div><div style="font-size:10px;color:#475569">1</div></div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:6px 10px;text-align:center"><div style="font-size:16px;font-weight:800;color:#94a3b8">3.40</div><div style="font-size:10px;color:#475569">X</div></div>
+          <div style="background:#1c0303;border:1px solid #3b0a0a;border-radius:6px;padding:6px 10px;text-align:center"><div style="font-size:16px;font-weight:800;color:#f87171">4.20</div><div style="font-size:10px;color:#475569">2</div></div>
+        </div>
+        <span style="font-size:16px;font-weight:800">Alemanha</span>
+      </div>
+    </div>
   </div>
+  <div class="lista-item">⭐ <span><b>Destaques dos clubes</b> — ranking por mercado das equipes que vão jogar nas próximas horas</span></div>
+  <div class="lista-item">🎮 <span><b>Simulador integrado</b> — simule apostas com histórico real daquele time</span></div>
   <div class="nav-slide">
     <a href="#s3" class="btn-v">← Voltar</a>
     <a href="#s5" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- SLIDE 6 -->
+<!-- SLIDE 6 — MULTI ANÁLISES + CLUBES -->
 <div class="slide" id="s5">
-  <div class="lbl-v">Como Começar</div>
-  <div class="titulo">Acesso em 3 Passos</div>
-  <div class="desc">Simples, rápido e seguro — funciona em qualquer celular.</div>
-  <div class="passo"><div class="pnum">1</div><div><div class="pttl">Abra o Radar da Bet</div><div class="pds">Acesse <b>radardabet.com.br</b> no navegador do celular ou computador.</div></div></div>
-  <div class="passo"><div class="pnum">2</div><div><div class="pttl">Faça o Login</div><div class="pds">Use o usuário e senha enviados pelo administrador.</div></div></div>
-  <div class="passo"><div class="pnum">3</div><div><div class="pttl">Explore o Painel</div><div class="pds">Selecione a liga e navegue entre <b>Análise</b>, <b>Histórico</b> e <b>Clubes</b>.</div></div></div>
-  <div class="aviso">📱 O Radar da Bet é totalmente responsivo. Funciona no celular, tablet e computador sem instalar nada.</div>
+  <div class="lbl-v">Para Clientes</div>
+  <div class="titulo">⊞ Multi Análises & ⚽ Clubes</div>
+  <div class="desc">Ferramentas avançadas para quem quer comparar e aprofundar.</div>
+  <div class="grade">
+    <div class="bloco"><span class="emoji">⊞</span><div class="t1">Multi Horários</div><div class="t2">Compare o desempenho da liga em vários horários ao mesmo tempo.</div></div>
+    <div class="bloco"><span class="emoji">⚽</span><div class="t1">Multi Gols</div><div class="t2">Gols por filtro lado a lado: total, casa, fora, 1T, 2T.</div></div>
+    <div class="bloco"><span class="emoji">📈</span><div class="t1">Multi Linhas</div><div class="t2">Compare Over 1.5 vs 2.5 vs BTTS num mesmo gráfico.</div></div>
+    <div class="bloco"><span class="emoji">🏆</span><div class="t1">Ranking Clubes</div><div class="t2">Times melhores em cada mercado nas últimas 24h.</div></div>
+    <div class="bloco"><span class="emoji">📋</span><div class="t1">Ficha do Clube</div><div class="t2">Histórico completo e forma recente por time.</div></div>
+    <div class="bloco"><span class="emoji">⚔</span><div class="t1">Comparador H2H</div><div class="t2">Dois times lado a lado com todos os indicadores.</div></div>
+  </div>
   <div class="nav-slide">
     <a href="#s4" class="btn-v">← Voltar</a>
     <a href="#s6" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- SLIDE 7 -->
+<!-- SLIDE 7 — COMO COMEÇAR -->
 <div class="slide" id="s6">
-  <div style="text-align:center;padding:16px 0 14px">
-    <div class="badge badge-a">🛡️ Administradores</div>
-    <div class="titulo">Painel Admin</div>
-    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:16px">Administradores têm acesso a um painel exclusivo para gerenciar toda a plataforma.</p>
+  <div class="lbl-v">Como Começar</div>
+  <div class="titulo">Acesso em 3 Passos</div>
+  <div class="desc">Simples, rápido e seguro — funciona em qualquer celular ou computador.</div>
+  <div class="passo"><div class="pnum">1</div><div><div class="pttl">Abra o Radar da Bet</div><div class="pds">Acesse <b>radardabet.com.br</b> no navegador.</div></div></div>
+  <div class="passo"><div class="pnum">2</div><div><div class="pttl">Faça o Login</div><div class="pds">Use o usuário e senha enviados pelo suporte no WhatsApp.</div></div></div>
+  <div class="passo"><div class="pnum">3</div><div><div class="pttl">Explore os Módulos</div><div class="pds">Selecione a liga e navegue entre <b>Mosaico, Gráficos, Próximos Jogos, Simulador, Multi Análises e Clubes</b>.</div></div></div>
+  <div class="aviso">📱 Totalmente responsivo — funciona no celular, tablet e computador sem instalar nada.</div>
+
+  <div class="sep-admin">
+    <span style="font-size:22px">🛡️</span>
+    <div><div style="font-size:12px;font-weight:700;color:#a78bfa">A seguir: Seção Administradores</div><div style="font-size:11px;color:#7c3aed">Usuários · Licenças · Coletores · Diagnóstico</div></div>
   </div>
-  <div class="grade">
-    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">👥</span><div class="t1">Usuários</div><div class="t2">Criar, editar e desativar contas de clientes.</div></div>
-    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">🔑</span><div class="t1">Licenças</div><div class="t2">Definir tipo (Free/Pro/Master) e expiração.</div></div>
-    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">📡</span><div class="t1">Coletores</div><div class="t2">Monitorar status dos robôs de coleta.</div></div>
-    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">📋</span><div class="t1">Logs</div><div class="t2">Eventos do sistema em tempo real.</div></div>
-  </div>
+
   <div class="nav-slide">
     <a href="#s5" class="btn-v">← Voltar</a>
     <a href="#s7" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- SLIDE 8 -->
+<!-- SLIDE 8 — PAINEL ADMIN -->
 <div class="slide" id="s7">
-  <div class="lbl-a">Módulo Admin</div>
-  <div class="titulo">Usuários &amp; Licenças</div>
-  <div class="desc">Controle total sobre quem acessa o sistema e com quais permissões.</div>
-  <div class="bloco"><span class="tipo-badge tipo-free" style="margin-bottom:8px">FREE</span><div class="t2">Visualiza dados, heatmap e histórico básico.</div></div>
-  <div class="bloco"><span class="tipo-badge tipo-pro" style="margin-bottom:8px">PRO</span><div class="t2">Todas as features do Free + sugestões IA avançadas e filtros estendidos.</div></div>
-  <div class="bloco"><span class="tipo-badge tipo-master" style="margin-bottom:8px">MASTER</span><div class="t2">Acesso completo ao painel admin, diagnóstico e gerenciamento de usuários.</div></div>
-  <div class="passo"><div class="pnum pnum-a">!</div><div><div class="pttl">Expiração automática</div><div class="pds">Quando a data de expiração é atingida, o acesso é bloqueado até renovação.</div></div></div>
+  <div style="text-align:center;padding:16px 0 14px">
+    <div class="badge badge-a">🛡️ Administradores</div>
+    <div class="titulo">Painel Admin</div>
+    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:16px">Controle total sobre a plataforma a partir de um único painel exclusivo.</p>
+  </div>
+  <div class="grade">
+    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">👥</span><div class="t1">Usuários</div><div class="t2">Criar, editar e desativar contas de clientes.</div></div>
+    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">🔑</span><div class="t1">Licenças</div><div class="t2">Definir tipo (Free/Pro/Master) e expiração.</div></div>
+    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">📡</span><div class="t1">Coletores</div><div class="t2">3 robôs autônomos coletando dados 24h.</div></div>
+    <div class="bloco" style="border-color:rgba(124,58,237,.2)"><span class="emoji">📋</span><div class="t1">Logs</div><div class="t2">Eventos do sistema em tempo real.</div></div>
+  </div>
   <div class="nav-slide">
     <a href="#s6" class="btn-v">← Voltar</a>
     <a href="#s8" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- SLIDE 9 -->
+<!-- SLIDE 9 — USUÁRIOS & LICENÇAS -->
 <div class="slide" id="s8">
+  <div class="lbl-a">Módulo Admin</div>
+  <div class="titulo">Usuários &amp; Licenças</div>
+  <div class="desc">Controle quem acessa e com quais permissões.</div>
+  <div class="bloco"><span class="tipo-badge tipo-free" style="margin-bottom:8px">FREE</span><div class="t2">Visualiza dados, heatmap e histórico básico.</div></div>
+  <div class="bloco"><span class="tipo-badge tipo-pro" style="margin-bottom:8px">PRO</span><div class="t2">Todas as features do Free + sugestões avançadas, filtros estendidos e Mosaico completo.</div></div>
+  <div class="bloco"><span class="tipo-badge tipo-master" style="margin-bottom:8px">MASTER</span><div class="t2">Acesso completo ao painel admin, diagnóstico, coletores e gerenciamento de usuários.</div></div>
+  <div class="passo"><div class="pnum pnum-a">!</div><div><div class="pttl">Expiração automática</div><div class="pds">Quando a data é atingida, o acesso é bloqueado até renovação.</div></div></div>
+  <div class="nav-slide">
+    <a href="#s7" class="btn-v">← Voltar</a>
+    <a href="#s9" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 10 — DIAGNÓSTICO -->
+<div class="slide" id="s9">
   <div class="lbl-a">Monitor Master</div>
   <div class="titulo">Diagnóstico do Sistema</div>
-  <div class="desc">Monitore os coletores de dados e acompanhe logs em tempo real.</div>
+  <div class="desc">Monitore os coletores de dados e force atualizações manualmente.</div>
   <div class="bloco">
     <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">STATUS DOS COLETORES</div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0d1421"><div style="font-size:12px"><span class="status-dot ok"></span>Copa do Mundo</div><div style="font-size:10px;color:#4ade80">Ativo · 2min atrás</div></div>
@@ -257,20 +275,35 @@ html:not(:has(.slide:target)) #s0{display:block}
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0d1421"><div style="font-size:12px"><span class="status-dot warn"></span>Euro Cup</div><div style="font-size:10px;color:#fbbf24">Atrasado · 6min atrás</div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0"><div style="font-size:12px"><span class="status-dot ok"></span>Express Cup</div><div style="font-size:10px;color:#4ade80">Ativo · 43s atrás</div></div>
   </div>
-  <div class="aviso">🔄 O diagnóstico permite forçar atualização manual de qualquer liga com um clique.</div>
+  <div class="aviso">🔄 Force atualização manual de qualquer liga com um clique no Diagnóstico.</div>
   <div class="nav-slide">
-    <a href="#s7" class="btn-v">← Voltar</a>
-    <a href="#s9" class="btn-p">Próximo →</a>
+    <a href="#s8" class="btn-v">← Voltar</a>
+    <a href="#s10" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- SLIDE 10 -->
-<div class="slide" id="s9">
+<!-- SLIDE 11 — BOAS PRÁTICAS -->
+<div class="slide" id="s10">
+  <div class="lbl-a">Administradores</div>
+  <div class="titulo">Boas Práticas</div>
+  <div class="desc">Siga estas recomendações para manter o Radar da Bet funcionando sem problemas.</div>
+  <div class="passo"><div class="pnum pnum-a">1</div><div><div class="pttl">Renove licenças com antecedência</div><div class="pds">Evite que clientes percam acesso inesperadamente.</div></div></div>
+  <div class="passo"><div class="pnum pnum-a">2</div><div><div class="pttl">Monitore o Diagnóstico diariamente</div><div class="pds">Verifique se todos os coletores estão ativos.</div></div></div>
+  <div class="passo"><div class="pnum pnum-a">3</div><div><div class="pttl">Senhas seguras para Master</div><div class="pds">Use senhas longas e únicas para contas administrativas.</div></div></div>
+  <div class="passo"><div class="pnum pnum-a">4</div><div><div class="pttl">Não compartilhe credenciais Master</div><div class="pds">Cada administrador deve ter sua própria conta.</div></div></div>
+  <div class="nav-slide">
+    <a href="#s9" class="btn-v">← Voltar</a>
+    <a href="#s11" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 12 — CTA -->
+<div class="slide" id="s11">
   <div style="text-align:center;padding:20px 0">
     <div class="cta-grande">Radar da Bet</div>
     <div class="titulo">Comece agora!</div>
-    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:20px">Dados em tempo real, análise com IA e gestão completa na palma da mão.</p>
-    <a href="https://api.whatsapp.com/send/?phone=5548985002773&text=Ol%C3%A1%21+Quero+acessar+o+Radar da Bet." class="btn-wpp">💬 Falar no WhatsApp</a>
+    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:20px">Dados em tempo real, análise com sugestões automáticas e gestão completa na palma da mão.</p>
+    <a href="https://api.whatsapp.com/send/?phone=5548985002773&text=Ol%C3%A1%21+Quero+acessar+o+Radar+da+Bet." class="btn-wpp">💬 Falar no WhatsApp</a>
     <a href="/" class="btn-site">→ Acessar Radar da Bet</a>
     <div style="margin-top:20px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
       <span style="font-size:12px;color:#64748b">🔒 Seguro</span>
@@ -280,14 +313,14 @@ html:not(:has(.slide:target)) #s0{display:block}
     </div>
   </div>
   <div class="nav-slide">
-    <a href="#s8" class="btn-v">← Voltar</a>
+    <a href="#s10" class="btn-v">← Voltar</a>
     <a href="#s0" class="btn-v" style="background:#0f172a;border:1px solid #334155">↺ Reiniciar</a>
   </div>
 </div>
 
 <script>
-var N = 10;
-var mapa = {s0:1,s1:2,s2:3,s3:4,s4:5,s5:6,s6:7,s7:8,s8:9,s9:10};
+var N = 12;
+var mapa = {s0:1,s1:2,s2:3,s3:4,s4:5,s5:6,s6:7,s7:8,s8:9,s9:10,s10:11,s11:12};
 
 function atualizar() {
   var hash = location.hash.replace('#','');
@@ -303,7 +336,7 @@ window.addEventListener('load', function(){
   atualizar();
 });
 
-var ordem = ['s0','s1','s2','s3','s4','s5','s6','s7','s8','s9'];
+var ordem = ['s0','s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11'];
 var txs = 0;
 document.addEventListener('touchstart', function(e){ txs = e.touches[0].clientX; }, {passive:true});
 document.addEventListener('touchend', function(e){

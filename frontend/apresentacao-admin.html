@@ -63,10 +63,10 @@ html:not(:has(.slide:target)) #s0{display:block}
 <body>
 <div class="hdr">
   <div class="logo">● Radar da Bet</div>
-  <span id="ctr">Admin · 7 slides</span>
+  <span id="ctr">1 / 8</span>
   <span class="tag">🛡️ Admin</span>
 </div>
-<div class="prog-bg"><div id="prog" style="width:14.28%"></div></div>
+<div class="prog-bg"><div id="prog" style="width:12.5%"></div></div>
 
 <!-- SLIDE 1 -->
 <div class="slide" id="s0">
@@ -156,8 +156,31 @@ html:not(:has(.slide:target)) #s0{display:block}
   </div>
 </div>
 
-<!-- SLIDE 6 -->
+<!-- SLIDE 6 — COLETORES -->
 <div class="slide" id="s5">
+  <div class="lbl">Infra & Robôs</div>
+  <div class="titulo">Os 3 Coletores</div>
+  <div class="desc">A plataforma usa três robôs autônomos para manter os dados sempre atualizados.</div>
+  <div class="bloco" style="border-color:rgba(31,204,89,.2)">
+    <div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:6px">COLETOR 1 — RESULTADOS (ESTÁVEL)</div>
+    <div class="t2">Coleta os resultados finais dos jogos a cada ~2 minutos. É o coração da plataforma — não deve ser alterado.</div>
+  </div>
+  <div class="bloco" style="border-color:rgba(14,165,233,.2)">
+    <div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:6px">COLETOR 2 — ODDS PRÉ-JOGO</div>
+    <div class="t2">Coleta odds 1X2, Over/Under 2.5, BTTS e HT para jogos futuros. Roda a cada 6 minutos com login automático em conta dedicada.</div>
+  </div>
+  <div class="bloco" style="border-color:rgba(251,191,36,.15)">
+    <div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px">COLETOR 3 — BACKFILL HISTÓRICO</div>
+    <div class="t2">Preenche odds históricas de jogos passados (manual ou agendado). Útil para completar o banco de dados retroativamente.</div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s4" class="btn-v">← Voltar</a>
+    <a href="#s6" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- SLIDE 7 — DIAGNÓSTICO -->
+<div class="slide" id="s6">
   <div class="lbl">Monitor Master</div>
   <div class="titulo">Diagnóstico do Sistema</div>
   <div class="desc">Monitore os coletores de dados e force atualizações manualmente.</div>
@@ -176,13 +199,13 @@ html:not(:has(.slide:target)) #s0{display:block}
     <div class="log-linha">[10:34:13] Euro Cup — tentativa de reconexao...</div>
   </div>
   <div class="nav-slide">
-    <a href="#s4" class="btn-v">← Voltar</a>
-    <a href="#s6" class="btn-p">Próximo →</a>
+    <a href="#s5" class="btn-v">← Voltar</a>
+    <a href="#s7" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- SLIDE 7 -->
-<div class="slide" id="s6">
+<!-- SLIDE 8 — BOAS PRÁTICAS -->
+<div class="slide" id="s7">
   <div style="text-align:center;padding:16px 0 14px">
     <div class="cta-grande">🛡️</div>
     <div class="titulo">Boas Práticas</div>
@@ -193,14 +216,14 @@ html:not(:has(.slide:target)) #s0{display:block}
   <div class="passo"><div class="pnum">3</div><div><div class="pttl">Senhas seguras para Master</div><div class="pds">Use senhas longas e únicas para contas administradoras.</div></div></div>
   <div class="passo"><div class="pnum">4</div><div><div class="pttl">Não compartilhe credenciais Master</div><div class="pds">Cada administrador deve ter sua própria conta.</div></div></div>
   <div class="nav-slide">
-    <a href="#s5" class="btn-v">← Voltar</a>
+    <a href="#s6" class="btn-v">← Voltar</a>
     <a href="#s0" class="btn-v" style="background:#0f172a;border:1px solid #334155">↺ Reiniciar</a>
   </div>
 </div>
 
 <script>
-var N = 7;
-var mapa = {s0:1,s1:2,s2:3,s3:4,s4:5,s5:6,s6:7};
+var N = 8;
+var mapa = {s0:1,s1:2,s2:3,s3:4,s4:5,s5:6,s6:7,s7:8};
 
 function atualizar() {
   var hash = location.hash.replace('#','');
@@ -216,7 +239,7 @@ window.addEventListener('load', function(){
   atualizar();
 });
 
-var ordem = ['s0','s1','s2','s3','s4','s5','s6'];
+var ordem = ['s0','s1','s2','s3','s4','s5','s6','s7'];
 var txs = 0;
 document.addEventListener('touchstart', function(e){ txs = e.touches[0].clientX; }, {passive:true});
 document.addEventListener('touchend', function(e){
