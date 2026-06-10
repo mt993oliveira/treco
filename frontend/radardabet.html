@@ -1986,6 +1986,7 @@
             <!-- Pills de mercado do Gráfico de Gols -->
             <div id="pills-gols" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;"></div>
             <div style="position:relative;height:260px"><canvas id="grafico-gols"></canvas></div>
+            <div id="legenda-gols" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;padding:0 2px"></div>
         </div>
     </div>
 
@@ -5441,10 +5442,7 @@ function _linhaToggle(key, btnId) {
 function toggleLinhaLegendas() {
     S.linhaShowLegendas = !S.linhaShowLegendas;
     const btn = document.getElementById('btn-linha-legendas');
-    if (btn) {
-        btn.style.borderColor = S.linhaShowLegendas ? '#1fcc59' : '#1e293b';
-        btn.style.color       = S.linhaShowLegendas ? '#e2e8f0' : '#94a3b8';
-    }
+    if (btn) btn.classList.toggle('ativo', S.linhaShowLegendas);
     renderGraficoLinha();
 }
 
@@ -6214,6 +6212,18 @@ function renderGraficoGols() {
     const yMax = Math.ceil(Math.max(...todasSeries) / 5) * 5 + 5;
 
     if (tituloEl) tituloEl.textContent = '⚽ Gols por Jogo';
+
+    // Legenda HTML abaixo do canvas
+    const _lgEl = document.getElementById('legenda-gols');
+    if (_lgEl) {
+        _lgEl.innerHTML = datasets.filter(d => !d._isRef).map(d => {
+            const _isDash = d.borderDash?.length > 0;
+            return `<span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:#94a3b8">
+                <span style="display:inline-block;width:18px;height:0;border-top:2.5px ${_isDash ? 'dashed' : 'solid'} ${d.borderColor}"></span>
+                ${d.label}
+            </span>`;
+        }).join('');
+    }
 
     if (S._graficoGols && !S._graficoGols._vazio) {
         S._graficoGols.data.labels = labels;
