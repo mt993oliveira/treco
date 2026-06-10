@@ -10,31 +10,27 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{background:#060810;color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-text-size-adjust:100%}
 
-/* NAVEGAÇÃO: display:none por padrão, :target mostra */
 .slide{display:none;padding:20px 16px 40px}
 .slide:target{display:block}
-/* Primeiro slide visível quando não há nenhum target */
 html:not(:has(.slide:target)) #s0{display:block}
 
 .hdr{background:#060810;border-bottom:1px solid #1e293b;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
 .logo{font-size:16px;font-weight:800;color:#1fcc59}
-.ctr{font-size:12px;color:#64748b;font-weight:600}
 .tag{font-size:10px;font-weight:700;color:#0ea5e9;background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.22);border-radius:20px;padding:3px 10px}
 .prog-bg{height:4px;background:#1e293b}
 .prog-fill{height:4px;background:#1fcc59}
 
-/* BOTÕES como links <a> */
 .nav-slide{display:flex;gap:12px;padding:24px 0 20px}
 .btn-v{flex:1;height:54px;border-radius:10px;font-size:17px;font-weight:800;background:#1e293b;color:#f1f5f9;display:flex;align-items:center;justify-content:center;text-decoration:none}
 .btn-p{flex:1;height:54px;border-radius:10px;font-size:17px;font-weight:800;background:#1fcc59;color:#000;display:flex;align-items:center;justify-content:center;text-decoration:none}
 .btn-ghost{flex:1;height:54px;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:center}
 
-/* CONTEÚDO */
 .bloco{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:16px;margin-bottom:10px}
 .emoji{font-size:24px;display:block;margin-bottom:8px}
 .t1{font-size:13px;font-weight:700;margin-bottom:4px}
 .t2{font-size:11px;color:#64748b;line-height:1.55}
 .grade{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grade3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .lbl{font-size:10px;font-weight:700;color:#1fcc59;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
 .titulo{font-size:26px;font-weight:800;letter-spacing:-.4px;line-height:1.15;margin-bottom:8px}
 .desc{font-size:13px;color:#64748b;line-height:1.65;margin-bottom:16px}
@@ -51,47 +47,43 @@ html:not(:has(.slide:target)) #s0{display:block}
 .stat{background:#0f172a;border:1px solid #1e293b;border-radius:7px;padding:8px 12px;min-width:70px}
 .stat-v{font-size:20px;font-weight:800;display:block}
 .stat-l{font-size:9px;color:#64748b}
-.ia-box{background:#052e16;border:1px solid #166534;border-radius:8px;padding:12px;margin-top:8px}
-.ia-label{font-size:9px;font-weight:700;color:#4ade80;text-transform:uppercase;margin-bottom:5px}
 .cta-grande{font-size:48px;font-weight:900;color:#1fcc59;margin-bottom:8px;animation:flutu 3s ease-in-out infinite}
 @keyframes flutu{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 .btn-wpp{display:inline-flex;align-items:center;gap:8px;background:#1fcc59;color:#000;font-size:14px;font-weight:700;padding:12px 22px;border-radius:9px;text-decoration:none;margin:6px;min-height:44px}
 .btn-site{display:inline-flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #1e293b;color:#f1f5f9;font-size:14px;font-weight:700;padding:12px 22px;border-radius:9px;text-decoration:none;margin:6px;min-height:44px}
-.hm{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;margin-top:8px}
-.hc{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700}
-.hv{background:#14532d;color:#4ade80}.hd{background:#3b0a0a;color:#f87171}.he{background:#1e1b4b;color:#a5b4fc}
-.mtbl{width:100%;border-collapse:collapse;font-size:10px;margin-top:8px}
-.mtbl th{background:#0c1220;padding:5px 4px;text-align:center;border:1px solid #1e293b;color:#475569;font-weight:700;font-size:9px}
-.mtbl td{padding:4px 3px;text-align:center;border:1px solid #0d1421;font-weight:700;font-size:10px}
-.mtbl td.tl{text-align:left;background:#0f172a;color:#94a3b8;padding:4px 7px;font-size:9px}
-.cv{background:#14532d;color:#4ade80}.cd{background:#3b0a0a;color:#f87171}.ce{background:#1e1b4b;color:#a5b4fc}
 .lista-item{display:flex;align-items:center;gap:9px;padding:9px 12px;background:#0f172a;border:1px solid #1e293b;border-radius:7px;font-size:12px;margin-bottom:7px}
-
-/* Indicador de slide por :target */
-#s0:target ~ .barra .p0,
-html:not(:has(.slide:target)) .barra .p0{background:#1fcc59}
-#s1:target ~ .barra .p1{background:#1fcc59}
+.chip{display:inline-flex;align-items:center;gap:5px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:#94a3b8}
+.chip-verde{border-color:#166534;color:#4ade80;background:#052e16}
+.chip-laranja{border-color:#92400e;color:#fbbf24;background:#1c1000}
+.chip-azul{border-color:#1e3a5f;color:#60a5fa;background:#0a1628}
+.sugestao-demo{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:11px;line-height:1.6}
+.destaque-row{padding:7px 14px;border-bottom:1px solid #0d1421;font-size:11px;line-height:1.6}
+.destaque-row:last-child{border-bottom:none}
 </style>
 </head>
 <body>
 
 <div class="hdr">
   <div class="logo">● Radar da Bet</div>
-  <span id="ctr">Clientes · 8 slides</span>
+  <span id="ctr">1 / 11</span>
   <span class="tag">👤 Clientes</span>
 </div>
 <div class="prog-bg">
-  <div id="prog" class="prog-fill" style="width:12.5%;transition:width .3s"></div>
+  <div id="prog" class="prog-fill" style="width:9.09%;transition:width .3s"></div>
 </div>
 
-<!-- ============ SLIDE 1 ============ -->
+<!-- ============ SLIDE 1 — CAPA ============ -->
 <div class="slide" id="s0">
   <div style="text-align:center;padding:24px 0 10px">
     <div class="badge">📈 Plataforma de Análise</div>
     <div class="capa-titulo">Bem-vindo ao<br><span class="destaque">Radar da Bet</span></div>
-    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:18px">Sua plataforma inteligente de análise de futebol virtual — dados em tempo real, heatmaps e sugestões com IA.</p>
+    <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:18px">Sua plataforma inteligente de análise de futebol virtual — dados em tempo real, gráficos, sugestões e muito mais.</p>
     <div class="pilulas" style="justify-content:center">
-      <span class="pilula">⚡ Tempo Real</span><span class="pilula">🧠 IA</span><span class="pilula">🏆 5 Ligas</span><span class="pilula">🔒 Seguro</span>
+      <span class="pilula">⚡ Tempo Real</span>
+      <span class="pilula">🧠 Sugestões</span>
+      <span class="pilula">🏆 5 Ligas</span>
+      <span class="pilula">🔒 Seguro</span>
+      <span class="pilula">📱 Mobile OK</span>
     </div>
   </div>
   <div class="nav-slide">
@@ -100,16 +92,18 @@ html:not(:has(.slide:target)) .barra .p0{background:#1fcc59}
   </div>
 </div>
 
-<!-- ============ SLIDE 2 ============ -->
+<!-- ============ SLIDE 2 — VISÃO GERAL ============ -->
 <div class="slide" id="s1">
   <div class="lbl">Visão Geral</div>
   <div class="titulo">O que é o Radar da Bet?</div>
-  <div class="desc">Uma plataforma completa para analisar padrões em futebol virtual.</div>
+  <div class="desc">Uma plataforma completa com múltiplos módulos de análise para futebol virtual.</div>
   <div class="grade">
-    <div class="bloco"><span class="emoji">💾</span><div class="t1">Dados em Tempo Real</div><div class="t2">Resultados coletados a cada 2 minutos.</div></div>
-    <div class="bloco"><span class="emoji">🔥</span><div class="t1">Heatmap Visual</div><div class="t2">Visualize padrões de vitória, derrota e empate.</div></div>
-    <div class="bloco"><span class="emoji">🤖</span><div class="t1">Sugestões IA</div><div class="t2">Algoritmo aponta as melhores oportunidades.</div></div>
-    <div class="bloco"><span class="emoji">📋</span><div class="t1">Tabela Histórica</div><div class="t2">60+ jogos por time com filtros avançados.</div></div>
+    <div class="bloco"><span class="emoji">📊</span><div class="t1">Mosaico Histórico</div><div class="t2">Grade visual com todos os resultados por hora, com sugestões de Over 2.5 e Ambas Marcam.</div></div>
+    <div class="bloco"><span class="emoji">📈</span><div class="t1">Gráfico de Linha</div><div class="t2">Evolução de % por mercado com média móvel e zoom.</div></div>
+    <div class="bloco"><span class="emoji">🕐</span><div class="t1">Próximos Jogos</div><div class="t2">Jogos agendados com odds e ranking dos clubes que vão jogar.</div></div>
+    <div class="bloco"><span class="emoji">🎮</span><div class="t1">Simulador</div><div class="t2">Simule apostas com base em dados reais antes de apostar.</div></div>
+    <div class="bloco"><span class="emoji">⊞</span><div class="t1">Multi Análises</div><div class="t2">Compare múltiplos horários, gols e linhas lado a lado.</div></div>
+    <div class="bloco"><span class="emoji">⚽</span><div class="t1">Clubes</div><div class="t2">Ficha completa, ranking, destaques 24h e comparador H2H.</div></div>
   </div>
   <div class="nav-slide">
     <a href="#s0" class="btn-v">← Voltar</a>
@@ -117,7 +111,7 @@ html:not(:has(.slide:target)) .barra .p0{background:#1fcc59}
   </div>
 </div>
 
-<!-- ============ SLIDE 3 ============ -->
+<!-- ============ SLIDE 3 — LIGAS ============ -->
 <div class="slide" id="s2">
   <div class="lbl">Cobertura</div>
   <div class="titulo">5 Ligas Disponíveis</div>
@@ -133,78 +127,109 @@ html:not(:has(.slide:target)) .barra .p0{background:#1fcc59}
   </div>
 </div>
 
-<!-- ============ SLIDE 4 ============ -->
+<!-- ============ SLIDE 4 — GRÁFICOS & MOSAICO ============ -->
 <div class="slide" id="s3">
-  <div class="lbl">View Principal</div>
-  <div class="titulo">Análise &amp; Sugestões</div>
-  <div class="desc">Cards por liga com % de Over, heatmap e recomendações de IA.</div>
-  <div class="barra-stat">
-    <div class="stat"><span class="stat-v" style="color:#4ade80">73%</span><span class="stat-l">Over 0.5</span></div>
-    <div class="stat"><span class="stat-v" style="color:#fbbf24">61%</span><span class="stat-l">Over 1.5</span></div>
-    <div class="stat"><span class="stat-v" style="color:#60a5fa">48%</span><span class="stat-l">Over 2.5</span></div>
-    <div class="stat"><span class="stat-v" style="color:#c4b5fd">32%</span><span class="stat-l">Over 3.5</span></div>
-  </div>
-  <div class="ia-box">
-    <div class="ia-label">🤖 Sugestão IA — Premier League</div>
-    <div style="font-size:13px;color:#e2e8f0;margin-bottom:4px">Manchester City × Arsenal</div>
-    <div style="font-size:11px;color:#64748b">Over 2.5 gols · Confiança: <b style="color:#4ade80">87%</b></div>
-  </div>
+  <div class="lbl">Módulo Principal</div>
+  <div class="titulo">📈 Gráficos & Mosaico</div>
+  <div class="desc">Visualize padrões históricos em segundos e receba sugestões automáticas.</div>
+
   <div class="bloco">
-    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:6px">HEATMAP — Últimos 20 resultados</div>
-    <div class="hm">
-      <div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div><div class="hc hv">V</div><div class="hc he">E</div>
-      <div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div>
-      <div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc he">E</div>
-      <div class="hc hd">D</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hv">V</div><div class="hc hd">D</div>
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">MOSAICO — Grade de resultados por hora</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <span class="chip chip-verde">🎯 Ambas Marcam</span>
+      <span class="chip" style="border-color:#f97316;color:#f97316;background:#1a0800">⚽ Over 2.5</span>
+      <span class="chip chip-azul">💹 Odds Pagas</span>
+      <span class="chip">🏷️ Exibir Clubes</span>
     </div>
-    <div style="display:flex;gap:12px;margin-top:8px;font-size:10px">
-      <span><span style="color:#4ade80">■</span> Vitória</span>
-      <span><span style="color:#f87171">■</span> Derrota</span>
-      <span><span style="color:#a5b4fc">■</span> Empate</span>
-    </div>
+    <div class="t2">Cada célula exibe o placar do jogo. Sugestões automáticas destacam as colunas mais prováveis para o próximo horário com base na hora anterior.</div>
   </div>
+
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">SUGESTÕES AUTOMÁTICAS</div>
+    <div class="sugestao-demo">
+      <span style="color:#22c55e">🎯</span> <b style="color:#e2e8f0">Ambas Marcam</b>
+      <span style="color:#64748b"> · 8 de 20 jogos (40%) · sugestão colunas 7, 8, 9</span>
+    </div>
+    <div class="sugestao-demo">
+      <span style="color:#f97316">⚽</span> <b style="color:#e2e8f0">Over 2.5</b>
+      <span style="color:#64748b"> · 6 de 20 jogos (30%) · sugestão colunas 5, 6, 7</span>
+    </div>
+    <div class="t2" style="margin-top:6px">Quando ambas sugerem a mesma coluna, aparece em <b style="color:#a855f7">roxo</b> com ícones 🎯⚽.</div>
+  </div>
+
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">GRÁFICOS</div>
+    <div class="lista-item">📈 <span><b>Gráfico de Linha</b> — evolução de % por mercado com MM e zoom</span></div>
+    <div class="lista-item">⚽ <span><b>Gráfico de Gols</b> — soma rolante com legenda e MM</span></div>
+  </div>
+
   <div class="nav-slide">
     <a href="#s2" class="btn-v">← Voltar</a>
     <a href="#s4" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- ============ SLIDE 5 ============ -->
+<!-- ============ SLIDE 5 — PRÓXIMOS JOGOS ============ -->
 <div class="slide" id="s4">
-  <div class="lbl">Tabela Histórica</div>
-  <div class="titulo">Histórico por Time</div>
-  <div class="desc">Últimos jogos com % de ocorrência e filtros avançados.</div>
-  <div class="lista-item">🔍 <span>Filtros Over 0.5 até 4.5</span></div>
-  <div class="lista-item">📅 <span>Período de 7 a 180 dias</span></div>
-  <div class="lista-item">🏠 <span>Casa / Fora / Todos</span></div>
-  <div class="lista-item">% <span>Percentual de ocorrência por time</span></div>
-  <div class="bloco" style="overflow-x:auto">
-    <table class="mtbl">
-      <thead><tr><th style="text-align:left">Time</th><th>%</th><th>J1</th><th>J2</th><th>J3</th><th>J4</th><th>J5</th><th>J6</th><th>J7</th><th>J8</th></tr></thead>
-      <tbody>
-        <tr><td class="tl">Man City</td><td style="color:#4ade80;font-weight:800">84%</td><td class="cv">V</td><td class="cv">V</td><td class="cv">V</td><td class="cd">D</td><td class="cv">V</td><td class="cv">V</td><td class="ce">E</td><td class="cv">V</td></tr>
-        <tr><td class="tl">Arsenal</td><td style="color:#fbbf24;font-weight:800">71%</td><td class="cv">V</td><td class="cd">D</td><td class="cv">V</td><td class="cv">V</td><td class="cd">D</td><td class="cv">V</td><td class="cv">V</td><td class="cd">D</td></tr>
-        <tr><td class="tl">Chelsea</td><td style="color:#fbbf24;font-weight:800">66%</td><td class="cd">D</td><td class="cv">V</td><td class="cv">V</td><td class="ce">E</td><td class="cv">V</td><td class="cd">D</td><td class="cv">V</td><td class="cv">V</td></tr>
-        <tr><td class="tl">Liverpool</td><td style="color:#4ade80;font-weight:800">79%</td><td class="cv">V</td><td class="cv">V</td><td class="cd">D</td><td class="cv">V</td><td class="cv">V</td><td class="cv">V</td><td class="cd">D</td><td class="cv">V</td></tr>
-      </tbody>
-    </table>
+  <div class="lbl">Planejamento</div>
+  <div class="titulo">🕐 Próximos Jogos</div>
+  <div class="desc">Veja os jogos agendados com odds em tempo real e o ranking dos clubes que vão entrar em campo.</div>
+
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:8px">CARD DE JOGO</div>
+    <div style="background:#0c1220;border-radius:8px;padding:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:#64748b">COPA DO MUNDO</span>
+        <span style="font-size:12px;color:#fbbf24;font-weight:700">em 8 min</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="font-size:16px;font-weight:800">Brasil</span>
+        <div style="display:flex;gap:6px">
+          <div style="background:#052e16;border:1px solid #166534;border-radius:6px;padding:6px 10px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#4ade80">1.85</div>
+            <div style="font-size:10px;color:#475569">1</div>
+          </div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:6px 10px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#94a3b8">3.40</div>
+            <div style="font-size:10px;color:#475569">X</div>
+          </div>
+          <div style="background:#1c0303;border:1px solid #3b0a0a;border-radius:6px;padding:6px 10px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#f87171">4.20</div>
+            <div style="font-size:10px;color:#475569">2</div>
+          </div>
+        </div>
+        <span style="font-size:16px;font-weight:800">Alemanha</span>
+      </div>
+    </div>
   </div>
+
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:8px">⭐ DESTAQUES DOS CLUBES QUE VÃO JOGAR</div>
+    <div class="destaque-row">⭐ <b style="color:#e2e8f0">Brasil</b> <span style="color:#64748b">está em 1º no mercado</span> <b style="color:#fbbf24">Venceu FT</b> <span style="color:#64748b">nas últimas 24 horas.</span> ⭐</div>
+    <div class="destaque-row">⭐ <b style="color:#e2e8f0">Alemanha</b> <span style="color:#64748b">está em 3º no mercado</span> <b style="color:#fbbf24">Under 2.5</b> <span style="color:#64748b">nas últimas 24 horas.</span> ⭐</div>
+    <div style="padding:8px 14px;font-size:10px;color:#475569">Exibe apenas os clubes que estão nos próximos jogos, ordenado por clube.</div>
+  </div>
+
   <div class="nav-slide">
     <a href="#s3" class="btn-v">← Voltar</a>
     <a href="#s5" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- ============ SLIDE 6 ============ -->
+<!-- ============ SLIDE 6 — SIMULADOR ============ -->
 <div class="slide" id="s5">
-  <div class="lbl">Módulo Clubes</div>
-  <div class="titulo">Visão por Clube</div>
-  <div class="desc">Estatísticas individuais de cada time para análises aprofundadas.</div>
+  <div class="lbl">Ferramenta</div>
+  <div class="titulo">🎮 Simulador</div>
+  <div class="desc">Simule apostas com base nos dados históricos reais antes de colocar dinheiro.</div>
   <div class="grade">
-    <div class="bloco"><span class="emoji">📊</span><div class="t1">Aproveitamento</div><div class="t2">% de vitórias, empates e derrotas por período.</div></div>
-    <div class="bloco"><span class="emoji">⚽</span><div class="t1">Média de Gols</div><div class="t2">Gols marcados e sofridos por partida.</div></div>
-    <div class="bloco"><span class="emoji">📈</span><div class="t1">Tendência</div><div class="t2">Forma atual: subindo, estável ou caindo.</div></div>
-    <div class="bloco"><span class="emoji">🔁</span><div class="t1">Sequências</div><div class="t2">Séries de vitórias ou derrotas consecutivas.</div></div>
+    <div class="bloco"><span class="emoji">📋</span><div class="t1">Escolha o Mercado</div><div class="t2">Over 0.5 a 4.5, Resultado, BTTS, HT e mais.</div></div>
+    <div class="bloco"><span class="emoji">💰</span><div class="t1">Defina o Valor</div><div class="t2">Simule com qualquer valor para ver o retorno esperado.</div></div>
+    <div class="bloco"><span class="emoji">📊</span><div class="t1">Veja o Resultado</div><div class="t2">Lucro/prejuízo calculado com base nos jogos reais.</div></div>
+    <div class="bloco"><span class="emoji">🔁</span><div class="t1">Compare Cenários</div><div class="t2">Teste diferentes mercados e estratégias sem risco.</div></div>
+  </div>
+  <div class="bloco" style="background:#052e16;border-color:#166534">
+    <div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:6px">💡 Como usar</div>
+    <div style="font-size:11px;color:#86efac;line-height:1.6">Selecione um jogo na tela de Próximos Jogos → clique em "Simular" → escolha o mercado e o valor → veja o histórico desse time nesse mercado.</div>
   </div>
   <div class="nav-slide">
     <a href="#s4" class="btn-v">← Voltar</a>
@@ -212,27 +237,92 @@ html:not(:has(.slide:target)) .barra .p0{background:#1fcc59}
   </div>
 </div>
 
-<!-- ============ SLIDE 7 ============ -->
+<!-- ============ SLIDE 7 — MULTI ANÁLISES ============ -->
 <div class="slide" id="s6">
-  <div class="lbl">Como Começar</div>
-  <div class="titulo">Acesse em 3 Passos</div>
-  <div class="desc">Simples, rápido e seguro — funciona em qualquer celular.</div>
-  <div class="passo"><div class="pnum">1</div><div><div class="pttl">Abra o Radar da Bet</div><div class="pds">Acesse <b>radardabet.com.br</b> no navegador do celular ou computador.</div></div></div>
-  <div class="passo"><div class="pnum">2</div><div><div class="pttl">Faça o Login</div><div class="pds">Use o usuário e senha enviados pelo administrador.</div></div></div>
-  <div class="passo"><div class="pnum">3</div><div><div class="pttl">Explore o Painel</div><div class="pds">Selecione a liga e navegue entre <b>Análise</b>, <b>Histórico</b> e <b>Clubes</b>.</div></div></div>
+  <div class="lbl">Análise Avançada</div>
+  <div class="titulo">⊞ Multi Análises</div>
+  <div class="desc">Compare múltiplos períodos e métricas simultaneamente para identificar tendências.</div>
+
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#0ea5e9;margin-bottom:8px">⊞ MULTI HORÁRIOS</div>
+    <div class="t2">Compare o desempenho de uma liga em <b style="color:#e2e8f0">vários horários ao mesmo tempo</b>. Identifique quais horas têm mais Over, mais BTTS ou mais gols.</div>
+  </div>
+
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:8px">⚽ MULTI GOLS</div>
+    <div class="t2">Gráfico de gols acumulados por múltiplos filtros lado a lado — <b style="color:#e2e8f0">Total, Casa, Fora, 1T, 2T</b> — com média móvel configurável.</div>
+  </div>
+
+  <div class="bloco">
+    <div style="font-size:11px;font-weight:700;color:#a78bfa;margin-bottom:8px">📈 MULTI LINHAS</div>
+    <div class="t2">Múltiplas linhas de % sobrepostas num único gráfico. Compare <b style="color:#e2e8f0">Over 1.5 vs Over 2.5 vs BTTS</b> no mesmo período.</div>
+  </div>
+
   <div class="nav-slide">
     <a href="#s5" class="btn-v">← Voltar</a>
     <a href="#s7" class="btn-p">Próximo →</a>
   </div>
 </div>
 
-<!-- ============ SLIDE 8 ============ -->
+<!-- ============ SLIDE 8 — ANÁLISE & SUGESTÕES ============ -->
 <div class="slide" id="s7">
+  <div class="lbl">Módulo</div>
+  <div class="titulo">📊 Análise & Sugestões</div>
+  <div class="desc">Cards por liga com estatísticas completas e alertas automáticos configuráveis.</div>
+  <div class="barra-stat">
+    <div class="stat"><span class="stat-v" style="color:#4ade80">73%</span><span class="stat-l">Over 0.5</span></div>
+    <div class="stat"><span class="stat-v" style="color:#fbbf24">61%</span><span class="stat-l">Over 1.5</span></div>
+    <div class="stat"><span class="stat-v" style="color:#60a5fa">48%</span><span class="stat-l">Over 2.5</span></div>
+    <div class="stat"><span class="stat-v" style="color:#c4b5fd">32%</span><span class="stat-l">Over 3.5</span></div>
+  </div>
+  <div class="lista-item">🔔 <span><b>Alertas automáticos</b> — receba um alerta quando o padrão que você configurou aparecer. A aba pisca enquanto a condição for válida.</span></div>
+  <div class="lista-item">📐 <span><b>Padrões salvos</b> — crie e salve combinações de condições para monitorar.</span></div>
+  <div class="lista-item">💹 <span><b>Odds Pagas</b> — no Mosaico, veja a odd real do mercado selecionado (Over 1.5, Over 2.5, BTTS…) direto na célula.</span></div>
+  <div class="lista-item">🏆 <span><b>Ranking de Odds</b> — compare o valor esperado por mercado e liga.</span></div>
+  <div class="nav-slide">
+    <a href="#s6" class="btn-v">← Voltar</a>
+    <a href="#s8" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- ============ SLIDE 9 — CLUBES ============ -->
+<div class="slide" id="s8">
+  <div class="lbl">Módulo Clubes</div>
+  <div class="titulo">⚽ Clubes</div>
+  <div class="desc">Tudo sobre cada time: ficha completa, ranking, destaques e comparador H2H.</div>
+  <div class="grade">
+    <div class="bloco"><span class="emoji">🏆</span><div class="t1">Ranking</div><div class="t2">Times melhores em Over 2.5, BTTS, Gols/jogo e mais — atualizados em tempo real.</div></div>
+    <div class="bloco"><span class="emoji">⭐</span><div class="t1">Destaques 24h</div><div class="t2">Clubes em destaque nas últimas 24 horas por mercado.</div></div>
+    <div class="bloco"><span class="emoji">📋</span><div class="t1">Ficha do Clube</div><div class="t2">Histórico completo, forma recente, gols marcados e sofridos.</div></div>
+    <div class="bloco"><span class="emoji">⚔</span><div class="t1">Comparador H2H</div><div class="t2">Compare dois times lado a lado com todos os indicadores.</div></div>
+  </div>
+  <div class="nav-slide">
+    <a href="#s7" class="btn-v">← Voltar</a>
+    <a href="#s9" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- ============ SLIDE 10 — COMO COMEÇAR ============ -->
+<div class="slide" id="s9">
+  <div class="lbl">Como Começar</div>
+  <div class="titulo">Acesse em 3 Passos</div>
+  <div class="desc">Simples, rápido e seguro — funciona em qualquer celular ou computador.</div>
+  <div class="passo"><div class="pnum">1</div><div><div class="pttl">Abra o Radar da Bet</div><div class="pds">Acesse <b>radardabet.com.br</b> no navegador do celular ou computador.</div></div></div>
+  <div class="passo"><div class="pnum">2</div><div><div class="pttl">Faça o Login</div><div class="pds">Use o usuário e senha enviados pelo suporte no WhatsApp.</div></div></div>
+  <div class="passo"><div class="pnum">3</div><div><div class="pttl">Explore o Painel</div><div class="pds">Selecione a liga e navegue entre os módulos: <b>Mosaico, Gráficos, Próximos Jogos, Simulador, Multi Análises e Clubes</b>.</div></div></div>
+  <div class="nav-slide">
+    <a href="#s8" class="btn-v">← Voltar</a>
+    <a href="#s10" class="btn-p">Próximo →</a>
+  </div>
+</div>
+
+<!-- ============ SLIDE 11 — CTA ============ -->
+<div class="slide" id="s10">
   <div style="text-align:center;padding:20px 0">
     <div class="cta-grande">Radar da Bet</div>
     <div class="titulo">Pronto para analisar?</div>
     <p style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:20px">Fale com nosso suporte para obter suas credenciais e começar agora.</p>
-    <a href="https://api.whatsapp.com/send/?phone=5548985002773&text=Ol%C3%A1%21+Quero+acessar+o+Radar+da+Bet." class="btn-wpp">💬 Falar no WhatsApp</a>
+    <a href="https://api.whatsapp.com/send/?phone=5548985002773&text=Ol%C3%A1%21+Quero+acessar+o+Radar+da+Bet." class="btn-wpp">💬 Falar com o Suporte</a>
     <a href="/" class="btn-site">→ Acessar Radar da Bet</a>
     <div style="margin-top:20px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
       <span style="font-size:12px;color:#64748b">🔒 Seguro</span>
@@ -242,15 +332,14 @@ html:not(:has(.slide:target)) .barra .p0{background:#1fcc59}
     </div>
   </div>
   <div class="nav-slide">
-    <a href="#s6" class="btn-v">← Voltar</a>
+    <a href="#s9" class="btn-v">← Voltar</a>
     <a href="#s0" class="btn-v" style="background:#0f172a;border:1px solid #334155">↺ Reiniciar</a>
   </div>
 </div>
 
 <script>
-// Atualiza contador e barra de progresso ao mudar de slide
-var N = 8;
-var mapa = {s0:1,s1:2,s2:3,s3:4,s4:5,s5:6,s6:7,s7:8};
+var N = 11;
+var mapa = {s0:1,s1:2,s2:3,s3:4,s4:5,s5:6,s6:7,s7:8,s8:9,s9:10,s10:11};
 
 function atualizar() {
   var hash = location.hash.replace('#','');
@@ -266,8 +355,7 @@ window.addEventListener('load', function(){
   atualizar();
 });
 
-// Swipe para navegar
-var ordem = ['s0','s1','s2','s3','s4','s5','s6','s7'];
+var ordem = ['s0','s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'];
 var txs = 0;
 document.addEventListener('touchstart', function(e){ txs = e.touches[0].clientX; }, {passive:true});
 document.addEventListener('touchend', function(e){
