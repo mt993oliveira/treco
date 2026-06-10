@@ -7287,21 +7287,47 @@ function renderTabela() {
             // Destaque sempre pelo filtro/condição selecionado na seção
             // Over 4.5: células ocultas (5+) são verdes quando esse filtro está ativo
             const hitEfetivo = isOculto ? (fi?.id === 'over4.5') : hit;
-            // Odds pré-jogo (exibidas quando modo Odds está ativo)
-            const oddC = parseFloat(j.odd_casa   || 0);
-            const oddE = parseFloat(j.odd_empate || 0);
-            const oddF = parseFloat(j.odd_fora   || 0);
-            // temOdds: inclui oddE para não ocultar células de empate (onde oddC e oddF são 0)
-            const temOdds = S.showOdds && (oddC > 0 || oddE > 0 || oddF > 0);
+            // Odds: adapta ao mercado selecionado no filtro do mosaico
+            // odd_paga > 0 → odd real coletada → usa; odd_paga = 0 → backfill → fallback 1X2
             const fmtOdd  = v => v > 0 ? v.toFixed(2) : '';
+            const _fiId   = fi?.id || '';
+            const _jMkts  = j.mercados || [];
+            const _mktN   = v => parseFloat(v || 0);
+            const _jRes   = !!j.resultado;
+            let _mktOddV = 0;
+            const _ovMM = _fiId.match(/^over(\d+(?:\.\d+)?)$/);
+            const _unMM = _fiId.match(/^under(\d+(?:\.\d+)?)$/);
+            if (_ovMM) {
+                const _m = _jMkts.find(m => m.mercado.includes(_ovMM[1]) && m.selecao?.startsWith('Mais'));
+                _mktOddV = _mktN(_m?.odd_paga);
+            } else if (_unMM) {
+                const _m = _jMkts.find(m => m.mercado.includes(_unMM[1]) && m.selecao?.startsWith('Menos'));
+                _mktOddV = _mktN(_m?.odd_paga);
+            } else if (_fiId === 'ambas-sim') {
+                const _m = _jMkts.find(m => /ambos marcam/i.test(m.mercado) && m.selecao === 'Sim');
+                _mktOddV = _mktN(_m?.odd_paga);
+            } else if (_fiId === 'ambas-nao') {
+                const _m = _jMkts.find(m => /ambos marcam/i.test(m.mercado) && (m.selecao === 'Não' || m.selecao === 'Nao'));
+                _mktOddV = _mktN(_m?.odd_paga);
+            }
+            let oddC, oddE, oddF, showOddC, showOddE, showOddF;
+            if (_mktOddV > 0) {
+                // Odd real do mercado selecionado: exibe no topo da célula, visível quando venceu ou jogo não finalizado
+                oddC = _mktOddV; oddE = 0; oddF = 0;
+                showOddC = S.showOdds && (!_jRes || hitEfetivo);
+                showOddE = false; showOddF = false;
+            } else {
+                // Fallback 1X2: backfill, mercado sem odd ou filtros de resultado
+                oddC = _mktN(j.odd_casa); oddE = _mktN(j.odd_empate); oddF = _mktN(j.odd_fora);
+                const _t12 = S.showOdds && (oddC > 0 || oddE > 0 || oddF > 0);
+                showOddC = _t12 && oddC > 0 && (!j.resultado || j.resultado === 'CASA');
+                showOddE = _t12 && oddE > 0 && (!j.resultado || j.resultado === 'EMPATE');
+                showOddF = _t12 && oddF > 0 && (!j.resultado || j.resultado === 'FORA');
+            }
+            const temOdds = showOddC || showOddE || showOddF;
             const corOddC = corOdd(oddC);
             const corOddE = corOdd(oddE);
             const corOddF = corOdd(oddF);
-            // Para jogos finalizados exibe apenas a odd correspondente ao resultado;
-            // para jogos futuros/em andamento exibe todas as três normalmente
-            const showOddC = temOdds && oddC > 0 && (!j.resultado || j.resultado === 'CASA');
-            const showOddE = temOdds && oddE > 0 && (!j.resultado || j.resultado === 'EMPATE');
-            const showOddF = temOdds && oddF > 0 && (!j.resultado || j.resultado === 'FORA');
             const nmSlot  = `data-action="slot" data-min="${minuteSlots[ci]}"`;
             const cellContent = S.showNomes
                 ? (showOddC ? `<span style="display:block;font-size:var(--fs-odd);font-weight:800;color:${corOddC};text-align:center;line-height:1.4;letter-spacing:.02em">${fmtOdd(oddC)}</span>` : '')+
