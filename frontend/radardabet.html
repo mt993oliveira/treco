@@ -2382,6 +2382,17 @@
         </div>
     </div>
 
+    <!-- Barra de progresso do Normalizar PT -->
+    <div id="norm-progress-wrap" style="display:none;background:#0a0f1e;border:1px solid #1e4d7a;border-radius:6px;padding:8px 14px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <span id="norm-progress-label" style="font-size:10px;color:#93c5fd;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Iniciando…</span>
+            <span id="norm-progress-pct" style="font-size:10px;color:#60a5fa;font-weight:700;margin-left:8px">0%</span>
+            <span id="norm-progress-affected" style="font-size:10px;color:#4ade80;margin-left:8px">0 atualizados</span>
+        </div>
+        <div style="background:#1e293b;border-radius:4px;height:6px;overflow:hidden">
+            <div id="norm-progress-bar" style="background:linear-gradient(90deg,#2563eb,#60a5fa);height:100%;width:0%;transition:width 0.2s ease"></div>
+        </div>
+    </div>
 
     <!-- BACKFILL HISTÓRICO -->
     <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:10px">
@@ -11171,29 +11182,61 @@ async function limparLigasDescartadas() {
 
 async function normalizarDadosPT() {
     const horas = parseInt(document.getElementById('diag-norm-periodo')?.value || '6');
-    const labelPeriodo = horas === 0 ? 'TUDO (sem filtro de período)' : `últimas ${horas === 1 ? '1 hora' : horas < 48 ? horas + 'h' : (horas/24) + ' dias'}`;
-    if (!confirm(`Normalizar mercados e clubes em inglês para português no banco de dados?\nPeríodo: ${labelPeriodo}\n\nEsta ação atualizará os registros existentes. Não pode ser desfeita.`)) return;
-    try {
-        const r = await fetch('/api/bet365/admin/normalizar-dados', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ horas })
-        });
-        const d = await r.json();
-        if (d.success) {
-            const det = d.detalhes.length ? '\n\n' + d.detalhes.join('\n') : '';
-            if (d.total === 0) {
-                alert('ℹ️ Nenhum registro em inglês encontrado. O banco já está normalizado.');
-            } else {
-                alert(`✅ Normalização concluída!\n${d.total} registro(s) atualizado(s).${det}`);
-                await carregarTudo();
-            }
-        } else {
-            alert('❌ Erro: ' + (d.error || 'desconhecido'));
+    const labelPeriodo = horas === 0 ? 'TUDO (sem filtro)' : `últimas ${horas === 1 ? '1 hora' : horas < 48 ? horas + 'h' : (horas/24) + ' dias'}`;
+    if (!confirm(`Normalizar mercados e clubes EN→PT\nPeríodo: ${labelPeriodo}\n\nNão pode ser desfeito. Continuar?`)) return;
+
+    const wrap = document.getElementById('norm-progress-wrap');
+    const bar  = document.getElementById('norm-progress-bar');
+    const lbl  = document.getElementById('norm-progress-label');
+    const pct  = document.getElementById('norm-progress-pct');
+    const aff  = document.getElementById('norm-progress-affected');
+
+    wrap.style.display = 'block';
+    bar.style.width = '0%';
+    lbl.textContent = 'Conectando…';
+    pct.textContent = '0%';
+    aff.textContent = '0 atualizados';
+
+    const es = new EventSource(`/api/bet365/admin/normalizar-dados-stream?horas=${horas}`);
+
+    es.onmessage = (e) => {
+        let d;
+        try { d = JSON.parse(e.data); } catch { return; }
+
+        if (d.error) {
+            es.close();
+            wrap.style.display = 'none';
+            alert('❌ Erro: ' + d.error);
+            return;
         }
-    } catch(e) {
-        alert('❌ Erro: ' + e.message);
-    }
+        if (d.done) {
+            es.close();
+            bar.style.width = '100%';
+            pct.textContent = '100%';
+            lbl.textContent = 'Concluído';
+            aff.textContent = `${d.total} atualizados`;
+            setTimeout(() => { wrap.style.display = 'none'; }, 3000);
+            if (d.total === 0) {
+                alert('ℹ️ Nenhum registro em inglês encontrado. Banco já normalizado.');
+            } else {
+                const det = d.detalhes.length ? '\n' + d.detalhes.slice(0,15).join('\n') + (d.detalhes.length > 15 ? `\n…+${d.detalhes.length-15} outros` : '') : '';
+                alert(`✅ Normalização concluída!\n${d.total} registro(s) atualizado(s).${det}`);
+                carregarTudo();
+            }
+            return;
+        }
+        const p = Math.round(d.step / d.total * 100);
+        bar.style.width = p + '%';
+        pct.textContent = p + '%';
+        lbl.textContent = d.label + (d.affected ? ` (+${d.affected})` : '');
+        aff.textContent = `${d.totalAffected} atualizados`;
+    };
+
+    es.onerror = () => {
+        es.close();
+        wrap.style.display = 'none';
+        alert('❌ Conexão perdida durante a normalização.');
+    };
 }
 
 async function confirmarExcluirLiga(liga) {
