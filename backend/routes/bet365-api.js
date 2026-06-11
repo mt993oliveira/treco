@@ -70,13 +70,14 @@ async function getDbPool() {
 const _analiseApiCache = new Map(); // cacheKey → { data, ts }
 const _ANALISE_CACHE_TTL = 90_000; // 90s — maior que o cache do frontend (60s)
 // TTL de historico-mercados — lido de bet365_config.historico_cache_segundos a cada 30s
-let _histCacheTTLms = 10_000;
+// Mínimo de 30s para evitar thundering herd mesmo com config = 0
+let _histCacheTTLms = 30_000;
 async function _loadHistCacheTTL() {
     try {
         const p = await getDbPool();
         const r = await p.request().query("SELECT valor FROM bet365_config WHERE chave = 'historico_cache_segundos'");
         const v = parseInt(r.recordset[0]?.valor);
-        if (!isNaN(v) && v >= 0) _histCacheTTLms = v * 1000;
+        if (!isNaN(v)) _histCacheTTLms = Math.max(30_000, v * 1000);
     } catch(_) {}
 }
 _loadHistCacheTTL();
@@ -102,6 +103,18 @@ setInterval(() => {
         if (now - v.ts > _ANALISE_CACHE_TTL) _analiseApiCache.delete(k);
     }
 }, 300_000);
+
+// ── Deduplicação de requisições concorrentes (thundering herd) ───────────────
+// Se 10 clientes pedem /historico-mercados?horas=12 ao mesmo tempo e o cache
+// expirou, apenas 1 query roda no banco — os outros 9 aguardam e recebem o mesmo
+// resultado sem disparar queries extras.
+const _pendingRequests = new Map(); // cacheKey → Promise
+function _dedupRequest(key, fn) {
+    if (_pendingRequests.has(key)) return _pendingRequests.get(key);
+    const p = fn().finally(() => _pendingRequests.delete(key));
+    _pendingRequests.set(key, p);
+    return p;
+}
 
 /**
  * GET /api/bet365/eventos
@@ -880,12 +893,16 @@ router.post('/limpar-ligas-descartadas', async (req, res) => {
 router.get('/historico-mercados', async (req, res) => {
     try {
         const { liga, horas = 24, incluirFuturos = 'false' } = req.query;
-        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 720);
+        // Cap de 72h — mais que isso causa queries de vários minutos e spikes de memória
+        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 72);
         const comFuturos = incluirFuturos === 'true';
 
         const _ck = `hist:${horasNum}:${liga||'all'}:${comFuturos}`;
         const _ce = _analiseApiCache.get(_ck);
         if (_ce && Date.now() - _ce.ts <= _histCacheTTLms) return res.json(_ce.data);
+
+        // Deduplicação: se já há uma query em andamento para a mesma chave, aguarda ela
+        return res.json(await _dedupRequest(_ck, async () => {
 
         const pool = await getDbPool();
 
@@ -1182,7 +1199,8 @@ router.get('/historico-mercados', async (req, res) => {
 
         const _respHist = { success: true, total: partidas.length, horas: horasNum, ligas, partidas };
         _apiCacheSet(_ck, _respHist);
-        res.json(_respHist);
+        return _respHist;
+    }));
     } catch (error) {
         console.error('❌ ERRO API bet365/historico-mercados:', error.message);
         res.status(500).json({ success: false, error: error.message });
