@@ -182,13 +182,38 @@ router.post('/webhook', async (req, res) => {
     try {
         if (!pool) throw new Error('Sem conexão com banco');
 
-        // Evita duplicidade: verifica se já existe assinatura para este purchase_id
+        // Deduplicação 1: mesmo purchase_id já registrado
         if (purchaseId) {
             const dup = await pool.request()
                 .input('pid', sql.NVarChar, purchaseId)
                 .query(`SELECT 1 FROM kirvano_assinaturas WHERE kirvano_purchase_id = @pid`);
             if (dup.recordset.length > 0) {
                 console.log('[Kirvano] Purchase já processado:', purchaseId);
+                return res.json({ received: true, action: 'duplicate' });
+            }
+        }
+        // Deduplicação 2: mesmo subscription_id já registrado
+        if (subId) {
+            const dupSub = await pool.request()
+                .input('sid', sql.NVarChar, subId)
+                .query(`SELECT 1 FROM kirvano_assinaturas WHERE kirvano_subscription_id = @sid`);
+            if (dupSub.recordset.length > 0) {
+                console.log('[Kirvano] Subscription já processada:', subId);
+                return res.json({ received: true, action: 'duplicate' });
+            }
+        }
+        // Deduplicação 3: mesmo email criado/renovado nos últimos 10 min
+        // Evita que dois eventos distintos da mesma compra (ex: SALE_APPROVED + SUBSCRIPTION_ACTIVE)
+        // adicionem 30+30 dias ao invés de 30 dias
+        if (emailCliente) {
+            const dupEmail = await pool.request()
+                .input('email', sql.NVarChar, emailCliente)
+                .query(`SELECT 1 FROM kirvano_assinaturas
+                        WHERE email_cliente = @email
+                          AND data_criacao >= DATEADD(MINUTE, -10, GETUTCDATE())`);
+            if (dupEmail.recordset.length > 0) {
+                console.log('[Kirvano] Email já processado nos últimos 10 min (dup. de evento):', emailCliente);
+                await _logWebhook(pool, { evento, email: emailCliente, action: 'duplicate', payload });
                 return res.json({ received: true, action: 'duplicate' });
             }
         }

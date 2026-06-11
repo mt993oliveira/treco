@@ -861,52 +861,72 @@ app.post('/api/contas/receber/delete', requireAuth, async (req, res) => {
     }
 });
 
-// Rota para carregar usuários (apenas para masters) - VERSÃO CORRIGIDA
+// Rota para carregar usuários (apenas para masters) — paginada + filtros
 app.post('/api/usuarios', requireAuth, async (req, res) => {
-    const { sqlConfig } = req.body;
-
+    const { sqlConfig, pagina = 1, porPagina = 10,
+            filtroAtivo, filtroTipo, filtroExpirando, busca } = req.body;
     try {
         await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
-        // UMA única query: traz todos os usuários + tipo do requisitante via subquery
-        // Elimina o round-trip extra ao servidor remoto
-        const req2 = sqlConnectionPool.request();
-        req2.input('uid', sql.Int, req.body.usuarioId);
-        const result = await req2.query(`
-            SELECT Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario,
-                   DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso,
-                   (SELECT TipoUsuario FROM Usuarios WHERE Id = @uid) AS _RequesterTipo
-            FROM Usuarios
-            ORDER BY Id DESC
-        `);
-
-        const _chkTipo = ((result.recordset[0] || {})._RequesterTipo || '').toLowerCase();
+        // Verifica permissão do requisitante
+        const authR = sqlConnectionPool.request();
+        authR.input('uid', sql.Int, req.body.usuarioId);
+        const authRes = await authR.query(`SELECT TipoUsuario FROM Usuarios WHERE Id = @uid`);
+        const _chkTipo = ((authRes.recordset[0] || {}).TipoUsuario || '').toLowerCase();
         if (!_chkTipo || (_chkTipo !== 'master' && _chkTipo !== 'administrador' && _chkTipo !== 'admin')) {
             return res.json({ success: false, message: 'Acesso não autorizado' });
         }
 
-        // CORREÇÃO: Garantir que sempre retorne 'data'
-        const usuarios = result.recordset || [];
+        // Monta filtros dinâmicos
+        const wheres = [];
+        const r = sqlConnectionPool.request();
+        r.input('uid', sql.Int, req.body.usuarioId);
 
-        // Para cada usuário, converter as datas para o formato correto e remover campo interno
-        const usuariosFormatados = usuarios.map(({ _RequesterTipo, ...usuario }) => ({
-            ...usuario,
-            DataInicioLicenca: usuario.DataInicioLicenca ? new Date(usuario.DataInicioLicenca).toISOString() : null,
-            DataFimLicenca: usuario.DataFimLicenca ? new Date(usuario.DataFimLicenca).toISOString() : null
+        if (filtroAtivo === 'ativo')   { wheres.push('Ativo = 1'); }
+        if (filtroAtivo === 'inativo') { wheres.push('Ativo = 0'); }
+        if (filtroTipo && filtroTipo !== 'todos') {
+            wheres.push('TipoUsuario = @filtroTipo');
+            r.input('filtroTipo', sql.NVarChar, filtroTipo);
+        }
+        if (filtroExpirando) {
+            wheres.push(`DataFimLicenca BETWEEN GETUTCDATE() AND DATEADD(DAY, 7, GETUTCDATE())`);
+        }
+        if (busca && busca.trim()) {
+            wheres.push(`(NomeCompleto LIKE @busca OR Usuario LIKE @busca OR Email LIKE @busca)`);
+            r.input('busca', sql.NVarChar, `%${busca.trim()}%`);
+        }
+
+        const whereSQL = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
+        const pp  = Math.max(1, Math.min(100, parseInt(porPagina) || 10));
+        const pag = Math.max(1, parseInt(pagina) || 1);
+        const off = (pag - 1) * pp;
+
+        r.input('off', sql.Int, off);
+        r.input('pp',  sql.Int, pp);
+
+        const result = await r.query(`
+            SELECT COUNT(*) AS total FROM Usuarios ${whereSQL};
+            SELECT Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario,
+                   DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso
+            FROM Usuarios
+            ${whereSQL}
+            ORDER BY DataCriacao DESC
+            OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY;
+        `);
+
+        const total    = result.recordsets[0][0].total;
+        const usuarios = result.recordsets[1] || [];
+        const usuariosFormatados = usuarios.map(u => ({
+            ...u,
+            DataInicioLicenca: u.DataInicioLicenca ? new Date(u.DataInicioLicenca).toISOString() : null,
+            DataFimLicenca:    u.DataFimLicenca    ? new Date(u.DataFimLicenca).toISOString()    : null,
         }));
 
-        res.json({
-            success: true,
-            data: usuariosFormatados
-        });
+        res.json({ success: true, data: usuariosFormatados, total, pagina: pag, porPagina: pp });
 
     } catch (error) {
         console.error('Erro na rota /api/usuarios:', error);
-        res.json({
-            success: false,
-            message: error.message,
-            data: [] // Sempre retorna data mesmo em caso de erro
-        });
+        res.json({ success: false, message: error.message, data: [], total: 0 });
     }
 });
 

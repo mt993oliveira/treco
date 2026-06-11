@@ -1093,12 +1093,41 @@
             <div id="usr-inc-todos-msg" style="font-size:11px;margin-top:8px;display:none"></div>
         </div>
 
-        <!-- Busca rápida -->
-        <input id="usr-busca" type="text" placeholder="Buscar por nome, usuário ou e-mail..."
-            oninput="filtrarTabelaUsuarios()"
-            style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
-                   padding:7px 10px;font-size:11px;outline:none;margin-bottom:12px"
-            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+        <!-- Busca rápida + filtros -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+            <input id="usr-busca" type="text" placeholder="Buscar por nome, usuário ou e-mail..."
+                oninput="_usuariosBuscaDebounce()"
+                style="flex:1;min-width:180px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                       padding:7px 10px;font-size:11px;outline:none"
+                onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            <select id="usr-filtro-ativo" onchange="_carregarUsuarios(1)"
+                style="background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                       padding:6px 8px;font-size:11px;outline:none;cursor:pointer">
+                <option value="">Todos</option>
+                <option value="ativo">Ativos</option>
+                <option value="inativo">Inativos</option>
+            </select>
+            <select id="usr-filtro-tipo" onchange="_carregarUsuarios(1)"
+                style="background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                       padding:6px 8px;font-size:11px;outline:none;cursor:pointer">
+                <option value="todos">Todos tipos</option>
+                <option value="user">Usuário</option>
+                <option value="admin">Admin</option>
+                <option value="master">Master</option>
+            </select>
+            <button id="usr-filtro-exp-btn" onclick="_toggleFiltroExpirando()"
+                style="background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:5px;
+                       padding:6px 10px;font-size:11px;cursor:pointer;white-space:nowrap"
+                title="Mostrar apenas usuários com licença expirando nos próximos 7 dias">
+                ⚠️ Expirando 7d
+            </button>
+        </div>
+
+        <!-- Contagem total -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span id="usr-total-label" style="font-size:10px;color:#475569">Carregando...</span>
+            <span id="usr-pagina-label" style="font-size:10px;color:#334155"></span>
+        </div>
 
         <div style="overflow-x:auto">
             <table style="width:100%;border-collapse:collapse;font-size:11px" id="tbl-usuarios">
@@ -1115,10 +1144,13 @@
                     </tr>
                 </thead>
                 <tbody id="tbody-usuarios">
-                    <tr><td colspan="7" style="padding:24px;text-align:center;color:#334155">Carregando...</td></tr>
+                    <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando...</td></tr>
                 </tbody>
             </table>
         </div>
+
+        <!-- Paginação -->
+        <div id="usr-paginacao" style="display:flex;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap"></div>
 
     </div>
 </div>
@@ -13491,33 +13523,94 @@ function _pingSession() {
     }).catch(() => {});
 }
 
-async function _carregarUsuarios() {
+let _usuariosPagina = 1;
+let _usuariosFiltroExp = false;
+let _usuariosBuscaTimer = null;
+
+async function _carregarUsuarios(pag) {
+    if (pag !== undefined) _usuariosPagina = pag;
     const tbody = document.getElementById('tbody-usuarios');
     tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#334155">Carregando...</td></tr>';
     try {
         const u = _getUser();
+        const body = {
+            usuarioId:       u?.Id,
+            pagina:          _usuariosPagina,
+            porPagina:       10,
+            filtroAtivo:     document.getElementById('usr-filtro-ativo')?.value || '',
+            filtroTipo:      document.getElementById('usr-filtro-tipo')?.value  || 'todos',
+            filtroExpirando: _usuariosFiltroExp,
+            busca:           document.getElementById('usr-busca')?.value || '',
+        };
         const r = await fetch('/api/usuarios', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: u?.Id }),
+            body: JSON.stringify(body),
         });
         const d = await r.json();
         if (!d.success) throw new Error(d.message || 'Erro');
         _todosUsuarios = d.data || [];
+        const total = d.total || 0;
+        const pp    = d.porPagina || 10;
+        const totalPag = Math.ceil(total / pp);
+
+        document.getElementById('usr-total-label').textContent =
+            `${total} usuário${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`;
+        document.getElementById('usr-pagina-label').textContent =
+            totalPag > 1 ? `Página ${_usuariosPagina} de ${totalPag}` : '';
+
         _renderTabelaUsuarios(_todosUsuarios);
+        _renderPaginacaoUsuarios(total, _usuariosPagina, pp);
     } catch(e) {
-        tbody.innerHTML = `<tr><td colspan="7" style="padding:20px;text-align:center;color:#ef4444">Erro: ${escHtml(e.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="padding:20px;text-align:center;color:#ef4444">Erro: ${escHtml(e.message)}</td></tr>`;
     }
 }
 
-function filtrarTabelaUsuarios() {
-    const q = document.getElementById('usr-busca').value.toLowerCase();
-    const filtrados = _todosUsuarios.filter(u =>
-        (u.NomeCompleto || '').toLowerCase().includes(q) ||
-        (u.Usuario || '').toLowerCase().includes(q) ||
-        (u.Email || '').toLowerCase().includes(q)
-    );
-    _renderTabelaUsuarios(filtrados);
+function _usuariosBuscaDebounce() {
+    clearTimeout(_usuariosBuscaTimer);
+    _usuariosBuscaTimer = setTimeout(() => _carregarUsuarios(1), 350);
+}
+
+function filtrarTabelaUsuarios() { _carregarUsuarios(1); }
+
+function _toggleFiltroExpirando() {
+    _usuariosFiltroExp = !_usuariosFiltroExp;
+    const btn = document.getElementById('usr-filtro-exp-btn');
+    if (btn) {
+        btn.style.borderColor  = _usuariosFiltroExp ? '#f59e0b' : '#334155';
+        btn.style.color        = _usuariosFiltroExp ? '#fbbf24' : '#94a3b8';
+        btn.style.background   = _usuariosFiltroExp ? '#1c1206' : '#0f172a';
+    }
+    _carregarUsuarios(1);
+}
+
+function _renderPaginacaoUsuarios(total, pagina, pp) {
+    const cont = document.getElementById('usr-paginacao');
+    if (!cont) return;
+    const totalPag = Math.ceil(total / pp);
+    if (totalPag <= 1) { cont.innerHTML = ''; return; }
+
+    const btnStyle = (ativo) =>
+        `background:${ativo ? '#2563eb' : '#0f172a'};border:1px solid ${ativo ? '#2563eb' : '#334155'};` +
+        `color:${ativo ? '#fff' : '#64748b'};border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer`;
+
+    let html = '';
+    html += `<button style="${btnStyle(false)}" onclick="_carregarUsuarios(${pagina - 1})"
+                ${pagina <= 1 ? 'disabled style="opacity:.3;cursor:default"' : ''}>‹</button>`;
+
+    const start = Math.max(1, pagina - 2);
+    const end   = Math.min(totalPag, pagina + 2);
+    if (start > 1) html += `<button style="${btnStyle(false)}" onclick="_carregarUsuarios(1)">1</button>`;
+    if (start > 2) html += `<span style="color:#334155;padding:4px 2px">…</span>`;
+    for (let p = start; p <= end; p++) {
+        html += `<button style="${btnStyle(p === pagina)}" onclick="_carregarUsuarios(${p})">${p}</button>`;
+    }
+    if (end < totalPag - 1) html += `<span style="color:#334155;padding:4px 2px">…</span>`;
+    if (end < totalPag) html += `<button style="${btnStyle(false)}" onclick="_carregarUsuarios(${totalPag})">${totalPag}</button>`;
+
+    html += `<button style="${btnStyle(false)}" onclick="_carregarUsuarios(${pagina + 1})"
+                ${pagina >= totalPag ? 'disabled style="opacity:.3;cursor:default"' : ''}>›</button>`;
+    cont.innerHTML = html;
 }
 
 function _renderTabelaUsuarios(lista) {
