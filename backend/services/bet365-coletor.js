@@ -976,6 +976,10 @@ class Bet365Coletor {
         for (let i = 0; i < ligasFiltradas.length; i++) {
             const liga = ligasFiltradas[i];
 
+            // Garante que a aba está em foco antes de qualquer interação
+            // (evita throttling do Chromium quando o browser está em background)
+            await pg.bringToFront().catch(() => {});
+
             // Clica na aba PELO NOME (não pelo índice) — evita erro após F5
             const clicou = await pg.evaluate((nomeLiga) => {
                 const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
@@ -1009,6 +1013,7 @@ class Bet365Coletor {
             let recarregouOk = false;
             for (let r = 1; r <= 2; r++) {
                 try {
+                    await pg.bringToFront().catch(() => {}); // foco antes do F5
                     await this._hardRefresh(pg, this._cfgNum('timeout_navegacao_ms', 30000));
                     await this._delay(this._cfgNum('delay_pos_reload_ms', 8000));
                     await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
