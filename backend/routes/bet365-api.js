@@ -141,7 +141,7 @@ router.get('/eventos', async (req, res) => {
             FROM bet365_eventos e
             WHERE e.ativo = 1
               AND e.start_time_datetime >= DATEADD(HOUR, -2, GETUTCDATE())
-              AND e.start_time_datetime <= DATEADD(HOUR, 48, GETUTCDATE())
+              AND e.start_time_datetime <= DATEADD(MINUTE, 35, GETUTCDATE())
         `;
 
         if (liga) {
@@ -347,7 +347,7 @@ router.get('/eventos-completos', async (req, res) => {
                 FROM bet365_eventos e
                 WHERE e.ativo = 1
                   AND e.start_time_datetime >= DATEADD(HOUR, -2, GETUTCDATE())
-                  AND e.start_time_datetime <= DATEADD(HOUR, 48, GETUTCDATE())
+                  AND e.start_time_datetime <= DATEADD(MINUTE, 35, GETUTCDATE())
                 ORDER BY
                     CASE WHEN e.status = 'EM_ANDAMENTO' THEN 0 ELSE 1 END ASC,
                     ISNULL(e.start_time_datetime, '9999-12-31') ASC
