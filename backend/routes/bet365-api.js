@@ -893,8 +893,7 @@ router.post('/limpar-ligas-descartadas', async (req, res) => {
 router.get('/historico-mercados', async (req, res) => {
     try {
         const { liga, horas = 24, incluirFuturos = 'false' } = req.query;
-        // Cap de 72h — mais que isso causa queries de vários minutos e spikes de memória
-        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 72);
+        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 720);
         const comFuturos = incluirFuturos === 'true';
 
         const _ck = `hist:${horasNum}:${liga||'all'}:${comFuturos}`;
