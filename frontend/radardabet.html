@@ -1311,17 +1311,19 @@
                 </button>
             </div>
             <!-- Painel financeiro (ativos) -->
-            <div id="kirv-totais" style="background:#0c1220;border:1px solid #1e293b;border-radius:6px;padding:8px 14px;min-width:200px">
-                <div style="color:#475569;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">💰 Financeiro (ativos)</div>
-                <div style="display:grid;grid-template-columns:1fr auto;gap:3px 14px;align-items:center">
-                    <span style="color:#64748b;font-size:9px">Valor total</span>
-                    <span id="kirv-tot-bruto" style="color:#e2e8f0;font-size:9px;text-align:right;font-weight:600">—</span>
-                    <span style="color:#64748b;font-size:9px">Taxa plataforma</span>
+            <div id="kirv-totais" style="background:#0c1220;border:1px solid #1e293b;border-radius:6px;padding:8px 14px;min-width:230px">
+                <div style="color:#475569;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px">💰 Financeiro — assinaturas ativas</div>
+                <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;align-items:center">
+                    <span style="color:#64748b;font-size:9px">Vendas aprovadas</span>
+                    <span id="kirv-tot-count" style="color:#e2e8f0;font-size:9px;text-align:right;font-weight:700">—</span>
+                    <span style="color:#64748b;font-size:9px">Ticket médio</span>
+                    <span id="kirv-tot-ticket" style="color:#94a3b8;font-size:9px;text-align:right">—</span>
+                    <span style="color:#64748b;font-size:9px">Valor total cobrado</span>
+                    <span id="kirv-tot-bruto" style="color:#94a3b8;font-size:9px;text-align:right">—</span>
+                    <span style="color:#64748b;font-size:9px">Taxa Kirvano</span>
                     <span id="kirv-tot-taxa" style="color:#f87171;font-size:9px;text-align:right">—</span>
-                    <span style="color:#64748b;font-size:9px">Sua comissão</span>
-                    <span id="kirv-tot-com" style="color:#4ade80;font-size:9px;text-align:right">—</span>
-                    <span style="color:#64748b;font-size:9px">Valor líquido</span>
-                    <span id="kirv-tot-liq" style="color:#1fcc59;font-size:9px;text-align:right;font-weight:700">—</span>
+                    <span style="color:#64748b;font-size:9px;font-weight:600">Receita líquida</span>
+                    <span id="kirv-tot-com" style="color:#1fcc59;font-size:10px;text-align:right;font-weight:700">—</span>
                 </div>
             </div>
         </div>
@@ -15383,7 +15385,7 @@ function abrirKirvano() {
 
 async function _kirvCarregarTotais() {
     const uid = _getUser()?.Id;
-    const ids = ['kirv-tot-bruto','kirv-tot-taxa','kirv-tot-com','kirv-tot-liq'];
+    const ids = ['kirv-tot-count','kirv-tot-ticket','kirv-tot-bruto','kirv-tot-taxa','kirv-tot-com'];
     ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '...'; });
     try {
         const r = await fetch('/api/kirvano/admin/totais', {
@@ -15393,10 +15395,11 @@ async function _kirvCarregarTotais() {
         const d = await r.json();
         if (!d.success) return;
         const fmt = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-        document.getElementById('kirv-tot-bruto').textContent = fmt(d.bruto);
-        document.getElementById('kirv-tot-taxa').textContent  = fmt(d.taxa);
-        document.getElementById('kirv-tot-com').textContent   = fmt(d.comissao);
-        document.getElementById('kirv-tot-liq').textContent   = fmt(d.liquido);
+        document.getElementById('kirv-tot-count').textContent  = d.count;
+        document.getElementById('kirv-tot-ticket').textContent = fmt(d.ticketMedio);
+        document.getElementById('kirv-tot-bruto').textContent  = fmt(d.bruto);
+        document.getElementById('kirv-tot-taxa').textContent   = fmt(d.taxa);
+        document.getElementById('kirv-tot-com').textContent    = fmt(d.comissao);
     } catch (_) {
         ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
     }

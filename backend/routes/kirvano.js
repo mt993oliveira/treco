@@ -472,18 +472,19 @@ router.post('/admin/totais', async (req, res) => {
                               THEN kirvano_purchase_id ELSE CAST(id AS NVARCHAR) END
               )
         `);
-        let bruto = 0, taxa = 0, comissao = 0, liquido = 0, afiliado = 0;
+        let bruto = 0, taxa = 0, comissao = 0, afiliado = 0;
         for (const row of r.recordset) {
             try {
                 const f = (JSON.parse(row.payload_raw || '{}')).fiscal || {};
                 bruto    += Number(f.total_value || 0);
                 taxa     += Number(f.fee || 0);
                 comissao += Number(f.commission || 0);
-                liquido  += Number(f.net_value || 0);
                 afiliado += Number(f.affiliate_commission || 0);
             } catch (_) {}
         }
-        res.json({ success: true, count: r.recordset.length, bruto, taxa, comissao, liquido, afiliado });
+        const count = r.recordset.length;
+        const ticketMedio = count > 0 ? comissao / count : 0;
+        res.json({ success: true, count, bruto, taxa, comissao, ticketMedio, afiliado });
     } catch (e) {
         res.json({ success: false, message: e.message });
     }
