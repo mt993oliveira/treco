@@ -868,15 +868,6 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
     try {
         await connectSQL(sqlConfig || getDatabaseConfigFromEnv());
 
-        // Verifica permissão do requisitante
-        const authR = sqlConnectionPool.request();
-        authR.input('uid', sql.Int, req.body.usuarioId);
-        const authRes = await authR.query(`SELECT TipoUsuario FROM Usuarios WHERE Id = @uid`);
-        const _chkTipo = ((authRes.recordset[0] || {}).TipoUsuario || '').toLowerCase();
-        if (!_chkTipo || (_chkTipo !== 'master' && _chkTipo !== 'administrador' && _chkTipo !== 'admin')) {
-            return res.json({ success: false, message: 'Acesso não autorizado' });
-        }
-
         // Monta filtros dinâmicos
         const wheres = [];
         const r = sqlConnectionPool.request();
@@ -904,19 +895,26 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
         r.input('off', sql.Int, off);
         r.input('pp',  sql.Int, pp);
 
+        // 1 única query: auth check + total + dados paginados — zero round trips extras
         const result = await r.query(`
-            SELECT COUNT(*) AS total FROM Usuarios ${whereSQL};
-            SELECT Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario,
-                   DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso
+            SELECT
+                Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario,
+                DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso,
+                COUNT(*) OVER() AS _total,
+                (SELECT TipoUsuario FROM Usuarios WHERE Id = @uid) AS _RequesterTipo
             FROM Usuarios
             ${whereSQL}
             ORDER BY DataCriacao DESC
-            OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY;
+            OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
         `);
 
-        const total    = result.recordsets[0][0].total;
-        const usuarios = result.recordsets[1] || [];
-        const usuariosFormatados = usuarios.map(u => ({
+        const _chkTipo = ((result.recordset[0] || {})._RequesterTipo || '').toLowerCase();
+        if (!_chkTipo || (_chkTipo !== 'master' && _chkTipo !== 'administrador' && _chkTipo !== 'admin')) {
+            return res.json({ success: false, message: 'Acesso não autorizado' });
+        }
+
+        const total = result.recordset[0]?._total ?? 0;
+        const usuariosFormatados = result.recordset.map(({ _total, _RequesterTipo, ...u }) => ({
             ...u,
             DataInicioLicenca: u.DataInicioLicenca ? new Date(u.DataInicioLicenca).toISOString() : null,
             DataFimLicenca:    u.DataFimLicenca    ? new Date(u.DataFimLicenca).toISOString()    : null,
