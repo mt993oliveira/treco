@@ -15422,7 +15422,15 @@ async function _kirvCarregarAss(pagina) {
                 <td style="${td}"><span style="color:#475569;font-family:monospace;font-size:8px" title="${escHtml(a.kirvano_purchase_id||'')}">${escHtml((a.kirvano_purchase_id||'—').substring(0,16))}...</span></td>
             </tr>`;
         }).join('');
-        el.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:820px">
+        const _fmtBRL = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+        const summaryBar = `<div style="display:flex;gap:16px;padding:8px 14px;background:#0c1220;border-radius:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center;border:1px solid #1e293b">
+            <span style="color:#475569;font-size:10px">${d.total} registro(s)</span>
+            <span style="color:#334155;font-size:10px">|</span>
+            <span style="font-size:10px">💰 <span style="color:#64748b">Receita (filtro):</span> <b style="color:#4ade80">${_fmtBRL(d.valorTotal)}</b></span>
+            <span style="color:#334155;font-size:10px">|</span>
+            <span style="font-size:10px">✅ <span style="color:#64748b">Ativos:</span> <b style="color:#60a5fa">${_fmtBRL(d.valorAtivo)}</b></span>
+        </div>`;
+        el.innerHTML = summaryBar + `<table style="width:100%;border-collapse:collapse;min-width:820px">
             <thead><tr>
                 <th style="${th}">#</th>
                 <th style="${th}">EMAIL / NOME</th>
@@ -15475,9 +15483,6 @@ async function _kirvCarregarWh(pagina) {
             const as = ACTION_STYLE[w.action] || { bg:'#0f172a', color:'#94a3b8' };
             const dt = w.recebido_em ? new Date(w.recebido_em).toLocaleString('pt-BR') : '—';
             const payloadId = `kirv-payload-${w.id}`;
-            let payloadFormatado = '';
-            try { payloadFormatado = JSON.stringify(JSON.parse(w.payload_raw), null, 2); }
-            catch { payloadFormatado = w.payload_raw || ''; }
             return `<tr onmouseover="this.style.background='#0a1020'" onmouseout="this.style.background=''">
                 <td style="${td}"><span style="color:#475569;font-size:9px">#${w.id}</span></td>
                 <td style="${td}"><span style="color:#64748b;font-size:9px">${dt}</span></td>
@@ -15488,7 +15493,7 @@ async function _kirvCarregarWh(pagina) {
             </tr>
             <tr id="${payloadId}" style="display:none">
                 <td colspan="6" style="padding:0 8px 8px 8px;background:#080e1a">
-                    <pre style="margin:0;padding:10px;background:#0d1421;border-radius:6px;font-size:9px;color:#94a3b8;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto">${escHtml(payloadFormatado)}</pre>
+                    ${_kirvFormatPayload(w.payload_raw)}
                 </td>
             </tr>`;
         }).join('');
@@ -15507,6 +15512,59 @@ async function _kirvCarregarWh(pagina) {
     } catch(e) {
         el.innerHTML = `<p style="color:#f87171;font-size:11px;text-align:center;padding:20px">Erro: ${escHtml(e.message)}</p>`;
     }
+}
+
+function _kirvFormatPayload(raw) {
+    let p;
+    try { p = JSON.parse(raw); } catch {
+        return `<pre style="margin:0;padding:10px;background:#0d1421;border-radius:6px;font-size:9px;color:#94a3b8;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto">${escHtml(raw||'')}</pre>`;
+    }
+    const c = p.customer || {};
+    const pay = p.payment || {};
+    const fiscal = p.fiscal || {};
+    const products = Array.isArray(p.products) ? p.products : [];
+    const hasKirvano = p.event || c.email || products.length;
+    if (!hasKirvano) {
+        return `<pre style="margin:0;padding:10px;background:#0d1421;border-radius:6px;font-size:9px;color:#94a3b8;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto">${escHtml(JSON.stringify(p,null,2))}</pre>`;
+    }
+    const fmtN = v => { const n = parseFloat(String(v||0).replace('R$','').replace(',','.').trim()); return isNaN(n) ? String(v||'—') : 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    const row = (lbl,val,col='#94a3b8') => val!=null && val!=='' && val!==0 && val!=='0.00'
+        ? `<div style="display:flex;gap:6px;padding:3px 0;border-bottom:1px solid #0f172a"><span style="color:#475569;font-size:9px;min-width:130px;flex-shrink:0">${lbl}</span><span style="color:${col};font-size:9px;word-break:break-all">${escHtml(String(val))}</span></div>` : '';
+    const sec = (t,r) => `<div style="padding:8px 10px;background:#0d1421;border-radius:6px;margin:0 8px 6px 8px"><div style="color:#475569;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">${t}</div>${r}</div>`;
+    const metodoPag = [pay.method, pay.brand, pay.installments>1 ? pay.installments+'x' : ''].filter(Boolean).join(' · ');
+    let html = '<div style="padding:8px 0">';
+    html += sec('📋 Evento',
+        row('Tipo', p.event, '#a78bfa') +
+        row('Descrição', p.event_description, '#c4b5fd') +
+        row('Data compra', p.created_at||pay.finished_at, '#64748b') +
+        row('Sale ID', p.sale_id||p.checkout_id, '#475569'));
+    html += sec('👤 Cliente',
+        row('Nome', c.name, '#e2e8f0') +
+        row('Email', c.email, '#7dd3fc') +
+        row('Telefone', c.phone_number, '#94a3b8') +
+        row('Documento', c.document, '#64748b'));
+    if (products.length) {
+        const pr = products[0];
+        html += sec('📦 Produto',
+            row('Nome', pr.name, '#4ade80') +
+            row('Oferta', pr.offer_name !== pr.name ? pr.offer_name : null, '#86efac') +
+            row('Preço', pr.price, '#4ade80') +
+            row('Tipo', p.type, '#64748b'));
+    }
+    html += sec('💳 Pagamento',
+        row('Método', metodoPag||pay.method, '#fbbf24') +
+        row('Total cobrado', p.total_price, '#4ade80') +
+        row('Finalizado em', pay.finished_at, '#64748b'));
+    if (fiscal.total_value) {
+        html += sec('💰 Financeiro',
+            row('Valor total', fmtN(fiscal.total_value), '#e2e8f0') +
+            row('Taxa plataforma', fmtN(fiscal.fee), '#f87171') +
+            row('Sua comissão', fmtN(fiscal.commission), '#4ade80') +
+            (fiscal.affiliate_commission ? row('Comissão afiliado', fmtN(fiscal.affiliate_commission), '#64748b') : '') +
+            row('Valor líquido', fmtN(fiscal.net_value), '#1fcc59'));
+    }
+    html += '</div>';
+    return html;
 }
 
 function _kirvTogglePayload(id) {

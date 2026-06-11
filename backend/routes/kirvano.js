@@ -380,8 +380,15 @@ router.post('/admin/assinaturas', async (req, res) => {
             mainReq.input('status', sql.NVarChar, status);
         }
         const w = wheres.length ? 'WHERE ' + wheres.join(' AND ') : '';
-        const cntResult = await cntReq.query(`SELECT COUNT(*) AS total FROM kirvano_assinaturas ${w}`);
-        const total = cntResult.recordset[0].total;
+        const cntResult = await cntReq.query(`
+            SELECT COUNT(*) AS total,
+                   ISNULL(SUM(valor), 0) AS valor_total,
+                   ISNULL(SUM(CASE WHEN status='ativo' THEN valor ELSE 0 END), 0) AS valor_ativo
+            FROM kirvano_assinaturas ${w}
+        `);
+        const total      = cntResult.recordset[0].total;
+        const valorTotal = cntResult.recordset[0].valor_total;
+        const valorAtivo = cntResult.recordset[0].valor_ativo;
         mainReq.input('off', sql.Int, off);
         mainReq.input('pp',  sql.Int, pp);
         const rows = await mainReq.query(`
@@ -391,7 +398,7 @@ router.post('/admin/assinaturas', async (req, res) => {
             ORDER BY data_criacao DESC
             OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
         `);
-        res.json({ success: true, total, pagina: Number(pagina), porPagina: pp, data: rows.recordset });
+        res.json({ success: true, total, valorTotal, valorAtivo, pagina: Number(pagina), porPagina: pp, data: rows.recordset });
     } catch (e) {
         res.json({ success: false, message: e.message });
     }
