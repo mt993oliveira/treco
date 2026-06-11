@@ -283,8 +283,14 @@ router.get('/ligas', async (req, res) => {
  * GET /api/bet365/stats
  * Retorna estatísticas gerais
  */
+const _statsCache = { data: null, ts: 0 };
+const _STATS_CACHE_TTL = 15_000; // 15s — chamado a cada refresh do frontend
+
 router.get('/stats', async (req, res) => {
     try {
+        if (_statsCache.data && Date.now() - _statsCache.ts < _STATS_CACHE_TTL) {
+            return res.json(_statsCache.data);
+        }
         const pool = await getDbPool();
 
         const eventosResult = await pool.query(`
@@ -305,13 +311,16 @@ router.get('/stats', async (req, res) => {
             ORDER BY data_inicio DESC
         `);
 
-        res.json({
+        const resp = {
             success: true,
             data: {
                 eventos: eventosResult.recordset[0],
                 ultima_coleta: logResult.recordset[0] || null
             }
-        });
+        };
+        _statsCache.data = resp;
+        _statsCache.ts   = Date.now();
+        res.json(resp);
 
     } catch (error) {
         console.error('❌ ERRO API bet365/stats:', error.message);
@@ -421,13 +430,20 @@ router.get('/eventos-completos', async (req, res) => {
  * GET /api/bet365/diagnostico
  * Retorna estado do banco (usa bet365_resultados_mercados como fonte principal)
  */
+const _diagCache = { data: null, ts: 0 };
+const _DIAG_CACHE_TTL = 30_000; // 30s — só master acessa, mas evita re-query em refresh rápido
+
 router.get('/diagnostico', async (req, res) => {
     try {
+        if (_diagCache.data && Date.now() - _diagCache.ts < _DIAG_CACHE_TTL) {
+            return res.json(_diagCache.data);
+        }
         const pool = await getDbPool();
 
         const [countEventos, countMercados, countMercados24h, ultimosEventos, ultimosMercados, mercadosPorLiga] = await Promise.all([
             pool.query(`SELECT COUNT(*) AS total FROM bet365_eventos WHERE ativo = 1`),
-            pool.query(`SELECT COUNT(DISTINCT evento_id) AS total FROM bet365_resultados_mercados`),
+            // filtro 30 dias evita full scan em tabela com meses de histórico
+            pool.query(`SELECT COUNT(DISTINCT evento_id) AS total FROM bet365_resultados_mercados WHERE data_partida >= DATEADD(DAY, -30, GETUTCDATE())`),
             pool.query(`SELECT COUNT(DISTINCT evento_id) AS total FROM bet365_resultados_mercados WHERE data_partida >= DATEADD(HOUR, -24, GETUTCDATE())`),
             pool.query(`SELECT TOP 10 id, time_casa, time_fora, league_name, status FROM bet365_eventos ORDER BY data_atualizacao DESC`),
             pool.query(`
@@ -435,17 +451,19 @@ router.get('/diagnostico', async (req, res) => {
                     MAX(CASE WHEN mercado='Resultado Final' THEN selecao END) AS resultado_final,
                     COUNT(*) AS total_mercados
                 FROM bet365_resultados_mercados
+                WHERE data_partida >= DATEADD(HOUR, -24, GETUTCDATE())
                 GROUP BY liga, time_casa, time_fora, data_partida
                 ORDER BY data_partida DESC
             `),
             pool.query(`
                 SELECT liga, COUNT(DISTINCT evento_id) AS total_jogos, MAX(data_partida) AS ultima_partida
                 FROM bet365_resultados_mercados
+                WHERE data_partida >= DATEADD(DAY, -30, GETUTCDATE())
                 GROUP BY liga ORDER BY total_jogos DESC
             `)
         ]);
 
-        res.json({
+        const resp = {
             success: true,
             data: {
                 eventosAtivos:       countEventos.recordset[0]?.total || 0,
@@ -455,7 +473,10 @@ router.get('/diagnostico', async (req, res) => {
                 ultimosResultados:   ultimosMercados.recordset,
                 porLiga:             mercadosPorLiga.recordset
             }
-        });
+        };
+        _diagCache.data = resp;
+        _diagCache.ts   = Date.now();
+        res.json(resp);
 
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -827,7 +848,8 @@ router.get('/estatisticas-avancadas', async (req, res) => {
 router.get('/log-coleta', async (req, res) => {
     try {
         const pool  = await getDbPool();
-        const limit = req.query.limit !== undefined ? parseInt(req.query.limit) : 20; // 0 = todos, undefined = default 20
+        // 0 = "Todos" no frontend, mas limitamos a 500 para evitar carregar histórico inteiro
+        const limit = req.query.limit !== undefined ? Math.min(parseInt(req.query.limit) || 500, 500) : 20;
         const dia   = req.query.dia || '';               // 'YYYY-MM-DD' ou vazio
 
         let whereClause = '';
