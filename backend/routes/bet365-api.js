@@ -7,6 +7,7 @@
 const express = require('express');
 const sql = require('mssql');
 const router = express.Router();
+const { TIMES_EN_PT: _TIMES_NORM, MERCADOS_EN_PT: _MCTS_NORM, LIGA_NORMALIZAR: _LIGA_NORM } = require('../utils/normalizacao');
 
 let sqlPool = null;
 
@@ -2105,100 +2106,27 @@ router.post('/admin/config', async (req, res) => {
     }
 });
 
-const TIMES_EN_PT = {
-    'Albania':'Albânia','Australia':'Austrália','Austria':'Áustria','Belgium':'Bélgica',
-    'Brazil':'Brasil','Cameroon':'Camarões','Canada':'Canadá','Croatia':'Croácia',
-    'Czechia':'República Tcheca','Czech Republic':'República Tcheca','Denmark':'Dinamarca',
-    'Ecuador':'Equador','England':'Inglaterra','France':'França','Georgia':'Geórgia',
-    'Germany':'Alemanha','Ghana':'Gana','Hungary':'Hungria','Iran':'Irã','Italy':'Itália',
-    'Japan':'Japão','Mexico':'México','Morocco':'Marrocos','Netherlands':'Países Baixos',
-    'Poland':'Polônia','Romania':'Romênia','Scotland':'Escócia','Senegal':'Senegal',
-    'Serbia':'Sérvia','Slovakia':'Eslováquia','Slovenia':'Eslovênia','South Korea':'Coreia do Sul',
-    'Spain':'Espanha','Switzerland':'Suíça','Tunisia':'Tunísia','Turkey':'Turquia',
-    'Ukraine':'Ucrânia','Uruguay':'Uruguai','USA':'EUA','Wales':'País de Gales',
-};
 
 /**
  * POST /api/bet365/admin/normalizar-dados
  * Normaliza mercados/times em inglês → português no banco
  */
 router.post('/admin/normalizar-dados', async (req, res) => {
-    req.socket.setTimeout(0); // operação longa, sem timeout HTTP
-    const horas = parseInt(req.body?.horas) || 0; // 0 = sem filtro de período
+    req.socket.setTimeout(0);
+    const horas = parseInt(req.body?.horas) || 0;
     try {
         const pool = await getDbPool();
-        const timesUpdates = Object.entries(TIMES_EN_PT).flatMap(([en, pt]) => [
-            [`UPDATE bet365_resultados_mercados SET time_casa='${pt}' WHERE time_casa='${en}'`, `time_casa ${pt}`],
-            [`UPDATE bet365_resultados_mercados SET time_fora='${pt}' WHERE time_fora='${en}'`, `time_fora ${pt}`],
-            [`UPDATE bet365_resultados_mercados SET selecao=STUFF(selecao,1,${en.length},'${pt}') WHERE mercado='Gols por Time' AND selecao LIKE '${en} - %'`, `selecao Gols por Time ${pt}`],
-        ]);
-        const updates = [
-            // Ligas
-            [`UPDATE bet365_resultados_mercados SET liga='World Cup' WHERE liga IN ('Copa do Mundo','World Cup Virtual')`, 'liga World Cup'],
-            [`UPDATE bet365_resultados_mercados SET liga='Premiership' WHERE liga IN ('Premier League','English Premier League')`, 'liga Premiership'],
-            // Mercados inglês → português
-            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Final' WHERE mercado IN ('Full Time Result','Match Result','1X2')`, 'mercado Resultado Final'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Ambos Marcam' WHERE mercado IN ('Both Teams to Score','BTTS')`, 'mercado Ambos Marcam'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Correto' WHERE mercado IN ('Correct Score','Correct Score FT')`, 'mercado Resultado Correto'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Correto - Intervalo' WHERE mercado IN ('Correct Score HT','Half-Time Correct Score','Correct Score - Half Time')`, 'mercado Correto Intervalo'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo Resultado' WHERE mercado IN ('Half Time Result','HT Result','1X2 HT')`, 'mercado Intervalo Resultado'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo/Final' WHERE mercado IN ('Half-Time/Full-Time','HT/FT')`, 'mercado HT/FT'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Chance Dupla' WHERE mercado IN ('Double Chance')`, 'mercado Chance Dupla'],
-            // Seleções comuns em inglês → português
-            [`UPDATE bet365_resultados_mercados SET selecao='Empate' WHERE mercado='Resultado Final' AND selecao IN ('Draw','The Draw')`, 'selecao Empate'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Sim' WHERE mercado='Ambos Marcam' AND selecao IN ('Yes')`, 'selecao Sim'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Não' WHERE mercado='Ambos Marcam' AND selecao IN ('No')`, 'selecao Não'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE mercado='Resultado Correto - Intervalo' AND selecao IN ('Any Other Score','Any Unquoted')`, 'selecao Qualquer Outro'],
-            // Team Goals
-            [`UPDATE bet365_resultados_mercados SET mercado='Gols por Time' WHERE mercado='Team Goals'`, 'mercado Gols por Time'],
-            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(REPLACE(selecao,' Goals',' Gols'),' Goal',' Gol') WHERE mercado='Gols por Time' AND (selecao LIKE '% Goals' OR selecao LIKE '% Goal' OR selecao LIKE '%+ Goals' OR selecao LIKE '%+ Goal')`, 'selecao Goals/Goal→Gols/Gol'],
-            // Over/Under como nomes de seleção
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 0.5' WHERE selecao='Over 0.5'`, 'selecao Over 0.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 1.5' WHERE selecao='Over 1.5'`, 'selecao Over 1.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 2.5' WHERE selecao='Over 2.5'`, 'selecao Over 2.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 3.5' WHERE selecao='Over 3.5'`, 'selecao Over 3.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 4.5' WHERE selecao='Over 4.5'`, 'selecao Over 4.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 1.5' WHERE selecao='Under 1.5'`, 'selecao Under 1.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 2.5' WHERE selecao='Under 2.5'`, 'selecao Under 2.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 3.5' WHERE selecao='Under 3.5'`, 'selecao Under 3.5'],
-            // Mercados adicionais inglês → português
-            [`UPDATE bet365_resultados_mercados SET mercado='Total de Gols' WHERE mercado IN ('Total Goals','Goals Over/Under','Over/Under')`, 'mercado Total de Gols'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Handicap Asiático' WHERE mercado IN ('Asian Handicap','Asian Handicap FT')`, 'mercado Handicap Asiático'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Handicap Europeu' WHERE mercado IN ('European Handicap','Handicap')`, 'mercado Handicap Europeu'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Próximo Gol' WHERE mercado IN ('Next Goal','Next Goal Scorer')`, 'mercado Próximo Gol'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Sem Sofrer Gol' WHERE mercado IN ('Clean Sheet','To Keep a Clean Sheet')`, 'mercado Sem Sofrer Gol'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Sem Empate' WHERE mercado IN ('Draw No Bet')`, 'mercado Resultado Sem Empate'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Vencer Sem Sofrer Gol' WHERE mercado IN ('Win to Nil','To Win to Nil')`, 'mercado Vencer Sem Sofrer Gol'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Ambos Marcam e Resultado' WHERE mercado IN ('Both Teams to Score & Win','BTTS & Win','BTTS and Win')`, 'mercado BTTS e Resultado'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Escanteios' WHERE mercado IN ('Match Corners','Total Corners','Corners Over/Under')`, 'mercado Escanteios'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Cartões' WHERE mercado IN ('Booking Points','Cards','Match Cards')`, 'mercado Cartões'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo/Final' WHERE mercado IN ('1st Half/Full Time','First Half/Full Time')`, 'mercado HT/FT alt'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Marcador do Primeiro Gol' WHERE mercado IN ('First Goal Scorer','First Goalscorer')`, 'mercado Primeiro Gol Marcador'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Marcador a Qualquer Hora' WHERE mercado IN ('Anytime Scorer','Anytime Goalscorer','To Score Anytime')`, 'mercado Marcador a Qualquer Hora'],
-            // Seleções de resultado em inglês → português (fora do mercado Resultado Final)
-            [`UPDATE bet365_resultados_mercados SET selecao='Casa' WHERE selecao IN ('Home','Home Win','1')`, 'selecao Casa'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Fora' WHERE selecao IN ('Away','Away Win','2')`, 'selecao Fora'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Empate' WHERE selecao IN ('Draw','The Draw','X') AND mercado<>'Resultado Final'`, 'selecao Empate geral'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Sim' WHERE selecao IN ('Yes') AND mercado<>'Ambos Marcam'`, 'selecao Sim geral'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Não' WHERE selecao IN ('No') AND mercado<>'Ambos Marcam'`, 'selecao Não geral'],
-            // Over/Under como mercados
-            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,'Over ','Mais de ') WHERE selecao LIKE 'Over [0-9]%'`, 'selecao Over→Mais de'],
-            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,'Under ','Menos de ') WHERE selecao LIKE 'Under [0-9]%'`, 'selecao Under→Menos de'],
-            // Qualquer outro resultado
-            [`UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE selecao IN ('Any Other Score','Any Unquoted','Any Other') AND mercado<>'Resultado Correto - Intervalo'`, 'selecao Qualquer Outro alt'],
-        ];
         const whereData = horas > 0
             ? ` AND data_registro >= DATEADD(HOUR, -${horas}, GETUTCDATE())`
             : '';
+        const updates = _buildNormalizacaoBatches(whereData);
         let totalAffected = 0;
         const detalhes = [];
-        for (const [sql_str, label] of [...updates, ...timesUpdates]) {
-            const dbReq = pool.request();
-            dbReq.timeout = 300000;
-            const r = await dbReq.query(sql_str + whereData);
-            const n = r.rowsAffected?.[0] || 0;
+        for (const [sql_str, label] of updates) {
+            const r = await pool.request().query(sql_str);
+            const n = (r.rowsAffected || []).reduce((a, b) => a + b, 0);
             totalAffected += n;
-            if (n > 0) detalhes.push(`${label}: ${n} linhas`);
+            if (n > 0) detalhes.push(`${label}: ${n}`);
         }
         res.json({ success: true, total: totalAffected, detalhes });
     } catch(e) {
@@ -2207,9 +2135,63 @@ router.post('/admin/normalizar-dados', async (req, res) => {
 });
 
 /**
+ * Constrói os batch updates de normalização.
+ * times: 1 CASE WHEN por campo (vs 40 queries individuais cada)
+ * mercados: 1 CASE WHEN para todos (vs 30+ queries individuais)
+ * Total: ~15 queries vs 160+
+ */
+function _buildNormalizacaoBatches(whereData) {
+    const T = 'bet365_resultados_mercados';
+    const te = Object.entries(_TIMES_NORM); // [['Albania','Albânia'], ...]
+
+    // ── times: 1 CASE WHEN para time_casa, 1 para time_fora ──────────────
+    const buildTimeSql = (col) =>
+        `UPDATE ${T} SET ${col} = CASE ${col} `
+        + te.map(([en, pt]) => `WHEN '${en}' THEN '${pt}'`).join(' ')
+        + ` ELSE ${col} END WHERE ${col} IN (${te.map(([en]) => `'${en}'`).join(',')})${whereData}`;
+
+    // ── times em selecao Gols por Time: CASE WHEN LIKE ───────────────────
+    const golsCaseSQL =
+        `UPDATE ${T} SET selecao = CASE `
+        + te.map(([en, pt]) =>
+            `WHEN selecao LIKE '${en} - %' THEN '${pt}' + SUBSTRING(selecao, ${en.length + 1}, 200)`
+        ).join(' ')
+        + ` ELSE selecao END WHERE mercado = 'Gols por Time'`
+        + ` AND (${te.map(([en]) => `selecao LIKE '${en} - %'`).join(' OR ')})${whereData}`;
+
+    // ── mercados: 1 CASE WHEN para todos ─────────────────────────────────
+    const me = Object.entries(_MCTS_NORM); // lowercase keys — CI collation resolve
+    const mercadoSQL =
+        `UPDATE ${T} SET mercado = CASE mercado `
+        + me.map(([en, pt]) => `WHEN '${en}' THEN '${pt}'`).join(' ')
+        + ` ELSE mercado END WHERE mercado IN (${me.map(([en]) => `'${en}'`).join(',')})${whereData}`;
+
+    return [
+        [buildTimeSql('time_casa'),   'times time_casa (batch)'],
+        [buildTimeSql('time_fora'),   'times time_fora (batch)'],
+        [golsCaseSQL,                 'times Gols por Time (batch)'],
+        [mercadoSQL,                  'mercados (batch)'],
+        [`UPDATE ${T} SET liga='World Cup' WHERE liga IN ('Copa do Mundo','World Cup Virtual')${whereData}`, 'liga World Cup'],
+        [`UPDATE ${T} SET liga='Premiership' WHERE liga IN ('Premier League','English Premier League')${whereData}`, 'liga Premiership'],
+        [`UPDATE ${T} SET selecao=REPLACE(selecao,'Over ','Mais de ') WHERE selecao LIKE 'Over [0-9]%'${whereData}`, 'selecao Over→Mais de'],
+        [`UPDATE ${T} SET selecao=REPLACE(selecao,'Under ','Menos de ') WHERE selecao LIKE 'Under [0-9]%'${whereData}`, 'selecao Under→Menos de'],
+        [`UPDATE ${T} SET selecao='Empate' WHERE mercado='Resultado Final' AND selecao IN ('Draw','The Draw')${whereData}`, 'selecao Empate RF'],
+        [`UPDATE ${T} SET selecao='Sim' WHERE mercado='Ambos Marcam' AND selecao='Yes'${whereData}`, 'selecao Sim AM'],
+        [`UPDATE ${T} SET selecao='Não' WHERE mercado='Ambos Marcam' AND selecao='No'${whereData}`, 'selecao Não AM'],
+        [`UPDATE ${T} SET selecao='Qualquer Outro Resultado' WHERE selecao IN ('Any Other Score','Any Unquoted','Any Other')${whereData}`, 'selecao Qualquer Outro'],
+        [`UPDATE ${T} SET selecao='Casa' WHERE selecao IN ('Home','Home Win')${whereData}`, 'selecao Casa'],
+        [`UPDATE ${T} SET selecao='Fora' WHERE selecao IN ('Away','Away Win')${whereData}`, 'selecao Fora'],
+        [`UPDATE ${T} SET selecao='Empate' WHERE selecao IN ('Draw','The Draw','X') AND mercado<>'Resultado Final'${whereData}`, 'selecao Empate geral'],
+        [`UPDATE ${T} SET selecao='Sim' WHERE selecao='Yes' AND mercado<>'Ambos Marcam'${whereData}`, 'selecao Sim geral'],
+        [`UPDATE ${T} SET selecao='Não' WHERE selecao='No' AND mercado<>'Ambos Marcam'${whereData}`, 'selecao Não geral'],
+        [`UPDATE ${T} SET selecao=REPLACE(REPLACE(selecao,' Goals',' Gols'),' Goal',' Gol') WHERE mercado='Gols por Time' AND (selecao LIKE '% Goals' OR selecao LIKE '% Goal' OR selecao LIKE '%+ Goals' OR selecao LIKE '%+ Goal')${whereData}`, 'selecao Goals→Gols'],
+    ];
+}
+
+/**
  * GET /api/bet365/admin/normalizar-dados-stream
- * Mesma lógica do POST, mas com progresso via Server-Sent Events
- * Usa conexão dedicada com requestTimeout alto para evitar timeout
+ * Normalização com progresso via SSE. Batch CASE WHEN: ~10 queries vs 160+.
+ * Conexão dedicada com requestTimeout alto.
  */
 router.get('/admin/normalizar-dados-stream', async (req, res) => {
     req.socket.setTimeout(0);
@@ -2239,71 +2221,19 @@ router.get('/admin/normalizar-dados-stream', async (req, res) => {
         });
         await tempPool.connect();
 
-        const timesUpdates = Object.entries(TIMES_EN_PT).flatMap(([en, pt]) => [
-            [`UPDATE bet365_resultados_mercados SET time_casa='${pt}' WHERE time_casa='${en}'`, `time_casa ${pt}`],
-            [`UPDATE bet365_resultados_mercados SET time_fora='${pt}' WHERE time_fora='${en}'`, `time_fora ${pt}`],
-            [`UPDATE bet365_resultados_mercados SET selecao=STUFF(selecao,1,${en.length},'${pt}') WHERE mercado='Gols por Time' AND selecao LIKE '${en} - %'`, `selecao Gols ${pt}`],
-        ]);
-        const updates = [
-            [`UPDATE bet365_resultados_mercados SET liga='World Cup' WHERE liga IN ('Copa do Mundo','World Cup Virtual')`, 'liga World Cup'],
-            [`UPDATE bet365_resultados_mercados SET liga='Premiership' WHERE liga IN ('Premier League','English Premier League')`, 'liga Premiership'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Final' WHERE mercado IN ('Full Time Result','Match Result','1X2')`, 'mercado Resultado Final'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Ambos Marcam' WHERE mercado IN ('Both Teams to Score','BTTS')`, 'mercado Ambos Marcam'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Correto' WHERE mercado IN ('Correct Score','Correct Score FT')`, 'mercado Resultado Correto'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Correto - Intervalo' WHERE mercado IN ('Correct Score HT','Half-Time Correct Score','Correct Score - Half Time')`, 'mercado Correto Intervalo'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo Resultado' WHERE mercado IN ('Half Time Result','HT Result','1X2 HT')`, 'mercado Intervalo Resultado'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo/Final' WHERE mercado IN ('Half-Time/Full-Time','HT/FT')`, 'mercado HT/FT'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Chance Dupla' WHERE mercado IN ('Double Chance')`, 'mercado Chance Dupla'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Empate' WHERE mercado='Resultado Final' AND selecao IN ('Draw','The Draw')`, 'selecao Empate'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Sim' WHERE mercado='Ambos Marcam' AND selecao IN ('Yes')`, 'selecao Sim'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Não' WHERE mercado='Ambos Marcam' AND selecao IN ('No')`, 'selecao Não'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE mercado='Resultado Correto - Intervalo' AND selecao IN ('Any Other Score','Any Unquoted')`, 'selecao Qualquer Outro'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Gols por Time' WHERE mercado='Team Goals'`, 'mercado Gols por Time'],
-            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(REPLACE(selecao,' Goals',' Gols'),' Goal',' Gol') WHERE mercado='Gols por Time' AND (selecao LIKE '% Goals' OR selecao LIKE '% Goal' OR selecao LIKE '%+ Goals' OR selecao LIKE '%+ Goal')`, 'selecao Goals→Gols'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 0.5' WHERE selecao='Over 0.5'`, 'Over 0.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 1.5' WHERE selecao='Over 1.5'`, 'Over 1.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 2.5' WHERE selecao='Over 2.5'`, 'Over 2.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 3.5' WHERE selecao='Over 3.5'`, 'Over 3.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Mais de 4.5' WHERE selecao='Over 4.5'`, 'Over 4.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 1.5' WHERE selecao='Under 1.5'`, 'Under 1.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 2.5' WHERE selecao='Under 2.5'`, 'Under 2.5'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Menos de 3.5' WHERE selecao='Under 3.5'`, 'Under 3.5'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Total de Gols' WHERE mercado IN ('Total Goals','Goals Over/Under','Over/Under')`, 'mercado Total de Gols'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Handicap Asiático' WHERE mercado IN ('Asian Handicap','Asian Handicap FT')`, 'mercado Handicap Asiático'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Handicap Europeu' WHERE mercado IN ('European Handicap','Handicap')`, 'mercado Handicap Europeu'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Próximo Gol' WHERE mercado IN ('Next Goal','Next Goal Scorer')`, 'mercado Próximo Gol'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Sem Sofrer Gol' WHERE mercado IN ('Clean Sheet','To Keep a Clean Sheet')`, 'mercado Sem Sofrer Gol'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Resultado Sem Empate' WHERE mercado IN ('Draw No Bet')`, 'mercado Resultado Sem Empate'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Vencer Sem Sofrer Gol' WHERE mercado IN ('Win to Nil','To Win to Nil')`, 'mercado Vencer Sem Sofrer Gol'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Ambos Marcam e Resultado' WHERE mercado IN ('Both Teams to Score & Win','BTTS & Win','BTTS and Win')`, 'mercado BTTS e Resultado'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Escanteios' WHERE mercado IN ('Match Corners','Total Corners','Corners Over/Under')`, 'mercado Escanteios'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Cartões' WHERE mercado IN ('Booking Points','Cards','Match Cards')`, 'mercado Cartões'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Intervalo/Final' WHERE mercado IN ('1st Half/Full Time','First Half/Full Time')`, 'mercado HT/FT alt'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Marcador do Primeiro Gol' WHERE mercado IN ('First Goal Scorer','First Goalscorer')`, 'mercado Primeiro Gol Marcador'],
-            [`UPDATE bet365_resultados_mercados SET mercado='Marcador a Qualquer Hora' WHERE mercado IN ('Anytime Scorer','Anytime Goalscorer','To Score Anytime')`, 'mercado Marcador a Qualquer Hora'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Casa' WHERE selecao IN ('Home','Home Win','1')`, 'selecao Casa'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Fora' WHERE selecao IN ('Away','Away Win','2')`, 'selecao Fora'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Empate' WHERE selecao IN ('Draw','The Draw','X') AND mercado<>'Resultado Final'`, 'selecao Empate geral'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Sim' WHERE selecao IN ('Yes') AND mercado<>'Ambos Marcam'`, 'selecao Sim geral'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Não' WHERE selecao IN ('No') AND mercado<>'Ambos Marcam'`, 'selecao Não geral'],
-            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,'Over ','Mais de ') WHERE selecao LIKE 'Over [0-9]%'`, 'selecao Over→Mais de'],
-            [`UPDATE bet365_resultados_mercados SET selecao=REPLACE(selecao,'Under ','Menos de ') WHERE selecao LIKE 'Under [0-9]%'`, 'selecao Under→Menos de'],
-            [`UPDATE bet365_resultados_mercados SET selecao='Qualquer Outro Resultado' WHERE selecao IN ('Any Other Score','Any Unquoted','Any Other') AND mercado<>'Resultado Correto - Intervalo'`, 'selecao Qualquer Outro alt'],
-        ];
-
-        const allUpdates = [...updates, ...timesUpdates];
-        const total = allUpdates.length;
         const whereData = horas > 0
             ? ` AND data_registro >= DATEADD(HOUR, -${horas}, GETUTCDATE())`
             : '';
 
+        const allUpdates = _buildNormalizacaoBatches(whereData);
+        const total = allUpdates.length;
         let totalAffected = 0;
         const detalhes = [];
 
         for (let i = 0; i < allUpdates.length; i++) {
             const [sql_str, label] = allUpdates[i];
-            const r = await tempPool.request().query(sql_str + whereData);
-            const n = r.rowsAffected?.[0] || 0;
+            const r = await tempPool.request().query(sql_str);
+            const n = (r.rowsAffected || []).reduce((a, b) => a + b, 0);
             totalAffected += n;
             if (n > 0) detalhes.push(`${label}: ${n}`);
             send({ step: i + 1, total, label, affected: n, totalAffected });
@@ -2467,6 +2397,27 @@ router.post('/admin/testar-alerta', async (req, res) => {
     }
 });
 
+/**
+ * Normalização automática em background — chamada pelo servidor a cada 10 min.
+ * Processa apenas registros recentes (últimas N horas) para ser rápido.
+ */
+async function normalizarAutomaticamente(horas = 1) {
+    try {
+        const pool = await getDbPool();
+        const whereData = ` AND data_registro >= DATEADD(HOUR, -${horas}, GETUTCDATE())`;
+        const updates = _buildNormalizacaoBatches(whereData);
+        let total = 0;
+        for (const [sql_str] of updates) {
+            const r = await pool.request().query(sql_str);
+            total += (r.rowsAffected || []).reduce((a, b) => a + b, 0);
+        }
+        if (total > 0) console.log(`[auto-norm] ${total} registro(s) normalizado(s) (últimas ${horas}h)`);
+    } catch (e) {
+        console.warn('[auto-norm] erro:', e.message);
+    }
+}
+
 module.exports = router;
-module.exports.getSystemConfig = getSystemConfig;
-module.exports.getDbPool       = getDbPool;
+module.exports.getSystemConfig          = getSystemConfig;
+module.exports.getDbPool                = getDbPool;
+module.exports.normalizarAutomaticamente = normalizarAutomaticamente;

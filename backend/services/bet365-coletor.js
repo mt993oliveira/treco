@@ -26,6 +26,13 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const { dispararAlerta } = require('./alertas');
+const {
+    normalizarTime:     normalizarNomeTime,
+    normalizarMercado:  normalizarNomeMercado,
+    normalizarSelecao:  normalizarNomeSelecao,
+    normalizarLiga:     normalizarNomeLiga,
+    LIGA_NORMALIZAR,
+} = require('../utils/normalizacao');
 
 const fs   = require('fs');
 const path = require('path');
@@ -50,135 +57,12 @@ const EDGE_PERFIL = process.env.BET365_EDGE_PERFIL
     || path.join(process.env.LOCALAPPDATA || 'C:\\Users\\Administrador\\AppData\\Local',
                  'Microsoft', 'Edge', 'User Data', 'BetColetor');
 
-// Normaliza nomes de mercado (inglês → português)
-const MERCADO_NORMALIZAR = {
-    'fulltime result':                    'Resultado Final',
-    'full time result':                   'Resultado Final',
-    '1x2':                                'Resultado Final',
-    'correct score':                      'Resultado Correto',
-    'half time correct score':            'Resultado Correto - Intervalo',
-    'half-time correct score':            'Resultado Correto - Intervalo',
-    'halftime correct score':             'Resultado Correto - Intervalo',
-    'half time/full time':                'Intervalo/Final do Jogo',
-    'half time result':                   'Resultado Intervalo',
-    'halftime result':                    'Resultado Intervalo',
-    'both teams to score':                'Ambos Marcam',
-    'both teams to score (ht)':           'Ambos Marcam - Intervalo',
-    'first goalscorer':                   'Primeiro Marcador de Gol',
-    'first team to score':                'Primeira Equipe a Marcar',
-    'home team to score':                 'Para o Time da Casa Marcar',
-    'away team to score':                 'Para o Time Visitante Marcar',
-    'winning margin':                     'Margem de Vitória',
-    'result / both teams to score':       'Resultado/Ambos Marcam',
-    'result/both teams to score':         'Resultado/Ambos Marcam',
-    'exact total goals':                  'Total Exato de Gols',
-    'double chance':                      'Chance Dupla',
-    'asian handicap':                     'Handicap Asiático',
-    'scorecast':                          'Scorecast',
-    'team goals':                         'Gols por Time',
-    'player to score':                    'Marcador de Gol',
-    'anytime goalscorer':                 'Marcar a Qualquer Momento',
-    'last goalscorer':                    'Último Marcador de Gol',
-};
-
-function normalizarNomeMercado(nome) {
-    const low = (nome || '').toLowerCase().trim();
-    if (MERCADO_NORMALIZAR[low]) return MERCADO_NORMALIZAR[low];
-    // "Total Goals Over/Under X.5" → "Total de Gols - Mais de/Menos de X.5"
-    const m = low.match(/^total goals over\/under (\d+\.\d)$/);
-    if (m) return `Total de Gols - Mais de/Menos de ${m[1]}`;
-    return nome;
-}
-
-// Normaliza nomes de seleção (inglês → português)
-const SELECAO_NORMALIZAR = {
-    'yes': 'Sim', 'no': 'Não',
-    'any other score': 'Qualquer Outro Resultado',
-    'no goals (0-0)': 'Sem Gols (0-0)',
-    'draw 0-0': 'Empate 0-0',
-};
-
-function normalizarNomeSelecao(sel) {
-    const low = (sel || '').toLowerCase().trim();
-    if (SELECAO_NORMALIZAR[low]) return SELECAO_NORMALIZAR[low];
-    // "Over X.5" → "Mais de X.5" / "Under X.5" → "Menos de X.5"
-    const m1 = low.match(/^over (\d+\.\d)$/);  if (m1) return `Mais de ${m1[1]}`;
-    const m2 = low.match(/^under (\d+\.\d)$/); if (m2) return `Menos de ${m2[1]}`;
-    // "Team - N Goal(s)" / "Team - 3+ Goals" → normalizar time + Goals→Gols
-    if (/\bGoals?\s*$/i.test(sel)) {
-        const norm = sel.replace(/\bGoals\b/gi, 'Gols').replace(/\bGoal\b/gi, 'Gol');
-        const dash = norm.indexOf(' - ');
-        if (dash > 0) return normalizarNomeTime(norm.substring(0, dash)) + norm.substring(dash);
-        return norm;
-    }
-    return sel;
-}
-
-// Normaliza nomes de times (inglês → português) — igual ao TEAM_ALIASES do frontend
-const TIME_NORMALIZAR = {
-    'albania':        'Albânia',
-    'australia':      'Austrália',
-    'austria':        'Áustria',
-    'belgium':        'Bélgica',
-    'brazil':         'Brasil',
-    'cameroon':       'Camarões',
-    'canada':         'Canadá',
-    'croatia':        'Croácia',
-    'czechia':        'República Tcheca',
-    'czech republic': 'República Tcheca',
-    'denmark':        'Dinamarca',
-    'ecuador':        'Equador',
-    'england':        'Inglaterra',
-    'france':         'França',
-    'georgia':        'Geórgia',
-    'germany':        'Alemanha',
-    'ghana':          'Gana',
-    'hungary':        'Hungria',
-    'iran':           'Irã',
-    'italy':          'Itália',
-    'japan':          'Japão',
-    'mexico':         'México',
-    'morocco':        'Marrocos',
-    'netherlands':    'Países Baixos',
-    'poland':         'Polônia',
-    'romania':        'Romênia',
-    'scotland':       'Escócia',
-    'senegal':        'Senegal',
-    'serbia':         'Sérvia',
-    'slovakia':       'Eslováquia',
-    'slovenia':       'Eslovênia',
-    'south korea':    'Coreia do Sul',
-    'spain':          'Espanha',
-    'switzerland':    'Suíça',
-    'tunisia':        'Tunísia',
-    'turkey':         'Turquia',
-    'ukraine':        'Ucrânia',
-    'uruguay':        'Uruguai',
-    'usa':            'EUA',
-    'wales':          'País de Gales',
-};
-
-function normalizarNomeTime(nome) {
-    if (!nome) return nome;
-    return TIME_NORMALIZAR[nome.toLowerCase().trim()] || nome;
-}
-
-// Normaliza nomes de liga antes de gerar IDs e salvar no banco.
-// Garante que a mesma liga não seja gravada com nomes diferentes.
-const LIGA_NORMALIZAR = {
-    'copa do mundo':             'World Cup',
-    'world cup':                 'World Cup',
-    'euro cup':                  'Euro Cup',
-    'premiership':               'Premiership',
-    'premier league':            'Premiership',
-    'express cup':               'Express Cup',
-    'south american super league': 'Super Liga Sul-Americana',
-    'super liga sul-americana':  'Super Liga Sul-Americana',
-};
-
-function normalizarNomeLiga(nome) {
-    return LIGA_NORMALIZAR[(nome || '').toLowerCase().trim()] || nome;
-}
+// TIME_NORMALIZAR: usado apenas pelas queries SQL de startup (_inicializarBancoDados)
+// Lógica de runtime (normalizarNomeMercado, normalizarNomeSelecao, etc.) vem de normalizacao.js
+const TIME_NORMALIZAR = Object.fromEntries(
+    Object.entries(require('../utils/normalizacao').TIMES_EN_PT)
+        .map(([k, v]) => [k.toLowerCase(), v])
+);
 
 // Slots de minuto por liga (mesma convenção do frontend)
 const LIGA_SLOTS = {

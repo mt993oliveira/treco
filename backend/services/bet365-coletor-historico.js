@@ -76,67 +76,13 @@ let DELAY_CLIQUE_MS    = 1000;
 let MAX_CLIQUES        = 3;
 let RETRY_DELAY_MS     = 600000; // 10 min — pausa antes de retentar jogos que falharam (rate limit Bet365)
 
-// ── Normalização (igual ao coletor principal) ────────────────
-const LIGA_NORMALIZAR = {
-    'copa do mundo':               'World Cup',
-    'world cup':                   'World Cup',
-    'euro cup':                    'Euro Cup',
-    'premiership':                 'Premiership',
-    'premier league':              'Premiership',
-    'express cup':                 'Express Cup',
-    'south american super league': 'Super Liga Sul-Americana',
-    'super liga sul-americana':    'Super Liga Sul-Americana',
-};
-function normalizarNomeLiga(nome) {
-    return LIGA_NORMALIZAR[(nome || '').toLowerCase().trim()] || nome;
-}
-
-const TIME_NORMALIZAR = {
-    'albania':'Albânia','australia':'Austrália','austria':'Áustria','belgium':'Bélgica',
-    'brazil':'Brasil','cameroon':'Camarões','canada':'Canadá','croatia':'Croácia',
-    'czechia':'República Tcheca','czech republic':'República Tcheca','denmark':'Dinamarca',
-    'ecuador':'Equador','england':'Inglaterra','france':'França','georgia':'Geórgia',
-    'germany':'Alemanha','ghana':'Gana','hungary':'Hungria','iran':'Irã','italy':'Itália',
-    'japan':'Japão','mexico':'México','morocco':'Marrocos','netherlands':'Países Baixos',
-    'poland':'Polônia','romania':'Romênia','scotland':'Escócia','senegal':'Senegal',
-    'serbia':'Sérvia','slovakia':'Eslováquia','slovenia':'Eslovênia',
-    'south korea':'Coreia do Sul','spain':'Espanha','switzerland':'Suíça',
-    'tunisia':'Tunísia','turkey':'Turquia','ukraine':'Ucrânia','uruguay':'Uruguai',
-    'usa':'EUA','wales':'País de Gales',
-};
-function normalizarNomeTime(nome) {
-    if (!nome) return nome;
-    return TIME_NORMALIZAR[(nome || '').toLowerCase().trim()] || nome;
-}
-
-const MERCADO_NORMALIZAR = {
-    'fulltime result':'Resultado Final','full time result':'Resultado Final','1x2':'Resultado Final',
-    'correct score':'Resultado Correto','half time correct score':'Resultado Correto - Intervalo',
-    'half-time correct score':'Resultado Correto - Intervalo',
-    'half time/full time':'Intervalo/Final do Jogo','half time result':'Resultado Intervalo',
-    'both teams to score':'Ambos Marcam','first goalscorer':'Primeiro Marcador de Gol',
-    'first team to score':'Primeira Equipe a Marcar','winning margin':'Margem de Vitória',
-    'result / both teams to score':'Resultado/Ambos Marcam',
-    'result/both teams to score':'Resultado/Ambos Marcam',
-    'exact total goals':'Total Exato de Gols','double chance':'Chance Dupla',
-    'team goals':'Gols por Time',
-};
-function normalizarNomeMercado(nome) {
-    const low = (nome || '').toLowerCase().trim();
-    if (MERCADO_NORMALIZAR[low]) return MERCADO_NORMALIZAR[low];
-    const m = low.match(/^total goals over\/under (\d+\.\d)$/);
-    if (m) return `Total de Gols - Mais de/Menos de ${m[1]}`;
-    return nome;
-}
-
-function normalizarNomeSelecao(sel) {
-    const low = (sel || '').toLowerCase().trim();
-    if (low === 'yes') return 'Sim';
-    if (low === 'no')  return 'Não';
-    const m1 = low.match(/^over (\d+\.\d)$/);  if (m1) return `Mais de ${m1[1]}`;
-    const m2 = low.match(/^under (\d+\.\d)$/); if (m2) return `Menos de ${m2[1]}`;
-    return sel;
-}
+// ── Normalização — importada de backend/utils/normalizacao.js ────────────
+const {
+    normalizarTime:     normalizarNomeTime,
+    normalizarMercado:  normalizarNomeMercado,
+    normalizarSelecao:  normalizarNomeSelecao,
+    normalizarLiga:     normalizarNomeLiga,
+} = require('../utils/normalizacao');
 
 function _formatarJogo(jogo, ligaNorm) {
     const placarOculto = jogo.golCasa === null || jogo.golFora === null

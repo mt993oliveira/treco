@@ -2398,6 +2398,10 @@ server.listen(PORT, () => {
         process.on('SIGINT',  async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
         process.on('SIGTERM', async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
     }
+
+    // ── Auto-normalização EN→PT a cada 10 minutos (últimas 2h) ───────────
+    const { normalizarAutomaticamente } = require('./routes/bet365-api');
+    setInterval(() => normalizarAutomaticamente(2), 10 * 60 * 1000);
 });
 
 // ── Dashboard de segurança (apenas master) ────────────────────────────────
