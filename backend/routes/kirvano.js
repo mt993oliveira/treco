@@ -447,4 +447,46 @@ router.post('/admin/webhooks', async (req, res) => {
     }
 });
 
+// POST /api/kirvano/admin/totais
+router.post('/admin/totais', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const { usuarioId } = req.body;
+        if (!usuarioId) return res.json({ success: false, message: 'Não autenticado' });
+        const auth = await pool.request().input('id', sql.Int, Number(usuarioId))
+            .query(`SELECT TipoUsuario FROM Usuarios WHERE Id = @id`);
+        if (!auth.recordset.length || auth.recordset[0].TipoUsuario !== 'master')
+            return res.json({ success: false, message: 'Acesso negado' });
+        await _ensureTable(pool);
+        // Dedup por kirvano_purchase_id para evitar contar duplicatas
+        // (race condition pode gerar 2 linhas com mesmo purchase_id)
+        const r = await pool.request().query(`
+            SELECT payload_raw
+            FROM kirvano_assinaturas
+            WHERE status = 'ativo'
+              AND id IN (
+                SELECT MIN(id)
+                FROM kirvano_assinaturas
+                WHERE status = 'ativo'
+                GROUP BY CASE WHEN kirvano_purchase_id != '' AND kirvano_purchase_id IS NOT NULL
+                              THEN kirvano_purchase_id ELSE CAST(id AS NVARCHAR) END
+              )
+        `);
+        let bruto = 0, taxa = 0, comissao = 0, liquido = 0, afiliado = 0;
+        for (const row of r.recordset) {
+            try {
+                const f = (JSON.parse(row.payload_raw || '{}')).fiscal || {};
+                bruto    += Number(f.total_value || 0);
+                taxa     += Number(f.fee || 0);
+                comissao += Number(f.commission || 0);
+                liquido  += Number(f.net_value || 0);
+                afiliado += Number(f.affiliate_commission || 0);
+            } catch (_) {}
+        }
+        res.json({ success: true, count: r.recordset.length, bruto, taxa, comissao, liquido, afiliado });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
 module.exports = router;

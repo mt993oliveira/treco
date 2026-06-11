@@ -1299,15 +1299,31 @@
                 style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
         </div>
         <!-- Tabs -->
-        <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #1e293b;padding-bottom:12px">
-            <button id="kirv-tab-btn-ass" onclick="_kirvTab('ass')"
-                style="background:#1fcc59;border:none;color:#000;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">
-                📋 Assinaturas
-            </button>
-            <button id="kirv-tab-btn-wh" onclick="_kirvTab('wh')"
-                style="background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">
-                🔔 Webhooks
-            </button>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;border-bottom:1px solid #1e293b;padding-bottom:12px;flex-wrap:wrap">
+            <div style="display:flex;gap:8px">
+                <button id="kirv-tab-btn-ass" onclick="_kirvTab('ass')"
+                    style="background:#1fcc59;border:none;color:#000;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">
+                    📋 Assinaturas
+                </button>
+                <button id="kirv-tab-btn-wh" onclick="_kirvTab('wh')"
+                    style="background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">
+                    🔔 Webhooks
+                </button>
+            </div>
+            <!-- Painel financeiro (ativos) -->
+            <div id="kirv-totais" style="background:#0c1220;border:1px solid #1e293b;border-radius:6px;padding:8px 14px;min-width:200px">
+                <div style="color:#475569;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">💰 Financeiro (ativos)</div>
+                <div style="display:grid;grid-template-columns:1fr auto;gap:3px 14px;align-items:center">
+                    <span style="color:#64748b;font-size:9px">Valor total</span>
+                    <span id="kirv-tot-bruto" style="color:#e2e8f0;font-size:9px;text-align:right;font-weight:600">—</span>
+                    <span style="color:#64748b;font-size:9px">Taxa plataforma</span>
+                    <span id="kirv-tot-taxa" style="color:#f87171;font-size:9px;text-align:right">—</span>
+                    <span style="color:#64748b;font-size:9px">Sua comissão</span>
+                    <span id="kirv-tot-com" style="color:#4ade80;font-size:9px;text-align:right">—</span>
+                    <span style="color:#64748b;font-size:9px">Valor líquido</span>
+                    <span id="kirv-tot-liq" style="color:#1fcc59;font-size:9px;text-align:right;font-weight:700">—</span>
+                </div>
+            </div>
         </div>
 
         <!-- PAINEL: ASSINATURAS -->
@@ -15362,6 +15378,28 @@ function abrirKirvano() {
     document.getElementById('user-dropdown').style.display = 'none';
     document.getElementById('modal-kirvano').classList.add('aberto');
     _kirvTab('ass');
+    _kirvCarregarTotais();
+}
+
+async function _kirvCarregarTotais() {
+    const uid = _getUser()?.Id;
+    const ids = ['kirv-tot-bruto','kirv-tot-taxa','kirv-tot-com','kirv-tot-liq'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '...'; });
+    try {
+        const r = await fetch('/api/kirvano/admin/totais', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ usuarioId: uid })
+        });
+        const d = await r.json();
+        if (!d.success) return;
+        const fmt = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById('kirv-tot-bruto').textContent = fmt(d.bruto);
+        document.getElementById('kirv-tot-taxa').textContent  = fmt(d.taxa);
+        document.getElementById('kirv-tot-com').textContent   = fmt(d.comissao);
+        document.getElementById('kirv-tot-liq').textContent   = fmt(d.liquido);
+    } catch (_) {
+        ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+    }
 }
 
 function _kirvTab(aba) {
