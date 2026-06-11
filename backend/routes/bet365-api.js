@@ -2123,6 +2123,7 @@ const TIMES_EN_PT = {
  * Normaliza mercados/times em inglês → português no banco
  */
 router.post('/admin/normalizar-dados', async (req, res) => {
+    req.socket.setTimeout(0); // operação longa, sem timeout HTTP
     try {
         const pool = await getDbPool();
         const timesUpdates = Object.entries(TIMES_EN_PT).flatMap(([en, pt]) => [
@@ -2188,7 +2189,9 @@ router.post('/admin/normalizar-dados', async (req, res) => {
         let totalAffected = 0;
         const detalhes = [];
         for (const [sql_str, label] of [...updates, ...timesUpdates]) {
-            const r = await pool.request().query(sql_str);
+            const dbReq = pool.request();
+            dbReq.timeout = 300000;
+            const r = await dbReq.query(sql_str);
             const n = r.rowsAffected?.[0] || 0;
             totalAffected += n;
             if (n > 0) detalhes.push(`${label}: ${n} linhas`);
