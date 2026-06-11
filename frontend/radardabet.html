@@ -1059,7 +1059,7 @@
 
 <!-- ========== MODAL: GERENCIAR USUÁRIOS ========== -->
 <div class="modal-overlay" id="modal-usuarios">
-    <div class="modal-box" style="max-width:820px;width:96%">
+    <div class="modal-box" style="max-width:1060px;width:98%">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
             <h2 style="font-size:14px;font-weight:700">👥 Gerenciar Usuários</h2>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1130,7 +1130,17 @@
         </div>
 
         <div style="overflow-x:auto">
-            <table style="width:100%;border-collapse:collapse;font-size:11px" id="tbl-usuarios">
+            <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed" id="tbl-usuarios">
+                <colgroup>
+                    <col style="width:160px">
+                    <col style="width:130px">
+                    <col style="min-width:0">
+                    <col style="width:80px">
+                    <col style="width:130px">
+                    <col style="width:64px">
+                    <col style="width:90px">
+                    <col style="width:90px">
+                </colgroup>
                 <thead>
                     <tr style="background:#0c1220">
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b">NOME</th>
@@ -1139,7 +1149,7 @@
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">TIPO</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">LICENÇA</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">STATUS</th>
-                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">ÚLTIMO ACESSO</th>
+                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">ÚLT. ACESSO</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">AÇÕES</th>
                     </tr>
                 </thead>
@@ -13637,31 +13647,33 @@ function _renderTabelaUsuarios(lista) {
         const completo = d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
         return `<span title="${completo}">${tempo}</span>`;
     };
+    const truncStyle = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
     tbody.innerHTML = lista.map(u => {
-        const ativo    = u.Ativo ? '<span style="color:#4ade80;font-weight:700">Ativo</span>' : '<span style="color:#f87171">Inativo</span>';
-        const tipo     = `<span style="font-size:10px;color:#94a3b8">${TIPO_LABEL[u.TipoUsuario] || u.TipoUsuario}</span>`;
-        const licenca  = u.DataFimLicenca ? `${fmtData(u.DataInicioLicenca)} – ${fmtData(u.DataFimLicenca)}` : '—';
+        const ativo   = u.Ativo ? '<span style="color:#4ade80;font-weight:700;font-size:10px">Ativo</span>' : '<span style="color:#f87171;font-size:10px">Inativo</span>';
+        const tipo    = `<span style="font-size:10px;color:#94a3b8">${TIPO_LABEL[u.TipoUsuario] || u.TipoUsuario}</span>`;
+        const licenca = u.DataFimLicenca ? `<span style="font-size:10px;color:#475569">${fmtData(u.DataInicioLicenca)}<br>– ${fmtData(u.DataFimLicenca)}</span>` : '<span style="color:#334155">—</span>';
+        const isMaster = _getUser()?.TipoUsuario === 'master';
         return `<tr style="border-bottom:1px solid #0d1421">
-            <td style="padding:7px 10px;color:#e2e8f0">${escHtml(u.NomeCompleto || '—')}</td>
-            <td style="padding:7px 10px;color:#94a3b8">@${escHtml(u.Usuario || '—')}</td>
-            <td style="padding:7px 10px;color:#64748b;font-size:10px">${escHtml(u.Email || '—')}</td>
+            <td style="padding:7px 10px;color:#e2e8f0;${truncStyle}" title="${escHtml(u.NomeCompleto || '')}">${escHtml(u.NomeCompleto || '—')}</td>
+            <td style="padding:7px 10px;color:#94a3b8;${truncStyle}" title="@${escHtml(u.Usuario || '')}">@${escHtml(u.Usuario || '—')}</td>
+            <td style="padding:7px 10px;color:#64748b;font-size:10px;${truncStyle}" title="${escHtml(u.Email || '')}">${escHtml(u.Email || '—')}</td>
             <td style="padding:7px 10px;text-align:center">${tipo}</td>
-            <td style="padding:7px 10px;text-align:center;font-size:10px;color:#475569">${licenca}</td>
+            <td style="padding:7px 10px;text-align:center">${licenca}</td>
             <td style="padding:7px 10px;text-align:center">${ativo}</td>
             <td style="padding:7px 10px;text-align:center">${fmtAcesso(u.UltimoAcesso)}</td>
             <td style="padding:6px 8px;text-align:center;white-space:nowrap">
                 <button onclick="abrirFormUsuario(${u.Id})"
                     style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;
-                           padding:3px 8px;font-size:10px;cursor:pointer;margin:1px"
-                    onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">✏️</button>${_getUser()?.TipoUsuario === 'master' ? `
+                           padding:3px 7px;font-size:10px;cursor:pointer;margin:1px"
+                    onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'" title="Editar">✏️</button>${isMaster ? `
                 <button onclick="abrirIncrementarIndividual(${u.Id}, '${escHtml(u.NomeCompleto || u.Usuario)}')"
                     style="background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:4px;
-                           padding:3px 8px;font-size:10px;cursor:pointer;margin:1px"
+                           padding:3px 7px;font-size:10px;cursor:pointer;margin:1px"
                     onmouseover="this.style.background='#1e40af'" onmouseout="this.style.background='#1e3a5f'" title="Incrementar licença">📅</button>
                 <button onclick="excluirUsuario(${u.Id}, '${escHtml(u.NomeCompleto || u.Usuario)}')"
                     style="background:#3b0a0a;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;
-                           padding:3px 8px;font-size:10px;cursor:pointer;margin:1px"
-                    onmouseover="this.style.background='#450a0a'" onmouseout="this.style.background='#3b0a0a'" title="Excluir usuário">🗑</button>` : ''}
+                           padding:3px 7px;font-size:10px;cursor:pointer;margin:1px"
+                    onmouseover="this.style.background='#450a0a'" onmouseout="this.style.background='#3b0a0a'" title="Excluir">🗑</button>` : ''}
             </td>
         </tr>`;
     }).join('');
