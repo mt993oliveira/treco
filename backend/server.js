@@ -2422,7 +2422,7 @@ server.listen(PORT, () => {
                     UPDATE bet365_eventos
                     SET ativo = 0
                     WHERE ativo = 1
-                      AND start_time_datetime < DATEADD(HOUR, -4, GETUTCDATE())
+                      AND start_time_datetime < DATEADD(HOUR, -3, GETUTCDATE())
                 `);
                 if (r.rowsAffected[0] > 0) {
                     console.log(`   🧹 [Limpeza] ${r.rowsAffected[0]} eventos antigos desativados`);

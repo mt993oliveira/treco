@@ -153,8 +153,8 @@ router.get('/eventos', async (req, res) => {
                 (SELECT COUNT(DISTINCT m.id) FROM bet365_mercados m WHERE m.evento_id = e.id AND m.ativo = 1) AS total_mercados
             FROM bet365_eventos e
             WHERE e.ativo = 1
-              AND e.start_time_datetime >= DATEADD(HOUR, -2, GETUTCDATE())
-              AND e.start_time_datetime <= DATEADD(MINUTE, 35, GETUTCDATE())
+              AND e.start_time_datetime >= DATEADD(HOUR, -1, GETUTCDATE())
+              AND e.start_time_datetime <= DATEADD(MINUTE, 95, GETUTCDATE())
         `;
 
         if (liga) {
