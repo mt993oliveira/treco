@@ -1239,20 +1239,22 @@ router.get('/analise/mercados', async (req, res) => {
     try {
         const {
             liga,
-            nJogos     = 200,
-            minJogos   = 3,
-            minPct     = 0,
+            nJogos      = 200,
+            minJogos    = 3,
+            minPct      = 0,
             tipoMercado = '',
             soValueBets = '0',
-            minVE      = 0,
+            minVE       = 0,
+            dias,          // opcional: 7, 14, 30 ou 'tudo' (sem filtro de data)
         } = req.query;
 
         const nJogosN   = Math.min(420, Math.max(20, parseInt(nJogos) || 200));
         const minJogosN = Math.max(1, parseInt(minJogos) || 3);
         const minPctN   = Math.max(0, parseFloat(minPct)  || 0);
         const minVEN    = Math.max(0, parseFloat(minVE)   || 0);
+        const diasN     = dias && dias !== 'tudo' ? Math.min(365, Math.max(1, parseInt(dias) || 0)) : 0;
 
-        const _ck = `analise-mkt:${liga||'all'}:${nJogosN}:${minJogosN}:${minPctN}:${tipoMercado}:${soValueBets}:${minVEN}`;
+        const _ck = `analise-mkt:${liga||'all'}:${nJogosN}:${minJogosN}:${minPctN}:${tipoMercado}:${soValueBets}:${minVEN}:${diasN}`;
         const _cached = _apiCacheGet(_ck);
         if (_cached) return res.json(_cached);
 
@@ -1263,14 +1265,19 @@ router.get('/analise/mercados', async (req, res) => {
             .input('minPct',    sql.Float, minPctN)
             .input('minVE',     sql.Float, minVEN);
 
+        if (diasN > 0) request.input('dias', sql.Int, diasN);
+
         const whereParts = [];
+        // Filtro temporal: quando dias > 0, restringe às últimas N dias
+        if (diasN > 0) whereParts.push('m.data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())');
+
         if (liga && liga !== 'all') {
             request.input('liga', sql.NVarChar(200), ligaParaBanco(liga));
             whereParts.push('m.liga = @liga');
             whereParts.push(`m.evento_id IN (
                 SELECT TOP (@nJogos) evento_id
                 FROM bet365_resultados_mercados
-                WHERE liga = @liga
+                WHERE liga = @liga${diasN > 0 ? ' AND data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())' : ''}
                 GROUP BY evento_id
                 ORDER BY MAX(data_partida) DESC
             )`);
@@ -1280,6 +1287,7 @@ router.get('/analise/mercados', async (req, res) => {
                     SELECT evento_id,
                            ROW_NUMBER() OVER (PARTITION BY liga ORDER BY MAX(data_partida) DESC) AS rn
                     FROM bet365_resultados_mercados
+                    ${diasN > 0 ? 'WHERE data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())' : ''}
                     GROUP BY liga, evento_id
                 ) t WHERE t.rn <= @nJogos
             )`);
