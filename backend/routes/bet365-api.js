@@ -109,11 +109,12 @@ setInterval(() => {
  */
 router.get('/eventos', async (req, res) => {
     try {
-        const { limite = 100, liga, status } = req.query;
+        const { limite = 500, liga, status } = req.query;
+        const limiteNum = Math.min(Math.max(parseInt(limite) || 500, 1), 2000);
         const pool = await getDbPool();
 
         let query = `
-            SELECT
+            SELECT TOP (@limite)
                 e.id AS evento_id,
                 e.time_casa, e.time_fora,
                 e.league_name AS liga,
@@ -139,6 +140,8 @@ router.get('/eventos', async (req, res) => {
                 (SELECT COUNT(DISTINCT m.id) FROM bet365_mercados m WHERE m.evento_id = e.id AND m.ativo = 1) AS total_mercados
             FROM bet365_eventos e
             WHERE e.ativo = 1
+              AND e.start_time_datetime >= DATEADD(HOUR, -2, GETUTCDATE())
+              AND e.start_time_datetime <= DATEADD(HOUR, 48, GETUTCDATE())
         `;
 
         if (liga) {
@@ -152,6 +155,7 @@ router.get('/eventos', async (req, res) => {
         query += ` ORDER BY e.start_time_datetime ASC`;
 
         const request = pool.request();
+        request.input('limite', sql.Int, limiteNum);
 
         if (liga) {
             request.input('liga', sql.NVarChar(200), `%${liga}%`);
@@ -314,10 +318,10 @@ router.get('/eventos-completos', async (req, res) => {
     try {
         const pool = await getDbPool();
 
-        // Busca eventos ativos
+        // Busca eventos ativos nas próximas 48h (janela relevante para o frontend)
         const eventosResult = await pool.request()
             .query(`
-                SELECT
+                SELECT TOP 1000
                     e.id AS evento_id,
                     e.time_casa, e.time_fora,
                     e.league_name AS liga,
@@ -342,6 +346,8 @@ router.get('/eventos-completos', async (req, res) => {
                     e.odd_placar_outros
                 FROM bet365_eventos e
                 WHERE e.ativo = 1
+                  AND e.start_time_datetime >= DATEADD(HOUR, -2, GETUTCDATE())
+                  AND e.start_time_datetime <= DATEADD(HOUR, 48, GETUTCDATE())
                 ORDER BY
                     CASE WHEN e.status = 'EM_ANDAMENTO' THEN 0 ELSE 1 END ASC,
                     ISNULL(e.start_time_datetime, '9999-12-31') ASC

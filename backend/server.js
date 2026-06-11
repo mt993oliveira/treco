@@ -2413,6 +2413,28 @@ server.listen(PORT, () => {
         setInterval(_autoBackfill, 60000);
         // ─────────────────────────────────────────────────────────────────────
 
+        // ── Limpeza automática de eventos antigos (a cada 1h) ─────────────────
+        // FutebolVirtual: partidas duram ~3-5 min. Eventos com mais de 4h são lixo.
+        async function _limparEventosAntigos() {
+            try {
+                const pool = await getDbPool();
+                const r = await pool.request().query(`
+                    UPDATE bet365_eventos
+                    SET ativo = 0
+                    WHERE ativo = 1
+                      AND start_time_datetime < DATEADD(HOUR, -4, GETUTCDATE())
+                `);
+                if (r.rowsAffected[0] > 0) {
+                    console.log(`   🧹 [Limpeza] ${r.rowsAffected[0]} eventos antigos desativados`);
+                }
+            } catch(e) {
+                console.warn(`   ⚠️  [Limpeza] Erro ao desativar eventos antigos: ${e.message}`);
+            }
+        }
+        _limparEventosAntigos(); // executa no início para limpar acumulado imediatamente
+        setInterval(_limparEventosAntigos, 60 * 60 * 1000);
+        // ─────────────────────────────────────────────────────────────────────
+
         process.on('SIGINT',  async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
         process.on('SIGTERM', async () => { clearTimeout(_coletorTimer); await coletor365.encerrar(); process.exit(0); });
     }
