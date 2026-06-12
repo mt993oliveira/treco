@@ -6034,6 +6034,12 @@ function renderGraficoLinha() {
         const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     });
+    // Espaço extra à direita para melhorar navegação com setas
+    const _rightPad = S.grafEspacoDireita ?? 6;
+    if (_rightPad > 0) {
+        for (let i = 0; i < _rightPad; i++) labels.push('');
+        datasets.forEach(ds => { for (let i = 0; i < _rightPad; i++) ds.data.push(null); });
+    }
 
     if (tituloEl) tituloEl.textContent = ativos.map(f => f.label).join(' · ');
 
@@ -6313,6 +6319,13 @@ function renderGraficoGols() {
     const todasSeries = datasets.filter(d => !d._isRef && !d._isMA).flatMap(d => d.data);
     const yMin = Math.max(0, Math.floor(Math.min(...todasSeries) / 5) * 5 - 5);
     const yMax = Math.ceil(Math.max(...todasSeries) / 5) * 5 + 5;
+
+    // Espaço extra à direita para melhorar navegação com setas
+    const _rightPad = S.grafEspacoDireita ?? 6;
+    if (_rightPad > 0) {
+        for (let i = 0; i < _rightPad; i++) labels.push('');
+        datasets.forEach(ds => { for (let i = 0; i < _rightPad; i++) ds.data.push(null); });
+    }
 
     if (tituloEl) tituloEl.textContent = '⚽ Gols por Jogo';
 
@@ -12128,7 +12141,13 @@ async function _carregarDashboardSeguranca() {
             ? '<div style="color:#475569;font-size:11px;padding:10px">Nenhum IP bloqueado.</div>'
             : d.ipsBlockeados.map(b => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1e293b;gap:8px">
-                <div style="font-size:12px;color:#f87171;font-weight:700">${b.ip} <span style="color:#64748b;font-weight:400;font-size:10px">desbloqueio: ${new Date(b.desbloqueiaEm).toLocaleTimeString('pt-BR')}</span></div>
+                <div>
+                    <div style="font-size:12px;color:#f87171;font-weight:700">${b.ip}
+                        ${b.usuarios?.length ? `<span style="color:#fbbf24;font-weight:400;font-size:10px;margin-left:6px">👤 ${b.usuarios.join(', ')}</span>` : ''}
+                    </div>
+                    <div style="color:#64748b;font-size:10px;margin-top:2px">Libera em: ${new Date(b.desbloqueiaEm).toLocaleTimeString('pt-BR')} · config: ${d.bfCfg?.tentativas||10} tentativas / ${d.bfCfg?.bloqueioMins||10}min bloqueio</div>
+                </div>
+                <button onclick="_segDesbloquearIp('${b.ip}')" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">🔓 Liberar</button>
             </div>`).join('');
 
         // ── Req/min por usuário ─────────────────────────────────
@@ -12181,6 +12200,18 @@ async function _carregarDashboardSeguranca() {
     }
 }
 
+async function _segDesbloquearIp(ip) {
+    if (!confirm(`Liberar o IP ${ip}?`)) return;
+    const r = await fetch('/api/admin/desbloquear-ip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuarioId: _getUser()?.Id, ip }),
+    });
+    const d = await r.json();
+    if (d.success) _carregarDashboardSeguranca();
+    else alert(d.message || 'Erro ao desbloquear');
+}
+
 async function _segDesconectar(uid) {
     if (!confirm('Desconectar este usuário?')) return;
     const r = await fetch(`/api/usuarios/desconectar/${uid}`, {
@@ -12194,6 +12225,9 @@ async function _segDesconectar(uid) {
 }
 
 const _CFG_LABELS = {
+    brute_force_tentativas:     '🔒 Brute Force: tentativas antes de bloquear',
+    brute_force_janela_min:     '🔒 Brute Force: janela de tempo (minutos)',
+    brute_force_bloqueio_min:   '🔒 Brute Force: duração do bloqueio (minutos)',
     intervalo_coleta_seg:       'Intervalo entre ciclos de coleta (segundos)',
     delay_apos_clicar_liga_ms:  'Delay após clicar na aba da liga (ms)',
     delay_pos_reload_ms:        'Delay após reload da página (ms)',

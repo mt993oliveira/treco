@@ -184,20 +184,44 @@ function _trackLoginSuccess(userId) {
     loginHistory.set(k, h);
 }
 
-function _trackLoginFail(username, ip) {
+// Cache de config de brute force — recarregado a cada 5 min
+let _bfCfg = { tentativas: 10, janelaMins: 15, bloqueioMins: 10, cachedAt: 0 };
+async function _loadBfCfg() {
+    if (Date.now() - _bfCfg.cachedAt < 5 * 60000) return;
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const r = await sql.query`SELECT chave, valor FROM bet365_config
+            WHERE chave IN ('brute_force_tentativas','brute_force_janela_min','brute_force_bloqueio_min')`;
+        r.recordset.forEach(row => {
+            const v = parseInt(row.valor);
+            if (!isNaN(v) && v > 0) {
+                if (row.chave === 'brute_force_tentativas')   _bfCfg.tentativas   = v;
+                if (row.chave === 'brute_force_janela_min')   _bfCfg.janelaMins   = v;
+                if (row.chave === 'brute_force_bloqueio_min') _bfCfg.bloqueioMins = v;
+            }
+        });
+        _bfCfg.cachedAt = Date.now();
+    } catch(_) {}
+}
+
+async function _trackLoginFail(username, ip) {
+    await _loadBfCfg();
     const k = (username || '').toLowerCase();
     const arr = loginFailures.get(k) || [];
     arr.unshift({ ip: ip || '?', ts: Date.now() });
     loginFailures.set(k, arr.slice(0, 50));
 
-    // Bloqueia o IP por 30min após 5 falhas em 15min
-    const JANELA = 15 * 60 * 1000;
-    const LIMITE = 5;
-    const BLOQUEIO = 30 * 60 * 1000;
+    const JANELA   = _bfCfg.janelaMins   * 60 * 1000;
+    const LIMITE   = _bfCfg.tentativas;
+    const BLOQUEIO = _bfCfg.bloqueioMins * 60 * 1000;
     if (ip && ip !== '?') {
         const recentes = arr.filter(e => Date.now() - e.ts < JANELA && e.ip === ip);
         if (recentes.length >= LIMITE) {
-            _loginBlocklist.set(ip, { blockedUntil: Date.now() + BLOQUEIO });
+            const entry = _loginBlocklist.get(ip) || { usuarios: new Set() };
+            entry.blockedUntil = Date.now() + BLOQUEIO;
+            entry.usuarios.add(k);
+            _loginBlocklist.set(ip, entry);
+            console.log(`🔒 [BruteForce] IP ${ip} bloqueado por ${_bfCfg.bloqueioMins}min (usuário: ${k}, tentativas: ${recentes.length})`);
         }
     }
 }
@@ -497,13 +521,13 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                 res.json({ success: true, user: userWithoutPassword });
             } else {
                 const _failIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
-                _trackLoginFail(username, _failIp);
+                await _trackLoginFail(username, _failIp);
                 _geoLookup(_failIp).then(geo => _registrarAcesso(null, username, 'login_fail', _failIp, req.headers['user-agent'], geo, null)).catch(()=>{});
                 res.json({ success: false, message: 'Credenciais inválidas' });
             }
         } else {
             const _failIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
-            _trackLoginFail(username, _failIp);
+            await _trackLoginFail(username, _failIp);
             _geoLookup(_failIp).then(geo => _registrarAcesso(null, username, 'login_fail', _failIp, req.headers['user-agent'], geo, null)).catch(()=>{});
             res.json({ success: false, message: 'Credenciais inválidas' });
         }
@@ -2470,7 +2494,11 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
         // IPs bloqueados
         const bloqueados = [..._loginBlocklist.entries()]
             .filter(([, v]) => Date.now() < v.blockedUntil)
-            .map(([ip, v]) => ({ ip, desbloqueiaEm: new Date(v.blockedUntil).toISOString() }));
+            .map(([ip, v]) => ({
+                ip,
+                desbloqueiaEm: new Date(v.blockedUntil).toISOString(),
+                usuarios: v.usuarios ? [...v.usuarios] : [],
+            }));
 
         // Req/min por usuário (instantâneo)
         const reqPorUsuario = [..._userReqCount.entries()]
@@ -2492,7 +2520,24 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
             ipsBlockeados: bloqueados,
             reqPorUsuario,
             ultimosLogins: logins.recordset,
+            bfCfg: { tentativas: _bfCfg.tentativas, janelaMins: _bfCfg.janelaMins, bloqueioMins: _bfCfg.bloqueioMins },
         });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/admin/desbloquear-ip', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const check = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        const tipo = (check.recordset[0]?.TipoUsuario || '').toLowerCase();
+        if (!['master','administrador'].includes(tipo)) return res.json({ success: false, message: 'Acesso negado' });
+        const ip = (req.body.ip || '').trim();
+        if (!ip) return res.json({ success: false, message: 'IP obrigatório' });
+        _loginBlocklist.delete(ip);
+        console.log(`🔓 [BruteForce] IP ${ip} desbloqueado manualmente por uid ${req.body.usuarioId}`);
+        res.json({ success: true });
     } catch(e) {
         res.json({ success: false, message: e.message });
     }
