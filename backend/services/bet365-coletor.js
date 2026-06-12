@@ -900,7 +900,7 @@ class Bet365Coletor {
     async salvarNoBanco(dados) {
         const pool = await this.conectarBanco();
         const { eventos, resultados } = dados;
-        let eventosOk = 0, mercadosOk = 0, oddsOk = 0;
+        let eventosOk = 0, mercadosOk = 0, oddsOk = 0, histOk = 0;
 
         const ligasPresentes = [...new Set(eventos.map(e => e.liga))];
         for (const ligaNome of ligasPresentes) {
@@ -1151,13 +1151,14 @@ class Bet365Coletor {
 
                 // ── 4. Log do resultado salvo via mercados ──
                 console.log(`   ✅ Mercados: [${res.liga}] ${res.timeCasa} × ${res.timeFora} (UTC ${timeKey}) — ${(res.mercados||[]).length} mercado(s)`);
+                histOk++;
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
             }
         }
 
-        console.log(`   💾 Eventos:${eventosOk} | Mercados:${mercadosOk} | Odds:${oddsOk}`);
-        return { eventosOk, mercadosOk, oddsOk };
+        console.log(`   💾 Resultados salvos: ${histOk}`);
+        return { eventosOk, mercadosOk, oddsOk, histOk };
     }
 
     // ─────────────────────────────────────────────────────────────
