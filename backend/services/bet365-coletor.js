@@ -1822,7 +1822,7 @@ class Bet365Coletor {
             // ── PASSO 3: Verificação final de sessão após ligas carregarem ─────────
             await this._verificarSessao(this.page);
 
-            const { eventos: evBrutos, resultados: resBrutos, contadores } = await this._extrairDados(this.page);
+            const { resultados: resBrutos, contadores } = await this._extrairDados(this.page);
             await this._logColeta(inicio, 'SUCESSO', contadores, null);
 
             if (typeof global.wsBroadcast === 'function') {
@@ -1830,7 +1830,7 @@ class Bet365Coletor {
             }
 
             // Só marca sucesso se extraiu algum dado — garante alerta quando sessão falha silenciosamente
-            if (evBrutos.length > 0 || resBrutos.length > 0) {
+            if (resBrutos.length > 0) {
                 this.ultimaColetaSucesso  = Date.now();
                 this.ultimoErro           = null;
                 this._ciclosSemResultados = 0;
