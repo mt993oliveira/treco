@@ -11851,7 +11851,9 @@ function _initUserMenu() {
         if (btnCfg) btnCfg.style.display = 'flex';
         const btnHistUsr = document.getElementById('dd-btn-historico-usuarios');
         if (btnHistUsr) btnHistUsr.style.display = 'flex';
-
+    }
+    // 💳 Kirvano — master e administrador
+    if (_isMasterUser || _isAdminType) {
         const btnKirv = document.getElementById('dd-btn-kirvano');
         if (btnKirv) btnKirv.style.display = 'flex';
     }
