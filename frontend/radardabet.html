@@ -12200,10 +12200,6 @@ const _CFG_LABELS = {
     delay_apos_resultados_ms:   'Delay após abrir aba de Resultados (ms)',
     delay_show_more_ms:         'Delay entre cliques em "Mostrar Mais" (ms)',
     delay_expandir_mercados_ms: 'Delay após expandir mercados internos (ms)',
-    delay_volta_proximos_ms:    'Delay ao voltar para Próximos Jogos (ms)',
-    delay_entre_horarios_ms:    'Delay entre cliques de horário (ms)',
-    max_horarios_proximos:      'Máx. horários futuros por liga (0 = desativar)',
-    coletar_proximos_jogos:     'Coletar próximos jogos agendados',
     delay_aguarda_mercado_ms:   'Delay de polling ao aguardar mercados (ms)',
     timeout_goto_ms:            'Timeout ao navegar para a página inicial (ms)',
     delay_initial_load_ms:      'Delay após carregar a página inicial (ms)',
@@ -12221,7 +12217,6 @@ const _CFG_LABELS = {
     default_mosaico_gols:       '⚽ Linha ativado por padrão no Mosaico',
     auto_refresh_segundos:      'Atualização automática da grade (segundos; 0 = desativar)',
     historico_cache_segundos:   'Cache do servidor — grade/histórico (segundos; 0 = sem cache)',
-    proximos_antes_resultados:  'Coletar próximos jogos ANTES dos resultados',
     liga_world_cup:             'Copa do Mundo',
     liga_euro_cup:              'Euro Cup',
     liga_premiership:           'Premier League (Premiership)',
@@ -12486,18 +12481,6 @@ async function _loadConfigSistema() {
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
                     <div style="font-size:10px;color:#475569;margin-top:4px">Deixe vazio para não exibir previsão na tela de manutenção</div>
                 </div>`;
-            if (d.chave === 'fonte_proximos') {
-                const opts = [
-                    { v:'results', t:'📄 Página de resultados (extra.bet365.bet.br)' },
-                    { v:'none',    t:'🚫 Desativado (não coletar próximos jogos)' },
-                ].map(o => `<option value="${o.v}"${d.valor===o.v?' selected':''}>${o.t}</option>`).join('');
-                return `<div style="margin-bottom:14px">
-                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">FONTE DOS PRÓXIMOS JOGOS</label>
-                    <select id="cfg-fonte_proximos" style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none"
-                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">${opts}</select>
-                    <div style="font-size:10px;color:#475569;margin-top:4px">Define se o coletor busca os próximos jogos e por qual fonte.</div>
-                </div>`;
-            }
             if (d.chave === 'tour_dias') {
                 return `<div style="margin-bottom:14px">
                     <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">TOUR DE ONBOARDING — DIAS APÓS LICENÇA</label>

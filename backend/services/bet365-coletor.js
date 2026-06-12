@@ -123,7 +123,6 @@ class Bet365Coletor {
         this._ultimoAlertaLoginTs  = 0; // throttle: evita spam de alertas de login
         this._ultimoLoginTs        = 0;     // timestamp do último login bem-sucedido (anti-duplo-login)
         this._reinicioAgendado     = false; // evita agendar múltiplos reinícios simultâneos
-        this._ultimaColetaProximos = new Map(); // liga → timestamp da última busca de próximos
         this._ligasFalhadasConsec    = 0;   // contador de falhas consecutivas "Ligas não apareceram"
         this._edgeSemPortaConsec   = 0;    // contador de falhas consecutivas "Edge não encontrado na porta"
         this._proximaColetaPermitida = 0;   // backoff: timestamp mínimo para próxima tentativa
@@ -168,8 +167,6 @@ class Bet365Coletor {
                 delay_apos_resultados_ms:   '2000',
                 delay_show_more_ms:         '800',
                 delay_expandir_mercados_ms: '1500',
-                delay_volta_proximos_ms:    '2000',
-                delay_entre_horarios_ms:    '1500',
                 delay_aguarda_mercado_ms:   '500',
                 timeout_goto_ms:            '60000',
                 delay_initial_load_ms:      '6000',
@@ -742,151 +739,6 @@ class Bet365Coletor {
     // COLETA DE UMA LIGA (F5 + extração)
     // ─────────────────────────────────────────────────────────────
 
-    async _coletarProximos(pg, liga, eventos) {
-        const fonteProximos   = (this.cfg?.fonte_proximos || 'results').trim().toLowerCase();
-        const coletarProximos = this._cfgBool('coletar_proximos_jogos', true);
-        const maxHorarios     = (fonteProximos === 'none' || !coletarProximos)
-            ? 0 : this._cfgNum('max_horarios_proximos', 4);
-
-        if (maxHorarios === 0) {
-            console.log(`   ⏭️  [${liga.nome}] Coleta de próximos desativada (fonte: ${fonteProximos}).`);
-            return;
-        }
-
-        const ligaNorm = normalizarNomeLiga(liga.nome);
-
-        // Throttle: respeita intervalo mínimo entre buscas por liga
-        const intervaloMs = this._cfgNum('intervalo_proximos_min', 3) * 60 * 1000;
-        const ultimaTs    = this._ultimaColetaProximos.get(ligaNorm) || 0;
-        const decorrido   = Date.now() - ultimaTs;
-        if (decorrido < intervaloMs) {
-            const restante = Math.ceil((intervaloMs - decorrido) / 1000);
-            console.log(`   ⏭️  [${liga.nome}] Próximos: aguardando intervalo (${restante}s restantes).`);
-            return;
-        }
-        this._ultimaColetaProximos.set(ligaNorm, Date.now());
-        const ligaInfo = LIGA_RESULTADOS_URL[ligaNorm];
-
-        if (!ligaInfo) {
-            console.log(`   ⚠️  [${liga.nome}] Liga não mapeada para próximos. Pulando.`);
-            return;
-        }
-
-        // Data atual em BST (Bet365 usa UTC+1 como referência de horário)
-        const nowBST = new Date(Date.now() + 3600000);
-        const yyyy   = nowBST.getUTCFullYear();
-        const mm     = nowBST.getUTCMonth(); // 0-indexed
-        const dd     = nowBST.getUTCDate();
-        const dateStr = `${yyyy}-${String(mm + 1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-
-        const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
-                          'Agosto','Setembro','Outubro','Novembro','Dezembro'];
-        const displayDate = `${dd}-${dd}%20${MESES_PT[mm]}%20${yyyy}`;
-
-        const horaAtualBST = nowBST.getUTCHours();
-        const minAtualBST  = nowBST.getUTCMinutes();
-
-        // Monta URL para cada nome alternativo da liga
-        const b64 = s => Buffer.from(s).toString('base64');
-        const _montarUrl = compNome => {
-            const qParams = [
-                b64('2'), b64('146'), b64('Futebol%20Virtual'),
-                b64(dateStr), b64(dateStr), b64('0'), b64('0'),
-                b64(displayDate), b64('0'),
-                b64(encodeURIComponent(compNome)),
-                b64(ligaInfo.compId), b64('0'), '',
-                b64('fixture'),
-                b64('0'), b64('0'), b64('0'), b64('0'), b64('0'),
-                '', b64('0'), b64('0'),
-            ].join('|');
-            return `https://extra.bet365.bet.br/results/br?q=${qParams}`;
-        };
-
-        let novaPg = null;
-        try {
-            novaPg = await pg.browser().newPage();
-
-            let futuros = [], totalEncontrados = 0, amostra = [];
-            for (const compNome of ligaInfo.compNomes) {
-                const urlResultados = _montarUrl(compNome);
-                console.log(`   🔗 [${liga.nome}] URL próximos (${compNome}): ${urlResultados.substring(0, 120)}...`);
-                await novaPg.goto(urlResultados, { waitUntil: 'networkidle2', timeout: 30000 });
-
-                // Aguarda os botões de fixture aparecerem (até 10s), evita leitura prematura
-                try {
-                    await novaPg.waitForSelector('button.point-result__fixture', { timeout: 10000 });
-                } catch(_) { /* continua mesmo sem fixtures */ }
-                await this._delay(1500);
-
-                // Rola até o fim para forçar carregamento lazy, depois volta ao topo (simulação humana)
-                await novaPg.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-                await this._delay(1500);
-                await novaPg.evaluate(() => window.scrollTo(0, 0));
-                await this._delay(500);
-
-                // Extrai fixtures com esse nome
-                const resultado = await novaPg.evaluate((h, m, maxN, janela) => {
-                const buttons = document.querySelectorAll('button.point-result__fixture');
-                const futuros = [];
-                const amostra = []; // primeiros 5 para log
-                for (const btn of buttons) {
-                    const parts = btn.querySelectorAll('.point-result__fixture-participant');
-                    if (parts.length < 2) continue;
-                    const p1    = parts[0].textContent.trim();
-                    const match = p1.match(/^(\d{1,2})\.(\d{2})\s+(.+)$/);
-                    if (!match) continue;
-                    const jH = parseInt(match[1]);
-                    const jM = parseInt(match[2]);
-                    if (amostra.length < 5) amostra.push(`${jH}:${String(jM).padStart(2,'0')} ${match[3].trim()} x ${parts[1].textContent.trim()}`);
-                    const nowMins = h * 60 + m;
-                    const jMins   = jH * 60 + jM;
-                    if (jMins > nowMins && jMins <= nowMins + janela) {
-                        futuros.push({
-                            horario:  `${jH}:${String(jM).padStart(2,'0')}`,
-                            timeCasa: match[3].trim(),
-                            timeFora: parts[1].textContent.trim(),
-                        });
-                        if (futuros.length >= maxN) break;
-                    }
-                }
-                return { futuros, totalEncontrados: buttons.length, amostra };
-                }, horaAtualBST, minAtualBST, maxHorarios, this._cfgNum('janela_proximos_min', 6));
-
-                totalEncontrados = resultado.totalEncontrados;
-                futuros          = resultado.futuros;
-                amostra          = resultado.amostra;
-
-                console.log(`   ⏰ [${liga.nome}] (${compNome}) BST: ${horaAtualBST}:${String(minAtualBST).padStart(2,'0')} | Fixtures: ${totalEncontrados} | Próximos: ${futuros.length}`);
-                if (totalEncontrados > 0) break; // achou com este nome, não precisa tentar o próximo
-            }
-
-            if (futuros.length > 0) console.log(`      📋 Próximos fixtures: ${futuros.map(f => `${f.horario} ${f.timeCasa} x ${f.timeFora}`).join(' | ')}`);
-
-            for (const f of futuros) {
-                const tcNorm   = normalizarNomeTime(f.timeCasa);
-                const tfNorm   = normalizarNomeTime(f.timeFora);
-                const eventoId = this._gerarId(ligaNorm, tcNorm, tfNorm, f.horario);
-                eventos.push({
-                    eventoId,
-                    liga:      ligaNorm,
-                    timeCasa:  tcNorm,
-                    timeFora:  tfNorm,
-                    horario:   f.horario,
-                    countdown: null,
-                    oddCasa:   0,
-                    oddEmpate: 0,
-                    oddFora:   0,
-                    mercados:  [],
-                });
-                console.log(`      ✅ [${ligaNorm}] ${tcNorm} x ${tfNorm} [${f.horario}]`);
-            }
-        } catch(err) {
-            console.error(`   ❌ [${liga.nome}] Erro _coletarProximos: ${err.message}`);
-        } finally {
-            if (novaPg) await novaPg.close().catch(() => {});
-        }
-    }
-
     async _coletarResultados(pg, liga, resultados) {
         const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
         if (!temBtnRes) return;
@@ -919,20 +771,9 @@ class Bet365Coletor {
     }
 
     async _coletarLiga(pg, liga) {
-        const eventos    = [];
         const resultados = [];
-        const proxAntesRes = this._cfgBool('proximos_antes_resultados', false);
-
-        if (proxAntesRes) {
-            console.log(`   🔀 [${liga.nome}] Ordem: próximos → resultados`);
-            await this._coletarProximos(pg, liga, eventos);
-            await this._coletarResultados(pg, liga, resultados);
-        } else {
-            await this._coletarResultados(pg, liga, resultados);
-            await this._coletarProximos(pg, liga, eventos);
-        }
-
-        return { eventos, resultados };
+        await this._coletarResultados(pg, liga, resultados);
+        return { resultados };
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -966,7 +807,6 @@ class Bet365Coletor {
 
         console.log(`   ✅ ${ligasFiltradas.length} liga(s): ${ligasFiltradas.map(l => l.nome).join(' | ')}`);
 
-        const todosEventos    = [];
         const todosResultados = [];
         const contadoresTotal = { eventosOk: 0, mercadosOk: 0, oddsOk: 0, histOk: 0 };
 
@@ -993,13 +833,12 @@ class Bet365Coletor {
             await this._delay(this._cfgNum('delay_apos_clicar_liga_ms', 3000));
 
             try {
-                const { eventos, resultados } = await this._coletarLiga(pg, liga);
-                todosEventos.push(...eventos);
+                const { resultados } = await this._coletarLiga(pg, liga);
                 todosResultados.push(...resultados);
 
                 // ── Commit por liga — salva imediatamente após coletar cada liga ──
                 console.log(`   💾 [${normalizarNomeLiga(liga.nome)}] Salvando no banco...`);
-                const cont = await this.salvarNoBanco({ eventos, resultados });
+                const cont = await this.salvarNoBanco({ eventos: [], resultados });
                 contadoresTotal.eventosOk  += cont.eventosOk;
                 contadoresTotal.mercadosOk += cont.mercadosOk;
                 contadoresTotal.oddsOk     += cont.oddsOk;
@@ -1050,8 +889,8 @@ class Bet365Coletor {
             }
         }
 
-        console.log(`\n   ✅ Total: ${todosEventos.length} evento(s), ${todosResultados.length} resultado(s)`);
-        return { eventos: todosEventos, resultados: todosResultados, contadores: contadoresTotal };
+        console.log(`\n   ✅ Total: ${todosResultados.length} resultado(s)`);
+        return { resultados: todosResultados, contadores: contadoresTotal };
     }
 
     // ─────────────────────────────────────────────────────────────
