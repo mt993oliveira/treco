@@ -4152,10 +4152,10 @@ async function carregarHistorico() {
         // Quando "Próximos Jogos" está ativo, busca eventos agendados para a grade
         if (S.showProximos) {
             try {
-                const re = await fetch('/api/bet365/eventos-completos');
+                const re = await fetch('/api/bet365/eventos?status=AGENDADO');
                 const de = await re.json();
                 if (de.success) {
-                    S.eventosAgendados = (de.data || []).filter(j => j.status === 'AGENDADO');
+                    S.eventosAgendados = de.data || [];
                 }
             } catch(_) {}
         } else {
@@ -7865,11 +7865,11 @@ function toggleProximosJogos() {
     if (btn) btn.classList.toggle('ativo', S.showProximos);
     if (S.showProximos) {
         // Busca eventos agendados pelo mesmo endpoint da tela dedicada
-        fetch('/api/bet365/eventos-completos')
+        fetch('/api/bet365/eventos?status=AGENDADO')
             .then(r => r.json())
             .then(d => {
                 if (d.success) {
-                    S.eventosAgendados = (d.data || []).filter(j => j.status === 'AGENDADO');
+                    S.eventosAgendados = d.data || [];
                 }
                 renderFiltros();
                 renderTabela();
