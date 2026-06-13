@@ -833,6 +833,7 @@ class Bet365Coletor {
             if (!clicou) { console.log(`   ⚠️  [${liga.nome}] Tab não encontrada pelo nome`); continue; }
             await this._delay(this._cfgNum('delay_apos_clicar_liga_ms', 3000));
 
+            let _ligaTodosCache = false;
             try {
                 const { resultados } = await this._coletarLiga(pg, liga);
                 todosResultados.push(...resultados);
@@ -842,16 +843,13 @@ class Bet365Coletor {
                 const CACHE_TTL  = 3 * 60 * 60 * 1000; // 3h
                 const novos = cacheAtivo
                     ? resultados.filter(r => {
-                        const k  = `${r.liga}|${r.timeCasa}|${r.timeFora}|${r.horario}`;
-                        const ts = this._resultadosCache.get(k);
-                        return !ts || (Date.now() - ts > CACHE_TTL);
+                        const k      = `${r.liga}|${r.timeCasa}|${r.timeFora}|${r.horario}`;
+                        const ts     = this._resultadosCache.get(k);
+                        const cached = ts && (Date.now() - ts < CACHE_TTL);
+                        if (cached) console.log(`   ⏭️  [${normalizarNomeLiga(liga.nome)}] ${r.timeCasa} × ${r.timeFora} (UTC ${r.horario}) — já coletado`);
+                        return !cached;
                     })
                     : resultados;
-
-                if (cacheAtivo && novos.length < resultados.length) {
-                    const pulados = resultados.length - novos.length;
-                    console.log(`   ⚡ [${normalizarNomeLiga(liga.nome)}] ${pulados} resultado(s) já coletado(s) — pulando`);
-                }
 
                 // ── Commit por liga — salva imediatamente após coletar cada liga ──
                 if (novos.length > 0) {
@@ -862,21 +860,15 @@ class Bet365Coletor {
                     contadoresTotal.oddsOk     += cont.oddsOk;
                     contadoresTotal.histOk     += cont.histOk;
                 }
+
+                // Pula Ctrl+F5 apenas se ESTA liga tinha resultados e todos já estavam no cache
+                _ligaTodosCache = cacheAtivo && resultados.length > 0 && novos.length === 0;
             } catch(err) {
                 console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
             }
 
-            // Ctrl+F5 — pula se todos os resultados desta liga já estavam no cache
-            const _ligaNovos = todosResultados.slice(-2); // os últimos adicionados desta liga
-            const _todosCache = this._cfgBool('cache_resultados_ativo', false) &&
-                _ligaNovos.length > 0 &&
-                _ligaNovos.every(r => {
-                    const k  = `${r.liga}|${r.timeCasa}|${r.timeFora}|${r.horario}`;
-                    const ts = this._resultadosCache.get(k);
-                    return ts && (Date.now() - ts < 3 * 60 * 60 * 1000);
-                });
-            if (_todosCache) {
-                console.log(`   ⏭️  [${liga.nome}] Cache completo — Ctrl+F5 pulado`);
+            if (_ligaTodosCache) {
+                console.log(`   ⏭️  [${normalizarNomeLiga(liga.nome)}] Ctrl+F5 pulado — tudo em cache`);
                 continue;
             }
             // Ctrl+F5 (hard refresh) após cada liga — força buscar do servidor, sem cache
