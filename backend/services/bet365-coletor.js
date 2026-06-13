@@ -127,6 +127,7 @@ class Bet365Coletor {
         this._edgeSemPortaConsec   = 0;    // contador de falhas consecutivas "Edge não encontrado na porta"
         this._proximaColetaPermitida = 0;   // backoff: timestamp mínimo para próxima tentativa
         this._ciclosSemResultados    = 0;   // contador de ciclos consecutivos com 0 resultados
+        this._resultadosCache        = new Map(); // "liga|casa|fora|horario" → timestamp (TTL 3h)
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -836,17 +837,48 @@ class Bet365Coletor {
                 const { resultados } = await this._coletarLiga(pg, liga);
                 todosResultados.push(...resultados);
 
+                // ── Filtro de cache — pula resultados já salvos nesta sessão ──
+                const cacheAtivo = this._cfgBool('cache_resultados_ativo', false);
+                const CACHE_TTL  = 3 * 60 * 60 * 1000; // 3h
+                const novos = cacheAtivo
+                    ? resultados.filter(r => {
+                        const k  = `${r.liga}|${r.timeCasa}|${r.timeFora}|${r.horario}`;
+                        const ts = this._resultadosCache.get(k);
+                        return !ts || (Date.now() - ts > CACHE_TTL);
+                    })
+                    : resultados;
+
+                if (cacheAtivo && novos.length < resultados.length) {
+                    const pulados = resultados.length - novos.length;
+                    console.log(`   ⚡ [${normalizarNomeLiga(liga.nome)}] ${pulados} resultado(s) já coletado(s) — pulando`);
+                }
+
                 // ── Commit por liga — salva imediatamente após coletar cada liga ──
-                console.log(`   💾 [${normalizarNomeLiga(liga.nome)}] Salvando no banco...`);
-                const cont = await this.salvarNoBanco({ eventos: [], resultados });
-                contadoresTotal.eventosOk  += cont.eventosOk;
-                contadoresTotal.mercadosOk += cont.mercadosOk;
-                contadoresTotal.oddsOk     += cont.oddsOk;
-                contadoresTotal.histOk     += cont.histOk;
+                if (novos.length > 0) {
+                    console.log(`   💾 [${normalizarNomeLiga(liga.nome)}] Salvando no banco...`);
+                    const cont = await this.salvarNoBanco({ eventos: [], resultados: novos });
+                    contadoresTotal.eventosOk  += cont.eventosOk;
+                    contadoresTotal.mercadosOk += cont.mercadosOk;
+                    contadoresTotal.oddsOk     += cont.oddsOk;
+                    contadoresTotal.histOk     += cont.histOk;
+                }
             } catch(err) {
                 console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
             }
 
+            // Ctrl+F5 — pula se todos os resultados desta liga já estavam no cache
+            const _ligaNovos = todosResultados.slice(-2); // os últimos adicionados desta liga
+            const _todosCache = this._cfgBool('cache_resultados_ativo', false) &&
+                _ligaNovos.length > 0 &&
+                _ligaNovos.every(r => {
+                    const k  = `${r.liga}|${r.timeCasa}|${r.timeFora}|${r.horario}`;
+                    const ts = this._resultadosCache.get(k);
+                    return ts && (Date.now() - ts < 3 * 60 * 60 * 1000);
+                });
+            if (_todosCache) {
+                console.log(`   ⏭️  [${liga.nome}] Cache completo — Ctrl+F5 pulado`);
+                continue;
+            }
             // Ctrl+F5 (hard refresh) após cada liga — força buscar do servidor, sem cache
             console.log(`   🔄 [${liga.nome}] Ctrl+F5 — recarregando sem cache...`);
             let recarregouOk = false;
@@ -1151,6 +1183,8 @@ class Bet365Coletor {
 
                 // ── 4. Log do resultado salvo via mercados ──
                 console.log(`   ✅ Mercados: [${res.liga}] ${res.timeCasa} × ${res.timeFora} (UTC ${timeKey}) — ${(res.mercados||[]).length} mercado(s)`);
+                // Marca no cache para evitar re-salvamento nos próximos ciclos
+                this._resultadosCache.set(`${res.liga}|${res.timeCasa}|${res.timeFora}|${res.horario}`, Date.now());
                 histOk++;
             } catch(e) {
                 console.error(`   ❌ Erro histórico ${res.timeCasa} x ${res.timeFora}: ${e.message}`);
