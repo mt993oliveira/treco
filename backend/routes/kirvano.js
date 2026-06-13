@@ -361,7 +361,7 @@ router.post('/admin/assinaturas', async (req, res) => {
         if (!usuarioId) return res.json({ success: false, message: 'Não autenticado' });
         const auth = await pool.request().input('id', sql.Int, Number(usuarioId))
             .query(`SELECT TipoUsuario FROM Usuarios WHERE Id = @id`);
-        if (!auth.recordset.length || !['master','administrador'].includes(auth.recordset[0].TipoUsuario))
+        if (!auth.recordset.length || !['master','administrador','admin'].includes((auth.recordset[0].TipoUsuario || '').toLowerCase()))
             return res.json({ success: false, message: 'Acesso negado' });
         await _ensureTable(pool);
         const pp  = Math.min(200, Math.max(1, Number(porPagina)));
@@ -412,7 +412,7 @@ router.post('/admin/webhooks', async (req, res) => {
         if (!usuarioId) return res.json({ success: false, message: 'Não autenticado' });
         const auth = await pool.request().input('id', sql.Int, Number(usuarioId))
             .query(`SELECT TipoUsuario FROM Usuarios WHERE Id = @id`);
-        if (!auth.recordset.length || !['master','administrador'].includes(auth.recordset[0].TipoUsuario))
+        if (!auth.recordset.length || !['master','administrador','admin'].includes((auth.recordset[0].TipoUsuario || '').toLowerCase()))
             return res.json({ success: false, message: 'Acesso negado' });
         await _ensureTable(pool);
         const pp  = Math.min(200, Math.max(1, Number(porPagina)));
@@ -455,7 +455,7 @@ router.post('/admin/totais', async (req, res) => {
         if (!usuarioId) return res.json({ success: false, message: 'Não autenticado' });
         const auth = await pool.request().input('id', sql.Int, Number(usuarioId))
             .query(`SELECT TipoUsuario FROM Usuarios WHERE Id = @id`);
-        if (!auth.recordset.length || !['master','administrador'].includes(auth.recordset[0].TipoUsuario))
+        if (!auth.recordset.length || !['master','administrador','admin'].includes((auth.recordset[0].TipoUsuario || '').toLowerCase()))
             return res.json({ success: false, message: 'Acesso negado' });
         await _ensureTable(pool);
         // Dedup por kirvano_purchase_id para evitar contar duplicatas
