@@ -14618,8 +14618,10 @@ function _mostrarNotificacaoAlerta(alertas) {
     });
 
     // Verifica se o popup está habilitado (MASTER sempre vê, independente da config)
+    // Lê S._cfgRaw (atualizado a cada ciclo) para evitar valor stale do startup
     const _isMaster = (_getUser()?.TipoUsuario || '').toLowerCase() === 'master';
-    const _popupPermitido = _alertaPopupAtivo || _isMaster;
+    const _popupAtivoCfg  = (S._cfgRaw?.alerta_popup_ativo ?? 'true') !== 'false';
+    const _popupPermitido = _popupAtivoCfg || _isMaster;
 
     // Se todos os alertas forem silenciosos, ou popup desativado para este usuário, não exibe
     if (alertas.every(a => a.silencioso) || !_popupPermitido) return;
