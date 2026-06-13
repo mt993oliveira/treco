@@ -2057,16 +2057,35 @@
                         </select>
                     </div>
                 </div>
-                <div style="display:flex;gap:6px;align-items:center">
-                    <button id="btn-gols-mm" class="acao-btn" onclick="_gToggle('grafGolsMM','btn-gols-mm')" title="Exibe média móvel de gols">📈 MM</button>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <button id="btn-gols-mm" class="acao-btn" onclick="_gToggle('grafGolsMM','btn-gols-mm')" title="Exibe média móvel MM21 de gols">📈 MM</button>
+                    <button id="btn-gols-mm921" class="acao-btn" onclick="_gToggle('grafGolsMM921','btn-gols-mm921')" title="Exibe MM9 e MM21 no gráfico de gols">📈 MM9 e MM21</button>
                     <button id="btn-gols-gols" class="acao-btn ativo" onclick="_gToggle('grafGolsShowGols','btn-gols-gols')" title="Exibe quantidade de gols no lugar de %">⚽ Gols</button>
                     <button id="btn-gols-flat" class="acao-btn ativo" onclick="_toggleGolsFlat()" title="Exibir bolinhas quando o valor não muda (linha plana)">● Plano</button>
                     <button id="btn-zoom-gols" class="acao-btn" onclick="resetZoomGols()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
+                    <div style="width:1px;height:14px;background:#1e293b"></div>
+                    <button id="btn-caneta-gols" class="acao-btn" onclick="toggleCanetaGols()" title="Ativar/desativar desenho no gráfico de gols">✏️ Caneta</button>
+                    <select id="gols-draw-tool" onchange="DRAW_GOLS.ferramenta=this.value" title="Ferramenta de desenho"
+                        style="display:none;background:#0f172a;border:1px solid #1fcc59;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 7px;cursor:pointer;height:26px">
+                        <option value="livre">✏️ Livre</option>
+                        <option value="linha">📏 Linha</option>
+                        <option value="seta">➡️ Seta</option>
+                        <option value="retangulo">⬜ Retângulo</option>
+                        <option value="borracha">🧹 Borracha</option>
+                    </select>
+                    <input type="color" id="gols-caneta-cor" value="#f59e0b" title="Cor da caneta"
+                        style="width:24px;height:24px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0">
+                    <input type="range" id="gols-caneta-esp" min="1" max="8" value="2" title="Espessura"
+                        style="width:50px;accent-color:#f59e0b">
+                    <button class="acao-btn" onclick="limparDesenhoGols()" title="Apagar riscos do gráfico de gols">🗑 Limpar</button>
                 </div>
             </div>
             <!-- Pills de mercado do Gráfico de Gols -->
             <div id="pills-gols" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;"></div>
-            <div style="position:relative;height:260px"><canvas id="grafico-gols"></canvas></div>
+            <div style="position:relative;height:260px">
+                <canvas id="grafico-gols"></canvas>
+                <canvas id="gols-draw" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;cursor:crosshair"></canvas>
+            </div>
             <div id="legenda-gols" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;padding:0 2px"></div>
         </div>
     </div>
@@ -5847,6 +5866,91 @@ function limparDesenhoLinha() {
 }
 
 // ============================================================
+// DRAW GRÁFICO DE GOLS — sistema de desenho independente
+// ============================================================
+const DRAW_GOLS = { ativo: false, drawing: false, ctx: null, ferramenta: 'livre', sx: 0, sy: 0 };
+
+function _drawCorGols() { return document.getElementById('gols-caneta-cor')?.value || '#f59e0b'; }
+function _drawEspGols() { return parseInt(document.getElementById('gols-caneta-esp')?.value) || 2; }
+
+function _drawBindGols(canvas) {
+    function getP(e) { return _drawGetPos(e, canvas, null); }
+    function startDraw(e) {
+        if (!DRAW_GOLS.ativo) return;
+        const p = getP(e); DRAW_GOLS.drawing = true; DRAW_GOLS.sx = p.x; DRAW_GOLS.sy = p.y;
+        const ctx = DRAW_GOLS.ctx; if (!ctx) return;
+        const cor = _drawCorGols(), esp = _drawEspGols();
+        if (DRAW_GOLS.ferramenta === 'livre') {
+            ctx.globalCompositeOperation = 'source-over';
+            _drawStyle(ctx, cor, esp); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+        } else if (DRAW_GOLS.ferramenta === 'borracha') {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.lineWidth = esp * 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(p.x, p.y);
+        } else {
+            DRAW_GOLS.ctx_snap = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+        e.preventDefault();
+    }
+    function moveDraw(e) {
+        if (!DRAW_GOLS.ativo || !DRAW_GOLS.drawing) return;
+        const p = getP(e); const ctx = DRAW_GOLS.ctx; if (!ctx) return;
+        const cor = _drawCorGols(), esp = _drawEspGols();
+        if (DRAW_GOLS.ferramenta === 'livre' || DRAW_GOLS.ferramenta === 'borracha') {
+            ctx.lineTo(p.x, p.y); ctx.stroke();
+        } else {
+            if (DRAW_GOLS.ctx_snap) ctx.putImageData(DRAW_GOLS.ctx_snap, 0, 0);
+            ctx.globalCompositeOperation = 'source-over';
+            _drawStyle(ctx, cor, esp);
+            if (DRAW_GOLS.ferramenta === 'linha') {
+                ctx.beginPath(); ctx.moveTo(DRAW_GOLS.sx, DRAW_GOLS.sy); ctx.lineTo(p.x, p.y); ctx.stroke();
+            } else if (DRAW_GOLS.ferramenta === 'seta') {
+                _drawArrow(ctx, DRAW_GOLS.sx, DRAW_GOLS.sy, p.x, p.y, esp);
+            } else if (DRAW_GOLS.ferramenta === 'retangulo') {
+                ctx.strokeRect(DRAW_GOLS.sx, DRAW_GOLS.sy, p.x - DRAW_GOLS.sx, p.y - DRAW_GOLS.sy);
+            }
+        }
+        e.preventDefault();
+    }
+    function stopDraw() {
+        if (!DRAW_GOLS.drawing) return; DRAW_GOLS.drawing = false;
+        if (DRAW_GOLS.ctx) DRAW_GOLS.ctx.globalCompositeOperation = 'source-over';
+    }
+    canvas.addEventListener('mousedown',  startDraw);
+    canvas.addEventListener('mousemove',  moveDraw);
+    canvas.addEventListener('mouseup',    stopDraw);
+    canvas.addEventListener('mouseleave', stopDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove',  moveDraw,  { passive: false });
+    canvas.addEventListener('touchend',   stopDraw);
+}
+
+function _golsDrawInit() {
+    const drawCanvas = document.getElementById('gols-draw');
+    if (drawCanvas && !DRAW_GOLS.ctx) {
+        const p = drawCanvas.parentElement;
+        drawCanvas.width  = p.offsetWidth  || 600;
+        drawCanvas.height = p.offsetHeight || 260;
+        DRAW_GOLS.ctx = drawCanvas.getContext('2d');
+        _drawBindGols(drawCanvas);
+    }
+}
+
+function toggleCanetaGols() {
+    DRAW_GOLS.ativo = !DRAW_GOLS.ativo;
+    const btn = document.getElementById('btn-caneta-gols');
+    if (btn) btn.classList.toggle('ativo', DRAW_GOLS.ativo);
+    const canvas = document.getElementById('gols-draw');
+    if (canvas) canvas.style.pointerEvents = DRAW_GOLS.ativo ? 'auto' : 'none';
+    const toolSel = document.getElementById('gols-draw-tool');
+    if (toolSel) toolSel.style.display = DRAW_GOLS.ativo ? 'inline-block' : 'none';
+    _golsDrawInit();
+}
+
+function limparDesenhoGols() {
+    const cc = document.getElementById('gols-draw');
+    if (cc && DRAW_GOLS.ctx) DRAW_GOLS.ctx.clearRect(0, 0, cc.width, cc.height);
+}
+
 // GRÁFICO DE LINHA — mesmo hit-rate do Gráfico, mas com MM pré-aquecida
 // pela janela anterior ao período exibido (reduz viés no início da série)
 // ============================================================
@@ -6282,18 +6386,28 @@ function renderGraficoGols() {
         });
 
         // MM — também calculada sobre todos os dados para warmup correto
-        if (S.grafGolsMM && f.id === 'gols-total') {
+        if ((S.grafGolsMM || S.grafGolsMM921) && f.id === 'gols-total') {
             const _pd = s => String(s||'').split(',').map(Number).filter(v=>!isNaN(v)&&v>=0);
-            const n2 = S.grafMM2 || 21;
-            const rolAvgAll = rolSumAll.map((_, i) => {
-                const sl = rolSumAll.slice(Math.max(0, i - n2 + 1), i + 1);
-                return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
-            });
-            datasets.push({ type:'line', label:`MM${n2}`,
-                data: rolAvgAll.slice(_offsetGols),
-                borderColor: S.grafMM2Cor||'#fbbf24', backgroundColor:'transparent',
-                borderWidth: S.grafMM2Esp||2, borderDash: _pd(S.grafMM2Dash||'8,4'),
-                pointRadius: 0, tension: 0.4, _isMA: true });
+            const _maLine = (nPer, cor, esp, dash) => {
+                const avg = rolSumAll.map((_, i) => {
+                    const sl = rolSumAll.slice(Math.max(0, i - nPer + 1), i + 1);
+                    return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(1);
+                });
+                return { type:'line', label:`MM${nPer}`,
+                    data: avg.slice(_offsetGols),
+                    borderColor: cor, backgroundColor:'transparent',
+                    borderWidth: esp, borderDash: _pd(dash),
+                    pointRadius: 0, tension: 0.4, _isMA: true };
+            };
+            // 📈 MM — apenas MM21
+            if (S.grafGolsMM && !S.grafGolsMM921) {
+                datasets.push(_maLine(S.grafMM2||21, S.grafMM2Cor||'#fbbf24', S.grafMM2Esp||2, S.grafMM2Dash||'8,4'));
+            }
+            // 📈 MM9 e MM21 — ambas
+            if (S.grafGolsMM921) {
+                datasets.push(_maLine(S.grafMM1||9,  S.grafMM1Cor||'#60a5fa', S.grafMM1Esp||1.5, S.grafMM1Dash||'4,4'));
+                datasets.push(_maLine(S.grafMM2||21, S.grafMM2Cor||'#fbbf24', S.grafMM2Esp||2,   S.grafMM2Dash||'8,4'));
+            }
         }
     });
 
@@ -6406,6 +6520,7 @@ function renderGraficoGols() {
         },
         plugins: [golsLabelPlugin, verticalLinesPlugin, watermarkPlugin]
     }); } catch(e) { console.error('renderGraficoGols error:', e); }
+    requestAnimationFrame(_golsDrawInit);
 }
 
 // ============================================================
