@@ -67,6 +67,9 @@ const LIGAS_FILTRO = process.env.BET365_HIST_LIGAS
     : null;
 const LIMPAR_BACKFILL = process.env.BET365_HIST_LIMPAR === '1';
 
+// Sessão bet365: começa ~04:01h e vai até ~03:58h do dia seguinte.
+// Jogos com hora < HORA_VIRADA_DIA (0h–3h59) pertencem ao PRÓXIMO dia do calendário.
+const HORA_VIRADA_DIA = 4;
 
 // Delay e máx. tentativas de clique — sobrescritos pelo valor em bet365_config
 let DELAY_CLIQUE_MS    = 1000;
@@ -924,13 +927,15 @@ async function salvarResultados(ligaNorm, resultados, dataAlvo) {
 
     for (const res of resultados) {
         try {
-            // Monta data_partida: hora do jogo na data exata informada pelo usuário (sem shift).
-            // Convenção idêntica ao coletor 1: salva hora Bet365 como UTC direto.
+            // Monta data_partida: hora bet365 + ajuste de dia.
+            // Sessão bet365 vai de 04:01h a 03:58h do dia seguinte.
+            // Jogos com hora < HORA_VIRADA_DIA (0h–3h) pertencem ao próximo dia do calendário.
             let dataPart = null;
             if (res.horario && /^\d{1,2}[.:]\d{2}$/.test(res.horario)) {
                 const [h, m] = res.horario.replace('.', ':').split(':').map(Number);
                 const [yyyy, mm, dd] = dataAlvo.split('-').map(Number);
-                dataPart = new Date(Date.UTC(yyyy, mm - 1, dd, h, m, 0, 0));
+                const dOff = h < HORA_VIRADA_DIA ? 1 : 0;
+                dataPart = new Date(Date.UTC(yyyy, mm - 1, dd + dOff, h, m, 0, 0));
             }
 
             // Busca evento correspondente no banco (±30 min)
@@ -1016,7 +1021,22 @@ async function run() {
     console.log('\n============================================');
     console.log('⏮️  COLETOR HISTÓRICO BET365 — extra.bet365.bet.br');
     console.log('============================================');
-    console.log(`   📅 Data extra: ${DATA_ALVO}`);
+    // Mostra aviso quando algum horário está na madrugada (vai ser salvo no dia seguinte)
+    function _dataRealStr(horaStr) {
+        if (!horaStr) return DATA_ALVO;
+        const h = parseInt(horaStr.split(':')[0]);
+        if (h < HORA_VIRADA_DIA) {
+            const [yyyy, mm, dd] = DATA_ALVO.split('-').map(Number);
+            const d = new Date(Date.UTC(yyyy, mm-1, dd+1));
+            return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+        }
+        return DATA_ALVO;
+    }
+    const dataRealIni = _dataRealStr(HORA_INI);
+    const dataRealFim = _dataRealStr(HORA_FIM);
+    const avisoVirada = (dataRealIni !== DATA_ALVO || dataRealFim !== DATA_ALVO)
+        ? ` ⚠️  madrugada → salvo como ${dataRealIni}` : '';
+    console.log(`   📅 Data extra: ${DATA_ALVO}${avisoVirada}`);
     console.log(`   🕐 Hora ini:   ${HORA_INI || '(sem filtro)'}`);
     console.log(`   🕑 Hora fim:   ${HORA_FIM || '(sem filtro)'}`);
     console.log(`   🏆 Ligas:      ${LIGAS_FILTRO ? LIGAS_FILTRO.join(', ') : '(todas)'}`);
@@ -1030,8 +1050,8 @@ async function run() {
         const [yyyy, mm, dd] = DATA_ALVO.split('-').map(Number);
         const [hIni, mIni] = (HORA_INI || '00:00').split(':').map(Number);
         const [hFim, mFim] = (HORA_FIM || '23:59').split(':').map(Number);
-        const dtIni = new Date(Date.UTC(yyyy, mm-1, dd, hIni, mIni, 0));
-        const dtFim = new Date(Date.UTC(yyyy, mm-1, dd, hFim, mFim, 59));
+        const dtIni = new Date(Date.UTC(yyyy, mm-1, dd + (hIni < HORA_VIRADA_DIA ? 1 : 0), hIni, mIni, 0));
+        const dtFim = new Date(Date.UTC(yyyy, mm-1, dd + (hFim < HORA_VIRADA_DIA ? 1 : 0), hFim, mFim, 59));
         const db = await getPool();
         const r = await db.request()
             .input('dtIni', sql.DateTime2, dtIni)
