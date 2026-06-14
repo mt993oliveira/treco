@@ -57,7 +57,7 @@ app.use(helmet({
       "img-src": ["'self'", "data:", "blob:", "https:"],
       "font-src": ["'self'", "https://cdnjs.cloudflare.com"],
       "connect-src": ["'self'"], // Permite requisições para o próprio servidor (API)
-      "frame-src": "'self'",
+      "frame-src": ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
       "object-src": "'none'",
     },
   },
