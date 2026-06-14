@@ -1961,8 +1961,6 @@ const CONFIG_DEFAULTS = [
     { chave:'alerta_minutos_sem_coleta',    valor:'15',    tipo:'number',  grupo:'alertas',  descricao:'Minutos sem coleta bem-sucedida para disparar alerta' },
     { chave:'telegram_bot_token',           valor:'8189807116:AAEByra9URAFBh_Hutwn_-lVzWinpk68BOY', tipo:'text', grupo:'alertas', descricao:'Token do bot Telegram (obtido via @BotFather)' },
     { chave:'telegram_chat_ids',            valor:'5493649790', tipo:'text', grupo:'alertas', descricao:'Chat IDs do Telegram separados por vírgula' },
-    { chave:'alerta_visual_duracao_s',      valor:'15',   tipo:'number',  grupo:'alertas', descricao:'Duração da notificação de alerta na tela (segundos)' },
-    { chave:'alerta_liga_piscar_s',         valor:'30',   tipo:'number',  grupo:'alertas', descricao:'Duração do piscar da borda da liga quando alerta dispara (segundos)' },
     { chave:'alerta_popup_ativo',           valor:'true', tipo:'boolean', grupo:'alertas', descricao:'Exibir popup de alerta visual (quando desativado, apenas a liga pisca; MASTER sempre vê o popup)' },
     { chave:'alerta_btts_mosaico',           valor:'true', tipo:'boolean', grupo:'alertas', descricao:'🎯 Sugestão BTTS no Mosaico — exibir linha de destaque na grid quando BTTS ≤ threshold na hora anterior' },
     { chave:'alerta_btts_mosaico_botao',    valor:'true', tipo:'boolean', grupo:'alertas', descricao:'🎯 Sugestão BTTS — exibir botão "Ambas Marcam" no toolbar do Mosaico (permite usuário ligar/desligar)' },
