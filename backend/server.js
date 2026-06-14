@@ -1389,7 +1389,7 @@ async function _getMaxPadroes() {
 }
 
 // Listar padrões do usuário
-app.get('/api/usuario/padroes', requireAuth, async (req, res) => {
+app.get('/api/usuario/padroes', requireAuthQuery, async (req, res) => {
     const usuarioId = parseInt(req.query.usuarioId);
     if (!usuarioId) return res.json({ success: false, message: 'usuarioId obrigatório' });
     try {
