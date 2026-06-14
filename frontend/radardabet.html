@@ -1781,6 +1781,7 @@
 <div id="view-selector" style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center">
     <button class="view-btn ativo" id="view-historico" onclick="setView('historico')"><span class="vbtn-icon">📈</span><span class="vbtn-full"> Gráficos e Mosaico</span><span class="vbtn-short"> Gráficos</span></button>
     <button class="view-btn" id="view-proximos" onclick="setView('proximos')"><span class="vbtn-icon">🕐</span><span class="vbtn-full"> Próximos Jogos</span><span class="vbtn-short"> Próximos</span></button>
+    <button class="view-btn" id="view-rank-odds" onclick="abrirModalOdds()"><span class="vbtn-icon">📊</span><span class="vbtn-full"> Ranking de Odds</span><span class="vbtn-short"> Odds</span></button>
     <button class="view-btn" id="view-simulador" onclick="setView('simulador')"><span class="vbtn-icon">🎮</span><span class="vbtn-full"> Simulador</span><span class="vbtn-short"> Simul.</span></button>
     <button class="view-btn" id="view-multi" onclick="setView('multi')"><span class="vbtn-icon">⊞</span><span class="vbtn-full"> Multi Horários</span><span class="vbtn-short"> Horários</span></button>
     <button class="view-btn" id="view-multi-gols" onclick="setView('multi-gols')"><span class="vbtn-icon">⚽</span><span class="vbtn-full"> Multi Gols</span><span class="vbtn-short"> Gols</span></button>
@@ -2165,7 +2166,6 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;flex-wrap:wrap;gap:6px">
         <div id="mosaico-extras" style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
             <button class="acao-btn" onclick="abrirModalTimes()">🏆 Ranking de Times</button>
-            <button class="acao-btn" onclick="abrirModalOdds()">📊 Ranking de Odds</button>
             <button class="acao-btn" id="btn-proximos-jogos" onclick="toggleProximosJogos()" title="Exibir próximos jogos agendados na grade">🕐 Próximos Jogos</button>
             <button class="acao-btn" id="btn-btts-mosaico" style="display:none"
                 onclick="_bttsMosaicoAtivo=!_bttsMosaicoAtivo;localStorage.setItem('rdbt_bttsMosaico',_bttsMosaicoAtivo);document.getElementById('btn-btts-mosaico').classList.toggle('ativo',_bttsMosaicoAtivo);renderTabela()"
