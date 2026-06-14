@@ -11818,13 +11818,14 @@ function conectarWS() {
             try {
                 const m = JSON.parse(e.data);
                 if (m.tipo === 'coleta') {
+                    console.log('[WS coleta]', new Date().toLocaleTimeString(), '— resultadosSalvos:', m.resultadosSalvos, '| novos:', m.novos);
                     // Debounce: acumula mensagens por liga e dispara um único fetch
                     // 400ms após a última mensagem, evitando N requisições por ciclo.
                     if (m.resultadosSalvos > 0 || m.novos > 0) _wsTemDados = true;
                     clearTimeout(_wsColetaTimer);
                     _wsColetaTimer = setTimeout(() => {
-                        if (_wsTemDados) { _wsTemDados = false; carregarTudo(); }
-                        else carregarHistorico();
+                        if (_wsTemDados) { _wsTemDados = false; console.log('[WS coleta] → carregarTudo()'); carregarTudo(); }
+                        else { console.log('[WS coleta] → carregarHistorico()'); carregarHistorico(); }
                     }, 400);
                     if (S.view === 'diagnostico') setTimeout(carregarDiagnostico, 2500);
                 }

@@ -862,7 +862,10 @@ class Bet365Coletor {
                     // Notifica o frontend imediatamente após cada liga salvar,
                     // sem esperar o ciclo completo terminar.
                     if (cont.histOk > 0 && typeof global.wsBroadcast === 'function') {
+                        console.log(`   📡 [${normalizarNomeLiga(liga.nome)}] WS broadcast per-liga — ${cont.histOk} resultado(s)`);
                         global.wsBroadcast({ tipo: 'coleta', fonte: 'bet365', novos: cont.eventosOk, resultadosSalvos: cont.histOk, timestamp: new Date().toISOString() });
+                    } else if (cont.histOk === 0) {
+                        console.log(`   ⚠️  [${normalizarNomeLiga(liga.nome)}] WS per-liga NÃO disparou — histOk=0`);
                     }
                 }
 
