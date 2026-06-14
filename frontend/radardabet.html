@@ -1511,6 +1511,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 🏁 Grade
             </button>
+            <button id="cfg-tab-youtube" onclick="_cfgSetTab('youtube')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                ▶️ YouTube
+            </button>
         </div>
 
         <!-- Seção Coleta -->
@@ -1582,6 +1587,12 @@
             </div>
         </div>
 
+        <!-- Seção YouTube -->
+        <div id="cfg-section-youtube" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-youtube-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
 
         <div id="cfg-msg" style="display:none;padding:8px 12px;border-radius:5px;font-size:11px;margin-top:14px"></div>
 
@@ -1836,6 +1847,7 @@
     <button class="view-btn" id="view-multi-linhas" onclick="setView('multi-linhas')"><span class="vbtn-icon">📈</span><span class="vbtn-full"> Multi Linhas</span><span class="vbtn-short"> Linhas</span></button>
     <button class="view-btn" id="view-analise" onclick="setView('analise')"><span class="vbtn-icon">📊</span><span class="vbtn-full"> Análise & Sugestões</span><span class="vbtn-short"> Análise</span></button>
     <button class="view-btn" id="view-clubes" onclick="setView('clubes')"><span class="vbtn-icon">⚽</span><span class="vbtn-full"> Clubes</span><span class="vbtn-short"> Clubes</span></button>
+    <button class="view-btn" id="view-youtube" onclick="setView('youtube')"><span class="vbtn-icon">▶️</span><span class="vbtn-full"> YouTube</span><span class="vbtn-short"> YouTube</span></button>
     <button class="view-btn master-only" id="view-diagnostico" onclick="setView('diagnostico')"><span class="vbtn-icon">🔧</span><span class="vbtn-full"> Diagnóstico</span><span class="vbtn-short"> Diag.</span></button>
     <button class="view-btn" id="view-config" onclick="toggleConfig()"><span class="vbtn-icon">⚙️</span><span class="vbtn-full"> Config</span><span class="vbtn-short"> Config</span></button>
     <button class="view-btn" id="view-padroes" onclick="togglePadroes()" style="display:none"><span class="vbtn-icon">📋</span><span class="vbtn-full"> Padrões</span><span class="vbtn-short"> Padrões</span></button>
@@ -2458,6 +2470,28 @@
 
 <!-- ========== VIEW: SIMULADOR ========== -->
 <div id="view-simulador-content" style="display:none"></div>
+
+<!-- ========== VIEW: YOUTUBE ========== -->
+<div id="view-youtube-content" style="display:none;padding:14px 16px">
+    <div id="youtube-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
+        <div style="color:#475569;font-size:13px;text-align:center;padding:40px;grid-column:1/-1">Carregando...</div>
+    </div>
+</div>
+
+<!-- Modal player YouTube -->
+<div id="modal-youtube-player" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center"
+     onclick="if(event.target===this)fecharYoutubePlayer()">
+    <div style="position:relative;width:92%;max-width:920px">
+        <button onclick="fecharYoutubePlayer()"
+            style="position:absolute;top:-38px;right:0;background:none;border:none;color:#fff;
+                   font-size:28px;line-height:1;cursor:pointer;opacity:.8"
+            onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">×</button>
+        <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:10px;background:#000">
+            <iframe id="youtube-iframe" src="" frameborder="0" allow="autoplay; fullscreen"
+                style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:10px"></iframe>
+        </div>
+    </div>
+</div>
 
 <!-- ========== VIEW: DIAGNÓSTICO ========== -->
 <div id="view-diagnostico-content" style="display:none;padding:10px 14px">
@@ -3979,10 +4013,11 @@ function setView(v) {
     document.getElementById('view-multi-gols-content').style.display    = v === 'multi-gols'   ? '' : 'none';
     document.getElementById('view-multi-linhas-content').style.display  = v === 'multi-linhas' ? '' : 'none';
     document.getElementById('view-clubes-content').style.display        = v === 'clubes'       ? '' : 'none';
+    document.getElementById('view-youtube-content').style.display       = v === 'youtube'      ? '' : 'none';
     document.getElementById('view-diagnostico-content').style.display   = v === 'diagnostico'  ? '' : 'none';
     document.getElementById('view-proximos-content').style.display      = v === 'proximos'     ? '' : 'none';
     document.getElementById('view-simulador-content').style.display     = v === 'simulador'    ? '' : 'none';
-    ['analise','historico','multi','multi-gols','multi-linhas','clubes','diagnostico','proximos','simulador'].forEach(id => {
+    ['analise','historico','multi','multi-gols','multi-linhas','clubes','youtube','diagnostico','proximos','simulador'].forEach(id => {
         const el = document.getElementById('view-' + id);
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
@@ -3992,6 +4027,7 @@ function setView(v) {
     if (v === 'multi-gols')   { renderMultiGols(); }
     if (v === 'multi-linhas') { renderMultiLinhas(); }
     if (v === 'clubes')       { renderClubes(); }
+    if (v === 'youtube')      { renderYoutubeView(); }
     if (v === 'diagnostico')  { carregarDiagnostico(); _bfInit(); }
     if (v === 'proximos')     { renderProximosJogos(); }
     if (v === 'simulador')    { renderSimulador(); }
@@ -9384,6 +9420,75 @@ function buildTimesMap(liga) {
     return map;
 }
 
+// ── YouTube ─────────────────────────────────────────────────────────────────
+function _ytId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:youtu\.be\/|[?&]v=)([\w-]{11})/);
+    return m ? m[1] : null;
+}
+
+function renderYoutubeView() {
+    const el = document.getElementById('youtube-grid');
+    if (!el) return;
+    fetch('/api/bet365/admin/config')
+        .then(r => r.json())
+        .then(data => {
+            const ytKeys = (data.data || []).filter(d => d.grupo === 'youtube' && d.valor);
+            if (!ytKeys.length) {
+                el.innerHTML = '<div style="color:#475569;font-size:13px;text-align:center;padding:40px;grid-column:1/-1">Nenhum vídeo configurado. Acesse ⚙️ Config → ▶️ YouTube para adicionar.</div>';
+                return;
+            }
+            el.innerHTML = ytKeys.map(d => {
+                const id = _ytId(d.valor);
+                if (!id) return '';
+                const thumb  = `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+                const fallbk = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+                const label  = d.descricao || d.chave;
+                return `<div onclick="abrirYoutubePlayer('${id}')"
+                    style="cursor:pointer;border-radius:10px;overflow:hidden;background:#0f172a;
+                           border:1px solid #1e293b;transition:transform .15s,box-shadow .15s"
+                    onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 6px 24px rgba(0,0,0,.5)'"
+                    onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
+                    <div style="position:relative">
+                        <img src="${thumb}" onerror="this.src='${fallbk}'"
+                            style="width:100%;display:block;aspect-ratio:16/9;object-fit:cover">
+                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                            <div style="width:58px;height:58px;background:rgba(220,38,38,.9);border-radius:50%;
+                                        display:flex;align-items:center;justify-content:center;
+                                        transition:transform .15s" id="yt-play-${id}">
+                                <div style="width:0;height:0;border-style:solid;
+                                            border-width:12px 0 12px 22px;
+                                            border-color:transparent transparent transparent #fff;
+                                            margin-left:5px"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding:10px 12px;font-size:12px;color:#94a3b8">${escHtml(label)}</div>
+                </div>`;
+            }).join('');
+        })
+        .catch(() => {
+            el.innerHTML = '<div style="color:#f87171;font-size:12px;text-align:center;padding:20px;grid-column:1/-1">Erro ao carregar vídeos.</div>';
+        });
+}
+
+function abrirYoutubePlayer(id) {
+    const modal  = document.getElementById('modal-youtube-player');
+    const iframe = document.getElementById('youtube-iframe');
+    if (!modal || !iframe) return;
+    iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+    modal.style.display = 'flex';
+}
+
+function fecharYoutubePlayer() {
+    const modal  = document.getElementById('modal-youtube-player');
+    const iframe = document.getElementById('youtube-iframe');
+    if (!modal || !iframe) return;
+    iframe.src = '';
+    modal.style.display = 'none';
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function renderClubes() {
     if (!S.todasPartidas.length) {
         const grid = document.getElementById('clubes-ranking-grid');
@@ -12547,7 +12652,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade', 'youtube'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -12824,6 +12929,8 @@ const _CFG_LABELS = {
     default_open_linha:         'Aberto por padrão: 📉 Gráfico de Linha',
 
     default_open_mercados:      'Aberto por padrão: 🎯 Mercados',
+    // YouTube
+    youtube_video_1:            '▶️ Vídeo 1 — URL',
 };
 
 async function abrirConfigSistema() {
@@ -12839,17 +12946,18 @@ async function abrirConfigSistema() {
 
 
 async function _loadConfigSistema() {
-    const fColeta  = document.getElementById('cfg-coleta-fields');
-    const fLigas   = document.getElementById('cfg-ligas-fields');
-    const fFrontend= document.getElementById('cfg-frontend-fields');
-    const fSecoes  = document.getElementById('cfg-secoes-fields');
-    const fSistema = document.getElementById('cfg-sistema-fields');
-    const fAlertas = document.getElementById('cfg-alertas-fields');
-    const fGrafico = document.getElementById('cfg-grafico-fields');
-    const fCores   = document.getElementById('cfg-cores-fields');
-    const fGrade   = document.getElementById('cfg-grade-fields');
+    const fColeta   = document.getElementById('cfg-coleta-fields');
+    const fLigas    = document.getElementById('cfg-ligas-fields');
+    const fFrontend = document.getElementById('cfg-frontend-fields');
+    const fSecoes   = document.getElementById('cfg-secoes-fields');
+    const fSistema  = document.getElementById('cfg-sistema-fields');
+    const fAlertas  = document.getElementById('cfg-alertas-fields');
+    const fGrafico  = document.getElementById('cfg-grafico-fields');
+    const fCores    = document.getElementById('cfg-cores-fields');
+    const fGrade    = document.getElementById('cfg-grade-fields');
+    const fYoutube  = document.getElementById('cfg-youtube-fields');
     const loadHtml = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = loadHtml;
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = fYoutube.innerHTML = loadHtml;
 
     // Opções para selects de tipo_mercado
     const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
@@ -13295,9 +13403,29 @@ async function _loadConfigSistema() {
             }).join('');
         }
 
+        const ytItems = (byGroup.youtube || []);
+        fYoutube.innerHTML =
+            `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+                Cole a URL completa do YouTube (youtu.be/... ou youtube.com/watch?v=...).
+                Cada chave aparece como um card na aba ▶️ YouTube.
+                Chaves vazias são ignoradas.
+            </div>` +
+            (ytItems.length ? ytItems.map(d => {
+                const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+                return `<div style="margin-bottom:14px">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                    <input type="text" id="cfg-${d.chave}" value="${escHtml(d.valor)}"
+                        placeholder="https://youtu.be/..."
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                               padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>`;
+            }).join('') :
+            '<div style="color:#475569;font-size:12px;padding:20px;text-align:center">Nenhum vídeo configurado ainda.</div>');
+
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = err;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = fYoutube.innerHTML = err;
     }
 }
 
