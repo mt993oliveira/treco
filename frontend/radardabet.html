@@ -774,19 +774,49 @@
         <!-- Extras do header (ocultáveis) -->
         <div id="header-extras" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
 
-        <!-- Botão renovar licença -->
-        <a id="btn-renovar-licenca" href="https://pay.kirvano.com/9e3317f5-bfb4-41fe-b202-6b492bbae6fe"
-           target="_blank" rel="noopener noreferrer"
-           title="Renovar minha licença"
-           style="display:none;align-items:center;gap:5px;flex-shrink:0;height:32px;
-                  background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.3);
-                  border-radius:6px;padding:0 11px;color:#38bdf8;text-decoration:none;
-                  font-size:11px;font-weight:700;white-space:nowrap;transition:background .15s"
-           onmouseover="this.style.background='rgba(14,165,233,.22)'"
-           onmouseout="this.style.background='rgba(14,165,233,.12)'">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Renovar
-        </a>
+        <!-- Botão renovar licença — dropdown com 4 planos -->
+        <div id="btn-renovar-licenca" style="display:none;position:relative;align-items:center;flex-shrink:0">
+            <button id="btn-renovar-trigger" onclick="_toggleRenovMenu(event)"
+                    style="display:flex;align-items:center;gap:5px;height:32px;
+                           background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.3);
+                           border-radius:6px;padding:0 11px;color:#38bdf8;
+                           font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;
+                           transition:background .15s"
+                    onmouseover="this.style.background='rgba(14,165,233,.22)'"
+                    onmouseout="this.style.background='rgba(14,165,233,.12)'">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Renovar ▾
+            </button>
+            <div id="renovar-dropdown" style="display:none;position:absolute;top:36px;right:0;
+                                              background:#1e293b;border:1px solid #334155;
+                                              border-radius:8px;padding:6px;min-width:170px;
+                                              z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.5)">
+                <a href="https://pay.kirvano.com/9e3317f5-bfb4-41fe-b202-6b492bbae6fe" target="_blank" rel="noopener"
+                   style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+                          border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
+                          transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
+                    <span>🔄 Mensal</span><span style="color:#64748b;font-size:11px">R$35</span>
+                </a>
+                <a href="https://pay.kirvano.com/4f209a78-5cd3-4796-a2d4-cec7efee89a0" target="_blank" rel="noopener"
+                   style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+                          border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
+                          transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
+                    <span>🔄 Trimestral</span><span style="color:#64748b;font-size:11px">R$90</span>
+                </a>
+                <a href="https://pay.kirvano.com/b70fd392-a615-4dad-afb4-c4c0e0f25f9f" target="_blank" rel="noopener"
+                   style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+                          border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
+                          transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
+                    <span>🔄 Semestral</span><span style="color:#64748b;font-size:11px">R$170</span>
+                </a>
+                <a href="https://pay.kirvano.com/fc27fc51-1002-4a10-9501-d57c3056e2ae" target="_blank" rel="noopener"
+                   style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+                          border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
+                          transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
+                    <span>🔄 Anual</span><span style="color:#64748b;font-size:11px">R$300</span>
+                </a>
+            </div>
+        </div>
 
         <!-- Badge de tipo + licença do usuário -->
         <div id="licenca-badge">
@@ -5238,6 +5268,16 @@ function renderLegenda() {
 // AGRUPAMENTO — por hora, sempre preenche todas as horas do período
 // ============================================================
 function pad2(n) { return String(n).padStart(2,'0'); }
+
+function _toggleRenovMenu(e) {
+    e.stopPropagation();
+    const d = document.getElementById('renovar-dropdown');
+    if (d) d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', () => {
+    const d = document.getElementById('renovar-dropdown');
+    if (d) d.style.display = 'none';
+});
 
 // Convenção: o coletor salva o horário da Bet365 diretamente como UTC.
 // O frontend lê getUTC* e exibe sem conversão — o que está no banco é o que aparece na tela.
@@ -12208,12 +12248,13 @@ function _initUserMenu() {
                 else if (_dias <= 7) { _perCor = '#f97316'; _perBg = 'rgba(249,115,22,.08)';  _brd = 'rgba(249,115,22,.3)';  _title = `Expira em ${_dias} dia(s)!`; }
                 else                 { _perCor = '#1fcc59'; _perBg = 'rgba(31,204,89,.05)';   _brd = '#1e293b';              _title = `Válida por mais ${_dias} dia(s)`; }
                 const _btnRenov = document.getElementById('btn-renovar-licenca');
+                const _btnRenovTrig = document.getElementById('btn-renovar-trigger');
                 if (_btnRenov) {
                     _btnRenov.style.display = 'flex';
-                    if (_dias <= 7) {
-                        _btnRenov.style.background    = 'rgba(239,68,68,.15)';
-                        _btnRenov.style.borderColor   = 'rgba(239,68,68,.5)';
-                        _btnRenov.style.color         = '#f87171';
+                    if (_dias <= 7 && _btnRenovTrig) {
+                        _btnRenovTrig.style.background  = 'rgba(239,68,68,.15)';
+                        _btnRenovTrig.style.borderColor = 'rgba(239,68,68,.5)';
+                        _btnRenovTrig.style.color       = '#f87171';
                     }
                 }
             }
