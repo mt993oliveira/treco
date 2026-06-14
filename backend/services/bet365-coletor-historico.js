@@ -1030,8 +1030,8 @@ async function run() {
         const [yyyy, mm, dd] = DATA_ALVO.split('-').map(Number);
         const [hIni, mIni] = (HORA_INI || '00:00').split(':').map(Number);
         const [hFim, mFim] = (HORA_FIM || '23:59').split(':').map(Number);
-        const dtIni = new Date(Date.UTC(yyyy, mm-1, dd + (hIni < HORA_VIRADA_DIA ? 1 : 0), hIni, mIni, 0));
-        const dtFim = new Date(Date.UTC(yyyy, mm-1, dd + (hFim < HORA_VIRADA_DIA ? 1 : 0), hFim, mFim, 59));
+        const dtIni = new Date(Date.UTC(yyyy, mm-1, dd, hIni, mIni, 0));
+        const dtFim = new Date(Date.UTC(yyyy, mm-1, dd, hFim, mFim, 59));
         const db = await getPool();
         const r = await db.request()
             .input('dtIni', sql.DateTime2, dtIni)
