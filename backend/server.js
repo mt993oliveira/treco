@@ -125,11 +125,11 @@ app.use((req, res, next) => {
 // Middleware para conexão com SQL Server
 // ✅ CONEXÃO GLOBAL - substitua a função connectSQL atual
 let sqlConnectionPool = null;
+let _sqlConnectingPromise = null; // lock: evita duas chamadas simultâneas a sql.connect()
 
 async function connectSQL(config) {
-    if (sqlConnectionPool) {
-        return true; // Já está conectado
-    }
+    if (sqlConnectionPool) return true;
+    if (_sqlConnectingPromise) { await _sqlConnectingPromise; return !!sqlConnectionPool; }
 
     const sqlConfig = {
         server: config.server,
@@ -150,14 +150,19 @@ async function connectSQL(config) {
         }
     };
 
-    try {
-        sqlConnectionPool = await sql.connect(sqlConfig);
-        console.log('✅ Conexão SQL estabelecida');
-        return true;
-    } catch (err) {
-        sqlConnectionPool = null;
-        throw new Error(`Erro SQL: ${err.message}`);
-    }
+    _sqlConnectingPromise = (async () => {
+        try {
+            sqlConnectionPool = await sql.connect(sqlConfig);
+            console.log('✅ Conexão SQL estabelecida');
+        } catch (err) {
+            sqlConnectionPool = null;
+            throw new Error(`Erro SQL: ${err.message}`);
+        } finally {
+            _sqlConnectingPromise = null;
+        }
+    })();
+    await _sqlConnectingPromise;
+    return !!sqlConnectionPool;
 }
 
 // Função para obter configurações do banco de dados a partir do .env
