@@ -141,12 +141,15 @@ class Bet365Coletor {
         }
         const url = process.env.RADARDABET_BACKEND_URL;
         const key = process.env.JWT_SECRET;
-        if (!url || !key) return;
+        if (!url || !key) {
+            console.log('   ⚠️  _broadcast: RADARDABET_BACKEND_URL ou JWT_SECRET não configurado — skip');
+            return;
+        }
         try {
             const mod = url.startsWith('https') ? require('https') : require('http');
             const body = Buffer.from(JSON.stringify(dados));
             const urlObj = new URL('/api/ws/notificar', url);
-            await new Promise(resolve => {
+            await new Promise((resolve, reject) => {
                 const req = mod.request({
                     hostname: urlObj.hostname,
                     port: urlObj.port || (url.startsWith('https') ? 443 : 80),
@@ -154,13 +157,21 @@ class Bet365Coletor {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Content-Length': body.length, 'x-notify-key': key },
                     timeout: 5000
-                }, res => { res.resume(); resolve(); });
-                req.on('error', resolve);
-                req.on('timeout', () => { req.destroy(); resolve(); });
+                }, res => {
+                    let raw = '';
+                    res.on('data', d => raw += d);
+                    res.on('end', () => {
+                        if (res.statusCode === 200) console.log(`   ✅ _broadcast → VPS OK`);
+                        else console.log(`   ⚠️  _broadcast → VPS status ${res.statusCode}: ${raw.substring(0,80)}`);
+                        resolve();
+                    });
+                });
+                req.on('error', e => { console.log(`   ⚠️  _broadcast erro: ${e.message}`); resolve(); });
+                req.on('timeout', () => { req.destroy(); console.log('   ⚠️  _broadcast timeout'); resolve(); });
                 req.write(body);
                 req.end();
             });
-        } catch(_) {}
+        } catch(e) { console.log(`   ⚠️  _broadcast exception: ${e.message}`); }
     }
 
     // Ctrl+F5: recarrega ignorando cache (equivalente a location.reload(true) no navegador)
