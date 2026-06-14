@@ -3246,6 +3246,9 @@ async function carregarConfigLigas(_tentativa) {
         // Mosaico — células de jogo
         S._mosaicoCelulaLarg  = parseInt(cfg.mosaico_celula_largura) || 40;
         S._mosaicoCelulaFonte = parseInt(cfg.mosaico_celula_fonte)   || 11;
+        S._mosaicoDivisorCols  = parseInt(cfg.mosaico_divisor_colunas)     || 0;
+        S._mosaicoDivisorEsp   = parseInt(cfg.mosaico_divisor_espessura)  || 2;
+        S._mosaicoDivisorCor   = cfg.mosaico_divisor_cor                  || '#000000';
         // Mercados (pills e labels de grupo)
         S.mktPillFs   = parseInt(cfg.mkt_pill_fs)   || 9;
         S.mktPillCor  = cfg.mkt_pill_cor  || '#94a3b8';
@@ -7080,7 +7083,10 @@ function renderTabela() {
     const _celulaFonte = _celulaW < 20 ? Math.max(7, Math.floor(_celulaW * 0.65)) : S._mosaicoCelulaFonte;
     { let ds = document.getElementById('mosaico-td-dyn');
       if (!ds) { ds = document.createElement('style'); ds.id = 'mosaico-td-dyn'; document.head.appendChild(ds); }
-      ds.textContent = `.tabela-hist td { min-width:${_celulaW}px !important; max-width:${_maxW}px !important; font-size:${_celulaFonte}px !important; }`; }
+      const _div = S._mosaicoDivisorCols > 0
+          ? `#tbl th:nth-child(${S._mosaicoDivisorCols}n+${S._mosaicoDivisorCols+2}),#tbl td:nth-child(${S._mosaicoDivisorCols}n+${S._mosaicoDivisorCols+2}){border-left:${S._mosaicoDivisorEsp}px solid ${S._mosaicoDivisorCor} !important}`
+          : '';
+      ds.textContent = `.tabela-hist td { min-width:${_celulaW}px !important; max-width:${_maxW}px !important; font-size:${_celulaFonte}px !important; } ${_div}`; }
 
     // Modo compacto para ligas com muitas colunas (ex: Express Cup = 60)
     const tbl = document.getElementById('tbl');
@@ -12634,6 +12640,9 @@ const _CFG_LABELS = {
     mosaico_gols_largura:       '📐 Mosaico: largura mínima da coluna ⚽ (px)',
     mosaico_celula_largura:     '📐 Mosaico: largura das células de jogo (px)',
     mosaico_celula_fonte:       '📐 Mosaico: tamanho da fonte nas células de jogo (px)',
+    mosaico_divisor_colunas:    '📐 Mosaico: divisor de colunas (0 = desativado, ex: 4 = linha a cada 4 colunas)',
+    mosaico_divisor_espessura:  '📐 Mosaico: espessura da linha divisória (px)',
+    mosaico_divisor_cor:        '📐 Mosaico: cor da linha divisória',
     mkt_pill_fs:                '🎯 Mercados: tamanho da fonte dos filtros (px)',
     mkt_pill_cor:               '🎯 Mercados: cor do texto dos filtros',
     mkt_pill_bold:              '🎯 Mercados: negrito nos filtros',
