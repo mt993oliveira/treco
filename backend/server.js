@@ -2098,6 +2098,13 @@ server.listen(PORT, () => {
                 )
                     ALTER TABLE Usuarios ADD UltimoAcesso DATETIME2 NULL
             `;
+            await sql.query`
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'Usuarios' AND COLUMN_NAME = 'PlanoAtivo'
+                )
+                    ALTER TABLE Usuarios ADD PlanoAtivo NVARCHAR(50) NULL DEFAULT 'Mensal'
+            `;
         } catch(e) { console.warn('⚠️ Schema Usuarios:', e.message); }
     })();
 
