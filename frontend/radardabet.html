@@ -14207,17 +14207,28 @@ async function abrirModalPadroes() {
 
 async function _carregarPadroes() {
     const u = _getUser();
-    if (!u) return;
     const listEl = document.getElementById('padroes-lista');
     if (!listEl) return;
+    if (!u) {
+        listEl.innerHTML = '<div style="color:#f87171;font-size:12px;text-align:center;padding:12px">Sessão não encontrada. Recarregue a página.</div>';
+        return;
+    }
     listEl.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:12px">Carregando...</div>';
     try {
         const r = await fetch(`/api/usuario/padroes?usuarioId=${u.Id}`);
+        if (!r.ok) {
+            listEl.innerHTML = `<div style="color:#f87171;font-size:12px;text-align:center;padding:12px">Erro HTTP ${r.status}. Tente novamente.</div>`;
+            return;
+        }
         const data = await r.json();
+        if (!data.success && !data.padroes) {
+            listEl.innerHTML = `<div style="color:#f87171;font-size:12px;text-align:center;padding:12px">${data.message || 'Erro ao carregar padrões.'}</div>`;
+            return;
+        }
         _padroesCache = data.padroes || [];
         _renderListaPadroes(_padroesCache);
     } catch(e) {
-        listEl.innerHTML = '<div style="color:#f87171;font-size:12px;text-align:center;padding:12px">Erro ao carregar padrões.</div>';
+        listEl.innerHTML = `<div style="color:#f87171;font-size:12px;text-align:center;padding:12px">Erro de conexão: ${e.message}</div>`;
     }
 }
 
