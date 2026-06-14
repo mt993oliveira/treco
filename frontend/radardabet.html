@@ -7717,7 +7717,8 @@ function toggleMercados() {
 function _fecharPadroesModal() {
     fecharModal('modal-padroes');
     S.showPadroes = false;
-    if (_b('view-padroes')) _b('view-padroes').classList.remove('ativo');
+    const _btnPF = document.getElementById('view-padroes');
+    if (_btnPF) _btnPF.classList.remove('ativo');
 }
 
 function togglePadroes() {
@@ -7744,7 +7745,7 @@ function togglePadroes() {
     if (_padNome) { const inp = document.getElementById('padroes-nome-input'); if (inp) inp.value = _padNome; }
     modal.classList.add('aberto');
     S.showPadroes = true;
-    if (_b('view-padroes')) _b('view-padroes').classList.add('ativo');
+    if (_btnP) _btnP.classList.add('ativo');
     if (_padroesCache.length > 0) {
         _renderListaPadroes(_padroesCache);
         _carregarPadroesSilencioso();
