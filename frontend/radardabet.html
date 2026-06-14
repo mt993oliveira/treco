@@ -7998,30 +7998,37 @@ function renderRankTimes() {
 // ============================================================
 // RANKING ODDS — versão profissional
 // ============================================================
-let _oddsMarket = 'ft-casa';
-let _oddsJogos  = 100;
-let _oddsLiga   = null;
+let _oddsMarket   = 'ft-casa';
+let _oddsJogos    = 100;
+let _oddsLiga     = null;
+let _oddsDetalMkt = null;
+let _oddsDetalOdd = null;
 
 const RANK_MERCADOS = [
-    { id:'ft-casa',   label:'🏠 Casa FT',       campo:'odd_casa',    hitFn: j => j.resultado==='CASA',                                              grupo:'Resultado FT' },
-    { id:'ft-fora',   label:'✈️ Fora FT',       campo:'odd_fora',    hitFn: j => j.resultado==='FORA',                                              grupo:'Resultado FT' },
-    { id:'ft-empate', label:'🤝 Empate FT',     campo:'odd_empate',  hitFn: j => j.resultado==='EMPATE',                                            grupo:'Resultado FT' },
-    { id:'over1.5',   label:'Over 1.5',           campo:'odd_over15',  hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)>1,                   grupo:'Over/Under' },
-    { id:'over2.5',   label:'Over 2.5',           campo:'odd_over25',  hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)>2,                   grupo:'Over/Under' },
-    { id:'over3.5',   label:'Over 3.5',           campo:'odd_over35',  hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)>3,                   grupo:'Over/Under' },
-    { id:'under1.5',  label:'Under 1.5',          campo:'odd_under15', hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)<=1,                  grupo:'Over/Under' },
-    { id:'under2.5',  label:'Under 2.5',          campo:'odd_under25', hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)<=2,                  grupo:'Over/Under' },
-    { id:'ambas-sim', label:'Ambas Marcam',        campo:'odd_btts_sim',hitFn: j => j.gol_casa!=null && j.gol_casa>0 && j.gol_fora>0,               grupo:'BTTS' },
-    { id:'ambas-nao', label:'Ambas Não Marcam',    campo:'odd_btts_nao',hitFn: j => j.gol_casa!=null && (j.gol_casa===0||j.gol_fora===0),           grupo:'BTTS' },
+    { id:'ft-casa',   label:'🏠 Casa FT',        campo:'odd_casa',     hitFn: j => j.resultado==='CASA',                                              grupo:'Resultado FT' },
+    { id:'ft-fora',   label:'✈️ Fora FT',        campo:'odd_fora',     hitFn: j => j.resultado==='FORA',                                              grupo:'Resultado FT' },
+    { id:'ft-empate', label:'🤝 Empate FT',      campo:'odd_empate',   hitFn: j => j.resultado==='EMPATE',                                            grupo:'Resultado FT' },
+    { id:'ht-casa',   label:'🏠 Casa HT',        campo:'odd_ht_casa',  hitFn: j => j.resultado_ht==='CASA',                                           grupo:'Resultado HT' },
+    { id:'ht-empate', label:'🤝 Empate HT',      campo:'odd_ht_empate',hitFn: j => j.resultado_ht==='EMPATE',                                         grupo:'Resultado HT' },
+    { id:'ht-fora',   label:'✈️ Fora HT',        campo:'odd_ht_fora',  hitFn: j => j.resultado_ht==='FORA',                                           grupo:'Resultado HT' },
+    { id:'over1.5',   label:'Over 1.5',            campo:'odd_over15',   hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)>1,                   grupo:'Over/Under' },
+    { id:'over2.5',   label:'Over 2.5',            campo:'odd_over25',   hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)>2,                   grupo:'Over/Under' },
+    { id:'over3.5',   label:'Over 3.5',            campo:'odd_over35',   hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)>3,                   grupo:'Over/Under' },
+    { id:'under1.5',  label:'Under 1.5',           campo:'odd_under15',  hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)<=1,                  grupo:'Over/Under' },
+    { id:'under2.5',  label:'Under 2.5',           campo:'odd_under25',  hitFn: j => j.gol_casa!=null && (j.gol_casa+j.gol_fora)<=2,                  grupo:'Over/Under' },
+    { id:'ambas-sim', label:'Ambas Marcam',         campo:'odd_btts_sim', hitFn: j => j.gol_casa!=null && j.gol_casa>0 && j.gol_fora>0,               grupo:'BTTS' },
+    { id:'ambas-nao', label:'Ambas Não Marcam',     campo:'odd_btts_nao', hitFn: j => j.gol_casa!=null && (j.gol_casa===0||j.gol_fora===0),           grupo:'BTTS' },
 ];
 
 function abrirModalOdds() {
     document.getElementById('modal-odds').classList.add('aberto');
     renderRankOdds();
 }
-function _oddsSetMarket(id) { _oddsMarket = id;        renderRankOdds(); }
-function _oddsSetJogos(n)   { _oddsJogos  = n;         renderRankOdds(); }
-function _oddsSetLiga(l)    { _oddsLiga   = l || null; renderRankOdds(); }
+function _oddsSetMarket(id)  { _oddsMarket   = id;          renderRankOdds(); }
+function _oddsSetJogos(n)    { _oddsJogos    = n;           renderRankOdds(); }
+function _oddsSetLiga(l)     { _oddsLiga     = l || null;   renderRankOdds(); }
+function _oddsSetDetalMkt(id){ _oddsDetalMkt = id||null;    _oddsDetalOdd = null; renderRankOdds(); }
+function _oddsSetDetalOdd(v) { _oddsDetalOdd = v ? parseFloat(v) : null; renderRankOdds(); }
 
 function renderRankOdds() {
     // ── Dados base ──────────────────────────────────────────
@@ -8219,15 +8226,17 @@ function renderRankOdds() {
             </select>
         </div>`;
 
-    // ── Seletor de jogos ──────────────────────────────────────
-    const _jogosOpts = [50, 100, 200, 500, null];
+    // ── Seletor de jogos (igual ao gráfico) ──────────────────
+    const _jogosVals = [20,40,60,80,100,120,160,200,300,500];
     const jogosSel = `
         <div style="display:flex;flex-direction:column;gap:3px">
-            <span style="font-size:10px;color:#475569;font-weight:700">🎲 Número de Jogos: <strong style="color:#e2e8f0">${_oddsJogos||total}</strong></span>
-            <input type="range" min="50" max="500" step="50" value="${_oddsJogos||500}"
-                oninput="document.getElementById('_oj_lbl').textContent=this.value"
-                onchange="_oddsSetJogos(parseInt(this.value)>=500?null:parseInt(this.value))"
-                style="width:160px;accent-color:#1fcc59;cursor:pointer">
+            <span style="font-size:10px;color:#475569;font-weight:700">🎲 Número de Jogos:</span>
+            <select onchange="_oddsSetJogos(this.value?parseInt(this.value):null)"
+                style="padding:6px 10px;font-size:12px;font-weight:600;border-radius:6px;
+                background:#0f172a;color:#e2e8f0;border:1px solid #1e40af;cursor:pointer;outline:none;min-width:130px">
+                <option value="" ${!_oddsJogos?'selected':''}>Tudo</option>
+                ${_jogosVals.map(v=>`<option value="${v}" ${_oddsJogos===v?'selected':''}>${v} Jogos</option>`).join('')}
+            </select>
         </div>`;
 
     // ── Seletor de mercado ────────────────────────────────────
@@ -8248,8 +8257,127 @@ function renderRankOdds() {
             </select>
         </div>`;
 
+    // ── RESULTADOS DOS JOGOS (detalhe por odd específica) ─────
+    const tblResultados = () => {
+        const dm  = RANK_MERCADOS.find(m => m.id === (_oddsDetalMkt || _oddsMarket)) || mktAtual;
+        const { campo, hitFn, label: dmLabel } = dm;
+
+        // Todas as odds disponíveis para este mercado (para o dropdown)
+        const oddsDisp = [...new Set(dados.map(j => {
+            const o = parseFloat(j[campo]);
+            return (o && o >= 1.01) ? o.toFixed(2) : null;
+        }).filter(Boolean))].sort((a,b) => parseFloat(a)-parseFloat(b));
+
+        const selOdd  = _oddsDetalOdd;
+        const grpMenu = [...new Set(RANK_MERCADOS.map(m => m.grupo))];
+
+        const mktDropdown = `
+            <select onchange="_oddsSetDetalMkt(this.value)"
+                style="padding:5px 9px;font-size:12px;font-weight:700;border-radius:5px;
+                background:#0f172a;color:#e2e8f0;border:1px solid #334155;cursor:pointer;outline:none">
+                ${grpMenu.map(g=>`<optgroup label="── ${g} ──">
+                    ${RANK_MERCADOS.filter(m=>m.grupo===g).map(m=>
+                        `<option value="${m.id}" ${dm.id===m.id?'selected':''}>${m.label}</option>`
+                    ).join('')}
+                </optgroup>`).join('')}
+            </select>`;
+
+        const oddDropdown = `
+            <select onchange="_oddsSetDetalOdd(this.value)"
+                style="padding:5px 9px;font-size:12px;font-weight:700;border-radius:5px;
+                background:#0f172a;color:#e2e8f0;border:1px solid #334155;cursor:pointer;outline:none;min-width:100px">
+                <option value="">— Odd —</option>
+                ${oddsDisp.map(o=>`<option value="${o}" ${selOdd&&Math.abs(selOdd-parseFloat(o))<0.005?'selected':''}>${o}</option>`).join('')}
+            </select>`;
+
+        // Cabeçalho da seção
+        const header = `
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid #1e293b">
+            <div style="font-size:14px;font-weight:700;color:#1fcc59;text-align:center;margin-bottom:12px;letter-spacing:.06em">
+                RESULTADOS DOS JOGOS
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+                <div>
+                    <div style="font-size:10px;color:#475569;font-weight:700;margin-bottom:3px">🎯 Mercado (filtro da tabela abaixo):</div>
+                    ${mktDropdown}
+                </div>
+                <div>
+                    <div style="font-size:10px;color:#475569;font-weight:700;margin-bottom:3px">🎰 Odd (filtrar jogos):</div>
+                    ${oddDropdown}
+                </div>
+            </div>`;
+
+        if (!selOdd) {
+            return header + `<div style="padding:20px;text-align:center;color:#334155;font-size:12px">Selecione uma odd para ver os jogos individuais.</div></div>`;
+        }
+
+        // Jogos filtrados por campo + odd
+        const jogos = dados.filter(j => {
+            const o = parseFloat(j[campo]);
+            return o && Math.abs(o - selOdd) < 0.005;
+        });
+
+        if (!jogos.length) {
+            return header + `<div style="padding:20px;text-align:center;color:#334155;font-size:12px">Nenhum jogo encontrado nesta odd.</div></div>`;
+        }
+
+        // Ordena ASC para calcular sequência corretamente
+        const sortAsc = [...jogos].sort((a,b) => new Date(a.data_partida)-new Date(b.data_partida));
+        const n = sortAsc.length;
+        let seqPos = [], run = 0;
+        for (const j of sortAsc) {
+            if (hitFn(j)) run = 0; else run++;
+            seqPos.push(run);
+        }
+
+        // Exibe DESC (mais recente primeiro)
+        const sortDesc = [...sortAsc].reverse();
+        const seqDesc  = [...seqPos].reverse();
+
+        const fmtHora = ds => {
+            const d = new Date(ds);
+            return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+        };
+
+        const rows = sortDesc.map((j, i) => {
+            const hit   = hitFn(j);
+            const sq    = seqDesc[i];
+            const sqLbl = hit ? '✅' : `${sq} / ${n}`;
+            const sqCor = hit ? '#4ade80' : sq <= 3 ? '#fbbf24' : '#f87171';
+            const gCas  = j.gol_casa  != null ? j.gol_casa  : '—';
+            const gFor  = j.gol_fora  != null ? j.gol_fora  : '—';
+            return `<tr>
+                <td style="color:#64748b;font-size:12px;white-space:nowrap">${fmtHora(j.data_partida)}</td>
+                <td style="color:#e2e8f0;font-size:13px">${j.time_casa||'—'}</td>
+                <td style="text-align:center;color:#e2e8f0;font-weight:700;font-size:14px">${gCas}</td>
+                <td style="text-align:center;color:#475569;font-size:11px">×</td>
+                <td style="text-align:center;color:#e2e8f0;font-weight:700;font-size:14px">${gFor}</td>
+                <td style="color:#e2e8f0;font-size:13px">${j.time_fora||'—'}</td>
+                <td style="text-align:center;color:#60a5fa;font-weight:800;font-size:14px">${selOdd.toFixed(2)}</td>
+                <td style="text-align:center;font-size:15px">${hit?'✅':'❌'}</td>
+                <td style="text-align:center;color:${sqCor};font-weight:700;font-size:13px">${sqLbl}</td>
+            </tr>`;
+        }).join('');
+
+        return header + `
+        <div style="overflow-x:auto">
+        <table class="modal-table" style="font-size:13px;min-width:600px">
+            <thead><tr style="background:#060d1a">
+                <th style="text-align:left">Horário</th>
+                <th style="text-align:left">Time Casa</th>
+                <th style="text-align:center" colspan="3">Placar</th>
+                <th style="text-align:left">Time Fora</th>
+                <th style="text-align:center">${dmLabel}</th>
+                <th style="text-align:center">Resultado</th>
+                <th style="text-align:center;min-width:120px">Desde Último ✅</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        </div></div>`;
+    };
+
     // ── Conteúdo ──────────────────────────────────────────────
-    const conteudo = isAnalise ? tblAnalise() : tblMercado(mktAtual);
+    const conteudo = isAnalise ? tblAnalise() : (tblMercado(mktAtual) + tblResultados());
 
     // ── Render final ──────────────────────────────────────────
     document.getElementById('rank-odds-body').innerHTML = `
@@ -8258,7 +8386,7 @@ function renderRankOdds() {
             ${jogosSel}
             ${mktSel}
         </div>
-        <div style="font-size:10px;color:#334155;margin-bottom:10px">
+        <div style="font-size:11px;color:#334155;margin-bottom:10px">
             Base: <strong style="color:#475569">${total}</strong> jogo(s) com resultado
             ${_oddsJogos ? `· últimos <strong style="color:#475569">${_oddsJogos}</strong> jogos` : '· todos os jogos em memória'}
             · liga <strong style="color:#475569">${ligaFiltro || 'todas'}</strong>

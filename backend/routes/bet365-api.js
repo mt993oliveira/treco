@@ -938,7 +938,8 @@ router.get('/historico-mercados', async (req, res) => {
                    e.odd_casa, e.odd_empate, e.odd_fora,
                    e.odd_over15, e.odd_over25, e.odd_over35,
                    e.odd_under15, e.odd_under25,
-                   e.odd_btts_sim, e.odd_btts_nao
+                   e.odd_btts_sim, e.odd_btts_nao,
+                   e.odd_ht_casa, e.odd_ht_empate, e.odd_ht_fora
             FROM bet365_resultados_mercados m
             LEFT JOIN bet365_eventos e ON e.id = m.evento_id
             WHERE m.data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
@@ -1009,6 +1010,9 @@ router.get('/historico-mercados', async (req, res) => {
                     odd_under25:  parseFloat(r.odd_under25) || 0,
                     odd_btts_sim: parseFloat(r.odd_btts_sim) || 0,
                     odd_btts_nao: parseFloat(r.odd_btts_nao) || 0,
+                    odd_ht_casa:  parseFloat(r.odd_ht_casa)  || 0,
+                    odd_ht_empate:parseFloat(r.odd_ht_empate)|| 0,
+                    odd_ht_fora:  parseFloat(r.odd_ht_fora)  || 0,
                 });
             }
             gamesMap.get(key).mercados.push({
