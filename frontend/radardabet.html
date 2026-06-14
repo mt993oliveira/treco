@@ -2765,16 +2765,7 @@
             <h2 style="font-size:14px;font-weight:700">📋 Padrões</h2>
             <button onclick="_fecharPadroesModal()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
         </div>
-        <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:7px">SALVAR CONFIGURAÇÃO ATUAL</div>
-        <div style="display:flex;gap:6px;margin-bottom:12px">
-            <input id="padroes-nome-input" type="text" placeholder="Nome do padrão..." maxlength="50"
-                style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:6px 8px;color:#e2e8f0;font-size:11px;outline:none"
-                onkeydown="if(event.key==='Enter')salvarPadraoAtual()"
-                onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-            <button onclick="salvarPadraoAtual()"
-                style="padding:6px 12px;border-radius:5px;background:#1fcc59;border:none;color:#000;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Salvar</button>
-        </div>
-        <div id="padroes-lista"><div style="color:#64748b;font-size:11px;text-align:center;padding:8px">Carregando...</div></div>
+        <div id="modal-padroes-body"></div>
     </div>
 </div>
 <div class="modal-overlay" id="modal-config-visual">
@@ -7713,6 +7704,21 @@ function togglePadroes() {
     if (modal.classList.contains('aberto')) { _fecharPadroesModal(); return; }
     S.showMercados = false; S.showConfig = false;
     fecharModal('modal-config-visual');
+    // Preserva texto digitado no input antes de recriar o conteúdo
+    const _padNome = document.getElementById('padroes-nome-input')?.value || '';
+    // Injeta painel (igual ao que renderFiltros fazia, mas no corpo do modal)
+    document.getElementById('modal-padroes-body').innerHTML = `
+        <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:7px">SALVAR CONFIGURAÇÃO ATUAL</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+            <input id="padroes-nome-input" type="text" placeholder="Nome do padrão..." maxlength="50"
+                style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:6px 8px;color:#e2e8f0;font-size:11px;outline:none"
+                onkeydown="if(event.key==='Enter')salvarPadraoAtual()"
+                onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            <button onclick="salvarPadraoAtual()"
+                style="padding:6px 12px;border-radius:5px;background:#1fcc59;border:none;color:#000;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Salvar</button>
+        </div>
+        <div id="padroes-lista"><div style="color:#64748b;font-size:12px;text-align:center;padding:12px">Carregando...</div></div>`;
+    if (_padNome) { const inp = document.getElementById('padroes-nome-input'); if (inp) inp.value = _padNome; }
     modal.classList.add('aberto');
     S.showPadroes = true;
     if (_b('view-padroes')) _b('view-padroes').classList.add('ativo');
@@ -16250,9 +16256,14 @@ function _kirvPaginacao(el, total, pp, paginaAtual, fn) {
     ];
 
     const SUGESTOES_RAPIDAS = [
+        { t:'📈 Gráficos e Mosaico', fn:"setView('historico')" },
+        { t:'🕐 Próximos Jogos',     fn:"setView('proximos')" },
         { t:'📊 Ranking de Odds',    fn:"abrirModalOdds()" },
         { t:'🏆 Ranking de Times',   fn:"abrirModalTimes()" },
-        { t:'🕐 Próximos Jogos',     fn:"setView('proximos')" },
+        { t:'🎮 Simulador',          fn:"setView('simulador')" },
+        { t:'⊞ Multi Horários',      fn:"setView('multi')" },
+        { t:'⚽ Multi Gols',         fn:"setView('multi-gols')" },
+        { t:'📈 Multi Linhas',       fn:"setView('multi-linhas')" },
         { t:'📊 Análise & Sugestões',fn:"setView('analise')" },
         { t:'⚽ Clubes',             fn:"setView('clubes')" },
     ];
@@ -16324,7 +16335,7 @@ function _kirvPaginacao(el, total, pp, paginaAtual, fn) {
         if (panel.classList.contains('aberto') && !_iniciado) {
             _iniciado = true;
             setTimeout(() => {
-                _addMsg('Olá! 👋 Sou o assistente do <b>RadarDabet</b>. Me diga o que você quer analisar ou onde quer ir.', 'bot');
+                _addMsg('Olá! 👋 Sou o assistente do <b>RadarDabet</b>. Escolha uma das ferramentas abaixo ou me diga o que quer analisar.', 'bot');
                 _addSugestoesNav(SUGESTOES_RAPIDAS);
             }, 150);
         }
