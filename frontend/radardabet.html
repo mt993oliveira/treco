@@ -4776,6 +4776,7 @@ function renderLigas() {
         b.dataset.liga = liga;
         b.title = total ? `${liga} — ${total} jogos` : liga;
         b.onclick = () => {
+            _salvarDesenhoLiga(S.ligaAtiva);
             S.ligaAtiva = liga;
             S.partidas  = filtrarPartidas();
             document.querySelectorAll('.liga-tab').forEach(el => el.classList.remove('ativo'));
@@ -4791,12 +4792,12 @@ function renderLigas() {
                     S._horasCarregadas = _horasNec;
                     carregarHistorico();
                     if (S.view === 'analise') { _faAtualizarStatus(); carregarAnalise(true); }
-                    limparDesenhoGols(); limparDesenhoLinha();
+                    _restaurarDesenhoLiga(liga);
                     return;
                 }
             }
-            limparDesenhoGols(); limparDesenhoLinha();
             renderTabela(); _renderAllCharts();
+            _restaurarDesenhoLiga(liga);
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
             if (S.view === 'analise')   { _faAtualizarStatus(); carregarAnalise(true); }
             if (S.view === 'proximos') { renderProximosJogos(); }
@@ -5723,6 +5724,26 @@ function limparDesenhoLinha() {
 // DRAW GRÁFICO DE GOLS — sistema de desenho independente
 // ============================================================
 const DRAW_GOLS = { ativo: false, drawing: false, ctx: null, ferramenta: 'livre', sx: 0, sy: 0 };
+const _drawDataLiga = { gols: {}, linha: {} };
+function _salvarDesenhoLiga(liga) {
+    if (!liga) return;
+    const gc = document.getElementById('gols-draw');
+    const lc = document.getElementById('linha-draw');
+    if (gc && DRAW_GOLS.ctx) _drawDataLiga.gols[liga] = DRAW_GOLS.ctx.getImageData(0, 0, gc.width, gc.height);
+    if (lc && DRAW_LINHA.ctx) _drawDataLiga.linha[liga] = DRAW_LINHA.ctx.getImageData(0, 0, lc.width, lc.height);
+}
+function _restaurarDesenhoLiga(liga) {
+    const gc = document.getElementById('gols-draw');
+    const lc = document.getElementById('linha-draw');
+    if (gc && DRAW_GOLS.ctx) {
+        DRAW_GOLS.ctx.clearRect(0, 0, gc.width, gc.height);
+        if (liga && _drawDataLiga.gols[liga]) DRAW_GOLS.ctx.putImageData(_drawDataLiga.gols[liga], 0, 0);
+    }
+    if (lc && DRAW_LINHA.ctx) {
+        DRAW_LINHA.ctx.clearRect(0, 0, lc.width, lc.height);
+        if (liga && _drawDataLiga.linha[liga]) DRAW_LINHA.ctx.putImageData(_drawDataLiga.linha[liga], 0, 0);
+    }
+}
 
 function _drawCorGols() { return document.getElementById('gols-caneta-cor')?.value || '#f59e0b'; }
 function _drawEspGols() { return parseInt(document.getElementById('gols-caneta-esp')?.value) || 2; }
