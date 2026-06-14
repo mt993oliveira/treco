@@ -5441,39 +5441,25 @@ const watermarkPlugin = {
         const cx = (left + right) / 2;
         const cy = (top + bottom) / 2;
         const s  = Math.max((right - left) / 480, 0.7);
+        const fs = Math.round(46 * s);
+        const gap = fs * 0.62;
 
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(-Math.PI / 5.5);
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
+        ctx.font = `italic 900 ${fs}px "Arial Black",Impact,Arial,sans-serif`;
 
-        // RADAR
+        // "Radar da"
         ctx.globalAlpha = 0.28;
-        ctx.font      = `italic 900 ${Math.round(54 * s)}px "Arial Black",Impact,Arial,sans-serif`;
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('RADAR', 0, -30 * s);
+        ctx.fillText('Radar da', 0, -gap / 2);
 
-        // DA
-        ctx.globalAlpha = 0.22;
-        ctx.font      = `700 ${Math.round(14 * s)}px Arial,sans-serif`;
-        ctx.fillStyle = '#a0e8b8';
-        ctx.fillText('D  A', 0, 0);
-
-        // linha separadora
-        ctx.globalAlpha = 0.20;
-        ctx.strokeStyle = '#1fdd60';
-        ctx.lineWidth   = 1.2 * s;
-        ctx.beginPath();
-        ctx.moveTo(-110 * s, 8 * s);
-        ctx.lineTo( 110 * s, 8 * s);
-        ctx.stroke();
-
-        // BET
-        ctx.globalAlpha = 0.28;
-        ctx.font      = `italic 900 ${Math.round(58 * s)}px "Arial Black",Impact,Arial,sans-serif`;
+        // "Bet"
+        ctx.globalAlpha = 0.30;
         ctx.fillStyle = '#1fdd60';
-        ctx.fillText('BET', 0, 46 * s);
+        ctx.fillText('Bet', 0, gap / 2 + fs * 0.05);
 
         ctx.restore();
     }
