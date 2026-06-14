@@ -11069,7 +11069,8 @@ function _bfCopiar(id, btn) {
 // DIAGNÓSTICO
 // ============================================================
 
-let _wsConectado = false;
+let _wsConectado    = false;
+let _wsJaConectou   = false;
 
 async function carregarDiagnostico() {
     await Promise.all([
@@ -11701,8 +11702,11 @@ function conectarWS() {
         const ws = new WebSocket(`${prot}//${location.host}/ws`);
         _ws = ws;
         ws.onopen = () => {
-            _wsConectado = true;
+            const foiReconexao = _wsJaConectou;
+            _wsConectado  = true;
+            _wsJaConectou = true;
             if (S.view === 'diagnostico') _diagAtualizarWS();
+            if (foiReconexao) setTimeout(carregarHistorico, 500);
         };
         ws.onmessage = e => {
             try {
