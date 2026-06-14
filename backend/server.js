@@ -2110,10 +2110,8 @@ server.listen(PORT, () => {
         // Corrige descricao da chave youtube_video_1 (emoji causava ?? no Windows)
         try {
             await sql.query`
-                UPDATE bet365_config
-                SET descricao = 'Video 1 - URL'
+                UPDATE bet365_config SET descricao = 'Video 1 - URL'
                 WHERE chave = 'youtube_video_1'
-                  AND descricao LIKE '%Video 1%'
             `;
         } catch(e) { /* tabela pode nao existir ainda — sem problema */ }
     })();

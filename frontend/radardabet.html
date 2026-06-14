@@ -9429,7 +9429,7 @@ function renderYoutubeView() {
                 if (!id) return '';
                 const thumb  = `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
                 const fallbk = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-                const label  = d.descricao || d.chave;
+                const label  = (_CFG_LABELS && _CFG_LABELS[d.chave]) || d.descricao || d.chave;
                 return `<div onclick="abrirYoutubePlayer('${id}')"
                     style="cursor:pointer;border-radius:10px;overflow:hidden;background:#0f172a;
                            border:1px solid #1e293b;transition:transform .15s,box-shadow .15s"
