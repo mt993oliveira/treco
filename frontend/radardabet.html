@@ -2759,6 +2759,24 @@
 </div>
 
 <!-- ========== MODALS ========== -->
+<div class="modal-overlay" id="modal-padroes">
+    <div class="modal-box" style="max-width:900px;width:97%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="font-size:14px;font-weight:700">📋 Padrões</h2>
+            <button onclick="_fecharPadroesModal()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:7px">SALVAR CONFIGURAÇÃO ATUAL</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+            <input id="padroes-nome-input" type="text" placeholder="Nome do padrão..." maxlength="50"
+                style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:6px 8px;color:#e2e8f0;font-size:11px;outline:none"
+                onkeydown="if(event.key==='Enter')salvarPadraoAtual()"
+                onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            <button onclick="salvarPadraoAtual()"
+                style="padding:6px 12px;border-radius:5px;background:#1fcc59;border:none;color:#000;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Salvar</button>
+        </div>
+        <div id="padroes-lista"><div style="color:#64748b;font-size:11px;text-align:center;padding:8px">Carregando...</div></div>
+    </div>
+</div>
 <div class="modal-overlay" id="modal-config-visual">
     <div class="modal-box" style="max-width:900px;width:97%">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -3328,7 +3346,7 @@ async function carregarConfigLigas(_tentativa) {
             const _btnP = document.getElementById('view-padroes');
             if (_btnP) {
                 _btnP.style.display = _show ? '' : 'none';
-                if (!_show && S.showPadroes) { S.showPadroes = false; renderFiltros(); }
+                if (!_show && S.showPadroes) _fecharPadroesModal();
             }
         }
 
@@ -4872,38 +4890,9 @@ function renderFiltros() {
 
     c.innerHTML = '';
 
-    const temConteudo = S.showPadroes || S.showMercados;
+    const temConteudo = S.showMercados;
     const wrap = document.getElementById('filtros-row-wrap');
     if (wrap) wrap.style.display = temConteudo ? 'block' : 'none';
-
-    if (S.showPadroes) {
-        const _padNome = document.getElementById('padroes-nome-input')?.value || '';
-        const padPanel = document.createElement('div');
-        padPanel.style.cssText = 'width:100%;margin-top:8px;padding:10px 12px;background:#080e18;border:1px solid #1e293b;border-radius:8px';
-        padPanel.innerHTML = `
-            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:7px">SALVAR CONFIGURAÇÃO ATUAL</div>
-            <div style="display:flex;gap:6px;margin-bottom:10px">
-                <input id="padroes-nome-input" type="text" placeholder="Nome do padrão..." maxlength="50"
-                    style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:5px;
-                    padding:6px 8px;color:#e2e8f0;font-size:11px;outline:none"
-                    onkeydown="if(event.key==='Enter')salvarPadraoAtual()"
-                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                <button onclick="salvarPadraoAtual()"
-                    style="padding:6px 12px;border-radius:5px;background:#1fcc59;border:none;
-                    color:#000;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Salvar</button>
-            </div>
-            <div id="padroes-lista"><div style="color:#64748b;font-size:11px;text-align:center;padding:8px">Carregando...</div></div>
-        `;
-        c.appendChild(padPanel);
-        if (_padNome) { const _inp = document.getElementById('padroes-nome-input'); if (_inp) _inp.value = _padNome; }
-        if (_padroesCache.length > 0) {
-            _renderListaPadroes(_padroesCache);
-        } else {
-            _carregarPadroes();
-        }
-        return;
-    }
-
 
     if (!S.showMercados) return;
 
@@ -7687,6 +7676,7 @@ function toggleConfig() {
         return;
     }
     S.showPadroes = false; S.showMercados = false;
+    fecharModal('modal-padroes');
     document.getElementById('modal-config-visual-body').innerHTML = _cfgPanelHTML();
     _initConfigPanel();
     modal.classList.add('aberto');
@@ -7706,18 +7696,32 @@ function _initConfigPanel() {
 
 function toggleMercados() {
     S.showMercados = !S.showMercados;
-    if (S.showMercados) { S.showPadroes = false; S.showConfig = false; }
+    if (S.showMercados) { S.showPadroes = false; S.showConfig = false; fecharModal('modal-padroes'); fecharModal('modal-config-visual'); }
     renderFiltros();
+}
+
+function _fecharPadroesModal() {
+    fecharModal('modal-padroes');
+    S.showPadroes = false;
+    if (_b('view-padroes')) _b('view-padroes').classList.remove('ativo');
 }
 
 function togglePadroes() {
     const _btnP = document.getElementById('view-padroes');
     if (_btnP && _btnP.style.display === 'none') return;
-    S.showPadroes = !S.showPadroes;
-    if (S.showPadroes) { S.showMercados = false; S.showConfig = false; }
-    renderFiltros(); // renderFiltros já chama _carregarPadroes() se cache vazio
-    // Se cache já existe, mostra imediatamente e atualiza em background sem "Carregando..."
-    if (S.showPadroes && _padroesCache.length > 0) _carregarPadroesSilencioso();
+    const modal = document.getElementById('modal-padroes');
+    if (modal.classList.contains('aberto')) { _fecharPadroesModal(); return; }
+    S.showMercados = false; S.showConfig = false;
+    fecharModal('modal-config-visual');
+    modal.classList.add('aberto');
+    S.showPadroes = true;
+    if (_b('view-padroes')) _b('view-padroes').classList.add('ativo');
+    if (_padroesCache.length > 0) {
+        _renderListaPadroes(_padroesCache);
+        _carregarPadroesSilencioso();
+    } else {
+        _carregarPadroes();
+    }
 }
 
 function _hoverFiltroChart(filtroId) {
@@ -14192,9 +14196,7 @@ let _editandoValorAtual = null; // preserva texto digitado no rename quando rend
 let _alertaLigasMap = {}; // id → ligas[] disparadas na última verificação
 
 async function abrirModalPadroes() {
-    // mantido por compatibilidade — redireciona para togglePadroes
-    if (!S.showPadroes) { S.showPadroes = true; S.showMercados = false; renderFiltros(); }
-    await _carregarPadroes();
+    if (!S.showPadroes) togglePadroes();
 }
 
 async function _carregarPadroes() {
@@ -14422,6 +14424,7 @@ function aplicarPadrao(id, opts = {}) {
             S.showPadroes  = false;
             S.showMercados = false;
             S.showConfig   = false;
+            fecharModal('modal-padroes');
 
             // Redireciona para a liga que disparou (se for exatamente uma liga específica)
             const ligasDisp = _alertaLigasMap[id] || [];
@@ -14472,6 +14475,7 @@ function aplicarPadrao(id, opts = {}) {
             S.showPadroes  = false;
             S.showMercados = false;
             S.showConfig   = false;
+            fecharModal('modal-padroes');
             if (isGols2) {
                 // Ativa métricas de gols da condição (mesmo comportamento do alerta)
                 const metricas2 = (al2.condicoes || []).map(c => c.metrica).filter(Boolean);
@@ -14792,18 +14796,13 @@ function _verificarAlertas() {
 
             const todasOk = al.condicoes.every(c => _checaCond(c, jogos));
             if (todasOk) {
-                // Detecta quais ligas individualmente atendem as condições
-                let ligas = [];
-                if (S.ligaAtiva) {
-                    ligas = [S.ligaAtiva];
-                } else {
-                    const todasLigas = [...new Set(jogos.map(j => j.liga).filter(Boolean))];
-                    ligas = todasLigas.filter(liga => {
-                        const jl = jogos.filter(j => j.liga === liga);
-                        return jl.length && al.condicoes.every(c => _checaCond(c, jl));
-                    });
-                    if (!ligas.length) ligas = ['Todas as ligas'];
-                }
+                // Verifica quais ligas individualmente atendem as condições
+                const todasLigas = [...new Set(jogos.map(j => j.liga).filter(Boolean))];
+                let ligas = todasLigas.filter(liga => {
+                    const jl = jogos.filter(j => j.liga === liga);
+                    return jl.length && al.condicoes.every(c => _checaCond(c, jl));
+                });
+                if (!ligas.length) ligas = ['Todas as ligas'];
                 disparados.push({ id: p.id, nome: p.nome, ligas, grafico: al.grafico || 'linha', condicoes: al.condicoes || [], silencioso: !!al.silencioso });
             }
         } catch(e) {}
@@ -14874,14 +14873,20 @@ function _mostrarNotificacaoAlerta(alertas) {
     // Salva ligas disparadas por id para uso em aplicarPadrao
     alertas.forEach(a => { _alertaLigasMap[a.id] = a.ligas || []; });
 
-    // Piscar ligas de todos os alertas (silenciosos ou não) — piscar contínuo enquanto alerta válido
+    // Piscar ligas de todos os alertas — remove e re-adiciona juntas para sincronizar a animação
     const ligasAlertadasAll = new Set(alertas.flatMap(a => a.ligas || []));
+    const tabsParaPiscar = [];
     ligasAlertadasAll.forEach(liga => {
         const tab = document.querySelector(`.liga-tab[data-liga="${CSS.escape(liga)}"]`);
         if (!tab) return;
-        tab.classList.add('liga-alerta-ativa');
+        tab.classList.remove('liga-alerta-ativa');
+        tabsParaPiscar.push(tab);
         _alertaLigasAtivas.add(liga);
     });
+    if (tabsParaPiscar.length) {
+        void tabsParaPiscar[0].offsetWidth; // força reflow para zerar a animação
+        tabsParaPiscar.forEach(tab => tab.classList.add('liga-alerta-ativa'));
+    }
 
     // Verifica se o popup está habilitado (MASTER sempre vê, independente da config)
     // Lê S._cfgRaw (atualizado a cada ciclo) para evitar valor stale do startup
