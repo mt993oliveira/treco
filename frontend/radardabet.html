@@ -12919,7 +12919,6 @@ async function _loadConfigSistema() {
         dAlertas.forEach(d => { cfgAlertas[d.chave] = d.valor; });
         // Atualiza globals de runtime ao abrir o painel
         if (cfgAlertas.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(cfgAlertas.alerta_visual_duracao_s) || 15;
-        if (cfgAlertas.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(cfgAlertas.alerta_liga_piscar_s) || 30;
         if (cfgAlertas.alerta_popup_ativo !== undefined) _alertaPopupAtivo = cfgAlertas.alerta_popup_ativo !== 'false';
 
         const ativadoD = dAlertas.find(d => d.chave === 'alerta_ativado') || { chave:'alerta_ativado', valor:'true' };
@@ -12941,10 +12940,6 @@ async function _loadConfigSistema() {
                 `<input type="number" id="cfg-alerta_visual_duracao_s" value="${escHtml(cfgAlertas.alerta_visual_duracao_s||'15')}" min="5" max="300"
                     style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
                 'Tempo que o pop-up de alerta fica visível antes de fechar automaticamente · Padrão: 15 s') +
-            fldWrap('PISCAR DA LIGA (segundos)',
-                `<input type="number" id="cfg-alerta_liga_piscar_s" value="${escHtml(cfgAlertas.alerta_liga_piscar_s||'30')}" min="5" max="300"
-                    style="${inpStyle}" onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">`,
-                'Tempo que a aba da liga fica piscando na borda quando o alerta dispara · Padrão: 30 s') +
             _toggleHtml({ chave:'alerta_popup_ativo', valor: cfgAlertas.alerta_popup_ativo ?? 'true', descricao:'Exibir popup de alerta visual (desativado = apenas a liga pisca; MASTER sempre vê o popup)' }) +
             `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
                 <span style="font-size:11px;font-weight:700;color:#e2e8f0">🎯 Sugestão BTTS no Mosaico</span>
@@ -13230,7 +13225,6 @@ async function salvarConfigSistema() {
             msg.textContent = '✅ Configurações salvas! Coleta aplicada imediatamente; padrões de tela e sessão aplicados no próximo acesso.';
             // Atualiza globals de alerta visual imediatamente
             if (payload.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(payload.alerta_visual_duracao_s) || 15;
-            if (payload.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(payload.alerta_liga_piscar_s) || 30;
             if (payload.alerta_popup_ativo !== undefined) _alertaPopupAtivo = payload.alerta_popup_ativo !== 'false';
             if (payload.alerta_btts_mosaico   !== undefined || payload.alerta_btts_mosaico_botao   !== undefined) { _syncBttsMosaico(payload.alerta_btts_mosaico   ?? S._cfgRaw?.alerta_btts_mosaico,   payload.alerta_btts_mosaico_botao   ?? S._cfgRaw?.alerta_btts_mosaico_botao);   if (S.view === 'historico' && S.showMosaico) renderTabela(); }
             if (payload.alerta_over25_mosaico !== undefined || payload.alerta_over25_mosaico_botao !== undefined) { _syncOver25Mosaico(payload.alerta_over25_mosaico ?? S._cfgRaw?.alerta_over25_mosaico, payload.alerta_over25_mosaico_botao ?? S._cfgRaw?.alerta_over25_mosaico_botao); if (S.view === 'historico' && S.showMosaico) renderTabela(); }
@@ -14825,8 +14819,6 @@ function _verificarAlertas() {
 
 let _alertaAutoFecharTimer = null;
 let _alertaVisDuracao = 15;
-let _alertaLigaPiscarDuracao = 30;
-let _alertaLigaPiscarTimers = {};
 let _alertaLigasAtivas = new Set(); // ligas com alerta ativo (piscar contínuo)
 let _alertaPopupAtivo = true; // controlado por alerta_popup_ativo no config do sistema
 let _bttsMosaicoAtivo  = true;
@@ -14870,7 +14862,6 @@ async function _carregarAlertaCfgRuntime() {
         const alertas = {};
         (d.data || []).filter(x => x.grupo === 'alertas').forEach(x => { alertas[x.chave] = x.valor; });
         if (alertas.alerta_visual_duracao_s) _alertaVisDuracao = parseInt(alertas.alerta_visual_duracao_s) || 15;
-        if (alertas.alerta_liga_piscar_s)   _alertaLigaPiscarDuracao = parseInt(alertas.alerta_liga_piscar_s) || 30;
         if (alertas.alerta_popup_ativo !== undefined) _alertaPopupAtivo = alertas.alerta_popup_ativo !== 'false';
     } catch(e) {}
 }
