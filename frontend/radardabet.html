@@ -2759,6 +2759,16 @@
 </div>
 
 <!-- ========== MODALS ========== -->
+<div class="modal-overlay" id="modal-config-visual">
+    <div class="modal-box" style="max-width:900px;width:97%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="font-size:14px;font-weight:700">⚙️ Configurações</h2>
+            <button onclick="_fecharConfigModal()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div id="modal-config-visual-body"></div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modal-times">
     <div class="modal-box" style="max-width:960px;width:97%">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -4862,7 +4872,7 @@ function renderFiltros() {
 
     c.innerHTML = '';
 
-    const temConteudo = S.showPadroes || S.showMercados || S.showConfig;
+    const temConteudo = S.showPadroes || S.showMercados;
     const wrap = document.getElementById('filtros-row-wrap');
     if (wrap) wrap.style.display = temConteudo ? 'block' : 'none';
 
@@ -4894,14 +4904,6 @@ function renderFiltros() {
         return;
     }
 
-    if (S.showConfig) {
-        const cfgPanel = document.createElement('div');
-        cfgPanel.style.cssText = 'width:100%;margin-top:8px;';
-        cfgPanel.innerHTML = _cfgPanelHTML();
-        c.appendChild(cfgPanel);
-        _initConfigPanel();
-        return;
-    }
 
     if (!S.showMercados) return;
 
@@ -7672,10 +7674,24 @@ function showTT(e) { if (S.showLegendas) return; ttEl.textContent = e.currentTar
 function moveTT(e) { if (S.showLegendas) return; ttEl.style.left = (e.clientX + 14) + 'px'; ttEl.style.top = (e.clientY - 8) + 'px'; }
 function hideTT()  { ttEl.style.display = 'none'; }
 
+function _fecharConfigModal() {
+    fecharModal('modal-config-visual');
+    S.showConfig = false;
+    if (_b('view-config')) _b('view-config').classList.remove('ativo');
+}
+
 function toggleConfig() {
-    S.showConfig = !S.showConfig;
-    if (S.showConfig) { S.showPadroes = false; S.showMercados = false; }
-    renderFiltros();
+    const modal = document.getElementById('modal-config-visual');
+    if (modal.classList.contains('aberto')) {
+        _fecharConfigModal();
+        return;
+    }
+    S.showPadroes = false; S.showMercados = false;
+    document.getElementById('modal-config-visual-body').innerHTML = _cfgPanelHTML();
+    _initConfigPanel();
+    modal.classList.add('aberto');
+    S.showConfig = true;
+    if (_b('view-config')) _b('view-config').classList.add('ativo');
 }
 
 function _initConfigPanel() {
@@ -8821,14 +8837,12 @@ function salvarCoresGrid() {
     const c = _coresDoForm();
     localStorage.setItem('gridCores', JSON.stringify(c));
     aplicarCoresGrid(c);
-    S.showConfig = false;
-    renderFiltros();
+    _fecharConfigModal();
 }
 
 function cancelarCoresGrid() {
     aplicarCoresGrid(carregarCoresGrid());
-    S.showConfig = false;
-    renderFiltros();
+    _fecharConfigModal();
 }
 
 function restaurarCoresGrid() {
