@@ -9419,17 +9419,26 @@ function renderYoutubeView() {
     fetch('/api/bet365/admin/config')
         .then(r => r.json())
         .then(data => {
-            const ytKeys = (data.data || []).filter(d => d.grupo === 'youtube' && d.valor);
-            if (!ytKeys.length) {
+            const ytCfg = {};
+            (data.data || []).filter(d => d.grupo === 'youtube').forEach(d => { ytCfg[d.chave] = d.valor; });
+            // Monta lista de vídeos: chaves youtube_video_N (sem _titulo)
+            const ytUrls = Object.entries(ytCfg)
+                .filter(([k,v]) => /^youtube_video_\d+$/.test(k) && v)
+                .sort(([a],[b]) => {
+                    const na = parseInt(a.match(/\d+/)[0]);
+                    const nb = parseInt(b.match(/\d+/)[0]);
+                    return na - nb;
+                });
+            if (!ytUrls.length) {
                 el.innerHTML = '<div style="color:#475569;font-size:13px;text-align:center;padding:40px;grid-column:1/-1">Nenhum vídeo configurado. Acesse ⚙️ Config → ▶️ YouTube para adicionar.</div>';
                 return;
             }
-            el.innerHTML = ytKeys.map(d => {
-                const id = _ytId(d.valor);
+            el.innerHTML = ytUrls.map(([chave, url]) => {
+                const id = _ytId(url);
                 if (!id) return '';
                 const thumb  = `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
                 const fallbk = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-                const label  = (_CFG_LABELS && _CFG_LABELS[d.chave]) || d.descricao || d.chave;
+                const label  = ytCfg[chave + '_titulo'] || chave;
                 return `<div onclick="abrirYoutubePlayer('${id}')"
                     style="cursor:pointer;border-radius:10px;overflow:hidden;background:#0f172a;
                            border:1px solid #1e293b;transition:transform .15s,box-shadow .15s"
@@ -12905,8 +12914,6 @@ const _CFG_LABELS = {
     default_open_linha:         'Aberto por padrão: 📉 Gráfico de Linha',
 
     default_open_mercados:      'Aberto por padrão: 🎯 Mercados',
-    // YouTube
-    youtube_video_1:            'Vídeo 1 — URL',
 };
 
 async function abrirConfigSistema() {
@@ -13379,22 +13386,40 @@ async function _loadConfigSistema() {
             }).join('');
         }
 
-        const ytItems = (byGroup.youtube || []);
+        // Agrupa chaves youtube em pares: youtube_video_N_titulo + youtube_video_N
+        const ytCfg = {};
+        (byGroup.youtube || []).forEach(d => { ytCfg[d.chave] = d.valor; });
+        const ytNums = [...new Set(
+            Object.keys(ytCfg)
+                .map(k => { const m = k.match(/^youtube_video_(\d+)/); return m ? m[1] : null; })
+                .filter(Boolean)
+        )].sort((a,b) => parseInt(a)-parseInt(b));
+
         fYoutube.innerHTML =
-            `<div style="font-size:10px;color:#475569;margin-bottom:14px">
-                Cole a URL completa do YouTube (youtu.be/... ou youtube.com/watch?v=...).
-                Cada chave aparece como um card na aba ▶️ YouTube.
-                Chaves vazias são ignoradas.
+            `<div style="font-size:10px;color:#475569;margin-bottom:16px">
+                Configure os vídeos exibidos na aba YouTube. O título aparece no card; a URL aponta para o vídeo.
             </div>` +
-            (ytItems.length ? ytItems.map(d => {
-                const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
-                return `<div style="margin-bottom:14px">
-                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
-                    <input type="text" id="cfg-${d.chave}" value="${escHtml(d.valor)}"
-                        placeholder="https://youtu.be/..."
-                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
-                               padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
-                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            (ytNums.length ? ytNums.map(n => {
+                const kTit = `youtube_video_${n}_titulo`;
+                const kUrl = `youtube_video_${n}`;
+                const vTit = escHtml(ytCfg[kTit] || '');
+                const vUrl = escHtml(ytCfg[kUrl] || '');
+                return `<div style="margin-bottom:20px;padding:12px 14px;background:#0f172a;border:1px solid #1e293b;border-radius:8px">
+                    <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:10px">VIDEO ${n}</div>
+                    <div style="margin-bottom:10px">
+                        <label style="display:block;font-size:10px;color:#475569;margin-bottom:4px">TITULO (exibido no card)</label>
+                        <input type="text" id="cfg-${kTit}" value="${vTit}" placeholder="Ex: Site de Analise Bet365"
+                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                                   padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:10px;color:#475569;margin-bottom:4px">URL</label>
+                        <input type="text" id="cfg-${kUrl}" value="${vUrl}" placeholder="https://youtu.be/..."
+                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                                   padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    </div>
                 </div>`;
             }).join('') :
             '<div style="color:#475569;font-size:12px;padding:20px;text-align:center">Nenhum vídeo configurado ainda.</div>');
