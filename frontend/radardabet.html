@@ -7998,11 +7998,12 @@ function renderRankTimes() {
 // ============================================================
 // RANKING ODDS — versão profissional
 // ============================================================
-let _oddsMarket   = 'ft-casa';
-let _oddsJogos    = 100;
-let _oddsLiga     = null;
-let _oddsDetalMkt = null;
-let _oddsDetalOdd = null;
+let _oddsMarket      = 'over2.5';
+let _oddsJogos       = 200;
+let _oddsLiga        = null;
+let _oddsDetalMkt    = null;
+let _oddsDetalOdd    = null;
+let _oddsInitialized = false;
 
 const RANK_MERCADOS = [
     { id:'ft-casa',   label:'🏠 Casa FT',        campo:'odd_casa',     hitFn: j => j.resultado==='CASA',                                              grupo:'Resultado FT' },
@@ -8021,6 +8022,12 @@ const RANK_MERCADOS = [
 ];
 
 function abrirModalOdds() {
+    if (!_oddsInitialized) {
+        _oddsJogos = parseInt(S.rank_odds_jogos_padrao) || 200;
+        const _listaLigas = [...new Set((S.todasPartidas||S.partidas||[]).map(p=>p.liga).filter(Boolean))].sort();
+        _oddsLiga = _listaLigas[0] || null;
+        _oddsInitialized = true;
+    }
     document.getElementById('modal-odds').classList.add('aberto');
     renderRankOdds();
 }
@@ -8221,7 +8228,6 @@ function renderRankOdds() {
             <select onchange="_oddsSetLiga(this.value)"
                 style="padding:6px 10px;font-size:12px;font-weight:600;border-radius:6px;
                 background:#0f172a;color:#e2e8f0;border:1px solid #1e40af;cursor:pointer;outline:none;min-width:160px">
-                <option value="">Todas as ligas</option>
                 ${_ligas.map(l => `<option value="${l}" ${(ligaFiltro||'')===(l)?'selected':''}>${l}</option>`).join('')}
             </select>
         </div>`;
@@ -8268,7 +8274,10 @@ function renderRankOdds() {
             return (o && o >= 1.01) ? o.toFixed(2) : null;
         }).filter(Boolean))].sort((a,b) => parseFloat(a)-parseFloat(b));
 
-        const selOdd  = _oddsDetalOdd;
+        const _autoOdd = _oddsDetalOdd == null
+            ? (calcExata(dm).sort((a,b)=>b.seq-a.seq||b.n-a.n)[0]?.odd ?? null)
+            : null;
+        const selOdd  = _oddsDetalOdd ?? _autoOdd;
         const grpMenu = [...new Set(RANK_MERCADOS.map(m => m.grupo))];
 
         const mktDropdown = `
@@ -8308,7 +8317,7 @@ function renderRankOdds() {
             </div>`;
 
         if (!selOdd) {
-            return header + `<div style="padding:20px;text-align:center;color:#334155;font-size:12px">Selecione uma odd para ver os jogos individuais.</div></div>`;
+            return header + `<div style="padding:20px;text-align:center;color:#334155;font-size:12px">Nenhuma odd disponível para este mercado.</div></div>`;
         }
 
         // Jogos filtrados por campo + odd
@@ -12384,6 +12393,7 @@ const _CFG_LABELS = {
     default_jogos_linha:        '📈 Período padrão — Gráfico de Linha (jogos)',
 
     default_jogos_mosaico:      '🗂️ Período padrão — Grade / Mosaico (jogos)',
+    rank_odds_jogos_padrao:     '📊 Ranking de Odds — Número de Jogos padrão',
     default_dias_analise:       'Período padrão dos filtros de Análise (dias)',
     delay_credenciais_ms:       '⏱️ Login: aguardar após submeter credenciais (ms)',
     delay_confirmacao_modal_ms: '⏱️ Modal confirmação: aguardar para verificar se fechou (ms)',
@@ -12587,8 +12597,9 @@ async function _loadConfigSistema() {
                     default_jogos_linha:      JOGOS_OPTS,
 
                     default_jogos_mosaico:    JOGOS_OPTS,
+                    rank_odds_jogos_padrao:   JOGOS_OPTS,
                 };
-                const isJogosOpt = d.chave.startsWith('default_jogos_');
+                const isJogosOpt = d.chave.startsWith('default_jogos_') || d.chave === 'rank_odds_jogos_padrao';
                 if (optsMap[d.chave]) {
                     const opts = optsMap[d.chave].map(o => `<option value="${o}"${parseInt(d.valor)===o?' selected':''}>${o}${d.chave==='default_horas_historico'?'H':d.chave==='default_dias_analise'?'D':d.chave==='default_freq_min'&&o>0?'%':d.chave==='default_janela_recente'?'J':isJogosOpt?' Jogos':''}</option>`).join('');
                     return `<div style="margin-bottom:12px">
