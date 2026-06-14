@@ -15185,7 +15185,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const principal = _padroesCache.find(p => p.is_principal);
         if (principal) aplicarPadrao(principal.id, { silencioso: true });
         const seg = S._autoRefreshSeg ?? 120;
-        if (seg > 0) setInterval(carregarTudo, seg * 1000);
+        if (seg > 0) setInterval(() => { if (!_wsConectado) carregarTudo(); }, seg * 1000);
     });
     conectarWS();
 
