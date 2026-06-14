@@ -183,7 +183,7 @@
         /* View switcher */
         .view-btn { cursor: pointer; padding: 8px 20px; border-radius: 7px; font-size: 14px; font-weight: 700;
             background: #1e293b; border: 1px solid #334155; color: #64748b; transition: all .15s; white-space: nowrap; }
-        .view-btn.ativo { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+        .view-btn.ativo { background: #7c3aed !important; border-color: #7c3aed !important; color: #fff !important; }
         .vbtn-short { display: none; }
 
         @media (max-width: 768px) {
@@ -7749,7 +7749,9 @@ function toggleConfig() {
         return;
     }
     S.showPadroes = false; S.showMercados = false;
-    fecharModal('modal-padroes');
+    _fecharPadroesModal();
+    const _btnC = document.getElementById('view-config');
+    if (_btnC) _btnC.classList.add('ativo');
     document.getElementById('modal-config-visual-body').innerHTML = _cfgPanelHTML();
     _initConfigPanel();
     modal.classList.add('aberto');
@@ -7786,7 +7788,8 @@ function togglePadroes() {
     const modal = document.getElementById('modal-padroes');
     if (modal.classList.contains('aberto')) { _fecharPadroesModal(); return; }
     S.showMercados = false; S.showConfig = false;
-    fecharModal('modal-config-visual');
+    _fecharConfigModal();
+    if (_btnP) _btnP.classList.add('ativo');
     // Preserva texto digitado no input antes de recriar o conteúdo
     const _padNome = document.getElementById('padroes-nome-input')?.value || '';
     // Injeta painel (igual ao que renderFiltros fazia, mas no corpo do modal)
@@ -7880,6 +7883,8 @@ function abrirModalTimes() {
         _timesInitialized = true;
     }
     document.getElementById('modal-times').classList.add('aberto');
+    const _btnTimes = document.getElementById('view-rank-times');
+    if (_btnTimes) _btnTimes.classList.add('ativo');
     renderRankTimes();
 }
 function _timesSetTab(t)   { _timesTab   = t;                      renderRankTimes(); }
@@ -8269,6 +8274,8 @@ function abrirModalOdds() {
         _oddsInitialized = true;
     }
     document.getElementById('modal-odds').classList.add('aberto');
+    const _btnOdds = document.getElementById('view-rank-odds');
+    if (_btnOdds) _btnOdds.classList.add('ativo');
     renderRankOdds();
 }
 function _oddsSetMarket(id)  { _oddsMarket   = id;          renderRankOdds(); }
@@ -8643,7 +8650,11 @@ function renderRankOdds() {
         ${conteudo}`;
 }
 
-function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
+function fecharModal(id) {
+    document.getElementById(id).classList.remove('aberto');
+    const _btnMap = { 'modal-odds': 'view-rank-odds', 'modal-times': 'view-rank-times' };
+    if (_btnMap[id]) { const _b = document.getElementById(_btnMap[id]); if (_b) _b.classList.remove('ativo'); }
+}
 
 // ============================================================
 // CONFIGURAÇÃO DE CORES / FONTES DA GRID (modal "Config")
