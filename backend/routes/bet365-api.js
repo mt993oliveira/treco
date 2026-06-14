@@ -1967,7 +1967,7 @@ const CONFIG_DEFAULTS = [
     { chave:'alerta_btts_mosaico_pct',      valor:'50',   tipo:'number',  grupo:'alertas', descricao:'🎯 Sugestão BTTS — limite máximo de % de Ambas Marcam na hora anterior para exibir a sugestão (padrão: 50)' },
     // ── YouTube ──
     { chave:'youtube_video_1_titulo', valor:'Video 1', tipo:'text', grupo:'youtube', descricao:'Video 1 - Titulo exibido no card' },
-    { chave:'youtube_video_1',        valor:'https://youtu.be/fcCE45uP660', tipo:'text', grupo:'youtube', descricao:'Video 1 - URL' },
+    { chave:'youtube_video_1',        valor:'https://youtu.be/fcCE45uP660', tipo:'text', grupo:'youtube', descricao:'Radar da Bet - Site para analises de graficos do futebol virtual.' },
     // ── Seções da Análise ──
     { chave:'show_secao_ia',                valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: IA — Sugestões para Próximos Jogos' },
     { chave:'show_secao_value_bets',        valor:'true',  tipo:'boolean', grupo:'secoes',   descricao:'Exibir seção: Value Bets' },
