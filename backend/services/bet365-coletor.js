@@ -132,6 +132,37 @@ class Bet365Coletor {
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+    // Broadcast WS: direto quando roda dentro do server.js (VPS),
+    // ou via HTTP quando roda como processo local separado.
+    async _broadcast(dados) {
+        if (typeof global.wsBroadcast === 'function') {
+            global.wsBroadcast(dados);
+            return;
+        }
+        const url = process.env.RADARDABET_BACKEND_URL;
+        const key = process.env.JWT_SECRET;
+        if (!url || !key) return;
+        try {
+            const mod = url.startsWith('https') ? require('https') : require('http');
+            const body = Buffer.from(JSON.stringify(dados));
+            const urlObj = new URL('/api/ws/notificar', url);
+            await new Promise(resolve => {
+                const req = mod.request({
+                    hostname: urlObj.hostname,
+                    port: urlObj.port || (url.startsWith('https') ? 443 : 80),
+                    path: urlObj.pathname,
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Content-Length': body.length, 'x-notify-key': key },
+                    timeout: 5000
+                }, res => { res.resume(); resolve(); });
+                req.on('error', resolve);
+                req.on('timeout', () => { req.destroy(); resolve(); });
+                req.write(body);
+                req.end();
+            });
+        } catch(_) {}
+    }
+
     // Ctrl+F5: recarrega ignorando cache (equivalente a location.reload(true) no navegador)
     async _hardRefresh(pg, timeoutMs = 30000) {
         const navPromise = pg.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
@@ -861,11 +892,9 @@ class Bet365Coletor {
                     contadoresTotal.histOk     += cont.histOk;
                     // Notifica o frontend imediatamente após cada liga salvar,
                     // sem esperar o ciclo completo terminar.
-                    if (cont.histOk > 0 && typeof global.wsBroadcast === 'function') {
-                        console.log(`   📡 [${normalizarNomeLiga(liga.nome)}] WS broadcast per-liga — ${cont.histOk} resultado(s)`);
-                        global.wsBroadcast({ tipo: 'coleta', fonte: 'bet365', novos: cont.eventosOk, resultadosSalvos: cont.histOk, timestamp: new Date().toISOString() });
-                    } else if (cont.histOk === 0) {
-                        console.log(`   ⚠️  [${normalizarNomeLiga(liga.nome)}] WS per-liga NÃO disparou — histOk=0`);
+                    if (cont.histOk > 0) {
+                        console.log(`   📡 [${normalizarNomeLiga(liga.nome)}] Notificando frontend — ${cont.histOk} resultado(s)`);
+                        this._broadcast({ tipo: 'coleta', fonte: 'bet365', novos: cont.eventosOk, resultadosSalvos: cont.histOk, timestamp: new Date().toISOString() });
                     }
                 }
 
@@ -1860,9 +1889,7 @@ class Bet365Coletor {
             const { resultados: resBrutos, contadores } = await this._extrairDados(this.page);
             await this._logColeta(inicio, 'SUCESSO', contadores, null);
 
-            if (typeof global.wsBroadcast === 'function') {
-                global.wsBroadcast({ tipo: 'coleta', fonte: 'bet365', novos: contadores.eventosOk, resultadosSalvos: contadores.histOk, timestamp: new Date().toISOString() });
-            }
+            this._broadcast({ tipo: 'coleta', fonte: 'bet365', novos: contadores.eventosOk, resultadosSalvos: contadores.histOk, timestamp: new Date().toISOString() });
 
             // Só marca sucesso se extraiu algum dado — garante alerta quando sessão falha silenciosamente
             if (resBrutos.length > 0) {

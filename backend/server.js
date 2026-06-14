@@ -375,6 +375,18 @@ app.use('/api/simulador', userRateLimit, simuladorRoutes);
 const kirvanRoutes = require('./routes/kirvano');
 app.use('/api/kirvano', kirvanRoutes);
 
+// ── Endpoint interno: coletor local notifica VPS para fazer WS broadcast ──
+// Autenticado por x-notify-key = JWT_SECRET (sem auth de usuário)
+app.post('/api/ws/notificar', express.json(), (req, res) => {
+    const key = req.headers['x-notify-key'];
+    if (!key || key !== process.env.JWT_SECRET) return res.status(403).json({ error: 'Forbidden' });
+    const { novos = 0, resultadosSalvos = 0, fonte = 'bet365' } = req.body || {};
+    if (typeof global.wsBroadcast === 'function') {
+        global.wsBroadcast({ tipo: 'coleta', fonte, novos, resultadosSalvos, timestamp: new Date().toISOString() });
+    }
+    res.json({ ok: true });
+});
+
 // ── Rotas bet365 declaradas diretamente (garante funcionamento no contexto do server.js) ──
 {
     const sqlB = require('mssql');
