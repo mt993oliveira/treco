@@ -5494,7 +5494,7 @@ const verticalLinesPlugin = {
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 4]);
         for (let i = 10; i < n; i += 10) {
-            const x = scales.x.getPixelForIndex(i);
+            const x = scales.x.getPixelForValue ? scales.x.getPixelForValue(i) : (scales.x.getPixelForIndex ? scales.x.getPixelForIndex(i) : null);
             if (!x || isNaN(x)) continue;
             ctx.beginPath();
             ctx.moveTo(x, chartArea.top);
