@@ -266,9 +266,9 @@
         #planos { background: var(--surface); }
         .plans-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
             gap: 20px;
-            max-width: 860px;
+            max-width: 1080px;
             margin: 0 auto;
         }
         .plan-card {
@@ -283,6 +283,33 @@
         .plan-card.destaque {
             border-color: var(--accent);
             box-shadow: 0 0 28px rgba(31,204,89,.12);
+        }
+        .plan-card.destaque-roxo {
+            border-color: #7c3aed;
+            box-shadow: 0 0 28px rgba(124,58,237,.15);
+        }
+        .plan-badge-top.roxo { background: #7c3aed; color: #fff; }
+        .plan-desconto {
+            display: inline-block;
+            background: rgba(124,58,237,.12);
+            border: 1px solid rgba(124,58,237,.35);
+            color: #a78bfa;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 9px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+        }
+        .plan-total {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+        .plan-economia {
+            font-size: 11px;
+            color: #4ade80;
+            font-weight: 700;
+            margin-bottom: 16px;
         }
         .plan-badge-top {
             position: absolute;
@@ -839,7 +866,7 @@
     <h1>Análise inteligente para <span class="hl">apostas virtuais</span> que realmente funcionam</h1>
     <p>O Radar da Bet coleta, processa e analisa partidas de futebol virtual da Bet365 em tempo real — odds, histórico, tendências e sugestões na palma da mão.</p>
     <div class="hero-actions">
-        <a class="btn-primary" href="https://pay.kirvano.com/63be7245-d815-45bb-9186-c36811239d15" target="_blank">🎯&nbsp; Assinar por R$35,00/mês</a>
+        <a class="btn-primary" href="#planos">🎯&nbsp; Ver Planos</a>
         <button class="btn-primary" onclick="abrirLogin()" style="background:#1e293b;border:1px solid #334155"><i class="fas fa-sign-in-alt"></i>&nbsp; Já tenho acesso</button>
         <a class="btn-outline" href="#features">Ver Recursos</a>
     </div>
@@ -920,68 +947,127 @@
 <!-- PLANS -->
 <section id="planos">
     <div class="section-tag">Planos</div>
-    <div class="section-title">Acesso simples, preço justo</div>
-    <p class="section-sub">Estamos em fase de projeto piloto — aproveite o valor especial de lançamento e faça parte dos primeiros usuários da plataforma.</p>
+    <div class="section-title">Escolha o seu período</div>
+    <p class="section-sub">Quanto maior o período, maior o desconto. Todos os planos incluem acesso completo a todos os recursos.</p>
 
     <div class="plans-grid">
-        <!-- Plano Piloto -->
-        <div class="plan-card destaque">
-            <div class="plan-badge-top">⭐ PROJETO PILOTO</div>
-            <div class="plan-name">Acesso Completo</div>
-            <div class="plan-price">R$ 35<sub>,00/mês</sub></div>
-            <div class="plan-period">Disponível até 30 de junho de 2026</div>
 
-            <div class="plan-alert">
-                🚀 Você está entrando no projeto piloto do Radar da Bet. Seja um dos primeiros a testar a plataforma e aproveitar o preço especial de lançamento. Após 30/06/2026, os valores serão reajustados.
-            </div>
-
+        <!-- Mensal -->
+        <div class="plan-card">
+            <div class="plan-name">Mensal</div>
+            <div class="plan-price">R$ 35<sub>/mês</sub></div>
+            <div class="plan-total">Cobrança mensal</div>
+            <div style="height:20px"></div>
             <ul class="plan-features">
-                <li>Grid histórico completo (1h a 72h)</li>
-                <li>Gráfico de mercados com médias móveis</li>
-                <li>Menu mosaico — visão geral rápida</li>
-                <li>Sugestões IA para próximos jogos</li>
+                <li>Grid histórico completo</li>
+                <li>Gráfico de mercados + médias móveis</li>
+                <li>Mosaico em tempo real</li>
+                <li>Sugestões para próximos jogos</li>
                 <li>Value Bets e análise de tendências</li>
-                <li>Análise de frequência por liga e mercado</li>
                 <li>Análise por clube + ranking de times</li>
                 <li>5 ligas monitoradas 24/7</li>
                 <li>Acesso via celular e computador</li>
             </ul>
-
             <div class="plan-cta">
                 <a href="https://pay.kirvano.com/63be7245-d815-45bb-9186-c36811239d15" class="btn-plan-primary" target="_blank" rel="noopener">
-                    🎯 Assinar agora — R$35,00/mês
+                    🎯 Assinar — R$35/mês
                 </a>
                 <button class="btn-plan-secondary" onclick="abrirLogin()">
-                    <i class="fas fa-sign-in-alt"></i> Já tenho acesso — Entrar
+                    <i class="fas fa-sign-in-alt"></i> Já tenho acesso
                 </button>
             </div>
-            <p class="plan-note">Pagamento mensal · Cancele quando quiser · Sem contrato</p>
+            <p class="plan-note">Cancele quando quiser · Sem contrato</p>
         </div>
 
-        <!-- Plano Pós-piloto -->
+        <!-- Trimestral -->
         <div class="plan-card">
-            <div class="plan-name">Após 30/06/2026</div>
-            <div class="plan-price" style="color:var(--muted)">A definir</div>
-            <div class="plan-period">Valores serão anunciados em breve</div>
-
-            <ul class="plan-features" style="margin-bottom:18px">
-                <li>Todos os recursos atuais</li>
-                <li>Novos recursos em desenvolvimento</li>
-                <li>Preço baseado na evolução da plataforma</li>
-                <li>Usuários do piloto terão condições especiais</li>
+            <div class="plan-name">Trimestral</div>
+            <span class="plan-desconto">14% OFF</span>
+            <div class="plan-price">R$ 30<sub>/mês</sub></div>
+            <div class="plan-total">R$90 cobrados a cada 3 meses</div>
+            <div class="plan-economia">💰 Economize R$15 vs mensal</div>
+            <ul class="plan-features">
+                <li>Grid histórico completo</li>
+                <li>Gráfico de mercados + médias móveis</li>
+                <li>Mosaico em tempo real</li>
+                <li>Sugestões para próximos jogos</li>
+                <li>Value Bets e análise de tendências</li>
+                <li>Análise por clube + ranking de times</li>
+                <li>5 ligas monitoradas 24/7</li>
+                <li>Acesso via celular e computador</li>
             </ul>
-
-            <div class="plan-alert" style="background:rgba(31,204,89,.06);border-color:rgba(31,204,89,.15);color:#6ee7a0">
-                💡 Quem entrar agora no projeto piloto terá prioridade e condições especiais na transição para os novos planos.
-            </div>
-
             <div class="plan-cta">
-                <a href="https://api.whatsapp.com/send/?phone=5548985002773&text=Ol%C3%A1%21+Tenho+interesse+no+Radar+da+Bet." class="btn-plan-secondary" target="_blank" rel="noopener">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                    Avisar quando lançar
+                <!-- SUBSTITUA pelo link do produto Trimestral criado na Kirvano -->
+                <a href="#" class="btn-plan-primary" target="_blank" rel="noopener">
+                    🎯 Assinar — R$90/trimestre
                 </a>
+                <button class="btn-plan-secondary" onclick="abrirLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Já tenho acesso
+                </button>
             </div>
+            <p class="plan-note">Renova a cada 3 meses · Sem contrato</p>
         </div>
+
+        <!-- Semestral — destaque -->
+        <div class="plan-card destaque">
+            <div class="plan-badge-top">⭐ MAIS POPULAR</div>
+            <div class="plan-name">Semestral</div>
+            <span class="plan-desconto">29% OFF</span>
+            <div class="plan-price">R$ 25<sub>/mês</sub></div>
+            <div class="plan-total">R$150 cobrados a cada 6 meses</div>
+            <div class="plan-economia">💰 Economize R$60 vs mensal</div>
+            <ul class="plan-features">
+                <li>Grid histórico completo</li>
+                <li>Gráfico de mercados + médias móveis</li>
+                <li>Mosaico em tempo real</li>
+                <li>Sugestões para próximos jogos</li>
+                <li>Value Bets e análise de tendências</li>
+                <li>Análise por clube + ranking de times</li>
+                <li>5 ligas monitoradas 24/7</li>
+                <li>Acesso via celular e computador</li>
+            </ul>
+            <div class="plan-cta">
+                <!-- SUBSTITUA pelo link do produto Semestral criado na Kirvano -->
+                <a href="#" class="btn-plan-primary" target="_blank" rel="noopener">
+                    🎯 Assinar — R$150/semestre
+                </a>
+                <button class="btn-plan-secondary" onclick="abrirLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Já tenho acesso
+                </button>
+            </div>
+            <p class="plan-note">Renova a cada 6 meses · Sem contrato</p>
+        </div>
+
+        <!-- Anual -->
+        <div class="plan-card destaque-roxo">
+            <div class="plan-badge-top roxo">💎 MELHOR VALOR</div>
+            <div class="plan-name">Anual</div>
+            <span class="plan-desconto">46% OFF</span>
+            <div class="plan-price">R$ 19<sub>/mês</sub></div>
+            <div class="plan-total">R$228 cobrados por ano</div>
+            <div class="plan-economia">💰 Economize R$192 vs mensal</div>
+            <ul class="plan-features">
+                <li>Grid histórico completo</li>
+                <li>Gráfico de mercados + médias móveis</li>
+                <li>Mosaico em tempo real</li>
+                <li>Sugestões para próximos jogos</li>
+                <li>Value Bets e análise de tendências</li>
+                <li>Análise por clube + ranking de times</li>
+                <li>5 ligas monitoradas 24/7</li>
+                <li>Acesso via celular e computador</li>
+            </ul>
+            <div class="plan-cta">
+                <!-- SUBSTITUA pelo link do produto Anual criado na Kirvano -->
+                <a href="#" class="btn-plan-primary" style="background:#7c3aed" target="_blank" rel="noopener">
+                    🎯 Assinar — R$228/ano
+                </a>
+                <button class="btn-plan-secondary" onclick="abrirLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Já tenho acesso
+                </button>
+            </div>
+            <p class="plan-note">Renova anualmente · Sem contrato</p>
+        </div>
+
     </div>
 </section>
 

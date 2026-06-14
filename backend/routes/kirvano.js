@@ -6,7 +6,7 @@ const nodemailer = require('nodemailer');
 const { getDbPool } = require('./bet365-api');
 
 // ── Envia e-mail para o cliente via Brevo SMTP ───────────────────
-async function _enviarEmailCliente({ para, nome, usuario, senha, dataExpiracao, renovacao }) {
+async function _enviarEmailCliente({ para, nome, usuario, senha, dataExpiracao, renovacao, plano }) {
     const mailUser = process.env.MAIL_USER;
     const mailPass = process.env.MAIL_PASS;
     const mailFrom = process.env.MAIL_FROM || `Radar da Bet <${mailUser}>`;
@@ -25,12 +25,13 @@ async function _enviarEmailCliente({ para, nome, usuario, senha, dataExpiracao, 
         : '—';
 
     let assunto, corpo;
+    const planoNome = plano?.nome || 'Mensal';
     if (renovacao) {
         assunto = '✅ Sua licença Radar da Bet foi renovada!';
-        corpo = `Olá, ${nome}!\n\nSua licença foi renovada com sucesso.\n\nAcesso válido até: ${expFmt}\nUsuário: ${usuario}\n\nAcesse agora: https://radardabet.com.br\n\nQualquer dúvida, responda este e-mail.\n\nRadar da Bet`;
+        corpo = `Olá, ${nome}!\n\nSua licença foi renovada com sucesso.\n\nPlano: ${planoNome}\nAcesso válido até: ${expFmt}\nUsuário: ${usuario}\n\nAcesse agora: https://radardabet.com.br\n\nQualquer dúvida, responda este e-mail.\n\nRadar da Bet`;
     } else {
         assunto = '🎯 Seu acesso ao Radar da Bet está pronto!';
-        corpo = `Olá, ${nome}!\n\nSeu acesso foi criado com sucesso. Guarde essas informações:\n\nUsuário: ${usuario}\nSenha:   ${senha}\nAcesso válido até: ${expFmt}\n\nAcesse agora: https://radardabet.com.br\n\n⚠️ Recomendamos alterar sua senha no primeiro acesso.\n\nQualquer dúvida, responda este e-mail.\n\nRadar da Bet`;
+        corpo = `Olá, ${nome}!\n\nSeu acesso foi criado com sucesso. Guarde essas informações:\n\nUsuário: ${usuario}\nSenha:   ${senha}\nPlano: ${planoNome}\nAcesso válido até: ${expFmt}\n\nAcesse agora: https://radardabet.com.br\n\n⚠️ Recomendamos alterar sua senha no primeiro acesso.\n\nQualquer dúvida, responda este e-mail.\n\nRadar da Bet`;
     }
     try {
         await transporter.sendMail({ from: mailFrom, to: para, subject: assunto, text: corpo });
@@ -41,12 +42,66 @@ async function _enviarEmailCliente({ para, nome, usuario, senha, dataExpiracao, 
 }
 
 const KIRVANO_TOKEN  = 'radarbet_kirvano_2026_xK9mP3qL';
-const PLANO_DIAS     = 30;
-const PLANO_NOME     = 'Mensal';
-const PLANO_VALOR    = 35.00;
 
-// ── Cria tabelas se não existirem ───────────────────────────────
+// Mapa de planos disponíveis — ajuste os valores conforme preços na Kirvano
+const PLANOS = {
+    mensal:     { dias: 30,  nome: 'Mensal',     valor: 35.00  },
+    trimestral: { dias: 90,  nome: 'Trimestral', valor: 90.00  },
+    semestral:  { dias: 180, nome: 'Semestral',  valor: 150.00 },
+    anual:      { dias: 365, nome: 'Anual',       valor: 228.00 },
+};
+
+// Detecta o plano a partir do payload do webhook da Kirvano.
+// Tenta o nome do produto em vários caminhos possíveis do payload;
+// usa valor pago como fallback quando o nome não identifica o plano.
+function _detectarPlano(payload) {
+    const data     = payload?.data || payload;
+    const purchase = data?.purchase || data?.compra || {};
+
+    const prodName = (
+        purchase?.product?.name  ||
+        purchase?.offer?.name    ||
+        data?.product?.name      ||
+        data?.offer?.name        ||
+        data?.produto?.nome      ||
+        payload?.product_name    ||
+        payload?.nome_produto    ||
+        ''
+    ).toLowerCase();
+
+    // Busca pelo nome do plano dentro do nome do produto
+    for (const chave of ['anual', 'semestral', 'trimestral', 'mensal']) {
+        if (prodName.includes(chave)) return PLANOS[chave];
+    }
+
+    // Fallback por valor pago — cobre casos em que o nome não chegou no payload
+    const fiscal = data?.fiscal || data?.financeiro || {};
+    const valor  = parseFloat(
+        fiscal?.commission || fiscal?.comissao ||
+        purchase?.value    || purchase?.valor  ||
+        data?.value        || 0
+    );
+    if (valor > 200) return PLANOS['anual'];
+    if (valor > 120) return PLANOS['semestral'];
+    if (valor > 65)  return PLANOS['trimestral'];
+
+    return PLANOS['mensal']; // padrão seguro
+}
+
+// ── Cria tabelas / colunas se não existirem ─────────────────────
 async function _ensureTable(pool) {
+    // Adiciona PlanoAtivo em Usuarios caso ainda não exista (todos os anteriores → 'Mensal')
+    await pool.request().query(`
+        IF NOT EXISTS (
+            SELECT 1 FROM sys.columns
+            WHERE object_id = OBJECT_ID('Usuarios') AND name = 'PlanoAtivo'
+        )
+        BEGIN
+            ALTER TABLE Usuarios ADD PlanoAtivo NVARCHAR(50) NULL DEFAULT 'Mensal';
+            UPDATE Usuarios SET PlanoAtivo = 'Mensal' WHERE PlanoAtivo IS NULL;
+        END
+    `);
+
     await pool.request().query(`
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='kirvano_assinaturas' AND xtype='U')
         CREATE TABLE kirvano_assinaturas (
@@ -112,18 +167,20 @@ async function _gerarLogin(pool, email) {
 }
 
 // ── Cria usuário no banco ────────────────────────────────────────
-async function _criarUsuario(pool, { nome, email, login, senha, dataExpiracao }) {
+async function _criarUsuario(pool, { nome, email, login, senha, dataExpiracao, planoNome }) {
     const hash = await bcrypt.hash(senha, 10);
     const r = await pool.request()
-        .input('nome',    sql.NVarChar, nome)
-        .input('login',   sql.NVarChar, login)
-        .input('email',   sql.NVarChar, email)
-        .input('hash',    sql.NVarChar, hash)
-        .input('expira',  sql.DateTime2, dataExpiracao)
+        .input('nome',   sql.NVarChar,  nome)
+        .input('login',  sql.NVarChar,  login)
+        .input('email',  sql.NVarChar,  email)
+        .input('hash',   sql.NVarChar,  hash)
+        .input('expira', sql.DateTime2, dataExpiracao)
+        .input('plano',  sql.NVarChar,  planoNome || 'Mensal')
         .query(`
-            INSERT INTO Usuarios (NomeCompleto, Usuario, Email, Senha, TipoUsuario, Ativo, DataInicioLicenca, DataFimLicenca)
+            INSERT INTO Usuarios (NomeCompleto, Usuario, Email, Senha, TipoUsuario, Ativo,
+                                  DataInicioLicenca, DataFimLicenca, PlanoAtivo)
             OUTPUT INSERTED.Id
-            VALUES (@nome, @login, @email, @hash, 'user', 1, GETUTCDATE(), @expira)
+            VALUES (@nome, @login, @email, @hash, 'user', 1, GETUTCDATE(), @expira, @plano)
         `);
     return r.recordset[0]?.Id;
 }
@@ -179,6 +236,10 @@ router.post('/webhook', async (req, res) => {
         return res.status(400).json({ error: 'Email do cliente não encontrado' });
     }
 
+    // Detecta o plano ANTES de qualquer operação no banco
+    const plano = _detectarPlano(payload);
+    console.log(`[Kirvano] Plano detectado: ${plano.nome} (${plano.dias} dias)`);
+
     try {
         if (!pool) throw new Error('Sem conexão com banco');
 
@@ -223,33 +284,35 @@ router.post('/webhook', async (req, res) => {
             .input('email', sql.NVarChar, emailCliente)
             .query(`SELECT Id, DataFimLicenca FROM Usuarios WHERE Email = @email AND Ativo = 1`);
 
-        let dataExpiracao = new Date(Date.now() + PLANO_DIAS * 86400000); // usado só para novos usuários
+        let dataExpiracao = new Date(Date.now() + plano.dias * 86400000);
         let usuarioId, usuarioLogin;
 
         if (existente.recordset.length > 0) {
-            // Renova licença: estende a partir do fim atual (se ainda válida) ou de hoje
+            // Renova licença: estende a partir do fim atual (se ainda válida) ou de hoje,
+            // usando os dias do plano comprado nesta renovação
             usuarioId = existente.recordset[0].Id;
             const fimAtual = existente.recordset[0].DataFimLicenca;
             const base = (fimAtual && new Date(fimAtual) > new Date()) ? new Date(fimAtual) : new Date();
-            dataExpiracao = new Date(base.getTime() + PLANO_DIAS * 86400000);
+            dataExpiracao = new Date(base.getTime() + plano.dias * 86400000);
             await pool.request()
                 .input('id',     sql.Int,       usuarioId)
                 .input('expira', sql.DateTime2, dataExpiracao)
-                .query(`UPDATE Usuarios SET DataFimLicenca = @expira WHERE Id = @id`);
+                .input('plano',  sql.NVarChar,  plano.nome)
+                .query(`UPDATE Usuarios SET DataFimLicenca = @expira, PlanoAtivo = @plano WHERE Id = @id`);
             const uRow = await pool.request()
                 .input('id', sql.Int, usuarioId)
                 .query(`SELECT Usuario FROM Usuarios WHERE Id = @id`);
             usuarioLogin = uRow.recordset[0]?.Usuario || '';
-            console.log(`[Kirvano] Licença renovada: ${emailCliente} até ${dataExpiracao.toISOString()} (base: ${base.toISOString()})`);
-            // Envia e-mail de renovação para o cliente
-            _enviarEmailCliente({ para: emailCliente, nome: nomeCliente, usuario: usuarioLogin, dataExpiracao, renovacao: true });
+            console.log(`[Kirvano] Licença renovada: ${emailCliente} | plano: ${plano.nome} | até ${dataExpiracao.toISOString()}`);
+            _enviarEmailCliente({ para: emailCliente, nome: nomeCliente, usuario: usuarioLogin, dataExpiracao, renovacao: true, plano });
         } else {
             // Cria novo usuário
             usuarioLogin    = await _gerarLogin(pool, emailCliente);
             const senhaGerada = _gerarSenha();
             usuarioId       = await _criarUsuario(pool, {
                 nome: nomeCliente, email: emailCliente,
-                login: usuarioLogin, senha: senhaGerada, dataExpiracao
+                login: usuarioLogin, senha: senhaGerada, dataExpiracao,
+                planoNome: plano.nome
             });
             // Guarda senha em texto para exibir na tela de boas-vindas
             await pool.request()
@@ -261,9 +324,8 @@ router.post('/webhook', async (req, res) => {
                     WHEN MATCHED     THEN UPDATE SET senha_plain = src.s, criado_em = GETUTCDATE()
                     WHEN NOT MATCHED THEN INSERT (usuario_id, senha_plain) VALUES (src.id, src.s);
                 `);
-            console.log(`[Kirvano] Usuário criado: ${usuarioLogin} / ${emailCliente}`);
-            // Envia e-mail de boas-vindas com credenciais para o cliente
-            _enviarEmailCliente({ para: emailCliente, nome: nomeCliente, usuario: usuarioLogin, senha: senhaGerada, dataExpiracao, renovacao: false });
+            console.log(`[Kirvano] Usuário criado: ${usuarioLogin} / ${emailCliente} | plano: ${plano.nome}`);
+            _enviarEmailCliente({ para: emailCliente, nome: nomeCliente, usuario: usuarioLogin, senha: senhaGerada, dataExpiracao, renovacao: false, plano });
         }
 
         // Registra assinatura
@@ -274,8 +336,8 @@ router.post('/webhook', async (req, res) => {
             .input('nome',   sql.NVarChar,   nomeCliente)
             .input('uid',    sql.Int,         usuarioId)
             .input('login',  sql.NVarChar,   usuarioLogin)
-            .input('plano',  sql.NVarChar,   PLANO_NOME)
-            .input('valor',  sql.Decimal,    PLANO_VALOR)
+            .input('plano',  sql.NVarChar,   plano.nome)
+            .input('valor',  sql.Decimal,    plano.valor)
             .input('evento', sql.NVarChar,   evento)
             .input('status', sql.NVarChar,   'ativo')
             .input('expira', sql.DateTime2,  dataExpiracao)

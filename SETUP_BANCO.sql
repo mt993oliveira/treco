@@ -326,6 +326,7 @@ BEGIN
         [Ativo]             BIT            NOT NULL DEFAULT 1,
         [DataInicioLicenca] DATETIME2      NULL,
         [DataFimLicenca]    DATETIME2      NULL,
+        [PlanoAtivo]        NVARCHAR(50)   NULL DEFAULT 'Mensal',  -- 'Mensal' | 'Trimestral' | 'Semestral' | 'Anual'
         [DataCriacao]       DATETIME2      NOT NULL DEFAULT GETUTCDATE(),
         [DataAtualizacao]   DATETIME2      NULL
     );
