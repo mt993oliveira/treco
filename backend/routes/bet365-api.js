@@ -935,7 +935,10 @@ router.get('/historico-mercados', async (req, res) => {
         let query = `
             SELECT m.evento_id, m.liga, m.time_casa, m.time_fora, m.data_partida,
                    m.mercado, m.selecao, CAST(m.odd_paga AS FLOAT) AS odd_paga, m.data_registro,
-                   e.odd_casa, e.odd_empate, e.odd_fora
+                   e.odd_casa, e.odd_empate, e.odd_fora,
+                   e.odd_over15, e.odd_over25, e.odd_over35,
+                   e.odd_under15, e.odd_under25,
+                   e.odd_btts_sim, e.odd_btts_nao
             FROM bet365_resultados_mercados m
             LEFT JOIN bet365_eventos e ON e.id = m.evento_id
             WHERE m.data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
@@ -999,6 +1002,13 @@ router.get('/historico-mercados', async (req, res) => {
                     odd_casa:     parseFloat(r.odd_casa) || 0,
                     odd_fora:     parseFloat(r.odd_fora) || 0,
                     odd_empate:   parseFloat(r.odd_empate) || 0,
+                    odd_over15:   parseFloat(r.odd_over15) || 0,
+                    odd_over25:   parseFloat(r.odd_over25) || 0,
+                    odd_over35:   parseFloat(r.odd_over35) || 0,
+                    odd_under15:  parseFloat(r.odd_under15) || 0,
+                    odd_under25:  parseFloat(r.odd_under25) || 0,
+                    odd_btts_sim: parseFloat(r.odd_btts_sim) || 0,
+                    odd_btts_nao: parseFloat(r.odd_btts_nao) || 0,
                 });
             }
             gamesMap.get(key).mercados.push({
