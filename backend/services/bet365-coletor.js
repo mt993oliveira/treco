@@ -904,7 +904,6 @@ class Bet365Coletor {
                     // Notifica o frontend imediatamente após cada liga salvar,
                     // sem esperar o ciclo completo terminar.
                     if (cont.histOk > 0) {
-                        console.log(`   📡 [${normalizarNomeLiga(liga.nome)}] Notificando frontend — ${cont.histOk} resultado(s)`);
                         this._broadcast({ tipo: 'coleta', fonte: 'bet365', novos: cont.eventosOk, resultadosSalvos: cont.histOk, timestamp: new Date().toISOString() });
                     }
                 }
