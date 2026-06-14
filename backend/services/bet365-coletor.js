@@ -859,6 +859,11 @@ class Bet365Coletor {
                     contadoresTotal.mercadosOk += cont.mercadosOk;
                     contadoresTotal.oddsOk     += cont.oddsOk;
                     contadoresTotal.histOk     += cont.histOk;
+                    // Notifica o frontend imediatamente após cada liga salvar,
+                    // sem esperar o ciclo completo terminar.
+                    if (cont.histOk > 0 && typeof global.wsBroadcast === 'function') {
+                        global.wsBroadcast({ tipo: 'coleta', fonte: 'bet365', novos: cont.eventosOk, resultadosSalvos: cont.histOk, timestamp: new Date().toISOString() });
+                    }
                 }
 
                 // Pula Ctrl+F5 apenas se ESTA liga tinha resultados e todos já estavam no cache

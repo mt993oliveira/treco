@@ -11812,12 +11812,20 @@ function conectarWS() {
             if (S.view === 'diagnostico') _diagAtualizarWS();
             if (foiReconexao) setTimeout(carregarHistorico, 500);
         };
+        let _wsColetaTimer = null;
+        let _wsTemDados    = false;
         ws.onmessage = e => {
             try {
                 const m = JSON.parse(e.data);
                 if (m.tipo === 'coleta') {
-                    if (m.resultadosSalvos > 0 || m.novos > 0) setTimeout(carregarTudo, 2000);
-                    else setTimeout(carregarHistorico, 1000);
+                    // Debounce: acumula mensagens por liga e dispara um único fetch
+                    // 400ms após a última mensagem, evitando N requisições por ciclo.
+                    if (m.resultadosSalvos > 0 || m.novos > 0) _wsTemDados = true;
+                    clearTimeout(_wsColetaTimer);
+                    _wsColetaTimer = setTimeout(() => {
+                        if (_wsTemDados) { _wsTemDados = false; carregarTudo(); }
+                        else carregarHistorico();
+                    }, 400);
                     if (S.view === 'diagnostico') setTimeout(carregarDiagnostico, 2500);
                 }
                 if (m.tipo === 'chat') {
@@ -15303,7 +15311,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // silencioso=true: não abre Mercados/Gráfico — respeita os defaults da config
         const principal = _padroesCache.find(p => p.is_principal);
         if (principal) aplicarPadrao(principal.id, { silencioso: true });
-        const seg = S._autoRefreshSeg ?? 120;
+        // Fallback de polling quando WS está desconectado.
+        // Usa config do banco se definida, senão 30s (mais responsivo que o antigo 120s).
+        // Este interval SÓ executa se !_wsConectado, então não há overhead extra com WS ativo.
+        const seg = S._autoRefreshSeg ?? 30;
         if (seg > 0) setInterval(() => { if (!_wsConectado) carregarTudo(); }, seg * 1000);
     });
     conectarWS();
