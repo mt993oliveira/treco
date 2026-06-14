@@ -915,9 +915,10 @@ router.post('/limpar-ligas-descartadas', async (req, res) => {
 router.get('/historico-mercados', async (req, res) => {
     try {
         const { liga, horas = 24, incluirFuturos = 'false' } = req.query;
-        // Cap de 24h: query de 263h levava 56s e causava spike de 1.4GB
-        // Com FutebolVirtual (~100 jogos/h), 24h já são ~2.400 jogos — suficiente para análise diária
-        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 24);
+        // Cap de 168h (7 dias) — alinhado com o limite do frontend.
+        // Futebol real (~4 jogos/h) pode precisar de 100h+ para 400 jogos; futebol virtual
+        // (~100 jogos/h) nunca ultrapassa ~22h na auto-expansão → consultas realistas são sempre leves.
+        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 168);
         const comFuturos = incluirFuturos === 'true';
 
         const _ck = `hist:${horasNum}:${liga||'all'}:${comFuturos}`;
