@@ -16096,11 +16096,29 @@ function _kirvPaginacao(el, total, pp, paginaAtual, fn) {
 #assistente-send:hover { transform:scale(1.1); }
 </style>
 
-<button id="assistente-btn" onclick="toggleAssistente()" title="Assistente RadarDabet">🤖</button>
+<button id="assistente-btn" onclick="toggleAssistente()" title="Assistente RadarDabet">
+    <svg viewBox="0 0 32 32" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="14" stroke="#fff" stroke-width="1.6" opacity=".35"/>
+        <circle cx="16" cy="16" r="9"  stroke="#fff" stroke-width="1.6" opacity=".55"/>
+        <circle cx="16" cy="16" r="4"  stroke="#fff" stroke-width="1.6" opacity=".8"/>
+        <circle cx="16" cy="16" r="1.8" fill="#fff"/>
+        <line x1="16" y1="16" x2="27" y2="5" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+        <circle cx="25.5" cy="6.5" r="2" fill="#fff" opacity=".95"/>
+    </svg>
+</button>
 
 <div id="assistente-panel">
     <div id="assistente-header">
-        <div class="avatar">🤖</div>
+        <div class="avatar">
+            <svg viewBox="0 0 32 32" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="14" stroke="#fff" stroke-width="1.8" opacity=".35"/>
+                <circle cx="16" cy="16" r="9"  stroke="#fff" stroke-width="1.8" opacity=".55"/>
+                <circle cx="16" cy="16" r="4"  stroke="#fff" stroke-width="1.8" opacity=".8"/>
+                <circle cx="16" cy="16" r="1.8" fill="#fff"/>
+                <line x1="16" y1="16" x2="27" y2="5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".9"/>
+                <circle cx="25.5" cy="6.5" r="2" fill="#fff" opacity=".95"/>
+            </svg>
+        </div>
         <div class="info">
             <div class="nome">Assistente RadarDabet</div>
             <div class="sub">Encontre a ferramenta certa</div>
