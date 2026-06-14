@@ -9406,7 +9406,58 @@ function buildTimesMap(liga) {
     return map;
 }
 
-// ── YouTube ─────────────────────────────────────────────────────────────────
+// ── YouTube Config ───────────────────────────────────────────────────────────
+function _ytAdicionarCard() {
+    const wrap = document.getElementById('yt-cards-wrap');
+    if (!wrap) return;
+    const existentes = [...wrap.querySelectorAll('[data-yt-n]')].map(el => parseInt(el.dataset.ytN));
+    const nextN = existentes.length ? Math.max(...existentes) + 1 : 1;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = `<div data-yt-card data-yt-n="${nextN}" style="margin-bottom:16px;padding:12px 14px;background:#0f172a;border:1px solid #1e293b;border-radius:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em">VIDEO ${nextN}</span>
+            <button onclick="this.closest('[data-yt-card]').remove()"
+                style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#f87171;
+                       border-radius:5px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer">
+                ✕ Cancelar
+            </button>
+        </div>
+        <div style="margin-bottom:10px">
+            <label style="display:block;font-size:10px;color:#475569;margin-bottom:4px">TITULO (exibido no card)</label>
+            <input type="text" id="cfg-youtube_video_${nextN}_titulo" value="" placeholder="Ex: Radar da Bet"
+                style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                       padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+        </div>
+        <div>
+            <label style="display:block;font-size:10px;color:#475569;margin-bottom:4px">URL</label>
+            <input type="text" id="cfg-youtube_video_${nextN}" value="" placeholder="https://youtu.be/..."
+                style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                       padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+        </div>
+    </div>`;
+    // Remove mensagem "Nenhum vídeo" se existir
+    const vazio = wrap.querySelector('div:not([data-yt-card])');
+    if (vazio) vazio.remove();
+    wrap.appendChild(tmp.firstElementChild);
+}
+
+async function _ytRemover(n) {
+    if (!confirm(`Remover Vídeo ${n}? Esta ação não pode ser desfeita.`)) return;
+    try {
+        await fetch(`/api/bet365/admin/config/youtube_video_${n}_titulo`, { method: 'DELETE' });
+        await fetch(`/api/bet365/admin/config/youtube_video_${n}`,         { method: 'DELETE' });
+        const card = document.querySelector(`[data-yt-n="${n}"]`);
+        if (card) card.remove();
+        // Recarrega a aba para refletir
+        await _loadConfigSistema();
+        _cfgSetTab('youtube');
+    } catch(e) {
+        alert('Erro ao remover: ' + e.message);
+    }
+}
+// ── YouTube View ─────────────────────────────────────────────────────────────
 function _ytId(url) {
     if (!url) return null;
     const m = url.match(/(?:youtu\.be\/|[?&]v=)([\w-]{11})/);
@@ -13395,34 +13446,58 @@ async function _loadConfigSistema() {
                 .filter(Boolean)
         )].sort((a,b) => parseInt(a)-parseInt(b));
 
+        const _ytCard = (n, vTit, vUrl, existente) => {
+            const kTit = `youtube_video_${n}_titulo`;
+            const kUrl = `youtube_video_${n}`;
+            const remBtn = existente
+                ? `<button onclick="_ytRemover(${n})"
+                    style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#f87171;
+                           border-radius:5px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer"
+                    onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'">
+                    🗑️ Remover
+                  </button>`
+                : `<button onclick="this.closest('[data-yt-card]').remove()"
+                    style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#f87171;
+                           border-radius:5px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer"
+                    onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'">
+                    ✕ Cancelar
+                  </button>`;
+            return `<div data-yt-card data-yt-n="${n}" style="margin-bottom:16px;padding:12px 14px;background:#0f172a;border:1px solid #1e293b;border-radius:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                    <span style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em">VIDEO ${n}</span>
+                    ${remBtn}
+                </div>
+                <div style="margin-bottom:10px">
+                    <label style="display:block;font-size:10px;color:#475569;margin-bottom:4px">TITULO (exibido no card)</label>
+                    <input type="text" id="cfg-${kTit}" value="${escHtml(vTit)}" placeholder="Ex: Radar da Bet"
+                        style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                               padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div>
+                    <label style="display:block;font-size:10px;color:#475569;margin-bottom:4px">URL</label>
+                    <input type="text" id="cfg-${kUrl}" value="${escHtml(vUrl)}" placeholder="https://youtu.be/..."
+                        style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                               padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+            </div>`;
+        };
+
         fYoutube.innerHTML =
             `<div style="font-size:10px;color:#475569;margin-bottom:16px">
-                Configure os vídeos exibidos na aba YouTube. O título aparece no card; a URL aponta para o vídeo.
-            </div>` +
-            (ytNums.length ? ytNums.map(n => {
-                const kTit = `youtube_video_${n}_titulo`;
-                const kUrl = `youtube_video_${n}`;
-                const vTit = escHtml(ytCfg[kTit] || '');
-                const vUrl = escHtml(ytCfg[kUrl] || '');
-                return `<div style="margin-bottom:20px;padding:12px 14px;background:#0f172a;border:1px solid #1e293b;border-radius:8px">
-                    <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:10px">VIDEO ${n}</div>
-                    <div style="margin-bottom:10px">
-                        <label style="display:block;font-size:10px;color:#475569;margin-bottom:4px">TITULO (exibido no card)</label>
-                        <input type="text" id="cfg-${kTit}" value="${vTit}" placeholder="Ex: Site de Analise Bet365"
-                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
-                                   padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
-                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                    </div>
-                    <div>
-                        <label style="display:block;font-size:10px;color:#475569;margin-bottom:4px">URL</label>
-                        <input type="text" id="cfg-${kUrl}" value="${vUrl}" placeholder="https://youtu.be/..."
-                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
-                                   padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
-                            onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                    </div>
-                </div>`;
-            }).join('') :
-            '<div style="color:#475569;font-size:12px;padding:20px;text-align:center">Nenhum vídeo configurado ainda.</div>');
+                Configure os vídeos da aba YouTube. O título aparece no card; clique abre o vídeo em nova aba.
+            </div>
+            <div id="yt-cards-wrap">` +
+            (ytNums.length ? ytNums.map(n => _ytCard(n, ytCfg[`youtube_video_${n}_titulo`] || '', ytCfg[`youtube_video_${n}`] || '', true)).join('') :
+            '<div style="color:#475569;font-size:12px;padding:16px 0;text-align:center">Nenhum vídeo ainda.</div>') +
+            `</div>
+            <button onclick="_ytAdicionarCard()"
+                style="width:100%;margin-top:8px;padding:9px;background:#0f172a;border:1px dashed #334155;
+                       color:#1fcc59;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer"
+                onmouseover="this.style.borderColor='#1fcc59'" onmouseout="this.style.borderColor='#334155'">
+                + Adicionar Vídeo
+            </button>`;
 
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;

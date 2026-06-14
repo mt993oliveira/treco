@@ -2172,6 +2172,7 @@ router.post('/admin/config', async (req, res) => {
                 : chave.startsWith('liga_') ? 'ligas'
                 : chave.startsWith('grafico_') || chave.startsWith('chart_') ? 'grafico'
                 : chave.startsWith('alerta_') ? 'alertas'
+                : chave.startsWith('youtube_') ? 'youtube'
                 : 'cores';
             await pool.request()
                 .input('chave', sql.VarChar, chave)
@@ -2191,6 +2192,18 @@ router.post('/admin/config', async (req, res) => {
     }
 });
 
+
+router.delete('/admin/config/:chave', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        await pool.request()
+            .input('chave', sql.VarChar, req.params.chave)
+            .query('DELETE FROM bet365_config WHERE chave = @chave');
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 /**
  * POST /api/bet365/admin/normalizar-dados
