@@ -939,7 +939,7 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
         // 1 única query: auth check + total + dados paginados — zero round trips extras
         const result = await r.query(`
             SELECT
-                Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario,
+                Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario, PlanoAtivo,
                 DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso,
                 COUNT(*) OVER() AS _total,
                 (SELECT TipoUsuario FROM Usuarios WHERE Id = @uid) AS _RequesterTipo
@@ -971,7 +971,7 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
 
 // Rota para salvar usuário - CORRIGIDA
 app.post('/api/usuarios/save', requireAuth, async (req, res) => {
-    const { id, nomeCompleto, usuario, email, telefone, senha, tipoUsuario, ativo, sqlConfig } = req.body;
+    const { id, nomeCompleto, usuario, email, telefone, senha, tipoUsuario, ativo, planoAtivo, sqlConfig } = req.body;
     const ativoVal = ativo !== undefined ? (ativo ? 1 : 0) : null;
     const telefoneVal = telefone !== undefined ? (telefone || null) : undefined;
 
@@ -1004,7 +1004,7 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
 
             // Obter estado atual do usuário alvo (para fallback e para gerar diff no histórico)
             const prevRow = (await sql.query`
-                SELECT NomeCompleto, Usuario, Email, Telefone, TipoUsuario, Ativo, DataInicioLicenca, DataFimLicenca
+                SELECT NomeCompleto, Usuario, Email, Telefone, TipoUsuario, PlanoAtivo, Ativo, DataInicioLicenca, DataFimLicenca
                 FROM Usuarios WHERE Id = ${id}
             `).recordset[0] || {};
             const currentTipoUsuario = prevRow.TipoUsuario;
@@ -1113,6 +1113,10 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
             if (telefoneVal !== undefined) {
                 await sql.query`UPDATE Usuarios SET Telefone = ${telefoneVal} WHERE Id = ${id}`;
             }
+            // Atualizar PlanoAtivo se informado
+            if (planoAtivo) {
+                await sql.query`UPDATE Usuarios SET PlanoAtivo = ${planoAtivo} WHERE Id = ${id}`;
+            }
 
             // Registrar no histórico — diff dos campos alterados
             {
@@ -1144,6 +1148,8 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                     const newDf  = req.body.dataFimLicenca ? _fmtD(new Date(req.body.dataFimLicenca)) : '(vazio)';
                     if (prevDf !== newDf) diffs.push(`Fim licença: ${prevDf} → ${newDf}`);
                 }
+                if (planoAtivo && planoAtivo !== prevRow.PlanoAtivo)
+                    diffs.push(`Plano: "${_fmt(prevRow.PlanoAtivo)}" → "${_fmt(planoAtivo)}"`);
                 if (senha) diffs.push('Senha: alterada');
                 const acaoMsg = diffs.length
                     ? `[${reqLogin}] alterou "${targetLogin}": ${diffs.join(' | ')}`
@@ -1168,10 +1174,11 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 return res.json({ success: false, message: 'Data de início e fim da licença são obrigatórias para criar um usuário.' });
             }
 
+            const _planoNovoUsr = planoAtivo || 'Mensal';
             const insUser = await sql.query`
-                INSERT INTO Usuarios (NomeCompleto, Usuario, Email, Telefone, Senha, TipoUsuario, DataInicioLicenca, DataFimLicenca, DataCriacao, DataAtualizacao)
+                INSERT INTO Usuarios (NomeCompleto, Usuario, Email, Telefone, Senha, TipoUsuario, PlanoAtivo, DataInicioLicenca, DataFimLicenca, DataCriacao, DataAtualizacao)
                 OUTPUT INSERTED.Id
-                VALUES (${nomeCompleto}, ${usuario}, ${email}, ${telefoneVal || null}, ${hashedPassword}, ${tipoUsuario}, ${dataInicioLicenca}, ${dataFimLicenca}, GETDATE(), GETDATE())
+                VALUES (${nomeCompleto}, ${usuario}, ${email}, ${telefoneVal || null}, ${hashedPassword}, ${tipoUsuario}, ${_planoNovoUsr}, ${dataInicioLicenca}, ${dataFimLicenca}, GETDATE(), GETDATE())
             `;
             const novoUserId = insUser.recordset[0]?.Id;
 

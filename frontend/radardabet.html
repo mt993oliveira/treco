@@ -1182,6 +1182,7 @@
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b">USUÁRIO</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b">E-MAIL</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">TIPO</th>
+                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">PLANO</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">LICENÇA</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">STATUS</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">ÚLT. ACESSO</th>
@@ -1189,7 +1190,7 @@
                     </tr>
                 </thead>
                 <tbody id="tbody-usuarios">
-                    <tr><td colspan="8" style="padding:24px;text-align:center;color:#334155">Carregando...</td></tr>
+                    <tr><td colspan="9" style="padding:24px;text-align:center;color:#334155">Carregando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1667,6 +1668,17 @@
                     <input id="usr-lic-fim" type="date"
                         style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;color-scheme:dark"
                         onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+                <div>
+                    <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">PLANO</label>
+                    <select id="usr-plano"
+                        style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                        <option value="Mensal">Mensal</option>
+                        <option value="Trimestral">Trimestral</option>
+                        <option value="Semestral">Semestral</option>
+                        <option value="Anual">Anual</option>
+                    </select>
                 </div>
                 <div>
                     <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">STATUS</label>
@@ -14024,7 +14036,7 @@ let _usuariosBuscaTimer = null;
 async function _carregarUsuarios(pag) {
     if (pag !== undefined) _usuariosPagina = pag;
     const tbody = document.getElementById('tbody-usuarios');
-    tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#334155">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#334155">Carregando...</td></tr>';
     try {
         const u = _getUser();
         const body = {
@@ -14110,7 +14122,7 @@ function _renderPaginacaoUsuarios(total, pagina, pp) {
 function _renderTabelaUsuarios(lista) {
     const tbody = document.getElementById('tbody-usuarios');
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#334155">Nenhum usuário encontrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#334155">Nenhum usuário encontrado.</td></tr>';
         return;
     }
     const TIPO_LABEL = { master:'⭐ Master', administrador:'👑 Admin', admin:'👑 Admin', user:'👤 Usuário', bronze:'🥉 Bronze', prata:'🥈 Prata', gold:'🥇 Gold', premium:'💎 Premium' };
@@ -14136,12 +14148,15 @@ function _renderTabelaUsuarios(lista) {
         const ativo   = u.Ativo ? '<span style="color:#4ade80;font-weight:700;font-size:10px">Ativo</span>' : '<span style="color:#f87171;font-size:10px">Inativo</span>';
         const tipo    = `<span style="font-size:10px;color:#94a3b8">${TIPO_LABEL[u.TipoUsuario] || u.TipoUsuario}</span>`;
         const licenca = u.DataFimLicenca ? `<span style="font-size:10px;color:#475569">${fmtData(u.DataInicioLicenca)}<br>– ${fmtData(u.DataFimLicenca)}</span>` : '<span style="color:#334155">—</span>';
+        const _planoCor = { Mensal: '#94a3b8', Trimestral: '#60a5fa', Semestral: '#a78bfa', Anual: '#fbbf24' };
+        const plano = `<span style="font-size:10px;color:${_planoCor[u.PlanoAtivo] || '#94a3b8'}">${u.PlanoAtivo || 'Mensal'}</span>`;
         const isMaster = _getUser()?.TipoUsuario === 'master';
         return `<tr style="border-bottom:1px solid #0d1421">
             <td style="padding:7px 10px;color:#e2e8f0;${truncStyle}" title="${escHtml(u.NomeCompleto || '')}">${escHtml(u.NomeCompleto || '—')}</td>
             <td style="padding:7px 10px;color:#94a3b8;${truncStyle}" title="@${escHtml(u.Usuario || '')}">@${escHtml(u.Usuario || '—')}</td>
             <td style="padding:7px 10px;color:#64748b;font-size:10px;${truncStyle}" title="${escHtml(u.Email || '')}">${escHtml(u.Email || '—')}</td>
             <td style="padding:7px 10px;text-align:center">${tipo}</td>
+            <td style="padding:7px 10px;text-align:center">${plano}</td>
             <td style="padding:7px 10px;text-align:center">${licenca}</td>
             <td style="padding:7px 10px;text-align:center">${ativo}</td>
             <td style="padding:7px 10px;text-align:center">${fmtAcesso(u.UltimoAcesso)}</td>
@@ -14168,6 +14183,7 @@ function abrirFormUsuario(id) {
     msg.style.display = 'none';
     document.getElementById('usr-id').value        = '';
     document.getElementById('usr-nome').value      = '';
+    document.getElementById('usr-plano').value     = 'Mensal';
     document.getElementById('usr-login').value     = '';
     document.getElementById('usr-email').value     = '';
     document.getElementById('usr-telefone').value  = '';
@@ -14188,6 +14204,7 @@ function abrirFormUsuario(id) {
             document.getElementById('usr-email').value    = u.Email || '';
             document.getElementById('usr-telefone').value = u.Telefone || '';
             document.getElementById('usr-tipo').value     = u.TipoUsuario || 'user';
+            document.getElementById('usr-plano').value    = u.PlanoAtivo || 'Mensal';
             document.getElementById('usr-ativo').value    = u.Ativo ? '1' : '0';
             if (u.DataInicioLicenca) document.getElementById('usr-lic-ini').value = new Date(u.DataInicioLicenca).toISOString().split('T')[0];
             if (u.DataFimLicenca)    document.getElementById('usr-lic-fim').value = new Date(u.DataFimLicenca).toISOString().split('T')[0];
@@ -14225,6 +14242,7 @@ async function salvarUsuario(e) {
         email:            document.getElementById('usr-email').value.trim(),
         telefone:         document.getElementById('usr-telefone').value.trim() || null,
         tipoUsuario:      document.getElementById('usr-tipo').value,
+        planoAtivo:       document.getElementById('usr-plano').value,
         ativo:            document.getElementById('usr-ativo').value === '1',
         dataInicioLicenca: document.getElementById('usr-lic-ini').value || null,
         dataFimLicenca:    document.getElementById('usr-lic-fim').value || null,
