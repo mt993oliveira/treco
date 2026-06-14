@@ -4791,9 +4791,11 @@ function renderLigas() {
                     S._horasCarregadas = _horasNec;
                     carregarHistorico();
                     if (S.view === 'analise') { _faAtualizarStatus(); carregarAnalise(true); }
+                    limparDesenhoGols(); limparDesenhoLinha();
                     return;
                 }
             }
+            limparDesenhoGols(); limparDesenhoLinha();
             renderTabela(); _renderAllCharts();
             // Se a view analise ou mercados estiver ativa, recarrega com a nova liga
             if (S.view === 'analise')   { _faAtualizarStatus(); carregarAnalise(true); }

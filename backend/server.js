@@ -1394,7 +1394,6 @@ app.get('/api/usuario/padroes', requireAuthQuery, async (req, res) => {
     if (!usuarioId) return res.json({ success: false, message: 'usuarioId obrigatório' });
     try {
         await connectSQL(getDatabaseConfigFromEnv());
-        await _ensurePadroesTable();
         const r = await sql.query`
             SELECT id, nome, filtros, is_principal, data_criacao, publicado_por, is_publicado
             FROM user_padroes_grafico
