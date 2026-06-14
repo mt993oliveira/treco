@@ -7792,7 +7792,8 @@ function hideTT()  { ttEl.style.display = 'none'; }
 function _fecharConfigModal() {
     fecharModal('modal-config-visual');
     S.showConfig = false;
-    if (_b('view-config')) _b('view-config').classList.remove('ativo');
+    const _bcfg = document.getElementById('view-config');
+    if (_bcfg) _bcfg.classList.remove('ativo');
 }
 
 function toggleConfig() {
@@ -7809,7 +7810,8 @@ function toggleConfig() {
     _initConfigPanel();
     modal.classList.add('aberto');
     S.showConfig = true;
-    if (_b('view-config')) _b('view-config').classList.add('ativo');
+    const _bcfg2 = document.getElementById('view-config');
+    if (_bcfg2) _bcfg2.classList.add('ativo');
 }
 
 function _initConfigPanel() {
