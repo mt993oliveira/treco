@@ -43,12 +43,12 @@ async function _enviarEmailCliente({ para, nome, usuario, senha, dataExpiracao, 
 
 const KIRVANO_TOKEN  = 'radarbet_kirvano_2026_xK9mP3qL';
 
-// Mapa de planos disponíveis — ajuste os valores conforme preços na Kirvano
+// Mapa de planos disponíveis
 const PLANOS = {
     mensal:     { dias: 30,  nome: 'Mensal',     valor: 35.00  },
     trimestral: { dias: 90,  nome: 'Trimestral', valor: 90.00  },
-    semestral:  { dias: 180, nome: 'Semestral',  valor: 150.00 },
-    anual:      { dias: 365, nome: 'Anual',       valor: 228.00 },
+    semestral:  { dias: 180, nome: 'Semestral',  valor: 170.00 },
+    anual:      { dias: 365, nome: 'Anual',       valor: 300.00 },
 };
 
 // Detecta o plano a partir do payload do webhook da Kirvano.
@@ -81,9 +81,9 @@ function _detectarPlano(payload) {
         purchase?.value    || purchase?.valor  ||
         data?.value        || 0
     );
-    if (valor > 200) return PLANOS['anual'];
-    if (valor > 120) return PLANOS['semestral'];
-    if (valor > 65)  return PLANOS['trimestral'];
+    if (valor > 250) return PLANOS['anual'];      // R$300
+    if (valor > 120) return PLANOS['semestral'];  // R$170
+    if (valor > 65)  return PLANOS['trimestral']; // R$90
 
     return PLANOS['mensal']; // padrão seguro
 }
