@@ -5438,15 +5438,15 @@ const watermarkPlugin = {
         const { ctx, chartArea } = chart;
         if (!chartArea) return;
         const { left, right, top, bottom } = chartArea;
-        const cx = (left + right) / 2;
+        const cx = left + (right - left) * 0.82;
         const cy = (top + bottom) / 2;
         const s  = Math.max((right - left) / 480, 0.7);
-        const fs = Math.round(46 * s);
+        const fs = Math.round(38 * s);
         const gap = fs * 0.62;
 
         ctx.save();
         ctx.translate(cx, cy);
-        ctx.rotate(-Math.PI / 5.5);
+        ctx.rotate(-Math.PI / 8);
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
         ctx.font = `italic 900 ${fs}px "Arial Black",Impact,Arial,sans-serif`;
