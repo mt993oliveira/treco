@@ -5438,10 +5438,10 @@ const watermarkPlugin = {
         const { ctx, chartArea } = chart;
         if (!chartArea) return;
         const { left, right, top, bottom } = chartArea;
-        const cx = left + (right - left) * 0.82;
+        const cx = (left + right) / 2;
         const cy = (top + bottom) / 2;
         const s  = Math.max((right - left) / 480, 0.7);
-        const fs = Math.round(38 * s);
+        const fs = Math.round(56 * s);
         const gap = fs * 0.62;
 
         ctx.save();
