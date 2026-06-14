@@ -2079,6 +2079,7 @@
                         style="width:24px;height:24px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0">
                     <input type="range" id="gols-caneta-esp" min="1" max="8" value="2" title="Espessura"
                         style="width:50px;accent-color:#f59e0b">
+                    <button class="acao-btn" onclick="undoDesenhoGols()" title="Desfazer último traço">↩ Voltar</button>
                     <button class="acao-btn" onclick="limparDesenhoGols()" title="Apagar riscos do gráfico de gols">🗑 Limpar</button>
                 </div>
             </div>
@@ -2149,6 +2150,7 @@
                         style="width:24px;height:24px;border:1px solid #334155;border-radius:4px;background:none;cursor:pointer;padding:0">
                     <input type="range" id="linha-caneta-esp" min="1" max="8" value="2" title="Espessura"
                         style="width:50px;accent-color:#f59e0b">
+                    <button class="acao-btn" onclick="undoDesenhoLinha()" title="Desfazer último traço">↩ Voltar</button>
                     <button class="acao-btn" onclick="limparDesenhoLinha()" title="Apagar riscos do gráfico de linha">🗑 Limpar</button>
                 </div>
             </div>
@@ -5666,6 +5668,7 @@ function _drawBindLinha(canvas) {
     function getP(e) { return _drawGetPos(e, canvas, null); }
     function startDraw(e) {
         if (!DRAW_LINHA.ativo) return;
+        _pushHistLinha();
         const p = getP(e); DRAW_LINHA.drawing = true; DRAW_LINHA.sx = p.x; DRAW_LINHA.sy = p.y;
         const ctx = DRAW_LINHA.ctx; if (!ctx) return;
         const cor = _drawCorLinha(), esp = _drawEspLinha();
@@ -5745,6 +5748,35 @@ function limparDesenhoLinha() {
 // ============================================================
 const DRAW_GOLS = { ativo: false, drawing: false, ctx: null, ferramenta: 'livre', sx: 0, sy: 0 };
 const _drawDataLiga = { gols: {}, linha: {} };
+
+// Stacks de undo por canvas (máx 20 passos, limpa ao trocar liga)
+const _drawHistGols  = [];
+const _drawHistLinha = [];
+const _DRAW_HIST_MAX = 20;
+
+function _pushHistGols() {
+    const cc = document.getElementById('gols-draw');
+    if (!cc || !DRAW_GOLS.ctx) return;
+    _drawHistGols.push(DRAW_GOLS.ctx.getImageData(0, 0, cc.width, cc.height));
+    if (_drawHistGols.length > _DRAW_HIST_MAX) _drawHistGols.shift();
+}
+function _pushHistLinha() {
+    const cc = document.getElementById('linha-draw');
+    if (!cc || !DRAW_LINHA.ctx) return;
+    _drawHistLinha.push(DRAW_LINHA.ctx.getImageData(0, 0, cc.width, cc.height));
+    if (_drawHistLinha.length > _DRAW_HIST_MAX) _drawHistLinha.shift();
+}
+function undoDesenhoGols() {
+    if (!_drawHistGols.length) return;
+    const cc = document.getElementById('gols-draw');
+    if (cc && DRAW_GOLS.ctx) DRAW_GOLS.ctx.putImageData(_drawHistGols.pop(), 0, 0);
+}
+function undoDesenhoLinha() {
+    if (!_drawHistLinha.length) return;
+    const cc = document.getElementById('linha-draw');
+    if (cc && DRAW_LINHA.ctx) DRAW_LINHA.ctx.putImageData(_drawHistLinha.pop(), 0, 0);
+}
+
 function _salvarDesenhoLiga(liga) {
     if (!liga) return;
     const gc = document.getElementById('gols-draw');
@@ -5753,6 +5785,9 @@ function _salvarDesenhoLiga(liga) {
     if (lc && DRAW_LINHA.ctx) _drawDataLiga.linha[liga] = DRAW_LINHA.ctx.getImageData(0, 0, lc.width, lc.height);
 }
 function _restaurarDesenhoLiga(liga) {
+    // Undo history não faz sentido ao trocar liga
+    _drawHistGols.length  = 0;
+    _drawHistLinha.length = 0;
     const gc = document.getElementById('gols-draw');
     const lc = document.getElementById('linha-draw');
     if (gc && DRAW_GOLS.ctx) {
@@ -5772,6 +5807,7 @@ function _drawBindGols(canvas) {
     function getP(e) { return _drawGetPos(e, canvas, null); }
     function startDraw(e) {
         if (!DRAW_GOLS.ativo) return;
+        _pushHistGols();
         const p = getP(e); DRAW_GOLS.drawing = true; DRAW_GOLS.sx = p.x; DRAW_GOLS.sy = p.y;
         const ctx = DRAW_GOLS.ctx; if (!ctx) return;
         const cor = _drawCorGols(), esp = _drawEspGols();
