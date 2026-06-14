@@ -2048,7 +2048,7 @@ async function _ensureConfigTable(pool) {
                     VALUES (@chave,@valor,@tipo,@grupo,@descricao)
                 ELSE
                     UPDATE bet365_config SET tipo=@tipo, grupo=@grupo, descricao=@descricao
-                    WHERE chave=@chave AND (tipo <> @tipo OR grupo <> @grupo)
+                    WHERE chave=@chave AND (tipo <> @tipo OR grupo <> @grupo OR descricao <> @descricao)
             `);
     }
 
