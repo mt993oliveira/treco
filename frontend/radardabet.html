@@ -5435,6 +5435,14 @@ function _toggleLinhaMarcaDagua() {
 // ============================================================
 // PLUGIN WATERMARK — marca d'água Radar da Bet
 // ============================================================
+const _wmarkShield = new Image();
+_wmarkShield.onload = () => {
+    // Força redesenho dos gráficos se já estiverem criados quando a imagem carregar
+    try { if (S._graficoGols)  S._graficoGols.draw();  } catch(_){}
+    try { if (S._graficoLinha) S._graficoLinha.draw(); } catch(_){}
+};
+_wmarkShield.src = 'images/radardabet-shield.svg';
+
 const watermarkPlugin = {
     id: 'watermark',
     afterDraw(chart) {
@@ -5448,21 +5456,44 @@ const watermarkPlugin = {
         const gap = fs * 0.62;
 
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(0);
-        ctx.textAlign    = 'center';
-        ctx.textBaseline = 'middle';
         ctx.font = `italic 900 ${fs}px "Arial Black",Impact,Arial,sans-serif`;
 
-        // "Radar da"
-        ctx.globalAlpha = 0.28;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText('Radar da', 0, -gap / 2);
+        // Mede a largura do bloco de texto (linha mais larga)
+        const textW = Math.max(
+            ctx.measureText('Radar da').width,
+            ctx.measureText('Bet').width
+        );
 
-        // "Bet"
+        // Escudo: altura proporcional ao bloco de texto
+        const shieldH  = gap + fs * 1.15;
+        const shieldW  = shieldH * (66 / 71);  // aspect ratio do SVG viewBox 66×71
+        const spacer   = fs * 0.26;
+        const hasShield = _wmarkShield.complete && _wmarkShield.naturalHeight > 0;
+
+        // Largura total do grupo [escudo + espaço + texto] para centralizar
+        const totalW = hasShield ? shieldW + spacer + textW : textW;
+
+        // Move origin para o canto esquerdo do grupo, centrado no gráfico
+        ctx.translate(cx - totalW / 2, cy);
+
+        // Escudo à esquerda
+        if (hasShield) {
+            ctx.globalAlpha = 0.26;
+            ctx.drawImage(_wmarkShield, 0, -shieldH / 2, shieldW, shieldH);
+            ctx.translate(shieldW + spacer, 0);
+        }
+
+        // Texto centrado dentro do bloco de texto
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.globalAlpha = 0.28;
+        ctx.fillStyle   = '#ffffff';
+        ctx.fillText('Radar da', textW / 2, -gap / 2);
+
         ctx.globalAlpha = 0.30;
-        ctx.fillStyle = '#1fdd60';
-        ctx.fillText('Bet', 0, gap / 2 + fs * 0.05);
+        ctx.fillStyle   = '#1fdd60';
+        ctx.fillText('Bet', textW / 2, gap / 2 + fs * 0.05);
 
         ctx.restore();
     }
