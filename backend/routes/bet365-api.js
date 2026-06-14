@@ -61,6 +61,20 @@ async function getDbPool() {
     `).then(() => console.log('✅ Índice IX_b365_resmkt_liga_evt_data verificado/criado'))
       .catch(e => console.warn('⚠️ Índice: ' + e.message));
 
+    // Índice cobrindo em data_partida — principal acelerador de historico-mercados sem filtro de liga
+    // Inclui colunas frequentes do SELECT para evitar key lookup (leitura direto do índice)
+    sqlPool.request().query(`
+        IF NOT EXISTS (
+            SELECT 1 FROM sys.indexes
+            WHERE name = 'IX_b365_resmkt_data_partida'
+              AND OBJECT_NAME(object_id) = 'bet365_resultados_mercados'
+        )
+        CREATE NONCLUSTERED INDEX IX_b365_resmkt_data_partida
+            ON bet365_resultados_mercados (data_partida ASC, evento_id ASC, data_registro DESC)
+            INCLUDE (liga, time_casa, time_fora, mercado, selecao, odd_paga)
+    `).then(() => console.log('✅ Índice IX_b365_resmkt_data_partida verificado/criado'))
+      .catch(e => console.warn('⚠️ Índice data_partida: ' + e.message));
+
     return sqlPool;
 }
 
