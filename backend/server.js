@@ -936,26 +936,25 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
         r.input('off', sql.Int, off);
         r.input('pp',  sql.Int, pp);
 
-        // 1 única query: auth check + total + dados paginados — zero round trips extras
+        // Auth via sessão (req.sessionUser.tipo é preenchido pelo requireAuth)
+        const _chkTipo = (req.sessionUser?.tipo || '').toLowerCase();
+        if (!_chkTipo || (_chkTipo !== 'master' && _chkTipo !== 'administrador' && _chkTipo !== 'admin')) {
+            return res.json({ success: false, message: 'Acesso não autorizado' });
+        }
+
         const result = await r.query(`
             SELECT
                 Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario, PlanoAtivo,
                 DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso,
-                COUNT(*) OVER() AS _total,
-                (SELECT TipoUsuario FROM Usuarios WHERE Id = @uid) AS _RequesterTipo
+                COUNT(*) OVER() AS _total
             FROM Usuarios
             ${whereSQL}
             ORDER BY DataCriacao DESC
             OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
         `);
 
-        const _chkTipo = ((result.recordset[0] || {})._RequesterTipo || '').toLowerCase();
-        if (!_chkTipo || (_chkTipo !== 'master' && _chkTipo !== 'administrador' && _chkTipo !== 'admin')) {
-            return res.json({ success: false, message: 'Acesso não autorizado' });
-        }
-
         const total = result.recordset[0]?._total ?? 0;
-        const usuariosFormatados = result.recordset.map(({ _total, _RequesterTipo, ...u }) => ({
+        const usuariosFormatados = result.recordset.map(({ _total, ...u }) => ({
             ...u,
             DataInicioLicenca: u.DataInicioLicenca ? new Date(u.DataInicioLicenca).toISOString() : null,
             DataFimLicenca:    u.DataFimLicenca    ? new Date(u.DataFimLicenca).toISOString()    : null,
@@ -1160,9 +1159,11 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 `;
             }
         } else {
-            // Novo usuário - apenas masters podem criar
-            if (currentUser.TipoUsuario !== 'master') {
-                return res.json({ success: false, message: 'Apenas usuários master podem criar novos usuários' });
+            // Novo usuário - master ou administrador podem criar
+            const _reqTipoNovoCriar = (currentUser.TipoUsuario || '').toLowerCase();
+            const _podecriar = _reqTipoNovoCriar === 'master' || _reqTipoNovoCriar === 'administrador' || _reqTipoNovoCriar === 'admin';
+            if (!_podecriar) {
+                return res.json({ success: false, message: 'Apenas usuários master ou administrador podem criar novos usuários' });
             }
 
             // Criptografar senha com bcrypt
