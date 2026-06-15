@@ -274,6 +274,8 @@
         flex-shrink: 0; white-space: nowrap; transition: background .15s; cursor: pointer;
     }
     .wa-header-btn:hover { background: rgba(37,211,102,.22); }
+    #btn-instagram { background: rgba(188,24,136,.10); border-color: rgba(188,24,136,.28); color: #e879c0; }
+    #btn-instagram:hover { background: rgba(188,24,136,.22); }
     .wa-header-btn svg   { flex-shrink: 0; }
 
     /* Badge de licença + tipo no header */
@@ -880,6 +882,28 @@
                 <button id="chat-send" onclick="chatEnviar()">Enviar</button>
             </div>
         </div>
+
+        <!-- Instagram -->
+        <a class="wa-header-btn" id="btn-instagram"
+           href="https://www.instagram.com/radar_dabet?igsh=MTNjeHd1dmVrcDdoNw=="
+           target="_blank" rel="noopener noreferrer" title="Radar da Bet no Instagram">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <defs>
+                    <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%"   stop-color="#f09433"/>
+                        <stop offset="25%"  stop-color="#e6683c"/>
+                        <stop offset="50%"  stop-color="#dc2743"/>
+                        <stop offset="75%"  stop-color="#cc2366"/>
+                        <stop offset="100%" stop-color="#bc1888"/>
+                    </linearGradient>
+                </defs>
+                <rect x="2" y="2" width="20" height="20" rx="6" ry="6" fill="url(#ig-grad)"/>
+                <rect x="7" y="7" width="10" height="10" rx="3" ry="3" fill="none" stroke="#fff" stroke-width="1.5"/>
+                <circle cx="12" cy="12" r="2.8" fill="none" stroke="#fff" stroke-width="1.5"/>
+                <circle cx="17.2" cy="6.8" r="1" fill="#fff"/>
+            </svg>
+            <span>Instagram</span>
+        </a>
 
         <!-- WhatsApp Admin -->
         <a class="wa-header-btn"
