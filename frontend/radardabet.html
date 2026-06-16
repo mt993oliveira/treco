@@ -2149,6 +2149,11 @@
                     <button id="btn-gols-legendas" class="acao-btn" onclick="toggleGolsLegendas()" title="Suprimir tooltips do gráfico de gols">💬 Legendas</button>
                     <button id="btn-zoom-gols" class="acao-btn" onclick="resetZoomGols()" title="Resetar zoom (Ctrl+Roda para zoom)">↺ Zoom</button>
                     <div style="width:1px;height:14px;background:#1e293b"></div>
+                    <div style="display:flex;align-items:center;gap:2px" title="Espessura das linhas">
+                        <button class="acao-btn" style="padding:0 6px;min-width:22px" onclick="_golsEspessura(-1)">−</button>
+                        <span id="gols-esp-val" style="font-size:11px;min-width:14px;text-align:center;color:#94a3b8">2</span>
+                        <button class="acao-btn" style="padding:0 6px;min-width:22px" onclick="_golsEspessura(1)">+</button>
+                    </div>
                     <button id="btn-caneta-gols" class="acao-btn" onclick="toggleCanetaGols()" title="Ativar/desativar desenho no gráfico de gols">✏️ Caneta</button>
                     <select id="gols-draw-tool" onchange="DRAW_GOLS.ferramenta=this.value" title="Ferramenta de desenho"
                         style="display:none;background:#0f172a;border:1px solid #1fcc59;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 7px;cursor:pointer;height:26px">
@@ -2220,6 +2225,11 @@
                     <button id="btn-linha-cong"  class="acao-btn" onclick="_linhaToggle('linhaGrafCongest','btn-linha-cong')"       title="Destaca zonas onde o mercado ficou lateral (congestão)">〰 Congest</button>
                     <div style="width:1px;height:14px;background:#1e293b"></div>
                     <button id="btn-zoom-linha" class="acao-btn" onclick="resetZoomLinha()" title="Resetar zoom (Ctrl+Roda para zoom, Shift+arrastar para pan)">↺ Zoom</button>
+                    <div style="display:flex;align-items:center;gap:2px" title="Espessura das linhas">
+                        <button class="acao-btn" style="padding:0 6px;min-width:22px" onclick="_linhaEspessura(-1)">−</button>
+                        <span id="linha-esp-val" style="font-size:11px;min-width:14px;text-align:center;color:#94a3b8">2</span>
+                        <button class="acao-btn" style="padding:0 6px;min-width:22px" onclick="_linhaEspessura(1)">+</button>
+                    </div>
                     <button id="btn-caneta-linha" class="acao-btn" onclick="toggleCanetaLinha()" title="Ativar/desativar desenho no gráfico de linha">✏️ Caneta</button>
                     <select id="linha-draw-tool" onchange="DRAW_LINHA.ferramenta=this.value" title="Ferramenta de desenho"
                         style="display:none;background:#0f172a;border:1px solid #1fcc59;color:#e2e8f0;border-radius:5px;font-size:11px;padding:3px 7px;cursor:pointer;height:26px">
@@ -3714,6 +3724,8 @@ const S = {
     linhaMarcaDagua:    false,
     linhaShowLegendas:  false,
     grafGolsShowLegendas: false,
+    grafGolsEspessura:    2,
+    grafLinhaEspessura:   2,
     linhaGrafMM1:       9,
     linhaGrafMM2:       21,
     linhaGrafMM:        false,
@@ -5539,6 +5551,20 @@ function toggleGolsLegendas() {
     renderGraficoGols();
 }
 
+function _golsEspessura(delta) {
+    S.grafGolsEspessura = Math.max(1, Math.min(8, (S.grafGolsEspessura || 2) + delta));
+    const el = document.getElementById('gols-esp-val');
+    if (el) el.textContent = S.grafGolsEspessura;
+    renderGraficoGols();
+}
+
+function _linhaEspessura(delta) {
+    S.grafLinhaEspessura = Math.max(1, Math.min(8, (S.grafLinhaEspessura || 2) + delta));
+    const el = document.getElementById('linha-esp-val');
+    if (el) el.textContent = S.grafLinhaEspessura;
+    renderGraficoLinha();
+}
+
 function _toggleLinhaMarcaDagua() {
     S.linhaMarcaDagua = !S.linhaMarcaDagua;
     const btn = document.getElementById('btn-linha-marca-dagua');
@@ -6128,7 +6154,7 @@ function renderGraficoLinha() {
 
         datasets.push({ type:'line', label:`${f.label} ${pct}%`,
             data: pctSlice, borderColor: cor, backgroundColor:'transparent',
-            borderWidth: 2, borderDash: f.dashed ? [6,4] : [],
+            borderWidth: S.grafLinhaEspessura || 2, borderDash: f.dashed ? [6,4] : [],
             pointRadius, pointHoverRadius: 7,
             pointBackgroundColor: pointBgColor,
             pointBorderColor: pointBgColor,
@@ -6420,7 +6446,7 @@ function renderGraficoGols() {
             type: 'line', label: `${f.label} soma${n}j`,
             data: rolSum,
             borderColor: cor, backgroundColor: 'transparent',
-            borderWidth: 2,
+            borderWidth: S.grafGolsEspessura || 2,
             pointRadius: _rGols,
             pointHoverRadius: _rBase + 3,
             pointBackgroundColor: cor,
