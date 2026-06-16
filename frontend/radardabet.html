@@ -5231,8 +5231,10 @@ function _renderPillsLinha() {
 
 function _togglePillLinha(id) {
     S.linhasLinha[id] = !S.linhasLinha[id];
+    _suppressPreview = true;
     _renderPillsLinha();
     renderGraficoLinha();
+    requestAnimationFrame(() => { _suppressPreview = false; });
 }
 
 function _lgTodosLinha() {
@@ -5665,7 +5667,8 @@ const verticalLinesPlugin = {
     }
 };
 
-let _hoveringChart = false; // suprime rebuild de pills durante hover-preview
+let _hoveringChart    = false; // suprime rebuild de pills durante hover-preview
+let _suppressPreview  = false; // suprime mouseenter-preview logo após toggle de pill
 
 // Plano cartesiano vazio — exibe grid completo + mensagem centralizada
 function _renderChartVazio(canvasEl, chartRef, mensagem, yMin, yMax) {
@@ -6030,6 +6033,7 @@ let _LINHA_GOLS_FT      = [];  // soma rolante de gols FT para tooltip
 let _LINHA_GOLS_HT      = [];  // soma rolante de gols HT para tooltip
 
 function _previewPillLinha(f) {
+    if (_suppressPreview) return;
     if (S.linhaMarcaDagua) return;
     if (S.linhasLinha[f.id]) return;
     S.linhasLinha[f.id] = true;
