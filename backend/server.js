@@ -997,9 +997,11 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 return res.json({ success: false, message: 'Acesso não autorizado' });
             }
 
-            // Extrair datas de licença do corpo da requisição, se estiverem presentes
-            const dataInicioLicenca = req.body.dataInicioLicenca || null;
-            const dataFimLicenca = req.body.dataFimLicenca || null;
+            // Datas de licença: só atualizar quando explicitamente enviadas no body
+            const _diEnviada = 'dataInicioLicenca' in req.body;
+            const _dfEnviada = 'dataFimLicenca'    in req.body;
+            const dataInicioLicenca = _diEnviada ? (req.body.dataInicioLicenca || null) : undefined;
+            const dataFimLicenca    = _dfEnviada ? (req.body.dataFimLicenca    || null) : undefined;
 
             // Obter estado atual do usuário alvo (para fallback e para gerar diff no histórico)
             const prevRow = (await sql.query`
@@ -1032,7 +1034,6 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         UPDATE Usuarios
                         SET NomeCompleto = ${nomeCompleto}, Usuario = ${usuario}, Email = ${email},
                             Senha = ${hashedPassword}, TipoUsuario = ${tipoUsuario},
-                            DataInicioLicenca = ${dataInicioLicenca}, DataFimLicenca = ${dataFimLicenca},
                             DataAtualizacao = GETDATE()
                         WHERE Id = ${id}
                     `;
@@ -1041,7 +1042,6 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         UPDATE Usuarios
                         SET NomeCompleto = ${nomeCompleto}, Usuario = ${usuario}, Email = ${email},
                             Senha = ${hashedPassword}, TipoUsuario = ${tipoUsuario || currentTipoUsuario},
-                            DataInicioLicenca = ${dataInicioLicenca}, DataFimLicenca = ${dataFimLicenca},
                             DataAtualizacao = GETDATE()
                         WHERE Id = ${id}
                     `;
@@ -1050,7 +1050,6 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         UPDATE Usuarios
                         SET NomeCompleto = ${nomeCompleto}, Email = ${email},
                             Senha = ${hashedPassword}, TipoUsuario = ${tipoUsuario},
-                            DataInicioLicenca = ${dataInicioLicenca}, DataFimLicenca = ${dataFimLicenca},
                             DataAtualizacao = GETDATE()
                         WHERE Id = ${id}
                     `;
@@ -1059,7 +1058,6 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         UPDATE Usuarios
                         SET NomeCompleto = ${nomeCompleto}, Email = ${email},
                             Senha = ${hashedPassword}, TipoUsuario = ${currentTipoUsuario},
-                            DataInicioLicenca = ${dataInicioLicenca}, DataFimLicenca = ${dataFimLicenca},
                             DataAtualizacao = GETDATE()
                         WHERE Id = ${id}
                     `;
@@ -1070,7 +1068,6 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         UPDATE Usuarios
                         SET NomeCompleto = ${nomeCompleto}, Usuario = ${usuario}, Email = ${email},
                             TipoUsuario = ${tipoUsuario},
-                            DataInicioLicenca = ${dataInicioLicenca}, DataFimLicenca = ${dataFimLicenca},
                             DataAtualizacao = GETDATE()
                         WHERE Id = ${id}
                     `;
@@ -1079,7 +1076,6 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         UPDATE Usuarios
                         SET NomeCompleto = ${nomeCompleto}, Usuario = ${usuario}, Email = ${email},
                             TipoUsuario = ${tipoUsuario || currentTipoUsuario},
-                            DataInicioLicenca = ${dataInicioLicenca}, DataFimLicenca = ${dataFimLicenca},
                             DataAtualizacao = GETDATE()
                         WHERE Id = ${id}
                     `;
@@ -1088,7 +1084,6 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         UPDATE Usuarios
                         SET NomeCompleto = ${nomeCompleto}, Email = ${email},
                             TipoUsuario = ${tipoUsuario},
-                            DataInicioLicenca = ${dataInicioLicenca}, DataFimLicenca = ${dataFimLicenca},
                             DataAtualizacao = GETDATE()
                         WHERE Id = ${id}
                     `;
@@ -1097,11 +1092,20 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                         UPDATE Usuarios
                         SET NomeCompleto = ${nomeCompleto}, Email = ${email},
                             TipoUsuario = ${currentTipoUsuario},
-                            DataInicioLicenca = ${dataInicioLicenca}, DataFimLicenca = ${dataFimLicenca},
                             DataAtualizacao = GETDATE()
                         WHERE Id = ${id}
                     `;
                 }
+            }
+
+            // Atualizar datas de licença apenas quando explicitamente enviadas no body
+            if (_diEnviada || _dfEnviada) {
+                await sql.query`
+                    UPDATE Usuarios
+                    SET DataInicioLicenca = ${dataInicioLicenca ?? null},
+                        DataFimLicenca    = ${dataFimLicenca    ?? null}
+                    WHERE Id = ${id}
+                `;
             }
 
             // Atualizar Ativo se informado

@@ -12659,7 +12659,12 @@ async function salvarPerfil(e) {
     const body = { id: u.Id, usuarioId: u.Id, nomeCompleto: nome, usuario, email, telefone };
     if (senha) body.senha = senha;
 
-    // Campos de administração
+    // Sempre preserva as datas atuais do localStorage — evita zerá-las no backend
+    const _fmtDt = v => { try { return v ? new Date(v).toISOString().split('T')[0] : null; } catch(_) { return null; } };
+    body.dataInicioLicenca = _fmtDt(u.DataInicioLicenca);
+    body.dataFimLicenca    = _fmtDt(u.DataFimLicenca);
+
+    // Campos de administração — sobrescreve se o admin alterar os campos de data/tipo
     if (_isElevated) {
         const dataInicio = document.getElementById('perfil-data-inicio').value;
         const dataFim    = document.getElementById('perfil-data-fim').value;
