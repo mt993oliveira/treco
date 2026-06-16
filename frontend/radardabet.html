@@ -15211,25 +15211,9 @@ function _verificarAlertas() {
             if (!al || !al.ativo || !al.condicoes?.length) continue;
             const _msA = p => new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getTime();
             const todosJogos = [...(S.todasPartidas || [])].filter(j => j.data_partida).sort((a,b) => _msA(a)-_msA(b));
-            const jv = String(al.janela || '12');
-            let jogos;
-            if (jv === 'all') {
-                jogos = todosJogos;
-            } else if (jv.startsWith('j')) {
-                const n = parseInt(jv.slice(1)) || 20;
-                jogos = todosJogos.slice(-n);
-            } else {
-                const horas = parseInt(jv) || 12;
-                const corte = new Date(agora.getTime() - horas * 3600000);
-                jogos = todosJogos.filter(j => {
-                    const dt = new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
-                    return dt >= corte && dt <= agora;
-                });
-            }
-            if (!jogos.length) continue;
-            // Base Fixa: se definida, usa apenas os últimos N jogos dentro da janela
+            if (!todosJogos.length) continue;
+            const jv    = String(al.janela || '12');
             const _base = parseInt(al.base) || 0;
-            if (_base > 0 && jogos.length > _base) jogos = jogos.slice(-_base);
 
             // Helper: extrai gols de um jogo conforme a métrica
             const _getGols = (j, metrica) => {
@@ -15265,11 +15249,27 @@ function _verificarAlertas() {
                 ? (c, jgList) => _checaGols(c, jgList)
                 : (c, jgList) => _checaPct(c, jgList);
 
-            // Verifica cada liga individualmente — sem check global combinado,
-            // pois misturar todas as ligas dilui as estatísticas de cada uma.
-            const todasLigas = [...new Set(jogos.map(j => j.liga).filter(Boolean))];
+            // Janela e base aplicadas POR LIGA — misturar todas as ligas num pool
+            // global dilui as estatísticas e causa falsos positivos/negativos.
+            const todasLigas = [...new Set(todosJogos.map(j => j.liga).filter(Boolean))];
             const ligas = todasLigas.filter(liga => {
-                const jl = jogos.filter(j => j.liga === liga);
+                let jl = todosJogos.filter(j => j.liga === liga);
+                // Aplica janela por liga
+                if (jv !== 'all') {
+                    if (jv.startsWith('j')) {
+                        const n = parseInt(jv.slice(1)) || 20;
+                        jl = jl.slice(-n);
+                    } else {
+                        const horas = parseInt(jv) || 12;
+                        const corte = new Date(agora.getTime() - horas * 3600000);
+                        jl = jl.filter(j => {
+                            const dt = new Date((j.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
+                            return dt >= corte && dt <= agora;
+                        });
+                    }
+                }
+                // Aplica base por liga
+                if (_base > 0 && jl.length > _base) jl = jl.slice(-_base);
                 return jl.length && al.condicoes.every(c => _checaCond(c, jl));
             });
             if (ligas.length) {
