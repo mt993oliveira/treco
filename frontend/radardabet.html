@@ -15197,7 +15197,8 @@ function _verificarAlertas() {
             try { f = typeof p.filtros === 'string' ? JSON.parse(p.filtros || '{}') : (p.filtros || {}); } catch(e) { continue; }
             const al = f.alerta;
             if (!al || !al.ativo || !al.condicoes?.length) continue;
-            const todosJogos = serieFlat().filter(j => j.data_partida);
+            const _msA = p => new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z')).getTime();
+            const todosJogos = [...(S.todasPartidas || [])].filter(j => j.data_partida).sort((a,b) => _msA(a)-_msA(b));
             const jv = String(al.janela || '12');
             let jogos;
             if (jv === 'all') {
