@@ -136,10 +136,22 @@
         .sdot.idle { background: #475569; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
         @keyframes ligaAlertaBlink {
-            0%,100% { border-color:rgba(31,204,89,.28); box-shadow:none; }
-            50%     { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.55),0 0 14px rgba(245,158,11,.4); }
+            0%,100% {
+                background: rgba(31,204,89,.14);
+                border-color: rgba(31,204,89,.28);
+                box-shadow: none;
+                color: #4ade80;
+                text-shadow: none;
+            }
+            50% {
+                background: #f59e0b;
+                border-color: #fbbf24;
+                box-shadow: 0 0 0 4px rgba(245,158,11,.65), 0 0 28px rgba(245,158,11,.9), 0 0 55px rgba(245,158,11,.45);
+                color: #0f172a;
+                text-shadow: none;
+            }
         }
-        .liga-alerta-ativa { animation:ligaAlertaBlink 0.7s ease-in-out infinite !important; }
+        .liga-alerta-ativa { animation:ligaAlertaBlink 0.6s ease-in-out infinite !important; }
 
         .tabela-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
