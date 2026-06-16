@@ -5181,6 +5181,8 @@ function _renderPillsLinha() {
     const container = document.getElementById('pills-linha');
     if (!container) return;
     container.innerHTML = '';
+    _suppressPreview = true;
+    requestAnimationFrame(() => { _suppressPreview = false; });
 
     const btnStyle = 'padding:2px 8px;border-radius:4px;border:1px solid #334155;background:#1e293b;' +
                      'color:#94a3b8;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap';
@@ -5231,10 +5233,8 @@ function _renderPillsLinha() {
 
 function _togglePillLinha(id) {
     S.linhasLinha[id] = !S.linhasLinha[id];
-    _suppressPreview = true;
     _renderPillsLinha();
     renderGraficoLinha();
-    requestAnimationFrame(() => { _suppressPreview = false; });
 }
 
 function _lgTodosLinha() {
