@@ -15253,15 +15253,14 @@ function _verificarAlertas() {
                 ? (c, jgList) => _checaGols(c, jgList)
                 : (c, jgList) => _checaPct(c, jgList);
 
-            const todasOk = al.condicoes.every(c => _checaCond(c, jogos));
-            if (todasOk) {
-                // Verifica quais ligas individualmente atendem as condições
-                const todasLigas = [...new Set(jogos.map(j => j.liga).filter(Boolean))];
-                let ligas = todasLigas.filter(liga => {
-                    const jl = jogos.filter(j => j.liga === liga);
-                    return jl.length && al.condicoes.every(c => _checaCond(c, jl));
-                });
-                if (!ligas.length) ligas = ['Todas as ligas'];
+            // Verifica cada liga individualmente — sem check global combinado,
+            // pois misturar todas as ligas dilui as estatísticas de cada uma.
+            const todasLigas = [...new Set(jogos.map(j => j.liga).filter(Boolean))];
+            const ligas = todasLigas.filter(liga => {
+                const jl = jogos.filter(j => j.liga === liga);
+                return jl.length && al.condicoes.every(c => _checaCond(c, jl));
+            });
+            if (ligas.length) {
                 disparados.push({ id: p.id, nome: p.nome, ligas, grafico: al.grafico || 'linha', condicoes: al.condicoes || [], silencioso: !!al.silencioso });
             }
         } catch(e) {}
