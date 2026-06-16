@@ -1098,15 +1098,9 @@ app.post('/api/usuarios/save', requireAuth, async (req, res) => {
                 }
             }
 
-            // Atualizar datas de licença apenas quando explicitamente enviadas no body
-            if (_diEnviada || _dfEnviada) {
-                await sql.query`
-                    UPDATE Usuarios
-                    SET DataInicioLicenca = ${dataInicioLicenca ?? null},
-                        DataFimLicenca    = ${dataFimLicenca    ?? null}
-                    WHERE Id = ${id}
-                `;
-            }
+            // Atualizar datas de licença apenas quando explicitamente enviadas no body — independentes entre si
+            if (_diEnviada) await sql.query`UPDATE Usuarios SET DataInicioLicenca = ${dataInicioLicenca ?? null} WHERE Id = ${id}`;
+            if (_dfEnviada) await sql.query`UPDATE Usuarios SET DataFimLicenca    = ${dataFimLicenca    ?? null} WHERE Id = ${id}`;
 
             // Atualizar Ativo se informado
             if (ativoVal !== null) {
