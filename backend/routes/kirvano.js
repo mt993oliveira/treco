@@ -325,6 +325,23 @@ router.post('/webhook', async (req, res) => {
                     WHEN NOT MATCHED THEN INSERT (usuario_id, senha_plain) VALUES (src.id, src.s);
                 `);
             console.log(`[Kirvano] Usuário criado: ${usuarioLogin} / ${emailCliente} | plano: ${plano.nome}`);
+            // Copia padrões publicados para o novo usuário
+            try {
+                const pubPadroes = await pool.request().query(`SELECT * FROM user_padroes_grafico WHERE is_publicado=1`);
+                const cfgRow = await pool.request().query(`SELECT valor FROM bet365_config WHERE chave='max_padroes_usuario'`);
+                const limPadroes = Math.max(1, Math.min(10, parseInt(cfgRow.recordset[0]?.valor) || 5));
+                for (const pp of pubPadroes.recordset) {
+                    const cnt = (await pool.request().input('uid', sql.Int, usuarioId)
+                        .query(`SELECT COUNT(*) AS n FROM user_padroes_grafico WHERE user_id=@uid`)).recordset[0].n;
+                    if (cnt >= limPadroes) break;
+                    await pool.request()
+                        .input('uid', sql.Int, usuarioId)
+                        .input('nome', sql.NVarChar, pp.nome)
+                        .input('filtros', sql.NVarChar, pp.filtros)
+                        .input('pubpor', sql.Int, pp.id)
+                        .query(`INSERT INTO user_padroes_grafico (user_id, nome, filtros, publicado_por) VALUES (@uid, @nome, @filtros, @pubpor)`);
+                }
+            } catch (_) {}
             _enviarEmailCliente({ para: emailCliente, nome: nomeCliente, usuario: usuarioLogin, senha: senhaGerada, dataExpiracao, renovacao: false, plano });
         }
 
