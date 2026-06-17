@@ -3320,6 +3320,7 @@ async function carregarConfigLigas(_tentativa) {
         if (cfg.grafico_pills_default !== undefined) {
             S.linhaShowPills = cfg.grafico_pills_default !== 'false';
         }
+        if (cfg.grafico_watermark_opacidade !== undefined) S.grafWmarkOpac = (parseFloat(cfg.grafico_watermark_opacidade) || 28) / 100;
         // Sincroniza classes dos botões com o estado carregado
         [['grafPontoFlat','btn-linha-flat'],
          ['grafPontoCores','btn-linha-cores'],
@@ -3753,6 +3754,7 @@ const S = {
     grafMM2Esp:    2,
     grafMM1Dash:   '4,4',
     grafMM2Dash:   '8,4',
+    grafWmarkOpac:    0.28,
     grafPontoRaio:    4,
     grafPontoBorda:   1.5,
     grafPontoCorSobe: '#4ade80',
@@ -5629,9 +5631,11 @@ const watermarkPlugin = {
         // Move origin para o canto esquerdo do grupo, centrado no gráfico
         ctx.translate(cx - totalW / 2, cy);
 
+        const _wAlpha = Math.min(1, Math.max(0, S.grafWmarkOpac ?? 0.28));
+
         // Escudo à esquerda
         if (hasShield) {
-            ctx.globalAlpha = 0.26;
+            ctx.globalAlpha = _wAlpha * 0.93;
             ctx.drawImage(_wmarkShield, 0, -shieldH / 2, shieldW, shieldH);
             ctx.translate(shieldW + spacer, 0);
         }
@@ -5640,11 +5644,11 @@ const watermarkPlugin = {
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
 
-        ctx.globalAlpha = 0.28;
+        ctx.globalAlpha = _wAlpha;
         ctx.fillStyle   = '#ffffff';
         ctx.fillText('Radar da', textW / 2, -gap / 2);
 
-        ctx.globalAlpha = 0.30;
+        ctx.globalAlpha = _wAlpha * 1.07;
         ctx.fillStyle   = '#1fdd60';
         ctx.fillText('Bet', textW / 2, gap / 2 + fs * 0.05);
 
@@ -13393,6 +13397,17 @@ async function _loadConfigSistema() {
             </div>` +
             (byGroup.grafico || []).map(d => {
                 const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+                if (d.chave.endsWith('_opacidade')) {
+                    return `<div style="margin-bottom:14px">
+                        <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="0" max="100" step="1"
+                                style="width:80px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:13px;outline:none;text-align:center"
+                                onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                            <span style="font-size:11px;color:#475569">% &nbsp;(0 = invisível · 100 = máximo)</span>
+                        </div>
+                    </div>`;
+                }
                 if (d.tipo === 'number') {
                     return `<div style="margin-bottom:14px">
                         <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">${label.toUpperCase()}</label>

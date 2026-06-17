@@ -1922,7 +1922,8 @@ const CONFIG_DEFAULTS = [
     { chave:'grafico_ponto_cores',         valor:'false', tipo:'boolean', grupo:'grafico',  descricao:'🟢 Cores: vir habilitado por padrão (colorir bolinhas verde=hit / vermelho=miss)' },
     { chave:'grafico_pct_cor',         valor:'#ef4444', tipo:'text',    grupo:'grafico', descricao:'% Gráfico: cor do texto de porcentagem nas linhas' },
     { chave:'grafico_pct_tamanho',     valor:'8',       tipo:'number',  grupo:'grafico', descricao:'% Gráfico: tamanho da fonte da porcentagem (px)' },
-    { chave:'grafico_pills_default',   valor:'true',    tipo:'boolean', grupo:'grafico', descricao:'📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados' },
+    { chave:'grafico_pills_default',       valor:'true', tipo:'boolean', grupo:'grafico', descricao:'📊 Exibir seleção de mercados (pills) por padrão nos Gráficos de Linha e Mercados' },
+    { chave:'grafico_watermark_opacidade', valor:'28',   tipo:'number',  grupo:'grafico', descricao:'💧 Marca d\'água: opacidade (0 = invisível · 100 = máximo)' },
     // ── Coletores ──
     { chave:'coletor2_ativo',           valor:'true',  tipo:'boolean', grupo:'sistema', descricao:'⚡ Coletor 2 (Odds pré-jogo) — ativar/pausar coleta automática de odds' },
     { chave:'coletor3_ativo',           valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📚 Coletor 3 (Backfill Auto) — verificar e preencher lacunas automaticamente ao final de cada hora' },
