@@ -15543,6 +15543,13 @@ function toggleChat() {
         document.getElementById('chat-emoji-picker')?.classList.remove('aberto');
         document.removeEventListener('click', _chatFecharPickerFora, { capture: true });
     }
+    // Assistente e Chat não coexistem: ocultar/mostrar botão do Assistente
+    const asBtn   = document.getElementById('assistente-btn');
+    const asPanel = document.getElementById('assistente-panel');
+    if (asBtn) asBtn.style.display = _chatAberto ? 'none' : '';
+    if (_chatAberto && asPanel?.classList.contains('aberto')) {
+        asPanel.classList.remove('aberto');
+    }
     if (_chatAberto) {
         _chatNaoLidas = 0;
         _chatAtualizarBadge();
@@ -16960,6 +16967,10 @@ function _kirvPaginacao(el, total, pp, paginaAtual, fn) {
     window.toggleAssistente = function() {
         const panel = document.getElementById('assistente-panel');
         panel.classList.toggle('aberto');
+        // Fechar chat se Assistente abrir
+        if (panel.classList.contains('aberto') && _chatAberto) {
+            toggleChat();
+        }
         if (panel.classList.contains('aberto') && !_iniciado) {
             _iniciado = true;
             setTimeout(() => {
