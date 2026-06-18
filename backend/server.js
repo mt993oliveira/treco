@@ -1964,6 +1964,39 @@ app.use(express.static(path.join(__dirname, '../frontend'), {
     }
 }));
 
+// ── Chat: garante tabela no banco ───────────────────────────
+async function _garantirTabelaChat() {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        await sql.query`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='chat_mensagens' AND xtype='U')
+            CREATE TABLE chat_mensagens (
+                id           INT IDENTITY(1,1) PRIMARY KEY,
+                usuario_id   INT,
+                usuario_nome NVARCHAR(100),
+                mensagem     NVARCHAR(1000),
+                criado_em    DATETIME2 DEFAULT GETUTCDATE()
+            )`;
+        console.log('✅ Tabela chat_mensagens OK');
+    } catch(e) { console.warn('⚠️  chat_mensagens:', e.message); }
+}
+_garantirTabelaChat();
+
+// ── Chat: histórico das últimas N horas ─────────────────────
+app.get('/api/chat/historico', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const cfgH = await sql.query`SELECT valor FROM bet365_config WHERE chave='chat_historico_horas'`;
+        const horas = Math.max(1, Math.min(168, parseInt(cfgH.recordset[0]?.valor) || 24));
+        const r = await sql.query`
+            SELECT TOP 200 id, usuario_id, usuario_nome, mensagem, criado_em
+            FROM chat_mensagens
+            WHERE criado_em >= DATEADD(HOUR, -${horas}, GETUTCDATE())
+            ORDER BY criado_em ASC`;
+        res.json({ success: true, mensagens: r.recordset });
+    } catch(e) { res.json({ success: false, error: e.message }); }
+});
+
 // Rota curinga para servir o portifolio.html para todas as outras rotas (exceto API e rotas específicas)
 app.get('*', (req, res) => {
     // Verificar se é uma tentativa de acesso direto a recurso ou rota de API
@@ -1987,39 +2020,6 @@ const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
-
-// ── Chat: garante tabela no banco ───────────────────────────
-async function _garantirTabelaChat() {
-    try {
-        await connectSQL(getDatabaseConfigFromEnv());
-        await sql.query`
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='chat_mensagens' AND xtype='U')
-            CREATE TABLE chat_mensagens (
-                id           INT IDENTITY(1,1) PRIMARY KEY,
-                usuario_id   INT,
-                usuario_nome NVARCHAR(100),
-                mensagem     NVARCHAR(1000),
-                criado_em    DATETIME2 DEFAULT GETUTCDATE()
-            )`;
-        console.log('✅ Tabela chat_mensagens OK');
-    } catch(e) { console.warn('⚠️  chat_mensagens:', e.message); }
-}
-_garantirTabelaChat();
-
-// ── Chat: histórico das últimas 24h ─────────────────────────
-app.get('/api/chat/historico', requireAuth, async (req, res) => {
-    try {
-        await connectSQL(getDatabaseConfigFromEnv());
-        const cfgH = await sql.query`SELECT valor FROM bet365_config WHERE chave='chat_historico_horas'`;
-        const horas = Math.max(1, Math.min(168, parseInt(cfgH.recordset[0]?.valor) || 24));
-        const r = await sql.query`
-            SELECT TOP 200 id, usuario_id, usuario_nome, mensagem, criado_em
-            FROM chat_mensagens
-            WHERE criado_em >= DATEADD(HOUR, -${horas}, GETUTCDATE())
-            ORDER BY criado_em ASC`;
-        res.json({ success: true, mensagens: r.recordset });
-    } catch(e) { res.json({ success: false, error: e.message }); }
-});
 
 // WebSocket Server
 const wss = new WebSocketServer({ server, path: '/ws' });
