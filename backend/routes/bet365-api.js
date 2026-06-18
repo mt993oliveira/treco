@@ -937,7 +937,9 @@ router.get('/historico-mercados', async (req, res) => {
 
         const _ck = `hist:${horasNum}:${liga||'all'}:${comFuturos}`;
         const _ce = _analiseApiCache.get(_ck);
-        if (_ce && Date.now() - _ce.ts <= _histCacheTTLms) return res.json(_ce.data);
+        // Janelas > 48h usam TTL maior (2 min) — dados históricos mudam devagar e queries são pesadas
+        const _ttl = horasNum > 48 ? Math.max(_histCacheTTLms, 120_000) : _histCacheTTLms;
+        if (_ce && Date.now() - _ce.ts <= _ttl) return res.json(_ce.data);
 
         // Deduplicação: se já há uma query em andamento para a mesma chave, aguarda ela
         return res.json(await _dedupRequest(_ck, async () => {
