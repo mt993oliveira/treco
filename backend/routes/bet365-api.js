@@ -1968,6 +1968,9 @@ const CONFIG_DEFAULTS = [
     { chave:'alerta_btts_mosaico',           valor:'true', tipo:'boolean', grupo:'alertas', descricao:'🎯 Sugestão BTTS no Mosaico — exibir linha de destaque na grid quando BTTS ≤ threshold na hora anterior' },
     { chave:'alerta_btts_mosaico_botao',    valor:'true', tipo:'boolean', grupo:'alertas', descricao:'🎯 Sugestão BTTS — exibir botão "Ambas Marcam" no toolbar do Mosaico (permite usuário ligar/desligar)' },
     { chave:'alerta_btts_mosaico_pct',      valor:'50',   tipo:'number',  grupo:'alertas', descricao:'🎯 Sugestão BTTS — limite máximo de % de Ambas Marcam na hora anterior para exibir a sugestão (padrão: 50)' },
+    // ── Chat ──
+    { chave:'chat_historico_horas', valor:'24',   tipo:'number',  grupo:'chat', descricao:'💬 Chat: horas de histórico de mensagens exibido ao abrir (padrão: 24)' },
+    { chave:'chat_notificacao',     valor:'true', tipo:'boolean', grupo:'chat', descricao:'💬 Chat: piscar botão e exibir badge quando há mensagens novas' },
     // ── YouTube ──
     { chave:'youtube_video_1_titulo', valor:'Video 1', tipo:'text', grupo:'youtube', descricao:'Video 1 - Titulo exibido no card' },
     { chave:'youtube_video_1',        valor:'https://youtu.be/fcCE45uP660', tipo:'text', grupo:'youtube', descricao:'Radar da Bet - Site para analises de graficos do futebol virtual.' },

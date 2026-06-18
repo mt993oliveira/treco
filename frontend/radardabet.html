@@ -351,6 +351,11 @@
         .liga-tab .liga-icon { font-size: 15px; }
     }
         /* ── Chat ao Vivo ─────────────────────────────────────── */
+        @keyframes chatBtnPiscar {
+            0%,100% { box-shadow:none; border-color:#334155; }
+            50%      { box-shadow:0 0 0 3px rgba(31,204,89,.5), 0 0 12px rgba(31,204,89,.4); border-color:#1fcc59; }
+        }
+        .chat-btn-piscar { animation: chatBtnPiscar 1s ease-in-out infinite !important; }
         #chat-panel {
             position:fixed; bottom:0; right:16px; width:300px; height:420px;
             background:var(--bg-page,#0f172a); border:1px solid var(--border-subtle,#1e293b);
@@ -1552,6 +1557,11 @@
                        font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
                 ▶️ YouTube
             </button>
+            <button id="cfg-tab-chat" onclick="_cfgSetTab('chat')"
+                style="background:none;border:none;border-bottom:2px solid transparent;color:#64748b;
+                       font-size:11px;font-weight:700;padding:6px 14px;cursor:pointer;margin-bottom:-1px">
+                💬 Chat
+            </button>
         </div>
 
         <!-- Seção Coleta -->
@@ -1626,6 +1636,13 @@
         <!-- Seção YouTube -->
         <div id="cfg-section-youtube" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
             <div id="cfg-youtube-fields">
+                <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Seção Chat -->
+        <div id="cfg-section-chat" style="display:none;max-height:420px;overflow-y:auto;padding-right:4px">
+            <div id="cfg-chat-fields">
                 <div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>
             </div>
         </div>
@@ -12774,7 +12791,7 @@ let _cfgTabAtiva = 'coleta';
 
 function _cfgSetTab(tab) {
     _cfgTabAtiva = tab;
-    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade', 'youtube'].forEach(t => {
+    ['coleta', 'ligas', 'frontend', 'secoes', 'sistema', 'alertas', 'grafico', 'cores', 'grade', 'youtube', 'chat'].forEach(t => {
         const btn = document.getElementById(`cfg-tab-${t}`);
         const sec = document.getElementById(`cfg-section-${t}`);
         const ativo = t === tab;
@@ -13041,7 +13058,8 @@ const _CFG_LABELS = {
     show_secao_frequencia:      'Exibir: 📊 Frequência dos Mercados',
     show_secao_desempenho:      'Exibir: 🏆 Desempenho por Liga',
     coletor_auto_restart:       '🔄 Coletor: reiniciar automaticamente Edge+Node quando login Bet365 falha (desative para evitar reinícios não supervisionados)',
-    chat_notificacao:           '💬 Chat: exibir badge de notificação quando há mensagens novas',
+    chat_notificacao:           '💬 Chat: piscar botão e exibir badge quando há mensagens novas',
+    chat_historico_horas:       '💬 Chat: horas de histórico exibido ao abrir',
     show_subview_gols:          'Exibir botão/seção: ⚽ Gráfico de Gols',
     show_subview_linha:         'Exibir botão/seção: 📉 Gráfico de Linha',
 
@@ -13076,8 +13094,9 @@ async function _loadConfigSistema() {
     const fCores    = document.getElementById('cfg-cores-fields');
     const fGrade    = document.getElementById('cfg-grade-fields');
     const fYoutube  = document.getElementById('cfg-youtube-fields');
+    const fChat     = document.getElementById('cfg-chat-fields');
     const loadHtml = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
-    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = fYoutube.innerHTML = loadHtml;
+    fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = fYoutube.innerHTML = fChat.innerHTML = loadHtml;
 
     // Opções para selects de tipo_mercado
     const TIPO_OPTS = ['Todos','Gols','Resultado','Ambas','Intervalo','Handicap','Correto','Chance'];
@@ -13581,6 +13600,21 @@ async function _loadConfigSistema() {
             </div>`;
         };
 
+        fChat.innerHTML = `<div style="font-size:10px;color:#475569;margin-bottom:14px">
+            Configurações do Chat ao Vivo. Alterações aplicadas imediatamente.</div>` +
+            (byGroup.chat || []).map(d => {
+                if (d.tipo === 'boolean') return _toggleHtml(d);
+                const label = _CFG_LABELS[d.chave] || d.descricao || d.chave;
+                return `<div style="margin-bottom:14px">
+                    <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:6px">${label.toUpperCase()}</label>
+                    <input type="number" id="cfg-${d.chave}" value="${d.valor}" min="1" max="168" step="1"
+                        style="width:80px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;
+                               padding:6px 10px;font-size:12px;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <span style="font-size:11px;color:#475569;margin-left:8px">horas (1–168)</span>
+                </div>`;
+            }).join('');
+
         fYoutube.innerHTML =
             `<div style="font-size:10px;color:#475569;margin-bottom:16px">
                 Configure os vídeos da aba YouTube. O título aparece no card; clique abre o vídeo em nova aba.
@@ -13598,7 +13632,7 @@ async function _loadConfigSistema() {
 
     } catch(e) {
         const err = `<div style="color:#f87171;font-size:11px;padding:20px;text-align:center">Erro: ${e.message}</div>`;
-        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = fYoutube.innerHTML = err;
+        fColeta.innerHTML = fLigas.innerHTML = fFrontend.innerHTML = fSecoes.innerHTML = fSistema.innerHTML = fAlertas.innerHTML = fGrafico.innerHTML = fCores.innerHTML = fGrade.innerHTML = fYoutube.innerHTML = fChat.innerHTML = err;
     }
 }
 
@@ -15466,12 +15500,10 @@ function toggleChat() {
     if (_chatAberto) {
         _chatNaoLidas = 0;
         _chatAtualizarBadge();
+        _chatCarregarHistorico();
         setTimeout(() => {
-            const msgs = document.getElementById('chat-msgs');
-            if (msgs) msgs.scrollTop = msgs.scrollHeight;
             document.getElementById('chat-input')?.focus();
         }, 50);
-        if (!document.getElementById('chat-msgs').children.length) _chatCarregarHistorico();
     }
 }
 
@@ -15516,15 +15548,15 @@ function _chatEsc(s) {
 
 function _chatAtualizarBadge() {
     const badge = document.getElementById('chat-badge');
-    if (!badge) return;
+    const btn   = document.getElementById('chat-btn');
     const cfg = S._cfgRaw?.chat_notificacao;
-    const notifAtiva = cfg === 'true' || cfg === true;
-    if (!notifAtiva || _chatNaoLidas === 0 || _chatAberto) {
-        badge.style.display = 'none';
-    } else {
-        badge.style.display = 'inline-block';
-        badge.textContent = _chatNaoLidas > 9 ? '9+' : _chatNaoLidas;
+    const notifAtiva = cfg === 'true' || cfg === true || cfg === undefined;
+    const temNaoLidas = notifAtiva && _chatNaoLidas > 0 && !_chatAberto;
+    if (badge) {
+        badge.style.display = temNaoLidas ? 'inline-block' : 'none';
+        if (temNaoLidas) badge.textContent = _chatNaoLidas > 9 ? '9+' : _chatNaoLidas;
     }
+    if (btn) btn.classList.toggle('chat-btn-piscar', temNaoLidas);
 }
 
 function chatEnviar() {

@@ -2010,10 +2010,12 @@ _garantirTabelaChat();
 app.get('/api/chat/historico', requireAuth, async (req, res) => {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
+        const cfgH = await sql.query`SELECT valor FROM bet365_config WHERE chave='chat_historico_horas'`;
+        const horas = Math.max(1, Math.min(168, parseInt(cfgH.recordset[0]?.valor) || 24));
         const r = await sql.query`
             SELECT TOP 200 id, usuario_id, usuario_nome, mensagem, criado_em
             FROM chat_mensagens
-            WHERE criado_em >= DATEADD(HOUR, -24, GETUTCDATE())
+            WHERE criado_em >= DATEADD(HOUR, -${horas}, GETUTCDATE())
             ORDER BY criado_em ASC`;
         res.json({ success: true, mensagens: r.recordset });
     } catch(e) { res.json({ success: false, error: e.message }); }
