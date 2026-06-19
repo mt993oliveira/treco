@@ -783,7 +783,8 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _coletarResultados(pg, liga, resultados) {
-        const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
+        const temBtnRes = await pg.waitForSelector('.vr-ResultsNavBarButton', { timeout: 4000 })
+            .then(() => true).catch(() => false);
         if (!temBtnRes) return;
 
         await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
