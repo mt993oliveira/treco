@@ -782,16 +782,65 @@ class Bet365Coletor {
     // COLETA DE UMA LIGA (F5 + extração)
     // ─────────────────────────────────────────────────────────────
 
+    // Extração leve: só identificação (liga, horario, timeCasa, timeFora) sem expandir mercados.
+    // Usada para pré-verificar cache antes de gastar tempo expandindo cards.
+    async _extrairBasicoResultados(ligaNome, pg) {
+        return await pg.evaluate((ligaNome) => {
+            const lista = [];
+            for (const grupo of document.querySelectorAll('.vrr-HeadToHeadMarketGroup')) {
+                const eventLabel = grupo.querySelector('.vrr-FixtureDetails_Event');
+                const textoLabel = eventLabel?.textContent.trim() || '';
+                if (/\d{1,3}['´]\s*$/.test(textoLabel)) continue;
+                const horarioMatch = textoLabel.match(/(\d{1,2}[.:]\d{2})$/);
+                const t1El = grupo.querySelector('.vrr-HTHTeamDetails_TeamOne');
+                const t2El = grupo.querySelector('.vrr-HTHTeamDetails_TeamTwo');
+                if (!t1El || !t2El) continue;
+                lista.push({
+                    liga: ligaNome,
+                    horario: horarioMatch ? horarioMatch[1] : null,
+                    timeCasa: t1El.textContent.trim(),
+                    timeFora: t2El.textContent.trim(),
+                });
+            }
+            return lista;
+        }, ligaNome);
+    }
+
     async _coletarResultados(pg, liga, resultados) {
         // Após cache skip, a SPA permanece em modo resultados — cards já visíveis, sem botão
         const jaEmResultados = await pg.evaluate(() =>
             document.querySelectorAll('.vrr-HeadToHeadMarketGroup').length > 0);
 
         if (!jaEmResultados) {
+            // Aguarda SPA terminar transição da aba (máx 3s extra além do delay já aplicado)
+            for (let t = 0; t < 3; t++) {
+                const temAlgo = await pg.evaluate(() =>
+                    !!document.querySelector('.vr-ResultsNavBarButton') ||
+                    document.querySelectorAll('.vrr-HeadToHeadMarketGroup').length > 0
+                );
+                if (temAlgo) break;
+                await this._delay(1000);
+            }
             const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
             if (!temBtnRes) return;
             await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
             await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
+        }
+
+        // Pré-verificação de cache: se todos os jogos visíveis já foram coletados neste ciclo,
+        // pula toda a expansão de cards (ver mais + mercados internos). Só ativo com a flag.
+        if (this._cfgBool('cache_resultados_ativo', false)) {
+            const CACHE_TTL = 3 * 60 * 60 * 1000;
+            const basico = await this._extrairBasicoResultados(normalizarNomeLiga(liga.nome), pg);
+            const todosEmCache = basico.length > 0 && basico.every(r => {
+                const k  = `${r.liga}|${normalizarNomeTime(r.timeCasa)}|${normalizarNomeTime(r.timeFora)}|${r.horario}`;
+                const ts = this._resultadosCache.get(k);
+                return ts && (Date.now() - ts < CACHE_TTL);
+            });
+            if (todosEmCache) {
+                console.log(`   ⏭️  [${normalizarNomeLiga(liga.nome)}] Todos ${basico.length} jogo(s) em cache — skip expansão`);
+                return;
+            }
         }
 
         const maxVerMais = this._cfgNum('max_ver_mais_clicks', 10);
