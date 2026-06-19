@@ -783,24 +783,18 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _coletarResultados(pg, liga, resultados) {
-        // SPA pode já estar em "modo resultados" quando a liga anterior pulou o F5.
-        // Nesse caso o botão não existe (já estamos na view certa) — ir direto para extração.
-        const jaEmResultados = await pg.evaluate(() =>
-            document.querySelectorAll('.vrr-HeadToHeadMarketGroup').length > 0);
-
-        if (!jaEmResultados) {
-            const _t0 = Date.now();
-            const temBtnRes = await pg.waitForSelector('.vr-ResultsNavBarButton', { timeout: 5000 })
-                .then(() => true).catch(() => false);
-            const _elapsed = Date.now() - _t0;
-            if (!temBtnRes) {
-                console.log(`   ⚠️  [${normalizarNomeLiga(liga.nome)}] Sem resultados disponíveis`);
-                return;
-            }
-            if (_elapsed > 300) console.log(`   ⏱️  [${normalizarNomeLiga(liga.nome)}] Botão resultados em ${_elapsed}ms`);
-            await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
-            await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
+        const _t0 = Date.now();
+        const temBtnRes = await pg.waitForSelector('.vr-ResultsNavBarButton', { timeout: 12000 })
+            .then(() => true).catch(() => false);
+        const _elapsed = Date.now() - _t0;
+        if (!temBtnRes) {
+            console.log(`   ⚠️  [${normalizarNomeLiga(liga.nome)}] Botão resultados não apareceu (${_elapsed}ms) — sem resultados`);
+            return;
         }
+        if (_elapsed > 300) console.log(`   ⏱️  [${normalizarNomeLiga(liga.nome)}] Botão resultados apareceu em ${_elapsed}ms`);
+
+        await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
+        await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
 
         const maxVerMais = this._cfgNum('max_ver_mais_clicks', 10);
         for (let sm = 0; sm < maxVerMais; sm++) {
