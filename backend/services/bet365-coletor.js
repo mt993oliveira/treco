@@ -783,11 +783,16 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _coletarResultados(pg, liga, resultados) {
-        const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
-        if (!temBtnRes) return;
+        // Após cache skip, a SPA permanece em modo resultados — cards já visíveis, sem botão
+        const jaEmResultados = await pg.evaluate(() =>
+            document.querySelectorAll('.vrr-HeadToHeadMarketGroup').length > 0);
 
-        await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
-        await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
+        if (!jaEmResultados) {
+            const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
+            if (!temBtnRes) return;
+            await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
+            await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
+        }
 
         const maxVerMais = this._cfgNum('max_ver_mais_clicks', 10);
         for (let sm = 0; sm < maxVerMais; sm++) {
