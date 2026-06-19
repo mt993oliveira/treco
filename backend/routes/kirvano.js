@@ -47,7 +47,7 @@ const KIRVANO_TOKEN  = 'radarbet_kirvano_2026_xK9mP3qL';
 const PLANOS = {
     mensal:     { dias: 30,  nome: 'Mensal',     valor: 35.00  },
     trimestral: { dias: 90,  nome: 'Trimestral', valor: 90.00  },
-    semestral:  { dias: 180, nome: 'Semestral',  valor: 170.00 },
+    semestral:  { dias: 180, nome: 'Semestral',  valor: 168.00 },
     anual:      { dias: 365, nome: 'Anual',       valor: 300.00 },
 };
 
@@ -86,7 +86,7 @@ function _detectarPlano(payload) {
         data?.value         || 0
     );
     if (valor > 250) return PLANOS['anual'];      // R$300
-    if (valor > 120) return PLANOS['semestral'];  // R$170
+    if (valor > 120) return PLANOS['semestral'];  // R$168
     if (valor > 65)  return PLANOS['trimestral']; // R$90
 
     return PLANOS['mensal']; // padrão seguro
