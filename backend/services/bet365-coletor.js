@@ -783,11 +783,22 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _coletarResultados(pg, liga, resultados) {
+        // Retry: aguarda SPA terminar transição da aba (máx 3s extra além do delay já aplicado)
+        for (let t = 0; t < 3; t++) {
+            const temAlgo = await pg.evaluate(() =>
+                !!document.querySelector('.vr-ResultsNavBarButton') ||
+                document.querySelectorAll('.vrr-HeadToHeadMarketGroup').length > 0
+            );
+            if (temAlgo) break;
+            await this._delay(1000);
+        }
+
         const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
         if (!temBtnRes) return;
         await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
         await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
 
+        // Ver mais — carrega todos os grupos de resultado antes de inspecionar cards
         const maxVerMais = this._cfgNum('max_ver_mais_clicks', 10);
         for (let sm = 0; sm < maxVerMais; sm++) {
             const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
@@ -796,20 +807,70 @@ class Bet365Coletor {
             await this._delay(this._cfgNum('delay_show_more_ms', 800));
         }
 
-        const totalMaisInternos = await pg.evaluate(() => {
-            const btns = [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup .vrr-ShowMoreButton_Link')];
-            btns.forEach(b => b.click());
-            return btns.length;
-        });
-        if (totalMaisInternos > 0) {
-            console.log(`   🔽 [${normalizarNomeLiga(liga.nome)}] Expandindo ${totalMaisInternos} card(s) de resultado...`);
-            await this._delay(this._cfgNum('delay_expandir_mercados_ms', 1500));
+        const ligaNorm = normalizarNomeLiga(liga.nome);
+
+        if (this._cfgBool('cache_resultados_ativo', false)) {
+            // Lê identificação básica de cada card (índice + times + horário) sem expandir
+            const basico = await pg.evaluate((ligaNome) => {
+                const lista = [];
+                const grupos = [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup')];
+                for (let idx = 0; idx < grupos.length; idx++) {
+                    const grupo = grupos[idx];
+                    const eventLabel = grupo.querySelector('.vrr-FixtureDetails_Event');
+                    const textoLabel = eventLabel?.textContent.trim() || '';
+                    if (/\d{1,3}['´]\s*$/.test(textoLabel)) continue;
+                    const horarioMatch = textoLabel.match(/(\d{1,2}[.:]\d{2})$/);
+                    const t1El = grupo.querySelector('.vrr-HTHTeamDetails_TeamOne');
+                    const t2El = grupo.querySelector('.vrr-HTHTeamDetails_TeamTwo');
+                    if (!t1El || !t2El) continue;
+                    lista.push({ idx, horario: horarioMatch ? horarioMatch[1] : null, timeCasa: t1El.textContent.trim(), timeFora: t2El.textContent.trim() });
+                }
+                return lista;
+            }, ligaNorm);
+
+            // Verifica cache em Node.js (normalizarNomeTime disponível aqui)
+            const CACHE_TTL = 3 * 60 * 60 * 1000;
+            const indicesToExpand = [];
+            for (const r of basico) {
+                const k  = `${ligaNorm}|${normalizarNomeTime(r.timeCasa)}|${normalizarNomeTime(r.timeFora)}|${r.horario}`;
+                const ts = this._resultadosCache.get(k);
+                if (!ts || (Date.now() - ts >= CACHE_TTL)) indicesToExpand.push(r.idx);
+            }
+
+            // Expande mercados apenas dos cards novos (não em cache)
+            const expanded = await pg.evaluate((indices) => {
+                const grupos = [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup')];
+                let count = 0;
+                for (const idx of indices) {
+                    const btn = grupos[idx]?.querySelector('.vrr-ShowMoreButton_Link');
+                    if (btn) { btn.click(); count++; }
+                }
+                return count;
+            }, indicesToExpand);
+
+            const pulados = basico.length - indicesToExpand.length;
+            if (pulados > 0) console.log(`   ⏭️  [${ligaNorm}] ${pulados} jogo(s) já em cache — expansão pulada`);
+            if (expanded > 0) {
+                console.log(`   🔽 [${ligaNorm}] Expandindo ${expanded} card(s) novo(s)...`);
+                await this._delay(this._cfgNum('delay_expandir_mercados_ms', 1500));
+            }
+        } else {
+            // Fluxo original: expande todos os cards
+            const totalMaisInternos = await pg.evaluate(() => {
+                const btns = [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup .vrr-ShowMoreButton_Link')];
+                btns.forEach(b => b.click());
+                return btns.length;
+            });
+            if (totalMaisInternos > 0) {
+                console.log(`   🔽 [${ligaNorm}] Expandindo ${totalMaisInternos} card(s) de resultado...`);
+                await this._delay(this._cfgNum('delay_expandir_mercados_ms', 1500));
+            }
         }
 
-        const res = await this._extrairResultados(normalizarNomeLiga(liga.nome), pg);
+        const res = await this._extrairResultados(ligaNorm, pg);
         resultados.push(...res);
-        console.log(`   📋 [${normalizarNomeLiga(liga.nome)}] ${res.length} resultado(s)`);
-        await this._tirarScreenshot(pg, normalizarNomeLiga(liga.nome));
+        console.log(`   📋 [${ligaNorm}] ${res.length} resultado(s)`);
+        await this._tirarScreenshot(pg, ligaNorm);
     }
 
     async _coletarLiga(pg, liga) {
