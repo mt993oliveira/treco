@@ -2251,7 +2251,7 @@ server.listen(PORT, () => {
             }
             // ──────────────────────────────────────────────────────
 
-            const seg   = Math.max(10, parseInt(cfg.intervalo_coleta_seg) || 30);
+            const seg   = Math.max(5, parseInt(cfg.intervalo_coleta_seg) || 30);
             const gasto = Math.round((Date.now() - inicio) / 1000);
             const espera = Math.max(5, seg - gasto);
             console.log(`⏱️  Bet365 - próxima coleta em ${espera}s (ciclo configurado: ${seg}s, coleta levou: ${gasto}s)`);
