@@ -52,13 +52,16 @@ const PLANOS = {
 };
 
 // Detecta o plano a partir do payload do webhook da Kirvano.
-// Tenta o nome do produto em vários caminhos possíveis do payload;
-// usa valor pago como fallback quando o nome não identifica o plano.
+// Fonte primária: products[0].offer_name (ex: "Radar da Bet - Trimestral").
+// Fallback: fiscal.total_value (valor bruto da compra, sem taxas).
 function _detectarPlano(payload) {
     const data     = payload?.data || payload;
     const purchase = data?.purchase || data?.compra || {};
+    const products = data?.products || payload?.products || [];
 
     const prodName = (
+        products[0]?.offer_name  ||
+        products[0]?.name        ||
         purchase?.product?.name  ||
         purchase?.offer?.name    ||
         data?.product?.name      ||
@@ -74,12 +77,13 @@ function _detectarPlano(payload) {
         if (prodName.includes(chave)) return PLANOS[chave];
     }
 
-    // Fallback por valor pago — cobre casos em que o nome não chegou no payload
+    // Fallback por valor bruto (total_value é mais confiável que commission para limiar)
     const fiscal = data?.fiscal || data?.financeiro || {};
     const valor  = parseFloat(
-        fiscal?.commission || fiscal?.comissao ||
-        purchase?.value    || purchase?.valor  ||
-        data?.value        || 0
+        fiscal?.total_value || fiscal?.original_value ||
+        fiscal?.commission  || fiscal?.comissao       ||
+        purchase?.value     || purchase?.valor         ||
+        data?.value         || 0
     );
     if (valor > 250) return PLANOS['anual'];      // R$300
     if (valor > 120) return PLANOS['semestral'];  // R$170
