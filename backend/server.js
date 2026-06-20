@@ -1815,16 +1815,15 @@ app.post('/api/preferencias', requireAuth, async (req, res) => {
     try {
         const uid = req.sessionUser?.id || req.body?.usuarioId;
         if (!uid) return res.json({ success: false, message: 'Não autenticado' });
-        const { prefs } = req.body; // { chave: valor, ... }
+        const { prefs } = req.body;
         if (!prefs || typeof prefs !== 'object') return res.json({ success: false, message: 'Payload inválido' });
         await connectSQL(getDatabaseConfigFromEnv());
-        const pool = await connectSQL(getDatabaseConfigFromEnv());
         for (const [chave, valor] of Object.entries(prefs)) {
             if (!chave || chave.length > 100) continue;
             const valorStr = valor === null || valor === undefined ? null : String(valor);
-            await pool.request()
-                .input('uid',   sql.Int,           Number(uid))
-                .input('chave', sql.NVarChar(100),  chave)
+            await sqlConnectionPool.request()
+                .input('uid',   sql.Int,              Number(uid))
+                .input('chave', sql.NVarChar(100),    chave)
                 .input('valor', sql.NVarChar(sql.MAX), valorStr)
                 .query(`MERGE usuario_preferencias AS t
                     USING (SELECT @uid AS UsuarioId, @chave AS Chave) AS s
