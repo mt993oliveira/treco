@@ -38,7 +38,7 @@ const COLETOR2_DATA_NASC = process.env.BET365_COLETOR2_DATA_NASC || '';
 const MODO_AUTONOMO     = DEBUG_PORT !== 9222;
 const URL_SOCCER        = 'https://www.bet365.bet.br/#/AVR/B146/R%5E1/';
 const LIGAS_IGNORAR     = [];
-const INTERVALO_MS      = parseInt(process.env.BET365_ODDS_INTERVALO_MS)      || 180000;
+const INTERVALO_MS_ENV  = parseInt(process.env.BET365_ODDS_INTERVALO_MS)      || 0; // fallback legado
 const DELAY_HORARIO_MS  = parseInt(process.env.BET365_ODDS_DELAY_HORARIO_MS)  || 2000;
 const DELAY_LIGA_MS     = parseInt(process.env.BET365_ODDS_DELAY_LIGA_MS)     || 2500;
 const DELAY_REFRESH_MS  = parseInt(process.env.BET365_ODDS_DELAY_REFRESH_MS)  || 3500;
@@ -1531,8 +1531,10 @@ async function run() {
 async function main() {
     while (true) {
         await run().catch(e => console.error('❌ [Odds] Erro no ciclo:', e.message));
-        console.log(`⏳ [Odds] Próximo ciclo em ${Math.round(INTERVALO_MS / 1000)}s...`);
-        await new Promise(r => setTimeout(r, INTERVALO_MS));
+        const cfg = await _getCfg2();
+        const intervaloMs = INTERVALO_MS_ENV || (parseInt(cfg.odds_intervalo_seg) || 180) * 1000;
+        console.log(`⏳ [Odds] Próximo ciclo em ${Math.round(intervaloMs / 1000)}s...`);
+        await new Promise(r => setTimeout(r, intervaloMs));
     }
 }
 
