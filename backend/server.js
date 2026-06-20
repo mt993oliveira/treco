@@ -441,11 +441,11 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         const dbConfig = sqlConfig || getDatabaseConfigFromEnv();
         await connectSQL(dbConfig);
 
-        // Buscar usuário pelo nome de usuário
+        // Buscar usuário pelo nome de usuário ou e-mail
         const result = await sql.query`
             SELECT Id, NomeCompleto, Usuario, Email, Senha, TipoUsuario, DataInicioLicenca, DataFimLicenca
             FROM Usuarios
-            WHERE Usuario = ${username} AND Ativo = 1
+            WHERE (Usuario = ${username} OR LOWER(Email) = LOWER(${username})) AND Ativo = 1
         `;
 
         if (result.recordset.length > 0) {
