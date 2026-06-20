@@ -14411,7 +14411,7 @@ const _prefDebounceTimers = {};
 function _prefSave(chave, valor) {
     try { localStorage.setItem(chave, valor === null || valor === undefined ? '' : String(valor)); } catch(e) {}
     const u = _getUser();
-    if (!u) return;
+    if (!u) { console.warn('[pref] _prefSave: usuário não logado'); return; }
     clearTimeout(_prefDebounceTimers[chave]);
     _prefDebounceTimers[chave] = setTimeout(() => {
         const prefs = {};
@@ -14420,7 +14420,10 @@ function _prefSave(chave, valor) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ usuarioId: u.Id, prefs })
-        }).catch(() => {});
+        }).then(r => r.json()).then(d => {
+            if (!d.success) console.warn('[pref] ERRO ao salvar', chave, d);
+            else console.log('[pref] salvo:', chave, '=', String(valor).substring(0, 60));
+        }).catch(e => console.warn('[pref] fetch erro:', e.message));
     }, 800);
 }
 
@@ -14428,10 +14431,13 @@ async function _prefLoad() {
     const u = _getUser();
     if (!u) return;
     try {
+        console.log('[pref] carregando preferências para userId:', u.Id);
         const r = await fetch(`/api/preferencias?usuarioId=${u.Id}`);
         const d = await r.json();
-        if (!d.success || !d.data) return;
+        if (!d.success || !d.data) { console.warn('[pref] _prefLoad falhou:', d); return; }
         const p = d.data;
+        const chaves = Object.keys(p);
+        console.log('[pref] recebidas', chaves.length, 'chaves:', chaves);
         Object.entries(p).forEach(([k, v]) => {
             if (v !== null && v !== undefined) {
                 if (k === 'chartCores' || k === 'chartCoresGols') {
@@ -14449,7 +14455,8 @@ async function _prefLoad() {
         if (p.s_grafLinhaJanela) S.grafLinhaJanela = parseInt(p.s_grafLinhaJanela) || 20;
         if (p.s_grafGolsMM921   !== undefined) S.grafGolsMM921 = p.s_grafGolsMM921 === 'true';
         if (p.rdbt_filtroMosaico) S.filtroMosaico  = p.rdbt_filtroMosaico;
-    } catch(e) {}
+        console.log('[pref] preferências aplicadas com sucesso');
+    } catch(e) { console.error('[pref] _prefLoad erro:', e.message); }
 }
 // ────────────────────────────────────────────────────────────────────────────
 
