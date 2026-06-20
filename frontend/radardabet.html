@@ -161,6 +161,11 @@
         .clube-tab.ativo { background:#7c3aed; border-color:#7c3aed; color:#fff; }
         .clube-tab:hover:not(.ativo) { background:#334155; color:#94a3b8; }
         .flex-row { display:flex; }
+        @media (max-width: 640px) {
+            .flex-row { flex-direction: column; }
+            #clubes-ficha-content > div:first-child { width:100% !important; flex-shrink:unset !important; }
+            #clubes-lista { max-height: none !important; }
+        }
 
         /* Cards de ranking */
         .clube-card { background:#0f172a; border:1px solid #1e293b; border-radius:10px;
