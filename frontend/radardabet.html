@@ -7615,7 +7615,7 @@ function renderTabela() {
                     const tt   = `PRÓXIMO: ${tc} × ${tf} | C:${fmtA(agOC)} E:${fmtA(agOE)} F:${fmtA(agOF)}`;
                     const ccOC = corOdd(agOC), ccOF = corOdd(agOF);
                     const _abTc = tc, _abTf = tf; // tc/tf já são strings normalizadas — abbrev é TDZ aqui
-                    if (S.showNomes && S.showOdds) {
+                    if ((S.showNomes || S.showProximos) && S.showOdds) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px 3px;line-height:1;min-width:${_celulaW}px;${_bttsExtraStyle}">
                             ${agOC > 0 ? `<span style="display:block;font-size:var(--fs-prox);font-weight:800;color:${ccOC};text-align:center;line-height:1.4">${fmtA(agOC)}</span>` : ''}
                             <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
@@ -7624,7 +7624,7 @@ function renderTabela() {
                             ${agOF > 0 ? `<span style="display:block;font-size:var(--fs-prox);font-weight:800;color:${ccOF};text-align:center;line-height:1.4">${fmtA(agOF)}</span>` : ''}
                         </td>`;
                     }
-                    if (S.showNomes) {
+                    if (S.showNomes || S.showProximos) {
                         return `<td class="c-futuro" data-tt="${tt}" style="padding:2px;line-height:1;min-width:${_celulaW}px;${_bttsExtraStyle}">
                             <span data-action="clube" data-clube="${_abTc}" style="display:block;font-size:var(--fs-prox);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${tc}</span>
                             <span style="display:block;font-size:var(--fs-prox);font-weight:800;text-align:center">—</span>
