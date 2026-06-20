@@ -963,7 +963,7 @@ class Bet365Coletor {
                     contadoresTotal.histOk     += cont.histOk;
                     // Notifica o frontend imediatamente após cada liga salvar,
                     // sem esperar o ciclo completo terminar.
-                    if (cont.histOk > 0) {
+                    if (cont.histOk > 0 || cont.eventosOk > 0) {
                         this._broadcast({ tipo: 'coleta', fonte: 'bet365', novos: cont.eventosOk, resultadosSalvos: cont.histOk, timestamp: new Date().toISOString() });
                     }
                 }
