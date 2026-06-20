@@ -1795,6 +1795,51 @@ app.post('/api/usuarios/ativos', requireAuth, async (req, res) => {
     }
 });
 
+// ── PREFERÊNCIAS DO USUÁRIO ─────────────────────────────────────────────────
+
+app.get('/api/preferencias', requireAuthQuery, async (req, res) => {
+    try {
+        const uid = req.sessionUser?.id || req.query?.usuarioId;
+        if (!uid) return res.json({ success: false, message: 'Não autenticado' });
+        await connectSQL(getDatabaseConfigFromEnv());
+        const r = await sql.query`SELECT Chave, Valor FROM usuario_preferencias WHERE UsuarioId = ${Number(uid)}`;
+        const prefs = {};
+        r.recordset.forEach(row => { prefs[row.Chave] = row.Valor; });
+        res.json({ success: true, data: prefs });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/preferencias', requireAuth, async (req, res) => {
+    try {
+        const uid = req.sessionUser?.id || req.body?.usuarioId;
+        if (!uid) return res.json({ success: false, message: 'Não autenticado' });
+        const { prefs } = req.body; // { chave: valor, ... }
+        if (!prefs || typeof prefs !== 'object') return res.json({ success: false, message: 'Payload inválido' });
+        await connectSQL(getDatabaseConfigFromEnv());
+        const pool = await connectSQL(getDatabaseConfigFromEnv());
+        for (const [chave, valor] of Object.entries(prefs)) {
+            if (!chave || chave.length > 100) continue;
+            const valorStr = valor === null || valor === undefined ? null : String(valor);
+            await pool.request()
+                .input('uid',   sql.Int,           Number(uid))
+                .input('chave', sql.NVarChar(100),  chave)
+                .input('valor', sql.NVarChar(sql.MAX), valorStr)
+                .query(`MERGE usuario_preferencias AS t
+                    USING (SELECT @uid AS UsuarioId, @chave AS Chave) AS s
+                    ON t.UsuarioId = s.UsuarioId AND t.Chave = s.Chave
+                    WHEN MATCHED THEN UPDATE SET Valor = @valor, AtualizadoEm = GETUTCDATE()
+                    WHEN NOT MATCHED THEN INSERT (UsuarioId, Chave, Valor) VALUES (@uid, @chave, @valor);`);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+
 /**
  * POST /api/usuarios/historico-acessos
  * Retorna histórico paginado e filtrado. Apenas master.
