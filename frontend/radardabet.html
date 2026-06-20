@@ -161,10 +161,12 @@
         .clube-tab.ativo { background:#7c3aed; border-color:#7c3aed; color:#fff; }
         .clube-tab:hover:not(.ativo) { background:#334155; color:#94a3b8; }
         .flex-row { display:flex; }
+        .grid-2col { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         @media (max-width: 640px) {
             .flex-row { flex-direction: column; }
             #clubes-ficha-content > div:first-child { width:100% !important; flex-shrink:unset !important; }
             #clubes-lista { max-height: none !important; }
+            .grid-2col { grid-template-columns:1fr; }
         }
 
         /* Cards de ranking */
@@ -10978,7 +10980,7 @@ async function renderDetalheProximo(idx) {
             </div>` : ''}
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
+        <div class="grid-2col" style="margin-bottom:4px">
             <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px">
                 ${_tabelaStats(tC, '🏠 ' + timeCasa)}
             </div>
@@ -10989,7 +10991,7 @@ async function renderDetalheProximo(idx) {
 
         ${h2hHtml}
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+        <div class="grid-2col" style="margin-top:12px">
             <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;overflow:hidden">
                 <div style="padding:11px 14px;background:#0c1220;font-size:14px;font-weight:700;color:#64748b;letter-spacing:.05em">
                     📋 ÚLTIMOS JOGOS · ${timeCasa}
