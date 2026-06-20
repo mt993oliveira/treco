@@ -2353,6 +2353,7 @@
                        background:#1e293b;border:1px solid #334155;border-radius:5px;cursor:pointer;
                        font-size:11px;font-weight:700;color:#64748b;flex-shrink:0;transition:background .15s;white-space:nowrap"
                 onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
+            <span id="mosaico-sync-ts" style="font-size:10px;color:#475569;white-space:nowrap" title="Última vez que o mosaico foi redesenhado"></span>
             <span id="periodo-badge-mosaico" style="display:none"></span>
             <select id="periodo-mosaico" onchange="setSubViewPeriodo('mosaico',this.value)"
                 style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
@@ -7317,6 +7318,8 @@ function _renderAllCharts() {
 // Estilo "NÃO EXIBIR", obrigado! rsrs : score na célula, cor = filtro ativo
 function renderTabela() {
     if (S.view === 'historico' && !S.showMosaico) return;
+    const _tsEl = document.getElementById('mosaico-sync-ts');
+    if (_tsEl) { const _h = new Date(); _tsEl.textContent = `sync ${_h.toLocaleTimeString('pt-BR')}`; }
     const gs = grupos(S.horasMosaico, S.jogosMosaico);
     const fi = TODOS_FILTROS.find(f => f.id === S.filtroMosaico) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
     const gridCores = carregarCoresGrid();
@@ -12159,6 +12162,8 @@ function conectarWS() {
                 const m = JSON.parse(e.data);
                 if (m.tipo === 'coleta') {
                     console.log('[WS coleta]', new Date().toLocaleTimeString(), '— resultadosSalvos:', m.resultadosSalvos, '| novos:', m.novos);
+                    const _wsTs = document.getElementById('mosaico-sync-ts');
+                    if (_wsTs) { const _n = new Date(); _wsTs.textContent = `ws ${_n.toLocaleTimeString('pt-BR')} (${m.resultadosSalvos||0} res, ${m.novos||0} novos)`; }
                     // Debounce: acumula mensagens por liga e dispara um único fetch
                     // 400ms após a última mensagem, evitando N requisições por ciclo.
                     if (m.resultadosSalvos > 0 || m.novos > 0) _wsTemDados = true;
