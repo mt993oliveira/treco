@@ -2153,6 +2153,25 @@ server.listen(PORT, () => {
             `;
         } catch(e) { console.warn('⚠️ Schema Usuarios:', e.message); }
 
+        // Cria tabela de preferencias do usuario se nao existir
+        try {
+            await sql.query`
+                IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'usuario_preferencias')
+                BEGIN
+                    CREATE TABLE usuario_preferencias (
+                        Id           INT IDENTITY(1,1) PRIMARY KEY,
+                        UsuarioId    INT NOT NULL,
+                        Chave        NVARCHAR(100) NOT NULL,
+                        Valor        NVARCHAR(MAX),
+                        AtualizadoEm DATETIME2 DEFAULT GETUTCDATE(),
+                        CONSTRAINT UQ_usuario_pref UNIQUE (UsuarioId, Chave),
+                        CONSTRAINT FK_usuario_pref FOREIGN KEY (UsuarioId) REFERENCES Usuarios(Id) ON DELETE CASCADE
+                    )
+                    PRINT 'Tabela usuario_preferencias criada'
+                END
+            `;
+        } catch(e) { console.warn('⚠️ usuario_preferencias:', e.message); }
+
         // Corrige descricao da chave youtube_video_1 (emoji causava ?? no Windows)
         try {
             await sql.query`
