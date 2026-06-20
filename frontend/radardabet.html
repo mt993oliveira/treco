@@ -3306,9 +3306,10 @@ async function carregarConfigLigas(_tentativa) {
         // Botões padrão da grade — config do sistema tem prioridade sobre localStorage
         // Se o MASTER definiu um valor, todos os usuários carregam com esse valor
         const _lsView = (k, cfgVal, def) => {
-            if (cfgVal !== undefined) return cfgVal === 'true';
+            // preferência do usuário (localStorage/DB) tem prioridade sobre default do sistema
             const ls = localStorage.getItem('rdbt_' + k);
             if (ls !== null) return ls === 'true';
+            if (cfgVal !== undefined) return cfgVal === 'true';
             return def;
         };
         S.showProximos     = _lsView('showProximos', cfg.default_proximos_jogos, false);
@@ -14455,6 +14456,7 @@ async function _prefLoad() {
         if (p.s_grafLinhaJanela) S.grafLinhaJanela = parseInt(p.s_grafLinhaJanela) || 20;
         if (p.s_grafGolsMM921   !== undefined) S.grafGolsMM921 = p.s_grafGolsMM921 === 'true';
         if (p.rdbt_filtroMosaico) S.filtroMosaico  = p.rdbt_filtroMosaico;
+        if (p.rdbt_fichaJogos)   S_clubes.nPartidas = parseInt(p.rdbt_fichaJogos) || 10;
         console.log('[pref] preferências aplicadas com sucesso');
     } catch(e) { console.error('[pref] _prefLoad erro:', e.message); }
 }
