@@ -14508,7 +14508,12 @@ function _renderTabelaUsuarios(lista) {
         return;
     }
     const TIPO_LABEL = { master:'⭐ Master', administrador:'👑 Admin', admin:'👑 Admin', user:'👤 Usuário', bronze:'🥉 Bronze', prata:'🥈 Prata', gold:'🥇 Gold', premium:'💎 Premium' };
-    const fmtData = v => v ? new Date(v).toLocaleDateString('pt-BR') : '—';
+    const fmtData = v => {
+        if (!v) return '—';
+        const s = typeof v === 'string' ? v : new Date(v).toISOString();
+        const [y, m, d] = s.split('T')[0].split('-');
+        return `${d}/${m}/${y}`;
+    };
     const fmtAcesso = v => {
         if (!v) return '<span style="color:#475569;font-size:10px">Nunca</span>';
         const d = new Date(v);
