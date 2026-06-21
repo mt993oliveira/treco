@@ -128,6 +128,7 @@ class Bet365Coletor {
         this._proximaColetaPermitida = 0;   // backoff: timestamp mínimo para próxima tentativa
         this._ciclosSemResultados    = 0;   // contador de ciclos consecutivos com 0 resultados
         this._resultadosCache        = new Map(); // "liga|casa|fora|horario" → timestamp (TTL 3h)
+        this._ligaUltimaColeta       = {};        // ligaNorm → { ts, todosCache } do último ciclo
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -798,16 +799,22 @@ class Bet365Coletor {
         await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
         await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
 
-        // Ver mais — carrega todos os grupos de resultado antes de inspecionar cards
-        const maxVerMais = this._cfgNum('max_ver_mais_clicks', 10);
-        for (let sm = 0; sm < maxVerMais; sm++) {
-            const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
-            if (!temMore) break;
-            await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
-            await this._delay(this._cfgNum('delay_show_more_ms', 800));
-        }
-
         const ligaNorm = normalizarNomeLiga(liga.nome);
+
+        // Ver mais — carrega todos os grupos de resultado antes de inspecionar cards
+        const pularVerMais = this._cfgBool('cache_resultados_ativo', false)
+            && this._ligaUltimaColeta[ligaNorm]?.todosCache === true;
+        if (pularVerMais) {
+            console.log(`   ⏭️  [${ligaNorm}] "Mostrar mais" pulado — cache fresco`);
+        } else {
+            const maxVerMais = this._cfgNum('max_ver_mais_clicks', 10);
+            for (let sm = 0; sm < maxVerMais; sm++) {
+                const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
+                if (!temMore) break;
+                await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
+                await this._delay(this._cfgNum('delay_show_more_ms', 800));
+            }
+        }
 
         if (this._cfgBool('cache_resultados_ativo', false)) {
             // Lê identificação básica de cada card (índice + times + horário) sem expandir
@@ -972,6 +979,10 @@ class Bet365Coletor {
                 _ligaTodosCache = cacheAtivo && resultados.length > 0 && novos.length === 0;
             } catch(err) {
                 console.log(`   ❌ [${liga.nome}] Erro: ${err.message}`);
+            }
+
+            if (this._cfgBool('cache_resultados_ativo', false)) {
+                this._ligaUltimaColeta[normalizarNomeLiga(liga.nome)] = { ts: Date.now(), todosCache: _ligaTodosCache };
             }
 
             if (_ligaTodosCache) {
