@@ -949,11 +949,34 @@ class Bet365Coletor {
 
             let _ligaTodosCache = false;
             try {
-                const { resultados } = await this._coletarLiga(pg, liga);
+                let { resultados } = await this._coletarLiga(pg, liga);
+
+                // ── Retry quando sem resultados (jogo em andamento) e cache + flag ativos ──
+                const cacheAtivo = this._cfgBool('cache_resultados_ativo', false);
+                if (cacheAtivo && resultados.length === 0 && this._cfgBool('retry_liga_sem_resultado', false)) {
+                    const ligaNormRetry = normalizarNomeLiga(liga.nome);
+                    console.log(`   🔁 [${ligaNormRetry}] jogo em andamento — re-tentando...`);
+                    const clicouRetry = await pg.evaluate((nomeLiga) => {
+                        const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
+                        for (const tab of tabs) {
+                            const txt = tab.querySelector('.vrl-MeetingsHeaderButton_Title')?.textContent.trim();
+                            if (txt === nomeLiga) { tab.click(); return true; }
+                        }
+                        return false;
+                    }, liga.nome);
+                    if (clicouRetry) {
+                        await this._delay(this._cfgNum('delay_apos_clicar_liga_ms', 3000));
+                        const retryResult = await this._coletarLiga(pg, liga);
+                        if (retryResult.resultados.length > 0) {
+                            resultados = retryResult.resultados;
+                            console.log(`   ✅ [${ligaNormRetry}] retry OK — ${resultados.length} resultado(s) encontrado(s)`);
+                        }
+                    }
+                }
+
                 todosResultados.push(...resultados);
 
                 // ── Filtro de cache — pula resultados já salvos nesta sessão ──
-                const cacheAtivo = this._cfgBool('cache_resultados_ativo', false);
                 const CACHE_TTL  = 3 * 60 * 60 * 1000; // 3h
                 const novos = cacheAtivo
                     ? resultados.filter(r => {
