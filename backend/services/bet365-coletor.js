@@ -784,14 +784,16 @@ class Bet365Coletor {
     // ─────────────────────────────────────────────────────────────
 
     async _coletarResultados(pg, liga, resultados) {
-        // Retry: aguarda SPA terminar transição da aba (máx 3s extra além do delay já aplicado)
-        for (let t = 0; t < 3; t++) {
+        // Retry: aguarda SPA terminar transição da aba antes de inspecionar resultados
+        const retryTentativas = this._cfgNum('retry_sem_resultados_tentativas', 3);
+        const retryDelayMs    = this._cfgNum('retry_sem_resultados_delay_ms', 1000);
+        for (let t = 0; t < retryTentativas; t++) {
             const temAlgo = await pg.evaluate(() =>
                 !!document.querySelector('.vr-ResultsNavBarButton') ||
                 document.querySelectorAll('.vrr-HeadToHeadMarketGroup').length > 0
             );
             if (temAlgo) break;
-            await this._delay(1000);
+            await this._delay(retryDelayMs);
         }
 
         const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
