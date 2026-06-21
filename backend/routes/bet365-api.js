@@ -960,7 +960,7 @@ router.get('/historico-mercados', async (req, res) => {
             FROM bet365_resultados_mercados m
             LEFT JOIN bet365_eventos e ON e.id = m.evento_id
             WHERE m.data_partida >= DATEADD(HOUR, -@horas, GETUTCDATE())
-              AND m.data_partida <= DATEADD(HOUR, 2, GETUTCDATE())
+              AND m.data_partida <= ${comFuturos ? 'DATEADD(HOUR, 2, GETUTCDATE())' : 'GETUTCDATE()'}
               AND DATEDIFF(HOUR, m.data_registro, m.data_partida) <= 6
         `;
 
