@@ -4304,10 +4304,10 @@ async function buscarResultados() {
     }
 }
 
-async function carregarHistorico() {
+async function carregarHistorico(horasOverride) {
     try {
-        const _fetchHoras = Math.max(S.horas, S._horasCarregadas || 0);
-        S._horasCarregadas = _fetchHoras;
+        const _fetchHoras = horasOverride ?? Math.max(S.horas, S._horasCarregadas || 0);
+        if (!horasOverride) S._horasCarregadas = _fetchHoras;
         const r = await fetch(`/api/bet365/historico-mercados?horas=${_fetchHoras}${S.showProximos ? '&incluirFuturos=true' : ''}`);
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Erro');
@@ -12190,9 +12190,17 @@ function conectarWS() {
                     // 400ms após a última mensagem, evitando N requisições por ciclo.
                     if (m.resultadosSalvos > 0 || m.novos > 0) _wsTemDados = true;
                     clearTimeout(_wsColetaTimer);
-                    _wsColetaTimer = setTimeout(() => {
-                        if (_wsTemDados) { _wsTemDados = false; console.log('[WS coleta] → carregarTudo()'); carregarTudo(); }
-                        else { console.log('[WS coleta] → carregarHistorico()'); carregarHistorico(); }
+                    _wsColetaTimer = setTimeout(async () => {
+                        if (_wsTemDados) {
+                            _wsTemDados = false;
+                            // Real-time: usa S.horas (não _horasCarregadas) para evitar queries gigantes
+                            console.log('[WS coleta] → carregarHistorico(' + S.horas + 'h)');
+                            await carregarHistorico(S.horas);
+                            if (S.view === 'analise') carregarAnalise();
+                        } else {
+                            console.log('[WS coleta] → carregarHistorico()');
+                            carregarHistorico();
+                        }
                     }, 400);
                     if (S.view === 'diagnostico') setTimeout(carregarDiagnostico, 2500);
                 }
