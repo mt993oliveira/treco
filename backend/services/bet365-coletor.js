@@ -956,6 +956,19 @@ class Bet365Coletor {
                 if (cacheAtivo && resultados.length === 0 && this._cfgBool('retry_liga_sem_resultado', false)) {
                     const ligaNormRetry = normalizarNomeLiga(liga.nome);
                     console.log(`   🔁 [${ligaNormRetry}] jogo em andamento — re-tentando...`);
+
+                    // Hard refresh antes do retry se flag ativa
+                    if (this._cfgBool('retry_liga_refresh_antes', false)) {
+                        try {
+                            await this._hardRefresh(pg, this._cfgNum('timeout_navegacao_ms', 30000));
+                            await this._delay(this._cfgNum('delay_pos_reload_ms', 8000));
+                            await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                            console.log(`   🔄 [${ligaNormRetry}] refresh antes do retry OK`);
+                        } catch(e) {
+                            console.log(`   ⚠️  [${ligaNormRetry}] refresh antes de retry falhou: ${e.message.substring(0, 60)}`);
+                        }
+                    }
+
                     const clicouRetry = await pg.evaluate((nomeLiga) => {
                         const tabs = document.querySelectorAll('.vrl-MeetingsHeaderButton');
                         for (const tab of tabs) {
