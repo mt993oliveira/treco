@@ -795,7 +795,10 @@ class Bet365Coletor {
         }
 
         const temBtnRes = await pg.evaluate(() => !!document.querySelector('.vr-ResultsNavBarButton'));
-        if (!temBtnRes) return;
+        if (!temBtnRes) {
+            console.log(`   ⏳ [${normalizarNomeLiga(liga.nome)}] jogo em andamento — sem resultados disponíveis`);
+            return;
+        }
         await pg.evaluate(() => document.querySelector('.vr-ResultsNavBarButton')?.click());
         await this._delay(this._cfgNum('delay_apos_resultados_ms', 2000));
 
