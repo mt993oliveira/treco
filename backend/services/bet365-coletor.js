@@ -1031,6 +1031,10 @@ class Bet365Coletor {
                 console.log(`   ⏭️  [${normalizarNomeLiga(liga.nome)}] Ctrl+F5 pulado — tudo em cache`);
                 continue;
             }
+            if (!this._cfgBool('f5_entre_ligas', true)) {
+                console.log(`   ⏭️  [${normalizarNomeLiga(liga.nome)}] Ctrl+F5 desativado`);
+                continue;
+            }
             // Ctrl+F5 (hard refresh) após cada liga — força buscar do servidor, sem cache
             console.log(`   🔄 [${liga.nome}] Ctrl+F5 — recarregando sem cache...`);
             let recarregouOk = false;
