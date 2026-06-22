@@ -1263,12 +1263,13 @@
                 <colgroup>
                     <col style="width:160px">
                     <col style="width:130px">
-                    <col style="min-width:0">
+                    <col style="width:160px">
                     <col style="width:80px">
                     <col style="width:130px">
                     <col style="width:64px">
                     <col style="width:90px">
                     <col style="width:90px">
+                    <col style="width:70px">
                 </colgroup>
                 <thead>
                     <tr style="background:#0c1220">
@@ -1280,11 +1281,12 @@
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">LICENÇA</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">STATUS</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">ÚLT. ACESSO</th>
+                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">ORIGEM</th>
                         <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b">AÇÕES</th>
                     </tr>
                 </thead>
                 <tbody id="tbody-usuarios">
-                    <tr><td colspan="9" style="padding:24px;text-align:center;color:#334155">Carregando...</td></tr>
+                    <tr><td colspan="10" style="padding:24px;text-align:center;color:#334155">Carregando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -14521,7 +14523,7 @@ let _usuariosBuscaTimer = null;
 async function _carregarUsuarios(pag) {
     if (pag !== undefined) _usuariosPagina = pag;
     const tbody = document.getElementById('tbody-usuarios');
-    tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#334155">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:#334155">Carregando...</td></tr>';
     try {
         const u = _getUser();
         const body = {
@@ -14607,7 +14609,7 @@ function _renderPaginacaoUsuarios(total, pagina, pp) {
 function _renderTabelaUsuarios(lista) {
     const tbody = document.getElementById('tbody-usuarios');
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#334155">Nenhum usuário encontrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:#334155">Nenhum usuário encontrado.</td></tr>';
         return;
     }
     const TIPO_LABEL = { master:'⭐ Master', administrador:'👑 Admin', admin:'👑 Admin', user:'👤 Usuário', bronze:'🥉 Bronze', prata:'🥈 Prata', gold:'🥇 Gold', premium:'💎 Premium' };
@@ -14640,6 +14642,7 @@ function _renderTabelaUsuarios(lista) {
         const licenca = u.DataFimLicenca ? `<span style="font-size:10px;color:#475569">${fmtData(u.DataInicioLicenca)}<br>– ${fmtData(u.DataFimLicenca)}</span>` : '<span style="color:#334155">—</span>';
         const _planoCor = { Mensal: '#94a3b8', Trimestral: '#60a5fa', Semestral: '#a78bfa', Anual: '#fbbf24' };
         const plano = `<span style="font-size:10px;color:${_planoCor[u.PlanoAtivo] || '#94a3b8'}">${u.PlanoAtivo || 'Mensal'}</span>`;
+        const kirvano = u.VeioKirvano ? '<span style="font-size:10px;color:#a78bfa;font-weight:700" title="Assinatura via Kirvano">K</span>' : '<span style="color:#1e293b;font-size:10px">—</span>';
         const isMaster = _getUser()?.TipoUsuario === 'master';
         return `<tr style="border-bottom:1px solid #0d1421">
             <td style="padding:7px 10px;color:#e2e8f0;${truncStyle}" title="${escHtml(u.NomeCompleto || '')}">${escHtml(u.NomeCompleto || '—')}</td>
@@ -14650,6 +14653,7 @@ function _renderTabelaUsuarios(lista) {
             <td style="padding:7px 10px;text-align:center">${licenca}</td>
             <td style="padding:7px 10px;text-align:center">${ativo}</td>
             <td style="padding:7px 10px;text-align:center">${fmtAcesso(u.UltimoAcesso)}</td>
+            <td style="padding:7px 10px;text-align:center">${kirvano}</td>
             <td style="padding:6px 8px;text-align:center;white-space:nowrap">
                 <button onclick="abrirFormUsuario(${u.Id})"
                     style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;

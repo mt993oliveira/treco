@@ -944,12 +944,14 @@ app.post('/api/usuarios', requireAuth, async (req, res) => {
 
         const result = await r.query(`
             SELECT
-                Id, NomeCompleto, Usuario, Email, Telefone, TipoUsuario, PlanoAtivo,
-                DataInicioLicenca, DataFimLicenca, DataCriacao, Ativo, UltimoAcesso,
+                a.Id, a.NomeCompleto, a.Usuario, a.Email, a.Telefone, a.TipoUsuario, a.PlanoAtivo,
+                a.DataInicioLicenca, a.DataFimLicenca, a.DataCriacao, a.Ativo, a.UltimoAcesso,
+                CASE WHEN k.usuario_id IS NOT NULL THEN 1 ELSE 0 END AS VeioKirvano,
                 COUNT(*) OVER() AS _total
-            FROM Usuarios
+            FROM Usuarios a
+            LEFT OUTER JOIN (SELECT DISTINCT usuario_id FROM kirvano_assinaturas) k ON a.Id = k.usuario_id
             ${whereSQL}
-            ORDER BY DataCriacao DESC
+            ORDER BY a.DataCriacao DESC
             OFFSET @off ROWS FETCH NEXT @pp ROWS ONLY
         `);
 
