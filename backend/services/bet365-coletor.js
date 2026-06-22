@@ -1039,33 +1039,41 @@ class Bet365Coletor {
             console.log(`   🔄 [${liga.nome}] Ctrl+F5 — recarregando sem cache...`);
             let recarregouOk = false;
             for (let r = 1; r <= 2; r++) {
+                const _t0f5 = Date.now();
                 try {
                     await pg.bringToFront().catch(() => {}); // foco antes do F5
                     await this._hardRefresh(pg, this._cfgNum('timeout_navegacao_ms', 30000));
+                    console.log(`   ⏱️  [F5 r${r}] hardRefresh: ${Date.now()-_t0f5}ms`);
                     await this._delay(this._cfgNum('delay_pos_reload_ms', 8000));
                     await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
+                    console.log(`   ⏱️  [F5 r${r}] total OK: ${Date.now()-_t0f5}ms`);
                     recarregouOk = true;
                     break; // ligas apareceram, continua para próxima liga
                 } catch(e) {
-                    console.log(`   ⚠️  Ligas não apareceram após Ctrl+F5 (${r}/2), verificando sessão...`);
+                    console.log(`   ⚠️  Ligas não apareceram após Ctrl+F5 (${r}/2) — ${Date.now()-_t0f5}ms — verificando sessão...`);
                     await this._tirarScreenshotFalha(pg, `f5_mid_r${r}`);
+                    const _t0vs = Date.now();
                     await this._verificarSessao(pg);
+                    console.log(`   ⏱️  [verificarSessao r${r}] ${Date.now()-_t0vs}ms`);
                 }
             }
             if (!recarregouOk) {
                 console.log('   ❌ Não foi possível recarregar — navegando de volta para URL virtual...');
                 let recuperouMidCiclo = false;
                 for (let rt = 1; rt <= 2; rt++) {
+                    const _t0rec = Date.now();
                     try {
+                        console.log(`   ⏱️  [recuperação rt${rt}] goto iniciando...`);
                         await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                        console.log(`   ⏱️  [recuperação rt${rt}] goto: ${Date.now()-_t0rec}ms`);
                         await this._delay(12000); // mais tempo que o reload normal
                         await this._verificarSessao(pg);
                         await pg.waitForSelector('.vrl-MeetingsHeaderButton', { timeout: this._cfgNum('timeout_ligas_ms', 20000) });
-                        console.log('   ✅ Navegação de recuperação OK — ligas voltaram');
+                        console.log(`   ✅ Navegação de recuperação OK — ligas voltaram (${Date.now()-_t0rec}ms)`);
                         recuperouMidCiclo = true;
                         break;
                     } catch(e) {
-                        console.log(`   ❌ Recuperação tentativa ${rt}/2 falhou: ${e.message.substring(0, 60)}`);
+                        console.log(`   ❌ Recuperação tentativa ${rt}/2 falhou em ${Date.now()-_t0rec}ms: ${e.message.substring(0, 60)}`);
                         await this._tirarScreenshotFalha(pg, `recuperacao_mid_rt${rt}`);
                         if (rt < 2) await this._delay(5000);
                     }
@@ -1549,7 +1557,9 @@ class Bet365Coletor {
             this._logAuditoria('sessao_expirada', motivo);
             this._ultimoLoginTs = Date.now(); // marca tentativa — bloqueia novas por 5 min
 
+            const _t0login = Date.now();
             const sessaoOk = await this._loginComCredenciais(pg);
+            console.log(`   ⏱️  [login] _loginComCredenciais: ${Date.now()-_t0login}ms — ok=${sessaoOk}`);
 
             // ── Após login bem-sucedido, garante retorno à página virtual ─────────
             if (sessaoOk) {
@@ -1557,7 +1567,9 @@ class Bet365Coletor {
                     const urlPos = pg.url();
                     if (!urlPos.includes('AVR')) {
                         console.log('   🔄 Redirecionando para página virtual...');
+                        const _t0goto = Date.now();
                         await pg.goto(this.url, { waitUntil: 'domcontentloaded', timeout: this._cfgNum('timeout_goto_ms', 60000) });
+                        console.log(`   ⏱️  [login] goto AVR: ${Date.now()-_t0goto}ms`);
                         await this._delay(this._cfgNum('delay_pos_reload_ms', 4000));
                     }
                 } catch(e) {
@@ -1835,7 +1847,9 @@ class Bet365Coletor {
             console.log(`   🔑 Tentando login${label}: ${usuario}`);
             this._logAuditoria('login_tentativa', `Tentando login${label}`, usuario);
 
+            const _t0conta = Date.now();
             const resultado = await this._tentarLoginComPar(pg, usuario, senha, dataNasc, emailVerif);
+            console.log(`   ⏱️  [login${label}] _tentarLoginComPar: ${Date.now()-_t0conta}ms — resultado=${resultado}`);
             if (resultado === true) {
                 console.log(`   ✅ Login bem-sucedido${label}!`);
                 this._logAuditoria('login_ok', `Login bem-sucedido${label}`, usuario);
