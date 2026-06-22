@@ -929,8 +929,8 @@ router.post('/limpar-ligas-descartadas', async (req, res) => {
 router.get('/historico-mercados', async (req, res) => {
     try {
         const { liga, horas = 24, incluirFuturos = 'false' } = req.query;
-        // Cap de 6h — reduzido de 48h para reduzir gargalo de query no mosaico real-time.
-        const horasNum = Math.min(Math.max(parseInt(horas) || 6, 1), 6);
+        // Cap de 12h — limita query para evitar OOM, respeitando seleção do usuário até 12h.
+        const horasNum = Math.min(Math.max(parseInt(horas) || 12, 1), 12);
         const comFuturos = incluirFuturos === 'true';
 
         const _ck = `hist:${horasNum}:${liga||'all'}:${comFuturos}`;
