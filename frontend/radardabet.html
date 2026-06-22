@@ -7337,7 +7337,13 @@ function _renderAllCharts() {
 function renderTabela() {
     if (S.view === 'historico' && !S.showMosaico) return;
     const _tsEl = document.getElementById('mosaico-sync-ts');
-    if (_tsEl && (_getUser()?.TipoUsuario||'').toLowerCase() === 'master') { const _h = new Date(); _tsEl.textContent = `sync ${_h.toLocaleTimeString('pt-BR')}`; }
+    if (_tsEl) {
+        const _tipo = (_getUser()?.TipoUsuario||'').toLowerCase();
+        const _isElevated = _tipo === 'master' || _tipo === 'admin' || _tipo === 'administrador';
+        const _syncTodos = (S._cfgRaw?.sync_visivel_todos ?? 'false') !== 'false';
+        if (_syncTodos || _isElevated) { const _h = new Date(); _tsEl.textContent = `sync ${_h.toLocaleTimeString('pt-BR')}`; }
+        else { _tsEl.textContent = ''; }
+    }
     const gs = grupos(S.horasMosaico, S.jogosMosaico);
     const fi = TODOS_FILTROS.find(f => f.id === S.filtroMosaico) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
     const gridCores = carregarCoresGrid();
@@ -13062,6 +13068,7 @@ const _CFG_LABELS = {
     analise_liberar_premium: '📊 Análise & Sugestões: liberar para 💎 Premium',
     liga_img_largura:           '🏆 Ligas — largura da imagem no desktop (px)',
     liga_img_altura:            '🏆 Ligas — altura da imagem no desktop (px)',
+    sync_visivel_todos:          '🕐 Exibir sync do mosaico para todos os usuários',
     padroes_visivel_bronze:     '📋 Padrões: exibir para 🥉 Bronze',
     padroes_visivel_prata:      '📋 Padrões: exibir para 🥈 Prata',
     padroes_visivel_gold:       '📋 Padrões: exibir para 🥇 Gold',
