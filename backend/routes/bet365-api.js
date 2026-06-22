@@ -929,14 +929,13 @@ router.post('/limpar-ligas-descartadas', async (req, res) => {
 router.get('/historico-mercados', async (req, res) => {
     try {
         const { liga, horas = 24, incluirFuturos = 'false' } = req.query;
-        // Cap de 48h — reduzido de 168h para evitar OOM por cache de resultsets gigantes.
-        const horasNum = Math.min(Math.max(parseInt(horas) || 24, 1), 48);
+        // Cap de 6h — reduzido de 48h para reduzir gargalo de query no mosaico real-time.
+        const horasNum = Math.min(Math.max(parseInt(horas) || 6, 1), 6);
         const comFuturos = incluirFuturos === 'true';
 
         const _ck = `hist:${horasNum}:${liga||'all'}:${comFuturos}`;
         const _ce = _analiseApiCache.get(_ck);
-        // Janelas > 48h usam TTL maior (2 min) — dados históricos mudam devagar e queries são pesadas
-        const _ttl = horasNum > 48 ? Math.max(_histCacheTTLms, 120_000) : _histCacheTTLms;
+        const _ttl = _histCacheTTLms;
         if (_ce && Date.now() - _ce.ts <= _ttl) return res.json(_ce.data);
 
         // Deduplicação: se já há uma query em andamento para a mesma chave, aguarda ela

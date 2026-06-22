@@ -12191,7 +12191,12 @@ function conectarWS() {
                 if (m.tipo === 'coleta') {
                     console.log('[WS coleta]', new Date().toLocaleTimeString(), '— resultadosSalvos:', m.resultadosSalvos, '| novos:', m.novos);
                     const _wsTs = document.getElementById('mosaico-sync-ts');
-                    if (_wsTs && (_getUser()?.TipoUsuario||'').toLowerCase() === 'master') { const _n = new Date(); _wsTs.textContent = `ws ${_n.toLocaleTimeString('pt-BR')} (${m.resultadosSalvos||0} res, ${m.novos||0} novos)`; }
+                    if (_wsTs) {
+                        const _tipoWs = (_getUser()?.TipoUsuario||'').toLowerCase();
+                        const _isElevatedWs = _tipoWs === 'master' || _tipoWs === 'admin' || _tipoWs === 'administrador';
+                        const _syncTodosWs = (S._cfgRaw?.sync_visivel_todos ?? 'false') !== 'false';
+                        if (_syncTodosWs || _isElevatedWs) { const _n = new Date(); _wsTs.textContent = `ws ${_n.toLocaleTimeString('pt-BR')} (${m.resultadosSalvos||0} res, ${m.novos||0} novos)`; }
+                    }
                     // Debounce: acumula mensagens por liga e dispara um único fetch
                     // 400ms após a última mensagem, evitando N requisições por ciclo.
                     if (m.resultadosSalvos > 0 || m.novos > 0) _wsTemDados = true;
