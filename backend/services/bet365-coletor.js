@@ -813,11 +813,19 @@ class Bet365Coletor {
             console.log(`   ⏭️  [${ligaNorm}] "Mostrar mais" pulado — cache fresco`);
         } else {
             const maxVerMais = this._cfgNum('max_ver_mais_clicks', 10);
+            const _vm0 = Date.now();
+            let _vmClicks = 0;
             for (let sm = 0; sm < maxVerMais; sm++) {
                 const temMore = await pg.evaluate(() => !!document.querySelector('.vrr-ShowMoreButton_Link'));
                 if (!temMore) break;
                 await pg.evaluate(() => document.querySelector('.vrr-ShowMoreButton_Link')?.click());
+                _vmClicks++;
                 await this._delay(this._cfgNum('delay_show_more_ms', 800));
+            }
+            if (_vmClicks > 0) {
+                console.log(`   ⏱️  [${ligaNorm}] "Mostrar mais" liga: ${_vmClicks} clique(s) em ${Date.now()-_vm0}ms`);
+            } else {
+                console.log(`   ⏱️  [${ligaNorm}] "Mostrar mais" liga: 0 cliques (botão ausente)`);
             }
         }
 
@@ -868,6 +876,7 @@ class Bet365Coletor {
             }
         } else {
             // Fluxo original: expande todos os cards
+            const _exp0 = Date.now();
             const totalMaisInternos = await pg.evaluate(() => {
                 const btns = [...document.querySelectorAll('.vrr-HeadToHeadMarketGroup .vrr-ShowMoreButton_Link')];
                 btns.forEach(b => b.click());
@@ -876,6 +885,9 @@ class Bet365Coletor {
             if (totalMaisInternos > 0) {
                 console.log(`   🔽 [${ligaNorm}] Expandindo ${totalMaisInternos} card(s) de resultado...`);
                 await this._delay(this._cfgNum('delay_expandir_mercados_ms', 1500));
+                console.log(`   ⏱️  [${ligaNorm}] Expansão cards: ${Date.now()-_exp0}ms (delay configurado: ${this._cfgNum('delay_expandir_mercados_ms',1500)}ms)`);
+            } else {
+                console.log(`   ⏱️  [${ligaNorm}] Expansão cards: nenhum botão encontrado`);
             }
         }
 
