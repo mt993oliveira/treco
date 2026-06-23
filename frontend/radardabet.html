@@ -1024,6 +1024,12 @@
                     onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
                     👥 Gerenciar Usuários
                 </button>
+                <button id="dd-btn-financeiro" onclick="abrirFinanceiro()"
+                    style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    💰 Financeiro
+                </button>
                 <button id="dd-btn-historico-usuarios" onclick="abrirHistoricoUsuarios()"
                     style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
                            padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
@@ -1295,6 +1301,95 @@
         <!-- Paginação -->
         <div id="usr-paginacao" style="display:flex;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap"></div>
 
+    </div>
+</div>
+
+<!-- ========== MODAL: FINANCEIRO (master/admin) ========== -->
+<div class="modal-overlay" id="modal-financeiro">
+    <div class="modal-box" style="max-width:860px;width:98%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="font-size:14px;font-weight:700">💰 Financeiro</h2>
+            <button onclick="fecharModal('modal-financeiro')"
+                style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;padding:4px 8px">✕</button>
+        </div>
+
+        <!-- Filtro de mês + botão novo -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:11px;color:#64748b">Mês:</span>
+                <input type="month" id="fin-mes-filtro"
+                    style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:4px 8px;font-size:12px;outline:none"
+                    onchange="finCarregarLancamentos()">
+            </div>
+            <button onclick="finAbrirForm()"
+                style="background:#166534;border:1px solid #15803d;color:#4ade80;border-radius:5px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">
+                + Novo Lançamento
+            </button>
+        </div>
+
+        <!-- Formulário novo lançamento (oculto por padrão) -->
+        <div id="fin-form" style="display:none;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:14px;margin-bottom:14px">
+            <div style="display:grid;grid-template-columns:120px 1fr 120px;gap:10px;align-items:end;flex-wrap:wrap">
+                <div>
+                    <div style="font-size:10px;color:#64748b;margin-bottom:4px">TIPO</div>
+                    <select id="fin-tipo"
+                        style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:5px 8px;font-size:12px;outline:none">
+                        <option value="receita">💚 Receita</option>
+                        <option value="despesa">🔴 Despesa</option>
+                    </select>
+                </div>
+                <div>
+                    <div style="font-size:10px;color:#64748b;margin-bottom:4px">DESCRIÇÃO</div>
+                    <input id="fin-descricao" type="text" placeholder="Ex: VPS Hostinger, Assinatura Kirvano..."
+                        style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:5px 8px;font-size:12px;outline:none;box-sizing:border-box">
+                </div>
+                <div>
+                    <div style="font-size:10px;color:#64748b;margin-bottom:4px">VALOR (R$)</div>
+                    <input id="fin-valor" type="number" min="0" step="0.01" placeholder="0,00"
+                        style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:5px 8px;font-size:12px;outline:none;box-sizing:border-box">
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+                <button onclick="document.getElementById('fin-form').style.display='none'"
+                    style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:5px 14px;font-size:11px;cursor:pointer">Cancelar</button>
+                <button onclick="finSalvar()"
+                    style="background:#1e40af;border:1px solid #2563eb;color:#93c5fd;border-radius:5px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer">Salvar</button>
+            </div>
+            <div id="fin-form-msg" style="font-size:11px;color:#f87171;margin-top:6px;display:none"></div>
+        </div>
+
+        <!-- Totais -->
+        <div id="fin-totais" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:#052e16;border:1px solid #14532d;border-radius:8px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:#4ade80;margin-bottom:4px">RECEITAS</div>
+                <div id="fin-tot-receitas" style="font-size:18px;font-weight:700;color:#4ade80">R$ 0,00</div>
+            </div>
+            <div style="background:#450a0a;border:1px solid #7f1d1d;border-radius:8px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:#f87171;margin-bottom:4px">DESPESAS</div>
+                <div id="fin-tot-despesas" style="font-size:18px;font-weight:700;color:#f87171">R$ 0,00</div>
+            </div>
+            <div id="fin-tot-saldo-box" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:#94a3b8;margin-bottom:4px">SALDO</div>
+                <div id="fin-tot-saldo" style="font-size:18px;font-weight:700;color:#e2e8f0">R$ 0,00</div>
+            </div>
+        </div>
+
+        <!-- Lista de lançamentos -->
+        <div style="max-height:380px;overflow-y:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead>
+                    <tr style="background:#0c1220">
+                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b">TIPO</th>
+                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:left;border-bottom:1px solid #1e293b">DESCRIÇÃO</th>
+                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:right;border-bottom:1px solid #1e293b">VALOR</th>
+                        <th style="padding:7px 10px;color:#475569;font-size:9px;font-weight:700;text-align:center;border-bottom:1px solid #1e293b"></th>
+                    </tr>
+                </thead>
+                <tbody id="fin-tbody">
+                    <tr><td colspan="4" style="padding:24px;text-align:center;color:#334155">Selecione um mês</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -12633,6 +12728,11 @@ function _initUserMenu() {
         const btnKirv = document.getElementById('dd-btn-kirvano');
         if (btnKirv) btnKirv.style.display = 'flex';
     }
+    // 💰 Financeiro — master e administrador
+    if (_isMasterType || _isAdminType) {
+        const btnFin = document.getElementById('dd-btn-financeiro');
+        if (btnFin) btnFin.style.display = 'flex';
+    }
 
     // 🔧 Diagnóstico — exclusivo para o login MASTER (por nome de usuário)
     const btnDiag = document.getElementById('view-diagnostico');
@@ -16440,6 +16540,108 @@ function limparDesenho() {
     // Primeira coleta após 2 minutos do carregamento, depois a cada 1 hora
     setTimeout(() => { coletar(); setInterval(coletar, 60 * 60 * 1000); }, 2 * 60 * 1000);
 })();
+
+// ─── FINANCEIRO ──────────────────────────────────────────────────
+
+function abrirFinanceiro() {
+    document.getElementById('user-dropdown').style.display = 'none';
+    // preenche mês atual como padrão
+    const agora = new Date();
+    const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}`;
+    const inputMes = document.getElementById('fin-mes-filtro');
+    if (inputMes && !inputMes.value) inputMes.value = mesAtual;
+    document.getElementById('modal-financeiro').classList.add('aberto');
+    finCarregarLancamentos();
+}
+
+async function finCarregarLancamentos() {
+    const mes = document.getElementById('fin-mes-filtro')?.value || '';
+    const params = mes ? `?mes=${mes}` : '';
+    try {
+        const r = await fetch(`/api/financeiro${params}`);
+        const d = await r.json();
+        if (!d.success) return;
+        _finRenderTabela(d.data);
+        _finRenderTotais(d.totais);
+    } catch(e) { console.error('[financeiro]', e); }
+}
+
+function _finRenderTabela(lista) {
+    const tb = document.getElementById('fin-tbody');
+    if (!lista || !lista.length) {
+        tb.innerHTML = '<tr><td colspan="4" style="padding:24px;text-align:center;color:#334155">Nenhum lançamento neste mês</td></tr>';
+        return;
+    }
+    tb.innerHTML = lista.map(l => {
+        const isRec = l.tipo === 'receita';
+        const cor = isRec ? '#4ade80' : '#f87171';
+        const icone = isRec ? '💚' : '🔴';
+        const valFmt = parseFloat(l.valor).toLocaleString('pt-BR', {minimumFractionDigits:2});
+        return `<tr style="border-bottom:1px solid #0f172a">
+            <td style="padding:8px 10px;color:${cor};white-space:nowrap">${icone} ${l.tipo.charAt(0).toUpperCase()+l.tipo.slice(1)}</td>
+            <td style="padding:8px 10px;color:#cbd5e1">${l.descricao}</td>
+            <td style="padding:8px 10px;color:${cor};text-align:right;white-space:nowrap;font-weight:600">R$ ${valFmt}</td>
+            <td style="padding:8px 10px;text-align:center">
+                <button onclick="finExcluir(${l.id})"
+                    style="background:none;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer"
+                    title="Excluir">✕</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function _finRenderTotais(t) {
+    const fmt = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+    document.getElementById('fin-tot-receitas').textContent = fmt(t.receitas);
+    document.getElementById('fin-tot-despesas').textContent = fmt(t.despesas);
+    const saldoEl = document.getElementById('fin-tot-saldo');
+    const saldoBox = document.getElementById('fin-tot-saldo-box');
+    const saldo = parseFloat(t.saldo||0);
+    saldoEl.textContent = fmt(saldo);
+    saldoEl.style.color = saldo >= 0 ? '#4ade80' : '#f87171';
+    saldoBox.style.borderColor = saldo >= 0 ? '#14532d' : '#7f1d1d';
+    saldoBox.style.background = saldo >= 0 ? '#052e16' : '#450a0a';
+}
+
+function finAbrirForm() {
+    const f = document.getElementById('fin-form');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('fin-descricao').value = '';
+    document.getElementById('fin-valor').value = '';
+    document.getElementById('fin-tipo').value = 'receita';
+    document.getElementById('fin-form-msg').style.display = 'none';
+}
+
+async function finSalvar() {
+    const tipo = document.getElementById('fin-tipo').value;
+    const descricao = document.getElementById('fin-descricao').value.trim();
+    const valor = parseFloat(document.getElementById('fin-valor').value);
+    const mes_ref = document.getElementById('fin-mes-filtro')?.value || '';
+    const msgEl = document.getElementById('fin-form-msg');
+    if (!descricao) { msgEl.textContent='Preencha a descrição'; msgEl.style.display='block'; return; }
+    if (!valor || valor <= 0) { msgEl.textContent='Informe um valor válido'; msgEl.style.display='block'; return; }
+    if (!mes_ref) { msgEl.textContent='Selecione o mês'; msgEl.style.display='block'; return; }
+    try {
+        const r = await fetch('/api/financeiro', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({tipo, descricao, valor, mes_ref})
+        });
+        const d = await r.json();
+        if (!d.success) { msgEl.textContent=d.message||'Erro ao salvar'; msgEl.style.display='block'; return; }
+        document.getElementById('fin-form').style.display='none';
+        finCarregarLancamentos();
+    } catch(e) { msgEl.textContent='Erro de conexão'; msgEl.style.display='block'; }
+}
+
+async function finExcluir(id) {
+    if (!confirm('Excluir este lançamento?')) return;
+    try {
+        const r = await fetch(`/api/financeiro/${id}`, {method:'DELETE'});
+        const d = await r.json();
+        if (d.success) finCarregarLancamentos();
+    } catch(e) { alert('Erro ao excluir'); }
+}
 
 // ─── KIRVANO ─────────────────────────────────────────────────────
 let _kirvPagAss = 1, _kirvPagWh = 1;
