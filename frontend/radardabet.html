@@ -16556,9 +16556,12 @@ function abrirFinanceiro() {
 
 async function finCarregarLancamentos() {
     const mes = document.getElementById('fin-mes-filtro')?.value || '';
-    const params = mes ? `?mes=${mes}` : '';
+    const uid = _getUser()?.Id || '';
+    const params = new URLSearchParams();
+    if (mes) params.set('mes', mes);
+    if (uid) params.set('usuarioId', uid);
     try {
-        const r = await fetch(`/api/financeiro${params}`);
+        const r = await fetch(`/api/financeiro?${params}`);
         const d = await r.json();
         if (!d.success) return;
         _finRenderTabela(d.data);
@@ -16621,11 +16624,12 @@ async function finSalvar() {
     if (!descricao) { msgEl.textContent='Preencha a descrição'; msgEl.style.display='block'; return; }
     if (!valor || valor <= 0) { msgEl.textContent='Informe um valor válido'; msgEl.style.display='block'; return; }
     if (!mes_ref) { msgEl.textContent='Selecione o mês'; msgEl.style.display='block'; return; }
+    const uid = _getUser()?.Id || '';
     try {
         const r = await fetch('/api/financeiro', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({tipo, descricao, valor, mes_ref})
+            body: JSON.stringify({tipo, descricao, valor, mes_ref, usuarioId: uid})
         });
         const d = await r.json();
         if (!d.success) { msgEl.textContent=d.message||'Erro ao salvar'; msgEl.style.display='block'; return; }
@@ -16636,8 +16640,9 @@ async function finSalvar() {
 
 async function finExcluir(id) {
     if (!confirm('Excluir este lançamento?')) return;
+    const uid = _getUser()?.Id || '';
     try {
-        const r = await fetch(`/api/financeiro/${id}`, {method:'DELETE'});
+        const r = await fetch(`/api/financeiro/${id}?usuarioId=${uid}`, {method:'DELETE'});
         const d = await r.json();
         if (d.success) finCarregarLancamentos();
     } catch(e) { alert('Erro ao excluir'); }
