@@ -375,6 +375,10 @@ app.use('/api/simulador', userRateLimit, simuladorRoutes);
 const kirvanRoutes = require('./routes/kirvano');
 app.use('/api/kirvano', kirvanRoutes);
 
+// Financeiro — receitas e despesas (master/admin only)
+const financeiroRoutes = require('./routes/financeiro');
+app.use('/api/financeiro', requireAuth, financeiroRoutes);
+
 // ── Endpoint interno: coletor local notifica VPS para fazer WS broadcast ──
 // Autenticado por x-notify-key = JWT_SECRET (sem auth de usuário)
 app.post('/api/ws/notificar', express.json(), (req, res) => {
