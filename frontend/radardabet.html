@@ -832,10 +832,9 @@
 <header style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:0;position:sticky;top:0;z-index:50">
     <!-- Linha 1: Logo + ações -->
     <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <img src="/img/logo_principal.png" alt="Radar da Bet" style="height:80px;min-width:340px;object-fit:contain;object-position:left center;flex-shrink:0"
                  onerror="this.style.display='none'">
-            <span id="header-subtitle" style="color:#94a3b8;font-size:22px;font-weight:700;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">FUTEBOL VIRTUAL</span>
         </div>
 
         <!-- Extras do header (ocultáveis) -->
@@ -983,6 +982,9 @@
 
         </div><!-- /header-extras -->
 
+        <!-- Liga tabs — inline na linha principal do header -->
+        <div id="liga-tabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 0;justify-content:center;flex:1;min-width:0;align-self:center"></div>
+
         <!-- Botão ocultar/exibir extras do header -->
         <button id="header-toggle-btn" onclick="toggleHeaderExtras()" title="Ocultar/exibir informações"
             style="display:flex;align-items:center;justify-content:center;height:32px;padding:0 10px;gap:4px;
@@ -1064,10 +1066,6 @@
                 </button>
             </div>
         </div>
-    </div>
-    <!-- Linha 2: Seleção de ligas -->
-    <div style="padding:0 16px;background:#070e1c;border-top:1px solid #0f172a">
-        <div id="liga-tabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:8px 0;justify-content:center"></div>
     </div>
 </header>
 
