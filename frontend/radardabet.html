@@ -999,6 +999,7 @@
                     <div style="font-size:12px;font-weight:700;color:#e2e8f0" id="dd-nome">—</div>
                     <div style="font-size:10px;color:#475569" id="dd-usuario">—</div>
                     <div style="font-size:10px;color:#334155" id="dd-tipo">—</div>
+                    <div style="font-size:10px;color:#64748b;margin-top:3px;display:none" id="dd-licenca">—</div>
                 </div>
                 <button onclick="abrirPerfil()"
                     style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
@@ -12920,6 +12921,14 @@ function _initUserMenu() {
     // Label do tipo no dropdown
     const _ti = _infoTipo(u.TipoUsuario);
     document.getElementById('dd-tipo').textContent = `${_ti.icone} ${_ti.label}`;
+
+    // Datas de licença no dropdown
+    const _ddLic = document.getElementById('dd-licenca');
+    if (_ddLic && u.DataInicioLicenca && u.DataFimLicenca) {
+        const _fmtDD = v => { const p = v.split('T')[0].split('-'); return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}); };
+        _ddLic.textContent = `📅 ${_fmtDD(u.DataInicioLicenca)} – ${_fmtDD(u.DataFimLicenca)}`;
+        _ddLic.style.display = 'block';
+    }
 
     // Badge de tipo + licença no header
     const _badgeEl   = document.getElementById('licenca-badge');
