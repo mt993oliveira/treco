@@ -2459,7 +2459,7 @@
                        font-size:11px;font-weight:700;color:#64748b;flex-shrink:0;transition:background .15s;white-space:nowrap"
                 onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
             <span id="mosaico-sync-ts" style="font-size:10px;color:#475569;white-space:nowrap" title="Última vez que o mosaico foi redesenhado"></span>
-            <button onclick="carregarHistorico()" title="Atualizar mosaico agora"
+            <button id="btn-refresh-mosaico" onclick="_refreshMosaico()" title="Atualizar mosaico agora"
                 style="display:flex;align-items:center;justify-content:center;height:22px;width:22px;padding:0;
                        background:none;border:1px solid #334155;border-radius:4px;cursor:pointer;
                        font-size:12px;color:#475569;flex-shrink:0;transition:color .15s,border-color .15s"
@@ -4405,6 +4405,38 @@ async function buscarResultados() {
         btn.innerHTML = textoOriginal;
         btn.disabled = false;
         btn.style.opacity = '1';
+    }
+}
+
+let _refreshMosaicoUltimo = 0;
+let _refreshMosaicoCooldownTimer = null;
+function _refreshMosaico() {
+    const btn = document.getElementById('btn-refresh-mosaico');
+    const cooldown = Math.max(5, parseInt(S._cfgRaw?.refresh_mosaico_cooldown_s) || 30);
+    const agora = Date.now();
+    const restante = Math.ceil((cooldown * 1000 - (agora - _refreshMosaicoUltimo)) / 1000);
+    if (restante > 0) return;
+    _refreshMosaicoUltimo = agora;
+    carregarHistorico();
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        clearInterval(_refreshMosaicoCooldownTimer);
+        let restS = cooldown;
+        btn.title = `Aguarde ${restS}s`;
+        _refreshMosaicoCooldownTimer = setInterval(() => {
+            restS--;
+            if (restS <= 0) {
+                clearInterval(_refreshMosaicoCooldownTimer);
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.title = 'Atualizar mosaico agora';
+            } else {
+                btn.title = `Aguarde ${restS}s`;
+            }
+        }, 1000);
     }
 }
 
@@ -13184,6 +13216,7 @@ const _CFG_LABELS = {
     liga_img_largura:           '🏆 Ligas — largura da imagem no desktop (px)',
     liga_img_altura:            '🏆 Ligas — altura da imagem no desktop (px)',
     sync_visivel_todos:          '🕐 Exibir sync do mosaico para todos os usuários',
+    refresh_mosaico_cooldown_s:  '↺ Cooldown do botão de atualizar mosaico (segundos)',
     padroes_visivel_bronze:     '📋 Padrões: exibir para 🥉 Bronze',
     padroes_visivel_prata:      '📋 Padrões: exibir para 🥈 Prata',
     padroes_visivel_gold:       '📋 Padrões: exibir para 🥇 Gold',
