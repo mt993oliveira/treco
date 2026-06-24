@@ -7473,12 +7473,17 @@ function _renderAllCharts() {
 function renderTabela() {
     if (S.view === 'historico' && !S.showMosaico) return;
     const _tsEl = document.getElementById('mosaico-sync-ts');
+    const _btnRf = document.getElementById('btn-refresh-mosaico');
+    const _tipoU = (_getUser()?.TipoUsuario||'').toLowerCase();
+    const _isElev = _tipoU === 'master' || _tipoU === 'admin' || _tipoU === 'administrador';
     if (_tsEl) {
-        const _tipo = (_getUser()?.TipoUsuario||'').toLowerCase();
-        const _isElevated = _tipo === 'master' || _tipo === 'admin' || _tipo === 'administrador';
         const _syncTodos = (S._cfgRaw?.sync_visivel_todos ?? 'false') !== 'false';
-        if (_syncTodos || _isElevated) { const _h = new Date(); _tsEl.textContent = `sync ${_h.toLocaleTimeString('pt-BR')}`; }
+        if (_syncTodos || _isElev) { const _h = new Date(); _tsEl.textContent = `sync ${_h.toLocaleTimeString('pt-BR')}`; }
         else { _tsEl.textContent = ''; }
+    }
+    if (_btnRf) {
+        const _rfTodos = (S._cfgRaw?.refresh_mosaico_btn_visivel ?? 'true') !== 'false';
+        _btnRf.style.display = (_rfTodos || _isElev) ? 'flex' : 'none';
     }
     const gs = grupos(S.horasMosaico, S.jogosMosaico);
     const fi = TODOS_FILTROS.find(f => f.id === S.filtroMosaico) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
@@ -12327,11 +12332,16 @@ function conectarWS() {
                 if (m.tipo === 'coleta') {
                     console.log('[WS coleta]', new Date().toLocaleTimeString(), '— resultadosSalvos:', m.resultadosSalvos, '| novos:', m.novos);
                     const _wsTs = document.getElementById('mosaico-sync-ts');
+                    const _wsBtnRf = document.getElementById('btn-refresh-mosaico');
+                    const _tipoWs = (_getUser()?.TipoUsuario||'').toLowerCase();
+                    const _isElevatedWs = _tipoWs === 'master' || _tipoWs === 'admin' || _tipoWs === 'administrador';
                     if (_wsTs) {
-                        const _tipoWs = (_getUser()?.TipoUsuario||'').toLowerCase();
-                        const _isElevatedWs = _tipoWs === 'master' || _tipoWs === 'admin' || _tipoWs === 'administrador';
                         const _syncTodosWs = (S._cfgRaw?.sync_visivel_todos ?? 'false') !== 'false';
                         if (_syncTodosWs || _isElevatedWs) { const _n = new Date(); _wsTs.textContent = `ws ${_n.toLocaleTimeString('pt-BR')} (${m.resultadosSalvos||0} res, ${m.novos||0} novos)`; }
+                    }
+                    if (_wsBtnRf) {
+                        const _rfTodosWs = (S._cfgRaw?.refresh_mosaico_btn_visivel ?? 'true') !== 'false';
+                        _wsBtnRf.style.display = (_rfTodosWs || _isElevatedWs) ? 'flex' : 'none';
                     }
                     // Debounce: acumula mensagens por liga e dispara um único fetch
                     // 400ms após a última mensagem, evitando N requisições por ciclo.
@@ -13216,6 +13226,7 @@ const _CFG_LABELS = {
     liga_img_largura:           '🏆 Ligas — largura da imagem no desktop (px)',
     liga_img_altura:            '🏆 Ligas — altura da imagem no desktop (px)',
     sync_visivel_todos:          '🕐 Exibir sync do mosaico para todos os usuários',
+    refresh_mosaico_btn_visivel: '↺ Exibir botão de atualizar mosaico para todos os usuários',
     refresh_mosaico_cooldown_s:  '↺ Cooldown do botão de atualizar mosaico (segundos)',
     padroes_visivel_bronze:     '📋 Padrões: exibir para 🥉 Bronze',
     padroes_visivel_prata:      '📋 Padrões: exibir para 🥈 Prata',
