@@ -332,7 +332,7 @@
         /* Header: oculta texto "FUTEBOL VIRTUAL" e comprime status */
         #header-subtitle  { display: none !important; }
         /* Logo: limita largura no mobile para não causar scroll */
-        img[alt="Radar da Bet"] { min-width: unset !important; max-width: 200px; height: 44px !important; }
+        img[alt="Radar da Bet"] { display: none !important; }
         /* Liga tabs: compacto no mobile */
         .liga-tab { font-size: 12px; padding: 6px 12px; flex-direction: row; min-width: unset; gap: 5px; }
         .liga-tab .liga-img      { display: none; }
@@ -837,146 +837,9 @@
                  onerror="this.style.display='none'">
         </div>
 
-        <!-- Extras do header (dropdown) -->
-        <div id="header-extras" style="display:none;position:absolute;right:0;top:100%;flex-direction:column;gap:8px;
-             background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;
-             z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.6);min-width:260px">
-
-        <!-- Botão renovar licença — dropdown com 4 planos -->
-        <div id="btn-renovar-licenca" style="display:none;position:relative;align-items:center;flex-shrink:0">
-            <button id="btn-renovar-trigger" onclick="_toggleRenovMenu(event)"
-                    style="display:flex;align-items:center;gap:5px;height:32px;
-                           background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.3);
-                           border-radius:6px;padding:0 11px;color:#38bdf8;
-                           font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;
-                           transition:background .15s"
-                    onmouseover="this.style.background='rgba(14,165,233,.22)'"
-                    onmouseout="this.style.background='rgba(14,165,233,.12)'">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                Renovar ▾
-            </button>
-            <div id="renovar-dropdown" style="display:none;position:absolute;top:36px;right:0;
-                                              background:#1e293b;border:1px solid #334155;
-                                              border-radius:8px;padding:6px;min-width:170px;
-                                              z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.5)">
-                <a href="https://pay.kirvano.com/63be7245-d815-45bb-9186-c36811239d15" target="_blank" rel="noopener"
-                   style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
-                          border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
-                          transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
-                    <span>🔄 Mensal</span><span style="color:#64748b;font-size:11px">R$35</span>
-                </a>
-                <a href="https://pay.kirvano.com/4f209a78-5cd3-4796-a2d4-cec7efee89a0" target="_blank" rel="noopener"
-                   style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
-                          border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
-                          transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
-                    <span>🔄 Trimestral</span><span style="color:#64748b;font-size:11px">R$90</span>
-                </a>
-                <a href="https://pay.kirvano.com/b70fd392-a615-4dad-afb4-c4c0e0f25f9f" target="_blank" rel="noopener"
-                   style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
-                          border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
-                          transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
-                    <span>🔄 Semestral</span><span style="color:#64748b;font-size:11px">R$168</span>
-                </a>
-                <a href="https://pay.kirvano.com/fc27fc51-1002-4a10-9501-d57c3056e2ae" target="_blank" rel="noopener"
-                   style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
-                          border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
-                          transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
-                    <span>🔄 Anual</span><span style="color:#64748b;font-size:11px">R$300</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- Badge de tipo + licença do usuário -->
-        <div id="licenca-badge">
-            <div class="lic-bloco" id="lic-bloco-tipo" style="background:rgba(31,204,89,.08)">
-                <span class="lic-label">Perfil</span>
-                <span class="lic-tipo" id="licenca-tipo">—</span>
-            </div>
-            <div class="lic-sep"></div>
-            <div class="lic-bloco" id="lic-bloco-periodo" style="background:rgba(31,204,89,.05)">
-                <span class="lic-label">Licença</span>
-                <span class="lic-periodo" id="licenca-data">—</span>
-            </div>
-        </div>
-
-        <!-- Theme Picker -->
-        <div style="position:relative;flex-shrink:0">
-            <button id="theme-btn" onclick="toggleThemePicker()" title="Escolher tema da interface"
-                style="display:flex;align-items:center;gap:5px;padding:5px 10px;height:32px;
-                       background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
-                       font-size:11px;font-weight:700;color:#94a3b8;transition:background .15s;white-space:nowrap"
-                onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
-                <span style="font-size:14px">🎨</span><span class="theme-btn-nome"> Temas</span>
-            </button>
-            <div id="theme-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 6px);
-                 background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 10px 8px;
-                 box-shadow:0 8px 24px rgba(0,0,0,.7);z-index:300;min-width:170px">
-                <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.05em">TEMA DA INTERFACE</div>
-                <div id="theme-options"></div>
-            </div>
-        </div>
-
-        <!-- Chat ao Vivo -->
-        <button id="chat-btn" onclick="toggleChat()" title="Chat ao vivo"
-            style="display:flex;align-items:center;gap:5px;padding:5px 10px;height:32px;
-                   background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
-                   font-size:11px;font-weight:700;color:#94a3b8;transition:background .15s;white-space:nowrap;position:relative"
-            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
-            <span style="font-size:14px">💬</span> Chat
-            <span id="chat-badge" style="display:none;position:absolute;top:-4px;right:-4px;
-                background:#ef4444;color:#fff;font-size:8px;font-weight:700;
-                border-radius:8px;padding:1px 4px;min-width:14px;text-align:center"></span>
-        </button>
-
-        <!-- Instagram -->
-        <a class="wa-header-btn" id="btn-instagram"
-           href="https://www.instagram.com/radar_dabet?igsh=MTNjeHd1dmVrcDdoNw=="
-           target="_blank" rel="noopener noreferrer" title="Radar da Bet no Instagram">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none">
-                <defs>
-                    <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
-                        <stop offset="0%"   stop-color="#f09433"/>
-                        <stop offset="25%"  stop-color="#e6683c"/>
-                        <stop offset="50%"  stop-color="#dc2743"/>
-                        <stop offset="75%"  stop-color="#cc2366"/>
-                        <stop offset="100%" stop-color="#bc1888"/>
-                    </linearGradient>
-                </defs>
-                <rect x="2" y="2" width="20" height="20" rx="6" ry="6" fill="url(#ig-grad)"/>
-                <rect x="7" y="7" width="10" height="10" rx="3" ry="3" fill="none" stroke="#fff" stroke-width="1.5"/>
-                <circle cx="12" cy="12" r="2.8" fill="none" stroke="#fff" stroke-width="1.5"/>
-                <circle cx="17.2" cy="6.8" r="1" fill="#fff"/>
-            </svg>
-            <span>Instagram</span>
-        </a>
-
-        <!-- WhatsApp Admin -->
-        <a class="wa-header-btn"
-           href="https://api.whatsapp.com/send/?phone=5548985002773&text=Ol%C3%A1%21+Quero+falar+com+o+Suporte.&type=phone_number&app_absent=0"
-           target="_blank" rel="noopener noreferrer" title="Falar com o Suporte via WhatsApp">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#25d366">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.524 5.823L.057 23.885a.5.5 0 0 0 .606.61l6.198-1.437A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.878 9.878 0 0 1-5.032-1.376l-.36-.214-3.733.865.934-3.618-.235-.372A9.865 9.865 0 0 1 2.1 12C2.1 6.533 6.533 2.1 12 2.1S21.9 6.533 21.9 12 17.467 21.9 12 21.9z"/>
-            </svg>
-            <span>Suporte</span>
-        </a>
-
-        </div><!-- /header-extras -->
 
         <!-- Liga tabs inline -->
         <div id="liga-tabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 0;justify-content:center;flex:1;min-width:0;align-self:center"></div>
-
-        <!-- Extras dropdown trigger — antes do user menu -->
-        <div style="position:relative;flex-shrink:0">
-            <button id="header-toggle-btn" onclick="toggleHeaderExtras(event)" title="Informações e ações"
-                style="display:flex;align-items:center;gap:6px;height:32px;padding:0 11px;
-                       background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
-                       font-size:11px;font-weight:700;color:#94a3b8;transition:background .15s;white-space:nowrap"
-                onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
-                <span style="font-size:13px;line-height:1">☰</span>
-                <span style="font-size:9px;color:#475569">▾</span>
-            </button>
-        </div>
 
         <!-- User menu -->
         <div style="position:relative;flex-shrink:0" id="user-menu-wrap">
@@ -994,7 +857,7 @@
             <div id="user-dropdown"
                 style="display:none;position:absolute;right:0;top:calc(100% + 6px);
                        background:#0f172a;border:1px solid #1e293b;border-radius:8px;
-                       min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:200;overflow:hidden">
+                       min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:200;overflow:visible">
                 <div style="padding:10px 14px;border-bottom:1px solid #1e293b">
                     <div style="font-size:12px;font-weight:700;color:#e2e8f0" id="dd-nome">—</div>
                     <div style="font-size:10px;color:#475569" id="dd-usuario">—</div>
@@ -1044,6 +907,108 @@
                     onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
                     🟢 Usuários Online
                 </button>
+
+                <!-- Extras do usuário -->
+                <div style="border-top:1px solid #1e293b"></div>
+
+                <div id="btn-renovar-licenca" style="display:none;position:relative">
+                    <button id="btn-renovar-trigger" onclick="_toggleRenovMenu(event)"
+                        style="width:100%;background:none;border:none;color:#38bdf8;font-size:12px;
+                               padding:9px 14px;text-align:left;cursor:pointer;display:flex;
+                               align-items:center;justify-content:space-between"
+                        onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                        <span style="display:flex;align-items:center;gap:8px">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Renovar
+                        </span>
+                        <span style="font-size:9px;color:#475569">&#9660;</span>
+                    </button>
+                    <div id="renovar-dropdown" style="display:none;position:absolute;left:0;top:100%;
+                                                      background:#1e293b;border:1px solid #334155;
+                                                      border-radius:8px;padding:6px;min-width:220px;
+                                                      z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.5)">
+                        <a href="https://pay.kirvano.com/63be7245-d815-45bb-9186-c36811239d15" target="_blank" rel="noopener"
+                           style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+                                  border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
+                                  transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
+                            <span>&#128260; Mensal</span><span style="color:#64748b;font-size:11px">R$35</span>
+                        </a>
+                        <a href="https://pay.kirvano.com/4f209a78-5cd3-4796-a2d4-cec7efee89a0" target="_blank" rel="noopener"
+                           style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+                                  border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
+                                  transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
+                            <span>&#128260; Trimestral</span><span style="color:#64748b;font-size:11px">R$90</span>
+                        </a>
+                        <a href="https://pay.kirvano.com/b70fd392-a615-4dad-afb4-c4c0e0f25f9f" target="_blank" rel="noopener"
+                           style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+                                  border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
+                                  transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
+                            <span>&#128260; Semestral</span><span style="color:#64748b;font-size:11px">R$168</span>
+                        </a>
+                        <a href="https://pay.kirvano.com/fc27fc51-1002-4a10-9501-d57c3056e2ae" target="_blank" rel="noopener"
+                           style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;
+                                  border-radius:5px;color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;
+                                  transition:background .12s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='transparent'">
+                            <span>&#128260; Anual</span><span style="color:#64748b;font-size:11px">R$300</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div style="position:relative">
+                    <button id="theme-btn" onclick="toggleThemePicker()"
+                        style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
+                               padding:9px 14px;text-align:left;cursor:pointer;display:flex;gap:8px;align-items:center"
+                        onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                        <span style="font-size:14px">&#127912;</span><span class="theme-btn-nome"> Temas</span>
+                    </button>
+                    <div id="theme-dropdown" style="display:none;position:absolute;left:0;top:100%;
+                         background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 10px 8px;
+                         box-shadow:0 8px 24px rgba(0,0,0,.7);z-index:300;min-width:200px">
+                        <div style="font-size:10px;font-weight:700;color:#475569;margin-bottom:8px;letter-spacing:.05em">TEMA DA INTERFACE</div>
+                        <div id="theme-options"></div>
+                    </div>
+                </div>
+
+                <button id="chat-btn" onclick="toggleChat()"
+                    style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:flex;gap:8px;align-items:center;position:relative"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    <span style="font-size:14px">&#128172;</span> Chat
+                    <span id="chat-badge" style="display:none;position:absolute;top:4px;right:10px;
+                        background:#ef4444;color:#fff;font-size:8px;font-weight:700;
+                        border-radius:8px;padding:1px 4px;min-width:14px;text-align:center"></span>
+                </button>
+
+                <a id="btn-instagram" href="https://www.instagram.com/radar_dabet?igsh=MTNjeHd1dmVrcDdoNw=="
+                   target="_blank" rel="noopener noreferrer"
+                   style="display:flex;align-items:center;gap:8px;color:#e879c0;font-size:12px;font-weight:600;
+                          padding:9px 14px;text-decoration:none;background:none;transition:background .15s"
+                   onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <defs><linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#f09433"/><stop offset="25%" stop-color="#e6683c"/>
+                            <stop offset="50%" stop-color="#dc2743"/><stop offset="75%" stop-color="#cc2366"/>
+                            <stop offset="100%" stop-color="#bc1888"/>
+                        </linearGradient></defs>
+                        <rect x="2" y="2" width="20" height="20" rx="6" ry="6" fill="url(#ig-grad)"/>
+                        <rect x="7" y="7" width="10" height="10" rx="3" ry="3" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        <circle cx="12" cy="12" r="2.8" fill="none" stroke="#fff" stroke-width="1.5"/>
+                        <circle cx="17.2" cy="6.8" r="1" fill="#fff"/>
+                    </svg>
+                    Instagram
+                </a>
+
+                <a href="https://api.whatsapp.com/send/?phone=5548985002773&text=Ol%C3%A1%21+Quero+falar+com+o+Suporte.&type=phone_number&app_absent=0"
+                   target="_blank" rel="noopener noreferrer"
+                   style="display:flex;align-items:center;gap:8px;color:#25d366;font-size:12px;font-weight:600;
+                          padding:9px 14px;text-decoration:none;background:none;transition:background .15s"
+                   onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#25d366">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.524 5.823L.057 23.885a.5.5 0 0 0 .606.61l6.198-1.437A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.878 9.878 0 0 1-5.032-1.376l-.36-.214-3.733.865.934-3.618-.235-.372A9.865 9.865 0 0 1 2.1 12C2.1 6.533 6.533 2.1 12 2.1S21.9 6.533 21.9 12 17.467 21.9 12 21.9z"/>
+                    </svg>
+                    Suporte
+                </a>
                 <button onclick="fazerLogout()"
                     style="width:100%;background:none;border:none;color:#f87171;font-size:12px;
                            padding:9px 14px;text-align:left;cursor:pointer;display:flex;gap:8px;align-items:center;
@@ -1076,6 +1041,12 @@
         </div>
     </div>
 </header>
+<!-- ghost: mantém licenca-badge no DOM para JS do renovar -->
+<div id="licenca-badge" style="position:absolute;top:-9999px;left:-9999px;width:0;height:0;overflow:hidden;pointer-events:none">
+    <div id="lic-bloco-tipo"><span class="lic-tipo" id="licenca-tipo"></span></div>
+    <div class="lic-sep"></div>
+    <div id="lic-bloco-periodo"><span class="lic-periodo" id="licenca-data"></span></div>
+</div>
 
 <!-- ========== MODAL: PERFIL ========== -->
 <div class="modal-overlay" id="modal-perfil">
@@ -12966,22 +12937,30 @@ function _initUserMenu() {
                 if (_dias < 0)       { _perCor = '#f87171'; _perBg = 'rgba(248,113,113,.08)'; _brd = 'rgba(248,113,113,.3)'; _title = 'Licença expirada'; }
                 else if (_dias <= 7) { _perCor = '#f97316'; _perBg = 'rgba(249,115,22,.08)';  _brd = 'rgba(249,115,22,.3)';  _title = `Expira em ${_dias} dia(s)!`; }
                 else                 { _perCor = '#1fcc59'; _perBg = 'rgba(31,204,89,.05)';   _brd = '#1e293b';              _title = `Válida por mais ${_dias} dia(s)`; }
-                const _btnRenov = document.getElementById('btn-renovar-licenca');
-                const _btnRenovTrig = document.getElementById('btn-renovar-trigger');
-                if (_btnRenov) {
-                    _btnRenov.style.display = 'flex';
-                    if (_dias <= 7 && _btnRenovTrig) {
-                        _btnRenovTrig.style.background  = 'rgba(239,68,68,.15)';
-                        _btnRenovTrig.style.borderColor = 'rgba(239,68,68,.5)';
-                        _btnRenovTrig.style.color       = '#f87171';
-                    }
-                }
+
             }
             _dataEl.style.color = _perCor;
             if (_blocoPer) _blocoPer.style.background = _perBg;
             _badgeEl.style.borderColor = _brd;
             _badgeEl.title = _title;
             _badgeEl.style.display = 'flex';
+        }
+    }
+
+    // btn-renovar no user-dropdown
+    if (!_isMasterUser && u.DataFimLicenca) {
+        const _fimRV = (() => { const p = u.DataFimLicenca.split('T')[0].split('-'); return new Date(+p[0],+p[1]-1,+p[2]); })();
+        const _hojeRV = new Date(); _hojeRV.setHours(0,0,0,0);
+        const _diasRV = Math.ceil((_fimRV - _hojeRV) / 86400000);
+        const _btnRenov = document.getElementById('btn-renovar-licenca');
+        const _btnRenovTrig = document.getElementById('btn-renovar-trigger');
+        if (_btnRenov) {
+            _btnRenov.style.display = 'flex';
+            if (_diasRV <= 7 && _btnRenovTrig) {
+                _btnRenovTrig.style.background  = 'rgba(239,68,68,.15)';
+                _btnRenovTrig.style.borderColor = 'rgba(239,68,68,.5)';
+                _btnRenovTrig.style.color       = '#f87171';
+            }
         }
     }
 
@@ -13018,7 +12997,19 @@ function _initUserMenu() {
 
 function toggleUserMenu() {
     const dd = document.getElementById('user-dropdown');
-    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    const aberto = dd.style.display === 'block';
+    dd.style.display = aberto ? 'none' : 'block';
+    if (!aberto) {
+        setTimeout(() => {
+            document.addEventListener('click', function _fecharUserMenu(ev) {
+                const wrap = document.getElementById('user-menu-wrap');
+                if (!wrap || !wrap.contains(ev.target)) {
+                    dd.style.display = 'none';
+                    document.removeEventListener('click', _fecharUserMenu);
+                }
+            });
+        }, 0);
+    }
 }
 
 function toggleMosaicoExtras() {
@@ -13039,26 +13030,6 @@ function toggleMosaicoExtras() {
     }
 }());
 
-function toggleHeaderExtras(e) {
-    if (e) e.stopPropagation();
-    const extras = document.getElementById('header-extras');
-    if (!extras) return;
-    const aberto = extras.style.display === 'flex';
-    if (aberto) {
-        extras.style.display = 'none';
-        return;
-    }
-    extras.style.display = 'flex';
-    setTimeout(() => {
-        document.addEventListener('click', function _fecharHeaderExtras(ev) {
-            const btn = document.getElementById('header-toggle-btn');
-            if (!extras.contains(ev.target) && (!btn || !btn.contains(ev.target))) {
-                extras.style.display = 'none';
-                document.removeEventListener('click', _fecharHeaderExtras);
-            }
-        });
-    }, 0);
-}
 
 function toggleLinhaExtras() {
     const extras = document.getElementById('linha-extras');
