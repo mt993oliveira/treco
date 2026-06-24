@@ -982,16 +982,6 @@
 
         </div><!-- /header-extras -->
 
-        <!-- Liga tabs — inline na linha principal do header -->
-        <div id="liga-tabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 0;justify-content:center;flex:1;min-width:0;align-self:center"></div>
-
-        <!-- Botão ocultar/exibir extras do header -->
-        <button id="header-toggle-btn" onclick="toggleHeaderExtras()" title="Ocultar/exibir informações"
-            style="display:flex;align-items:center;justify-content:center;height:32px;padding:0 10px;gap:4px;
-                   background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
-                   font-size:11px;font-weight:700;color:#94a3b8;flex-shrink:0;transition:background .15s;white-space:nowrap"
-            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
-
         <!-- User menu -->
         <div style="position:relative;flex-shrink:0" id="user-menu-wrap">
             <button onclick="toggleUserMenu()" id="user-menu-btn"
@@ -1066,6 +1056,15 @@
                 </button>
             </div>
         </div>
+    </div>
+    <!-- Faixa de ligas + botão ocultar -->
+    <div style="display:flex;align-items:center;gap:6px;padding:0 16px 4px;background:#0a0f1e">
+        <div id="liga-tabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 0;justify-content:flex-start;flex:1;min-width:0"></div>
+        <button id="header-toggle-btn" onclick="toggleHeaderExtras()" title="Ocultar/exibir informações"
+            style="display:flex;align-items:center;justify-content:center;height:28px;padding:0 10px;gap:4px;
+                   background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
+                   font-size:11px;font-weight:700;color:#94a3b8;flex-shrink:0;transition:background .15s;white-space:nowrap"
+            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
     </div>
 </header>
 
