@@ -6810,6 +6810,11 @@ function renderGraficoGols() {
         }).join('');
     }
 
+    // Sub-painéis RSI e MACD — devem rodar em AMBOS os caminhos (update e criação)
+    const _rawAllGols = _todasGols.map(j => j.gol_casa + j.gol_fora);
+    _renderSubGrafRsi(_rawAllGols, _offsetGols, labels);
+    _renderSubGrafMacd(_rawAllGols, _offsetGols, labels);
+
     if (S._graficoGols && !S._graficoGols._vazio) {
         S._graficoGols.data.labels = labels;
         S._graficoGols.data.datasets = datasets;
@@ -6875,10 +6880,6 @@ function renderGraficoGols() {
         },
         plugins: [golsLabelPlugin, verticalLinesPlugin, watermarkPlugin]
     }); } catch(e) { console.error('renderGraficoGols error:', e); }
-    // Sub-painéis RSI e MACD — calculados sobre a série bruta (gols por jogo)
-    const _rawAllGols = _todasGols.map(j => j.gol_casa + j.gol_fora);
-    _renderSubGrafRsi(_rawAllGols, _offsetGols, labels);
-    _renderSubGrafMacd(_rawAllGols, _offsetGols, labels);
     requestAnimationFrame(_golsDrawInit);
 }
 
