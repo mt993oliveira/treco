@@ -1880,6 +1880,8 @@ const CONFIG_DEFAULTS = [
     // ── Gráfico — padrões dos botões ──
     { chave:'grafico_altura',       valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico: altura do painel (px; 80–600)' },
     { chave:'grafico_gols_altura',  valor:'260',   tipo:'number',  grupo:'grafico', descricao:'Gráfico de Gols: altura do painel (px; 80–600)' },
+    { chave:'grafico_rsi_altura',   valor:'110',   tipo:'number',  grupo:'grafico', descricao:'Gráfico RSI: altura do sub-painel (px; 60–400)' },
+    { chave:'grafico_macd_altura',  valor:'110',   tipo:'number',  grupo:'grafico', descricao:'Gráfico MACD: altura do sub-painel (px; 60–400)' },
     { chave:'grafico_linha_altura', valor:'300',   tipo:'number',  grupo:'grafico', descricao:'Gráfico de Linha: altura do painel (px; 80–600)' },
     { chave:'grafico_pct',         valor:'false', tipo:'boolean', grupo:'grafico', descricao:'Gráfico: exibir % no final das linhas por padrão' },
     { chave:'grafico_topo_fundo',  valor:'false',   tipo:'boolean', grupo:'grafico', descricao:'Gráfico: marcar topo/fundo por padrão' },

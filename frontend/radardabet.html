@@ -2361,7 +2361,7 @@
                     <span style="font-size:9px;font-weight:700;color:#fb923c;letter-spacing:.07em">RSI(14)</span>
                     <span style="font-size:9px;color:#64748b">— gols por jogo bruto · <span style="color:rgba(239,68,68,0.8)">─ ─</span> 70 sobrecompra · <span style="color:rgba(74,222,128,0.8)">─ ─</span> 30 sobrevenda</span>
                 </div>
-                <div style="position:relative;height:110px"><canvas id="grafico-rsi"></canvas></div>
+                <div id="div-grafico-rsi" style="position:relative;height:110px"><canvas id="grafico-rsi"></canvas></div>
             </div>
             <!-- MACD sub-panel -->
             <div id="subgraf-macd-wrap" style="display:none;margin-top:10px">
@@ -2369,7 +2369,7 @@
                     <span style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.07em">MACD(12,26,9)</span>
                     <span style="font-size:9px;color:#64748b">— gols por jogo bruto · <span style="color:#60a5fa">— MACD</span> · <span style="color:#f59e0b">─ ─ Sinal</span> · <span style="color:#4ade80">█</span>/<span style="color:#ef4444">█</span> Histograma</span>
                 </div>
-                <div style="position:relative;height:110px"><canvas id="grafico-macd"></canvas></div>
+                <div id="div-grafico-macd" style="position:relative;height:110px"><canvas id="grafico-macd"></canvas></div>
             </div>
         </div>
     </div>
@@ -3596,6 +3596,12 @@ async function carregarConfigLigas(_tentativa) {
         S._grafGolsAltura = parseInt(cfg.grafico_gols_altura) || 260;
         { const gw = document.getElementById('grafico-gols')?.parentElement;
           if (gw) gw.style.height = S._grafGolsAltura + 'px'; }
+        S._grafRsiAltura  = parseInt(cfg.grafico_rsi_altura)  || 110;
+        { const gw = document.getElementById('div-grafico-rsi');
+          if (gw) gw.style.height = S._grafRsiAltura + 'px'; }
+        S._grafMacdAltura = parseInt(cfg.grafico_macd_altura) || 110;
+        { const gw = document.getElementById('div-grafico-macd');
+          if (gw) gw.style.height = S._grafMacdAltura + 'px'; }
         S._grafLinhaAltura = parseInt(cfg.grafico_linha_altura) || 300;
         { const gw = document.getElementById('div-grafico-linha');
           if (gw) gw.style.height = S._grafLinhaAltura + 'px'; }
@@ -4002,6 +4008,8 @@ const S = {
     _graficoLinha: null,
     _grafAltura:     300,
     _grafGolsAltura: 260,
+    _grafRsiAltura:  110,
+    _grafMacdAltura: 110,
     _chartCores:     {},
     _chartCoresGols: {},
     view:          'historico',
@@ -13449,6 +13457,8 @@ const _CFG_LABELS = {
     // Gráfico
     grafico_altura:      '📐 Altura do painel do gráfico (px)',
     grafico_gols_altura: '📐 Altura do painel do gráfico de gols (px)',
+    grafico_rsi_altura:  '📐 Altura do painel RSI (px)',
+    grafico_macd_altura: '📐 Altura do painel MACD (px)',
     grafico_linha_altura:'📐 Altura do painel do gráfico de linha (px)',
     grafico_pct:         '% Exibir valor % no final das linhas',
     grafico_pct_cor:     '% Cor do texto de porcentagem nas linhas',
