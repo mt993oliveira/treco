@@ -3651,6 +3651,23 @@ async function carregarConfigLigas(_tentativa) {
             }
         }
 
+        // Controla visibilidade dos botões 📊 RSI e 📉 MACD por tipo de usuário
+        {
+            const _u2 = _getUser();
+            const _tipo2 = (_u2?.TipoUsuario || '').toLowerCase();
+            const _isElev2 = _tipo2 === 'master' || _tipo2 === 'admin' || _tipo2 === 'administrador';
+            const _rsiMap  = { bronze: cfg.rsi_visivel_bronze,  prata: cfg.rsi_visivel_prata,  gold: cfg.rsi_visivel_gold,  premium: cfg.rsi_visivel_premium };
+            const _macdMap = { bronze: cfg.macd_visivel_bronze, prata: cfg.macd_visivel_prata, gold: cfg.macd_visivel_gold, premium: cfg.macd_visivel_premium };
+            const _showRsi  = _isElev2 || (_rsiMap[_tipo2]  === 'true');
+            const _showMacd = _isElev2 || (_macdMap[_tipo2] === 'true');
+            const _btnRsiEl  = document.getElementById('btn-gols-rsi');
+            const _btnMacdEl = document.getElementById('btn-gols-macd');
+            if (_btnRsiEl)  _btnRsiEl.style.display  = _showRsi  ? '' : 'none';
+            if (_btnMacdEl) _btnMacdEl.style.display = _showMacd ? '' : 'none';
+            if (!_showRsi  && S.grafGolsRSI)  { S.grafGolsRSI  = false; }
+            if (!_showMacd && S.grafGolsMACD) { S.grafGolsMACD = false; }
+        }
+
         // Aplica visibilidade das seções
         S._cfgSecoes = cfg;
         _aplicarConfigFrontend();
@@ -13421,6 +13438,14 @@ const _CFG_LABELS = {
     padroes_visivel_prata:      '📋 Padrões: exibir para 🥈 Prata',
     padroes_visivel_gold:       '📋 Padrões: exibir para 🥇 Gold',
     padroes_visivel_premium:    '📋 Padrões: exibir para 💎 Premium',
+    rsi_visivel_bronze:         '📊 RSI: exibir para 🥉 Bronze',
+    rsi_visivel_prata:          '📊 RSI: exibir para 🥈 Prata',
+    rsi_visivel_gold:           '📊 RSI: exibir para 🥇 Gold',
+    rsi_visivel_premium:        '📊 RSI: exibir para 💎 Premium',
+    macd_visivel_bronze:        '📉 MACD: exibir para 🥉 Bronze',
+    macd_visivel_prata:         '📉 MACD: exibir para 🥈 Prata',
+    macd_visivel_gold:          '📉 MACD: exibir para 🥇 Gold',
+    macd_visivel_premium:       '📉 MACD: exibir para 💎 Premium',
     // Gráfico
     grafico_altura:      '📐 Altura do painel do gráfico (px)',
     grafico_gols_altura: '📐 Altura do painel do gráfico de gols (px)',
