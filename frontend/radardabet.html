@@ -831,14 +831,16 @@
 <!-- ========== HEADER ========== -->
 <header style="background:#0a0f1e;border-bottom:1px solid #1e293b;padding:0;position:sticky;top:0;z-index:50">
     <!-- Linha 1: Logo + ações -->
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap;position:relative">
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <img src="/img/logo_principal.png" alt="Radar da Bet" style="height:80px;min-width:340px;object-fit:contain;object-position:left center;flex-shrink:0"
                  onerror="this.style.display='none'">
         </div>
 
-        <!-- Extras do header (ocultáveis) -->
-        <div id="header-extras" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <!-- Extras do header (dropdown) -->
+        <div id="header-extras" style="display:none;position:absolute;right:0;top:100%;flex-direction:column;gap:8px;
+             background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;
+             z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.6);min-width:260px">
 
         <!-- Botão renovar licença — dropdown com 4 planos -->
         <div id="btn-renovar-licenca" style="display:none;position:relative;align-items:center;flex-shrink:0">
@@ -925,27 +927,6 @@
                 background:#ef4444;color:#fff;font-size:8px;font-weight:700;
                 border-radius:8px;padding:1px 4px;min-width:14px;text-align:center"></span>
         </button>
-
-        <!-- Painel de Chat -->
-        <div id="chat-panel" class="fechado">
-            <div id="chat-header" onclick="toggleChat()">
-                <span style="font-size:14px">💬</span>
-                <span style="font-size:12px;font-weight:700;color:#e2e8f0;flex:1">Chat ao Vivo</span>
-                <span id="chat-online" style="font-size:10px;color:#1fcc59"></span>
-                <span style="font-size:10px;color:#475569">▼</span>
-            </div>
-            <div id="chat-msgs"></div>
-            <div id="chat-input-row" style="position:relative">
-                <div id="chat-emoji-picker">
-                    <div id="chat-emoji-cats"></div>
-                    <div id="chat-emoji-grid"></div>
-                </div>
-                <textarea id="chat-input" placeholder="Digite uma mensagem..." maxlength="500"
-                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatEnviar()}"></textarea>
-                <button id="chat-emoji-btn" onclick="_chatToggleEmojiPicker(event)" title="Emojis">😊</button>
-                <button id="chat-send" onclick="chatEnviar()">Enviar</button>
-            </div>
-        </div>
 
         <!-- Instagram -->
         <a class="wa-header-btn" id="btn-instagram"
@@ -1060,12 +1041,37 @@
             </div>
         </div>
 
-        <!-- Botão ocultar — após o user menu, separado das ligas -->
-        <button id="header-toggle-btn" onclick="toggleHeaderExtras()" title="Ocultar/exibir informações"
-            style="display:flex;align-items:center;justify-content:center;height:32px;padding:0 10px;gap:4px;
-                   background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
-                   font-size:11px;font-weight:700;color:#94a3b8;flex-shrink:0;transition:background .15s;white-space:nowrap"
-            onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
+        <!-- Extras dropdown trigger -->
+        <div style="position:relative;flex-shrink:0">
+            <button id="header-toggle-btn" onclick="toggleHeaderExtras(event)" title="Informações e ações"
+                style="display:flex;align-items:center;gap:6px;height:32px;padding:0 11px;
+                       background:#1e293b;border:1px solid #334155;border-radius:6px;cursor:pointer;
+                       font-size:11px;font-weight:700;color:#94a3b8;transition:background .15s;white-space:nowrap"
+                onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">
+                <span style="font-size:13px;line-height:1">☰</span>
+                <span style="font-size:9px;color:#475569">▾</span>
+            </button>
+        </div>
+    </div>
+    <!-- Chat panel (position:fixed — fora do header-extras para não ser afetado pelo toggle) -->
+    <div id="chat-panel" class="fechado">
+        <div id="chat-header" onclick="toggleChat()">
+            <span style="font-size:14px">💬</span>
+            <span style="font-size:12px;font-weight:700;color:#e2e8f0;flex:1">Chat ao Vivo</span>
+            <span id="chat-online" style="font-size:10px;color:#1fcc59"></span>
+            <span style="font-size:10px;color:#475569">▼</span>
+        </div>
+        <div id="chat-msgs"></div>
+        <div id="chat-input-row" style="position:relative">
+            <div id="chat-emoji-picker">
+                <div id="chat-emoji-cats"></div>
+                <div id="chat-emoji-grid"></div>
+            </div>
+            <textarea id="chat-input" placeholder="Digite uma mensagem..." maxlength="500"
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatEnviar()}"></textarea>
+            <button id="chat-emoji-btn" onclick="_chatToggleEmojiPicker(event)" title="Emojis">😊</button>
+            <button id="chat-send" onclick="chatEnviar()">Enviar</button>
+        </div>
     </div>
 </header>
 
@@ -13023,23 +13029,26 @@ function toggleMosaicoExtras() {
     }
 }());
 
-function toggleHeaderExtras() {
+function toggleHeaderExtras(e) {
+    if (e) e.stopPropagation();
     const extras = document.getElementById('header-extras');
-    const btn    = document.getElementById('header-toggle-btn');
-    const oculto = extras.style.display === 'none';
-    extras.style.display = oculto ? 'flex' : 'none';
-    btn.textContent = oculto ? '‹ Ocultar' : '› Mostrar';
-    _prefSave('headerExtrasOculto', oculto ? '0' : '1');
-}
-
-(function initHeaderExtras() {
-    if (localStorage.getItem('headerExtrasOculto') === '1') {
-        const extras = document.getElementById('header-extras');
-        const btn    = document.getElementById('header-toggle-btn');
-        if (extras) extras.style.display = 'none';
-        if (btn)    btn.textContent = '› Mostrar';
+    if (!extras) return;
+    const aberto = extras.style.display === 'flex';
+    if (aberto) {
+        extras.style.display = 'none';
+        return;
     }
-}());
+    extras.style.display = 'flex';
+    setTimeout(() => {
+        document.addEventListener('click', function _fecharHeaderExtras(ev) {
+            const btn = document.getElementById('header-toggle-btn');
+            if (!extras.contains(ev.target) && (!btn || !btn.contains(ev.target))) {
+                extras.style.display = 'none';
+                document.removeEventListener('click', _fecharHeaderExtras);
+            }
+        });
+    }, 0);
+}
 
 function toggleLinhaExtras() {
     const extras = document.getElementById('linha-extras');
