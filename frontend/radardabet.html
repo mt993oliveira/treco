@@ -2459,6 +2459,12 @@
                        font-size:11px;font-weight:700;color:#64748b;flex-shrink:0;transition:background .15s;white-space:nowrap"
                 onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">‹ Ocultar</button>
             <span id="mosaico-sync-ts" style="font-size:10px;color:#475569;white-space:nowrap" title="Última vez que o mosaico foi redesenhado"></span>
+            <button onclick="carregarHistorico()" title="Atualizar mosaico agora"
+                style="display:flex;align-items:center;justify-content:center;height:22px;width:22px;padding:0;
+                       background:none;border:1px solid #334155;border-radius:4px;cursor:pointer;
+                       font-size:12px;color:#475569;flex-shrink:0;transition:color .15s,border-color .15s"
+                onmouseover="this.style.color='#4ade80';this.style.borderColor='#4ade80'"
+                onmouseout="this.style.color='#475569';this.style.borderColor='#334155'">↺</button>
             <span id="periodo-badge-mosaico" style="display:none"></span>
             <select id="periodo-mosaico" onchange="setSubViewPeriodo('mosaico',this.value)"
                 style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
