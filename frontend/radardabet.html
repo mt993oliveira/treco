@@ -3752,9 +3752,9 @@ async function _aplicarConfigFrontend() {
         });
         if (c.default_open_mercados !== undefined) S.showMercados = c.default_open_mercados === 'true';
 
-        // Tamanho do logo no header
+        // Tamanho do logo no header — apenas no desktop (mobile usa a media query CSS)
         const _logoEl = document.querySelector('img[alt="Radar da Bet"]');
-        if (_logoEl) {
+        if (_logoEl && window.innerWidth > 768) {
             if (c.logo_header_altura)  _logoEl.style.height    = (parseInt(c.logo_header_altura)  || 80)  + 'px';
             if (c.logo_header_largura) _logoEl.style.minWidth  = (parseInt(c.logo_header_largura) || 340) + 'px';
         }
