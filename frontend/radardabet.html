@@ -357,8 +357,6 @@
         #detalhe-stats, #detalhe-filtros { min-width: 0 !important; width: 100% !important; }
         /* Conteúdo não vaza horizontalmente */
         #main-wrap { overflow-x: hidden; }
-        /* Multi-views: 1 coluna no mobile (evita ligas cortadas à direita) */
-        #multi-grid, #mgols-grid, #mlinha-grid { grid-template-columns: 1fr !important; }
     }
     @media (max-width: 480px) {
         body { font-size: 12px; }
@@ -2522,7 +2520,7 @@
         <span style="font-size:10px;color:#334155">• mesma base para as 4 ligas</span>
     </div>
     <!-- Grid 2x2 -->
-    <div id="multi-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div id="multi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:10px">
         <div id="multi-c0"></div>
         <div id="multi-c1"></div>
         <div id="multi-c2"></div>
@@ -2557,7 +2555,7 @@
         </select>
         <span style="font-size:10px;color:#334155">• média móvel por liga</span>
     </div>
-    <div id="mgols-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div id="mgols-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:10px">
         <div id="mgols-c0"></div>
         <div id="mgols-c1"></div>
         <div id="mgols-c2"></div>
@@ -2587,7 +2585,7 @@
         </select>
         <span style="font-size:10px;color:#334155">• taxa de acerto por liga</span>
     </div>
-    <div id="mlinha-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div id="mlinha-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:10px">
         <div id="mlinha-c0"></div>
         <div id="mlinha-c1"></div>
         <div id="mlinha-c2"></div>
