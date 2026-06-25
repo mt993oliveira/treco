@@ -7266,7 +7266,7 @@ function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
                 <span style="font-size:10px;font-weight:700;color:${fiCor};margin-left:8px;background:${fiCor}22;border:1px solid ${fiCor}66;border-radius:4px;padding:1px 6px">${fiLabel}</span>
             </div>
             <div style="display:flex;gap:6px;align-items:center">
-                <span style="font-size:13px;font-weight:900;color:${corPctV}">VERDE ${pctV}%</span>
+                <span style="font-size:13px;font-weight:900;color:${corPctV}">GREEN ${pctV}%</span>
                 <span style="font-size:11px;color:#334155">|</span>
                 <span style="font-size:13px;font-weight:900;color:${corPctR}">${pctR}% RED</span>
                 <span style="font-size:10px;color:#334155;margin-left:2px">${total}j</span>
@@ -7487,7 +7487,12 @@ function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
     });
     const idx = MULTI_LIGAS.findIndex(l => l.key === ligaKey);
     const statEl = document.getElementById(`mlinha-stat-${idx}`);
-    if (statEl) statEl.textContent = `${fi.label}: ${pctGeral}%`;
+    if (statEl) {
+        const _pctR    = 100 - pctGeral;
+        const _corG    = pctGeral >= 55 ? '#4ade80' : pctGeral >= 45 ? '#fbbf24' : '#f87171';
+        const _corR    = _pctR   >= 55 ? '#f87171' : _pctR   >= 45 ? '#fbbf24' : '#94a3b8';
+        statEl.innerHTML = `<span style="font-weight:900;color:${_corG}">GREEN ${pctGeral}%</span><span style="color:#334155;margin:0 4px">|</span><span style="font-weight:900;color:${_corR}">${_pctR}% RED</span>`;
+    }
     const cor = fi.cor;
     const vals = pctSlice.filter(v => isFinite(v));
     const yMin = vals.length ? Math.max(0, Math.floor(Math.min(...vals)/10)*10-5) : 0;
