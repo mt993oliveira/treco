@@ -7397,18 +7397,22 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
     const statEl = document.getElementById(`mgols-stat-${idx}`);
     if (statEl) statEl.textContent = `Média: ${mediaGeral}/jogo`;
     const cor = fi.cor;
-    const vals = rollingSlice.filter(v => isFinite(v));
-    const yMin = vals.length ? Math.max(0, +(Math.min(...vals) - 0.5).toFixed(1)) : 0;
-    const yMax = vals.length ? +(Math.max(...vals) + 0.5).toFixed(1) : 5;
+    const golsSlice = golsAll.slice(offset);
+    const rawMax = golsSlice.length ? Math.max(...golsSlice) : 5;
+    const yMin = 0;
+    const yMax = Math.max(6, rawMax + 1);
     const chart = new Chart(canvasEl.getContext('2d'), {
-        type: 'line',
+        type: 'bar',
         data: { labels, datasets: [
-            { label:`~${mediaGeral}`, data: rollingSlice.map(()=>mediaGeral),
-              borderColor: cor+'50', backgroundColor:'transparent',
+            { type:'line', label:`MM${JANELA} ${mediaGeral}/j`, data: rollingSlice,
+              borderColor: cor, backgroundColor:'transparent',
+              borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:0.3, _isMA:true },
+            { type:'line', label:`~${mediaGeral}`, data: golsSlice.map(()=>mediaGeral),
+              borderColor: cor+'55', backgroundColor:'transparent',
               borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
-            { label:`${fi.label} ${mediaGeral}/j`, data: rollingSlice,
-              borderColor: cor, backgroundColor: cor+'15',
-              borderWidth:2, pointRadius:0, pointHoverRadius:4, fill:true, tension:0.3 }
+            { label:`${fi.label}`, data: golsSlice,
+              backgroundColor: cor+'70', borderColor: cor,
+              borderWidth:1, borderRadius:2 }
         ]},
         plugins: [_makeSyncPlugin('mgols')],
         options: {
@@ -7426,7 +7430,7 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
             scales:{
                 x:{ display:false },
                 y:{ min:yMin, max:yMax,
-                    ticks:{ color:_tickCMini, font:{size:9} },
+                    ticks:{ color:_tickCMini, font:{size:9}, stepSize:1 },
                     grid:{ color:_gridCMini, lineWidth:0.5 },
                     border:{ color:'#334155' } }
             }
