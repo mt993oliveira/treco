@@ -2462,6 +2462,7 @@
                 style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:110px"></select>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
+            <span id="mosaico-green-red" style="font-size:12px;font-weight:900;white-space:nowrap"></span>
             <button id="mosaico-toggle-btn" onclick="toggleMosaicoExtras()" title="Ocultar/exibir opções"
                 style="display:flex;align-items:center;justify-content:center;height:26px;padding:0 8px;gap:4px;
                        background:#1e293b;border:1px solid #334155;border-radius:5px;cursor:pointer;
@@ -7703,6 +7704,22 @@ function renderTabela() {
     const gs = grupos(S.horasMosaico, S.jogosMosaico);
     const fi = TODOS_FILTROS.find(f => f.id === S.filtroMosaico) || TODOS_FILTROS.find(f => S.linhas[f.id]) || null;
     const gridCores = carregarCoresGrid();
+
+    // GREEN % / RED % do mosaico — baseado nos jogos com resultado do período atual
+    const _mGREl = document.getElementById('mosaico-green-red');
+    if (_mGREl) {
+        const _comResult = (S.partidas || []).filter(j => j.gol_casa != null && j.gol_fora != null);
+        if (fi && _comResult.length) {
+            const _hits = _comResult.filter(j => checa(j, fi.id)).length;
+            const _pctG = Math.round(_hits / _comResult.length * 100);
+            const _pctR = 100 - _pctG;
+            const _corG = _pctG >= 55 ? '#4ade80' : _pctG >= 45 ? '#fbbf24' : '#f87171';
+            const _corR = _pctR >= 55 ? '#f87171' : _pctR >= 45 ? '#fbbf24' : '#94a3b8';
+            _mGREl.innerHTML = `<span style="color:${_corG}">GREEN ${_pctG}%</span><span style="color:#334155;margin:0 5px">|</span><span style="color:${_corR}">${_pctR}% RED</span>`;
+        } else {
+            _mGREl.innerHTML = '';
+        }
+    }
     const corOdd = v => v <= 0 ? '#64748b' : v < 2.0 ? gridCores.oddFav : v < 3.0 ? gridCores.oddMed : gridCores.oddAzarao;
 
     const thead = document.getElementById('tbl-head');
