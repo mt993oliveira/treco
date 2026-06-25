@@ -7395,12 +7395,14 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
         }
     };
     const golsAll = all.map(_extractG);
-    const rollingAll = golsAll.map((_, i) => {
+    // Rolling SUM igual ao gráfico de gols principal
+    const rolSumAll = golsAll.map((_, i) => {
         const sl = golsAll.slice(Math.max(0, i - JANELA + 1), i + 1);
-        return +(sl.reduce((a,b) => a+b, 0) / sl.length).toFixed(2);
+        return sl.reduce((a,b) => a+b, 0);
     });
-    const rollingSlice = rollingAll.slice(offset);
+    const rolSum = rolSumAll.slice(offset);
     const mediaGeral = serie.length ? +(golsAll.slice(offset).reduce((a,b)=>a+b,0)/serie.length).toFixed(2) : 0;
+    const refVal = Math.round(mediaGeral * JANELA);
     const labels = serie.map(p => {
         const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
@@ -7409,24 +7411,23 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
     const statEl = document.getElementById(`mgols-stat-${idx}`);
     if (statEl) statEl.textContent = `Média: ${mediaGeral}/jogo`;
     const cor = fi.cor;
-    const golsSlice = golsAll.slice(offset);
-    const rawMax = golsSlice.length ? Math.max(...golsSlice) : 5;
-    const yMin = 0;
-    const yMax = Math.max(6, rawMax + 1);
+    const vals = rolSum.filter(v => isFinite(v));
+    const yMin = vals.length ? Math.max(0, Math.floor(Math.min(...vals)/5)*5 - 2) : 0;
+    const yMax = vals.length ? Math.ceil(Math.max(...vals)/5)*5 + 2 : 50;
     const chart = new Chart(canvasEl.getContext('2d'), {
-        type: 'bar',
+        type: 'line',
         data: { labels, datasets: [
-            { type:'line', label:`MM${JANELA} ${mediaGeral}/j`, data: rollingSlice,
-              borderColor: cor, backgroundColor:'transparent',
-              borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:0.3, _isMA:true },
-            { type:'line', label:`~${mediaGeral}`, data: golsSlice.map(()=>mediaGeral),
+            { label:`~${refVal}`, data: rolSum.map(()=>refVal),
               borderColor: cor+'55', backgroundColor:'transparent',
               borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
-            { label:`${fi.label}`, data: golsSlice,
-              backgroundColor: cor+'70', borderColor: cor,
-              borderWidth:1, borderRadius:2 }
+            { label:`${fi.label} soma${JANELA}j`, data: rolSum,
+              borderColor: cor, backgroundColor:'transparent',
+              borderWidth:2,
+              pointRadius:3, pointHoverRadius:6,
+              pointBackgroundColor: cor, pointBorderWidth:1,
+              tension:0.2 }
         ]},
-        plugins: [_makeSyncPlugin('mgols')],
+        plugins: [golsLabelPlugin, _makeSyncPlugin('mgols')],
         options: {
             responsive:true, maintainAspectRatio:false, animation:false,
             interaction:{ intersect:false, mode:'index' },
@@ -7442,7 +7443,7 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
             scales:{
                 x:{ display:false },
                 y:{ min:yMin, max:yMax,
-                    ticks:{ color:_tickCMini, font:{size:9}, stepSize:1 },
+                    ticks:{ color:_tickCMini, font:{size:9} },
                     grid:{ color:_gridCMini, lineWidth:0.5 },
                     border:{ color:'#334155' } }
             }
