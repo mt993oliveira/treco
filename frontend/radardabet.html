@@ -327,6 +327,9 @@
         #licenca-badge .lic-bloco  { padding: 5px 8px; }
     }
 
+    /* Células dos grids multi: permite comprimir com zoom */
+    #multi-grid > *, #mgols-grid > *, #mlinha-grid > * { min-width: 0; overflow: hidden; }
+
     /* ── RESPONSIVIDADE ───────────────────────────── */
     @media (max-width: 1100px) {
         img[alt="Radar da Bet"] { height: 54px !important; min-width: unset !important; max-width: 230px !important; width: auto !important; }
