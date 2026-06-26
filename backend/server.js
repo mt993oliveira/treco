@@ -80,11 +80,20 @@ app.use((req, res, next) => {
 });
 
 // Rate limit global por IP — barreira contra varredura e flood
+// Usuários autenticados (com cookie de sessão válido) são isentos — controlados por userRateLimit
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 2000,
     message: 'Muitas requisições a partir deste IP, tente novamente mais tarde.',
     standardHeaders: true,
+    skip: (req) => {
+        const token = req.cookies?.sess;
+        if (!token) return false;
+        for (const [, sess] of activeSessions.entries()) {
+            if (sess.token === token) return true;
+        }
+        return false;
+    },
     legacyHeaders: false,
 });
 app.use(limiter);
