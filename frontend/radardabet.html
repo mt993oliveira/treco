@@ -2561,7 +2561,9 @@
             <option value="gols-1t">Gols 1º Tempo</option>
             <option value="gols-2t">Gols 2º Tempo</option>
         </select>
-        <span style="font-size:10px;color:#334155">• média móvel por liga</span>
+        <button id="btn-mgols-modo"
+            onclick="S_multiGols.modo=S_multiGols.modo==='soma'?'media':'soma';document.getElementById('btn-mgols-modo').textContent=S_multiGols.modo==='soma'?'📊 Soma':'📈 Média';renderMultiGols()"
+            style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 10px;cursor:pointer;height:26px;outline:none">📊 Soma</button>
     </div>
     <div id="mgols-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div id="mgols-c0"></div>
@@ -7323,7 +7325,7 @@ function renderMultiHorarios() {
 // ============================================================
 // MULTI GOLS & MULTI LINHAS
 // ============================================================
-let S_multiGols  = { jogos: 200, metricaId: 'gols-total' };
+let S_multiGols  = { jogos: 200, metricaId: 'gols-total', modo: 'soma' };
 let S_multiLinha = { jogos: 200, filtroId:  'over2.5'    };
 const _mGolsCharts  = {};
 const _mLinhaCharts = {};
@@ -7401,14 +7403,7 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
         }
     };
     const golsAll = all.map(_extractG);
-    // Rolling SUM igual ao gráfico de gols principal
-    const rolSumAll = golsAll.map((_, i) => {
-        const sl = golsAll.slice(Math.max(0, i - JANELA + 1), i + 1);
-        return sl.reduce((a,b) => a+b, 0);
-    });
-    const rolSum = rolSumAll.slice(offset);
     const mediaGeral = serie.length ? +(golsAll.slice(offset).reduce((a,b)=>a+b,0)/serie.length).toFixed(2) : 0;
-    const refVal = Math.round(mediaGeral * JANELA);
     const labels = serie.map(p => {
         const d = new Date((p.data_partida+'').replace(' ','T').replace(/Z?$/,'Z'));
         return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
@@ -7417,12 +7412,21 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
     const statEl = document.getElementById(`mgols-stat-${idx}`);
     if (statEl) statEl.textContent = `Média: ${mediaGeral}/jogo`;
     const cor = fi.cor;
-    const vals = rolSum.filter(v => isFinite(v));
-    const yMin = vals.length ? Math.max(0, Math.floor(Math.min(...vals)/5)*5 - 2) : 0;
-    const yMax = vals.length ? Math.ceil(Math.max(...vals)/5)*5 + 2 : 50;
-    const chart = new Chart(canvasEl.getContext('2d'), {
-        type: 'line',
-        data: { labels, datasets: [
+    const modoAtual = S_multiGols.modo || 'soma';
+
+    let datasets, chartPlugins, yMin, yMax;
+    if (modoAtual === 'soma') {
+        // Rolling SUM igual ao gráfico de gols principal
+        const rolSumAll = golsAll.map((_, i) => {
+            const sl = golsAll.slice(Math.max(0, i - JANELA + 1), i + 1);
+            return sl.reduce((a,b) => a+b, 0);
+        });
+        const rolSum = rolSumAll.slice(offset);
+        const refVal = Math.round(mediaGeral * JANELA);
+        const vals = rolSum.filter(v => isFinite(v));
+        yMin = vals.length ? Math.max(0, Math.floor(Math.min(...vals)/5)*5 - 2) : 0;
+        yMax = vals.length ? Math.ceil(Math.max(...vals)/5)*5 + 2 : 50;
+        datasets = [
             { label:`~${refVal}`, data: rolSum.map(()=>refVal),
               borderColor: cor+'55', backgroundColor:'transparent',
               borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
@@ -7432,8 +7436,36 @@ function _renderMiniGolsChart(ligaKey, canvasEl, nJogos, metricaId) {
               pointRadius:3, pointHoverRadius:6,
               pointBackgroundColor: cor, pointBorderWidth:1,
               tension:0.2 }
-        ]},
-        plugins: [golsLabelPlugin, _makeSyncPlugin('mgols')],
+        ];
+        chartPlugins = [golsLabelPlugin, _makeSyncPlugin('mgols')];
+    } else {
+        // Rolling AVERAGE — linha suave com área preenchida
+        const rolAvgAll = golsAll.map((_, i) => {
+            const sl = golsAll.slice(Math.max(0, i - JANELA + 1), i + 1);
+            return +(sl.reduce((a,b) => a+b, 0) / sl.length).toFixed(3);
+        });
+        const rolAvg = rolAvgAll.slice(offset);
+        const vals = rolAvg.filter(v => isFinite(v));
+        yMin = 0;
+        yMax = vals.length ? +(Math.ceil((Math.max(...vals) + 0.5) * 2) / 2).toFixed(1) : 4;
+        datasets = [
+            { label:`${mediaGeral}/jogo`, data: rolAvg.map(()=>mediaGeral),
+              borderColor: cor+'55', backgroundColor:'transparent',
+              borderWidth:1, borderDash:[6,4], pointRadius:0, tension:0, _isRef:true },
+            { label:`${fi.label} méd${JANELA}j`, data: rolAvg,
+              borderColor: cor,
+              backgroundColor: cor+'28',
+              fill: true,
+              borderWidth:2, pointRadius:0, pointHoverRadius:5,
+              tension:0.4 }
+        ];
+        chartPlugins = [_makeSyncPlugin('mgols')];
+    }
+
+    const chart = new Chart(canvasEl.getContext('2d'), {
+        type: 'line',
+        data: { labels, datasets },
+        plugins: chartPlugins,
         options: {
             responsive:true, maintainAspectRatio:false, animation:false,
             interaction:{ intersect:false, mode:'index' },
