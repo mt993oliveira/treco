@@ -13490,11 +13490,82 @@ async function _carregarAlertasAbuso() {
     const fim = document.getElementById('ab-data-fim')?.value || hoje;
     el.innerHTML = `<div style="color:#475569;font-size:11px;padding:6px 0">Carregando...</div>`;
     const _abTag = (txt, cor) => `<span style="background:${cor}22;border:1px solid ${cor}55;color:${cor};border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;white-space:nowrap">${txt}</span>`;
-    const _abRow = (titulo, tags, detalhes) => `
-        <div style="padding:7px 0;border-bottom:1px solid #1e293b">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">${titulo} ${tags}</div>
-            <div style="font-size:10px;color:#64748b">${detalhes}</div>
+
+    const _abRelatorio = (r, tipo) => {
+        const rota = r.rota || '/api/bet365/historico-mercados';
+        const inc  = r.total_chamadas > 1 ? Math.round((r.horas_fim - r.horas_inicio) / (r.total_chamadas - 1) * 10) / 10 : '?';
+        const dur  = r.duracao_min != null ? `${r.duracao_min} minuto(s)` : '?';
+        if (tipo === 'escalada') return [
+            `🚨 RELATÓRIO DE RASPAGEM DE DADOS — RadarDaBet`,
+            ``,
+            `Usuário:      ${r.usuario} (${r.nome_completo || '?'}) — plano ${r.tipo_usuario || '?'}`,
+            `Conta desde:  ${r.desde || '?'}`,
+            `IP de origem: ${r.ip}`,
+            ``,
+            `Endpoint acessado: ${rota}`,
+            ``,
+            `Evidência de raspagem automatizada:`,
+            `  • ${r.total_chamadas} requisições em ${dur} (${r.primeira_vez} → ${r.ultima_vez} UTC)`,
+            `  • Parâmetro "horas" escalando: ${r.horas_inicio}h → ${r.horas_fim}h (+${inc}h por chamada)`,
+            `  • Variação total: ${r.variacao}h de histórico extraído`,
+            `  • Intervalo entre chamadas: < 1 segundo (impossível por uso humano normal)`,
+            ``,
+            `Conclusão: uso automatizado (bot/script) para extração sistemática de dados históricos.`,
+            `Isso viola os Termos de Uso da plataforma.`,
+            ``,
+            `— Gerado automaticamente pelo painel de segurança RadarDaBet`,
+        ].join('\n');
+        return [
+            `⚠️ RELATÓRIO DE VOLUME ANORMAL — RadarDaBet`,
+            ``,
+            `Usuário:      ${r.usuario} (${r.nome_completo || '?'}) — plano ${r.tipo_usuario || '?'}`,
+            `Conta desde:  ${r.desde || '?'}`,
+            `IP de origem: ${r.ip}`,
+            ``,
+            `Endpoint: ${rota}`,
+            `  • ${r.total_chamadas} requisições em ${dur} (${r.primeira_vez} → ${r.ultima_vez} UTC)`,
+            `  • Média ${r.media_horas}h · máximo ${r.max_horas}h por requisição`,
+            ``,
+            `— Gerado automaticamente pelo painel de segurança RadarDaBet`,
+        ].join('\n');
+    };
+
+    const _abBloco = (r, tags, tipo, corBorda) => {
+        const rota = r.rota || '/api/bet365/historico-mercados';
+        const dur  = r.duracao_min != null ? `${r.duracao_min}min` : null;
+        const durStr = dur ? ` em ${dur}` : '';
+        const inc  = (r.horas_inicio != null && r.total_chamadas > 1)
+            ? `+${Math.round((r.horas_fim - r.horas_inicio) / (r.total_chamadas - 1) * 10) / 10}h/req`
+            : null;
+        const uid = `ab-copy-${r.usuario}-${r.ip}`.replace(/[^a-z0-9-]/gi,'_');
+        const relTxt = _abRelatorio(r, tipo).replace(/`/g,'\\`');
+        const nomeExtra = r.nome_completo ? ` <span style="color:#64748b;font-size:10px">(${r.nome_completo})</span>` : '';
+        const tipoChip = r.tipo_usuario ? ` <span style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:3px;padding:0 5px;font-size:9px">${r.tipo_usuario}</span>` : '';
+        const desdeStr = r.desde ? `<span style="color:#475569;font-size:10px"> · desde ${r.desde}</span>` : '';
+        return `<div style="padding:9px 10px;border-left:3px solid ${corBorda};background:#0f172a;border-radius:0 4px 4px 0;margin-bottom:6px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;flex-wrap:wrap">
+              <div>
+                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:4px">
+                  <span style="color:${corBorda};font-size:12px;font-weight:700">${r.usuario}</span>${nomeExtra}${tipoChip}${desdeStr}
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:4px">${tags}</div>
+                <div style="font-size:10px;color:#64748b;line-height:1.6">
+                  <span style="color:#94a3b8">🌐 IP:</span> ${r.ip}<br>
+                  <span style="color:#94a3b8">📡 Endpoint:</span> <code style="background:#1e293b;padding:0 4px;border-radius:2px;font-size:10px">${rota}</code><br>
+                  ${r.total_chamadas != null ? `<span style="color:#94a3b8">📊 Requisições:</span> <b style="color:#e2e8f0">${r.total_chamadas}×</b>${durStr} · ${r.primeira_vez} → ${r.ultima_vez} UTC<br>` : ''}
+                  ${r.horas_inicio != null ? `<span style="color:#94a3b8">📈 Parâmetro horas:</span> <b style="color:#e2e8f0">${r.horas_inicio}h → ${r.horas_fim}h</b> · variação ${r.variacao}h${inc ? ' · <b style="color:#f87171">'+inc+'</b>' : ''}<br>` : ''}
+                  ${r.relogins_rapidos != null ? `<span style="color:#94a3b8">🔁 Relogins rápidos:</span> <b style="color:#e2e8f0">${r.relogins_rapidos}×</b> logout→login &lt;30s · mínimo ${r.min_segundos}s<br>` : ''}
+                  ${r.total_logins != null ? `<span style="color:#94a3b8">🔑 Logins:</span> <b style="color:#e2e8f0">${r.total_logins}×</b> sempre do mesmo IP<br>` : ''}
+                </div>
+              </div>
+              <button id="${uid}" onclick="navigator.clipboard.writeText(\`${relTxt}\`).then(()=>{const b=document.getElementById('${uid}');const o=b.textContent;b.textContent='✅ Copiado!';b.style.color='#4ade80';setTimeout(()=>{b.textContent=o;b.style.color='';},2000)})"
+                style="font-size:10px;background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:3px 10px;border-radius:3px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+                📋 Copiar relatório
+              </button>
+            </div>
         </div>`;
+    };
+
     try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 10000);
@@ -13504,31 +13575,19 @@ async function _carregarAlertasAbuso() {
         if (!da.success) { const msg = da.error||da.message||'falha ao carregar'; el.innerHTML = `<div style="color:#f87171;font-size:11px">Erro: ${msg}</div>`; if (msg.includes('expirada')||msg.includes('autenticado')) _sessaoExpirou(); return; }
 
         const linhas = [];
-        (da.escalada || []).forEach(r => linhas.push(_abRow(
-            `<span style="color:#f87171;font-size:11px;font-weight:700">${r.usuario}</span> <span style="color:#64748b;font-size:10px">${r.ip}</span>`,
+        (da.escalada || []).forEach(r => linhas.push(_abBloco(r,
             _abTag('ESCALADA DE HORAS','#f87171') + ' ' + _abTag('BOT','#f87171'),
-            `horas ${r.horas_inicio}h → ${r.horas_fim}h · variação ${r.variacao}h · ${r.total_chamadas}× chamadas · última: ${r.ultima_vez}`
-        )));
+            'escalada', '#f87171')));
         (da.volume || []).forEach(r => {
             if ((da.escalada||[]).some(e => e.ip === r.ip && e.usuario === r.usuario)) return;
-            linhas.push(_abRow(
-                `<span style="color:#fbbf24;font-size:11px;font-weight:700">${r.usuario}</span> <span style="color:#64748b;font-size:10px">${r.ip}</span>`,
-                _abTag('VOLUME ALTO','#fbbf24'),
-                `${r.total_chamadas}× chamadas · média ${r.media_horas}h · máx ${r.max_horas}h · última: ${r.ultima_vez}`
-            ));
+            linhas.push(_abBloco(r, _abTag('VOLUME ALTO','#fbbf24'), 'volume', '#fbbf24'));
         });
-        (da.reloginRapido || []).forEach(r => linhas.push(_abRow(
-            `<span style="color:#fb923c;font-size:11px;font-weight:700">${r.usuario}</span> <span style="color:#64748b;font-size:10px">${r.ip}</span>`,
+        (da.reloginRapido || []).forEach(r => linhas.push(_abBloco(r,
             _abTag('RELOGIN RÁPIDO','#fb923c') + ' ' + _abTag('POSSÍVEL SCRIPT','#fb923c'),
-            `${r.relogins_rapidos}× logout→login em menos de 30s · mínimo ${r.min_segundos}s · última: ${r.ultima_vez}`
-        )));
+            'relogin', '#fb923c')));
         (da.ipUnico || []).forEach(r => {
             if ((da.reloginRapido||[]).some(e => e.usuario === r.usuario)) return;
-            linhas.push(_abRow(
-                `<span style="color:#94a3b8;font-size:11px;font-weight:700">${r.usuario}</span> <span style="color:#64748b;font-size:10px">${r.ip}</span>`,
-                _abTag('IP ÚNICO','#94a3b8'),
-                `${r.total_logins} logins sempre do mesmo IP · última: ${r.ultima_vez}`
-            ));
+            linhas.push(_abBloco(r, _abTag('IP ÚNICO','#94a3b8'), 'ip_unico', '#94a3b8'));
         });
         const periodo = ini === fim ? ini : `${ini} a ${fim}`;
         el.innerHTML = linhas.length === 0

@@ -448,7 +448,8 @@ app.use('/api/bet365/historico-mercados', (req, res, next) => {
                 .input('usr',    usuario)
                 .input('ip',     ip)
                 .input('horas',  horas)
-                .query('INSERT INTO auditoria_requests (usuario_id, usuario, ip, horas) VALUES (@uid, @usr, @ip, @horas)')
+                .input('rota',   req.path)
+                .query('INSERT INTO auditoria_requests (usuario_id, usuario, ip, horas, rota) VALUES (@uid, @usr, @ip, @horas, @rota)')
                 .catch(() => {});
         }
     }
@@ -2167,27 +2168,41 @@ app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
         await connectSQL(getDatabaseConfigFromEnv());
 
         const escalada = await sql.query`
-            SELECT usuario_id, usuario, ip,
-                MIN(horas) as horas_inicio, MAX(horas) as horas_fim,
+            SELECT a.usuario_id, a.usuario, a.ip,
+                u.NomeCompleto as nome_completo,
+                u.TipoUsuario  as tipo_usuario,
+                CONVERT(VARCHAR(10), u.DataInicioLicenca, 120) as desde,
+                MIN(a.horas) as horas_inicio, MAX(a.horas) as horas_fim,
                 COUNT(*) as total_chamadas,
-                MAX(horas) - MIN(horas) as variacao,
-                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
-            FROM auditoria_requests
-            WHERE data_hora BETWEEN ${dtIni} AND ${dtFim}
-            GROUP BY usuario_id, usuario, ip
-            HAVING COUNT(*) >= 5 AND (MAX(horas) - MIN(horas)) > 30
+                MAX(a.horas) - MIN(a.horas) as variacao,
+                MIN(a.rota) as rota,
+                CONVERT(VARCHAR(19), MIN(a.data_hora), 120) as primeira_vez,
+                CONVERT(VARCHAR(19), MAX(a.data_hora), 120) as ultima_vez,
+                DATEDIFF(MINUTE, MIN(a.data_hora), MAX(a.data_hora)) as duracao_min
+            FROM auditoria_requests a
+            LEFT JOIN Usuarios u ON u.Id = a.usuario_id
+            WHERE a.data_hora BETWEEN ${dtIni} AND ${dtFim}
+            GROUP BY a.usuario_id, a.usuario, a.ip, u.NomeCompleto, u.TipoUsuario, u.DataInicioLicenca
+            HAVING COUNT(*) >= 5 AND (MAX(a.horas) - MIN(a.horas)) > 30
             ORDER BY variacao DESC
         `;
 
         const volume = await sql.query`
-            SELECT usuario_id, usuario, ip,
+            SELECT a.usuario_id, a.usuario, a.ip,
+                u.NomeCompleto as nome_completo,
+                u.TipoUsuario  as tipo_usuario,
+                CONVERT(VARCHAR(10), u.DataInicioLicenca, 120) as desde,
                 COUNT(*) as total_chamadas,
-                AVG(horas) as media_horas,
-                MAX(horas) as max_horas,
-                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
-            FROM auditoria_requests
-            WHERE data_hora BETWEEN ${dtIni} AND ${dtFim}
-            GROUP BY usuario_id, usuario, ip
+                AVG(a.horas) as media_horas,
+                MAX(a.horas) as max_horas,
+                MIN(a.rota) as rota,
+                CONVERT(VARCHAR(19), MIN(a.data_hora), 120) as primeira_vez,
+                CONVERT(VARCHAR(19), MAX(a.data_hora), 120) as ultima_vez,
+                DATEDIFF(MINUTE, MIN(a.data_hora), MAX(a.data_hora)) as duracao_min
+            FROM auditoria_requests a
+            LEFT JOIN Usuarios u ON u.Id = a.usuario_id
+            WHERE a.data_hora BETWEEN ${dtIni} AND ${dtFim}
+            GROUP BY a.usuario_id, a.usuario, a.ip, u.NomeCompleto, u.TipoUsuario, u.DataInicioLicenca
             HAVING COUNT(*) >= 10
             ORDER BY total_chamadas DESC
         `;
@@ -2504,11 +2519,17 @@ server.listen(PORT, () => {
                         usuario    NVARCHAR(100) NOT NULL DEFAULT 'anonimo',
                         ip         NVARCHAR(45)  NOT NULL,
                         horas      INT           NOT NULL,
+                        rota       NVARCHAR(200) NULL,
                         data_hora  DATETIME2     NOT NULL DEFAULT GETUTCDATE()
                     );
                     CREATE INDEX IX_ar_data ON auditoria_requests(data_hora DESC);
                     CREATE INDEX IX_ar_uid  ON auditoria_requests(usuario_id, data_hora DESC);
                 END
+            `;
+            // Migração: adiciona coluna rota se não existir
+            await sql.query`
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('auditoria_requests') AND name='rota')
+                    ALTER TABLE auditoria_requests ADD rota NVARCHAR(200) NULL
             `;
         } catch(e) { console.warn('⚠️ Schema auditoria_requests:', e.message); }
     })();
