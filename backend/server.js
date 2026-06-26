@@ -2683,7 +2683,7 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
                 uid,
                 usuario: activeSessions.get(uid)?.usuario || '?',
                 reqUltimoMin: v.count,
-                rotas: [...v.rotas.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([r, c]) => ({ r, c })),
+                rotas: v.rotas ? [...v.rotas.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([r, c]) => ({ r, c })) : [],
             }))
             .sort((a, b) => b.reqUltimoMin - a.reqUltimoMin);
 
