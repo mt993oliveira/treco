@@ -2149,6 +2149,134 @@ app.get('/api/chat/historico', requireAuth, async (req, res) => {
     } catch(e) { res.json({ success: false, error: e.message }); }
 });
 
+// ── Alertas de Abuso ──────────────────────────────────────────────────────
+app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
+    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
+    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+
+        const escalada = await sql.query`
+            SELECT usuario_id, usuario, ip,
+                MIN(horas) as horas_inicio, MAX(horas) as horas_fim,
+                COUNT(*) as total_chamadas,
+                MAX(horas) - MIN(horas) as variacao,
+                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
+            FROM auditoria_requests
+            WHERE data_hora > DATEADD(hour, -24, GETUTCDATE())
+            GROUP BY usuario_id, usuario, ip
+            HAVING COUNT(*) >= 5 AND (MAX(horas) - MIN(horas)) > 30
+            ORDER BY variacao DESC
+        `;
+
+        const volume = await sql.query`
+            SELECT usuario_id, usuario, ip,
+                COUNT(*) as total_chamadas,
+                AVG(horas) as media_horas,
+                MAX(horas) as max_horas,
+                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
+            FROM auditoria_requests
+            WHERE data_hora > DATEADD(hour, -24, GETUTCDATE())
+            GROUP BY usuario_id, usuario, ip
+            HAVING COUNT(*) >= 10
+            ORDER BY total_chamadas DESC
+        `;
+
+        const reloginRapido = await sql.query`
+            SELECT usuario_id, usuario, ip,
+                COUNT(*) as relogins_rapidos,
+                MIN(seg) as min_segundos,
+                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
+            FROM (
+                SELECT usuario_id, usuario, ip, data_hora,
+                    DATEDIFF(SECOND,
+                        LAG(data_hora) OVER (PARTITION BY usuario_id ORDER BY data_hora),
+                        data_hora) as seg,
+                    LAG(tipo) OVER (PARTITION BY usuario_id ORDER BY data_hora) as tipo_ant,
+                    tipo
+                FROM HistoricoAcessos
+                WHERE data_hora > DATEADD(day, -7, GETUTCDATE())
+                  AND usuario_id IS NOT NULL
+            ) t
+            WHERE tipo = 'login_ok' AND tipo_ant IN ('logout','desconectado') AND seg < 30
+            GROUP BY usuario_id, usuario, ip
+            HAVING COUNT(*) >= 2
+            ORDER BY relogins_rapidos DESC
+        `;
+
+        const ipUnico = await sql.query`
+            SELECT usuario_id, usuario,
+                MAX(ip) as ip,
+                COUNT(*) as total_logins,
+                COUNT(DISTINCT ip) as ips_distintos,
+                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
+            FROM HistoricoAcessos
+            WHERE tipo = 'login_ok'
+              AND data_hora > DATEADD(day, -30, GETUTCDATE())
+              AND usuario_id IS NOT NULL
+            GROUP BY usuario_id, usuario
+            HAVING COUNT(DISTINCT ip) = 1 AND COUNT(*) >= 5
+            ORDER BY total_logins DESC
+        `;
+
+        res.json({
+            success: true,
+            escalada:      escalada.recordset,
+            volume:        volume.recordset,
+            reloginRapido: reloginRapido.recordset,
+            ipUnico:       ipUnico.recordset,
+        });
+    } catch(e) { res.json({ success: false, error: e.message }); }
+});
+
+// ── Blacklist de IPs (apenas master) ─────────────────────────────────────
+app.get('/api/admin/blacklist', requireAuth, (req, res) => {
+    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
+    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
+    res.json({ success: true, blacklist: [..._ipBlacklist] });
+});
+
+app.post('/api/admin/blacklist', requireAuth, async (req, res) => {
+    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
+    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
+    const { ip, acao } = req.body;
+    if (!ip || !/^[\d\.]+$/.test(ip)) return res.status(400).json({ success: false, message: 'IP inválido' });
+    try {
+        if (acao === 'adicionar') {
+            _ipBlacklist.add(ip);
+            await sqlConnectionPool.request()
+                .input('ip', ip)
+                .input('por', req.sessionUser?.usuario || '?')
+                .query(`IF NOT EXISTS (SELECT 1 FROM ip_blacklist WHERE ip=@ip)
+                        INSERT INTO ip_blacklist (ip, bloqueado_por) VALUES (@ip, @por)`);
+            console.warn(`🚫 [Blacklist] IP ${ip} bloqueado por ${req.sessionUser?.usuario}`);
+        } else if (acao === 'remover') {
+            _ipBlacklist.delete(ip);
+            await sqlConnectionPool.request()
+                .input('ip', ip)
+                .query('DELETE FROM ip_blacklist WHERE ip = @ip');
+            console.log(`✅ [Blacklist] IP ${ip} removido por ${req.sessionUser?.usuario}`);
+        }
+    } catch(e) { console.error('[Blacklist] Erro ao persistir:', e.message); }
+    res.json({ success: true, blacklist: [..._ipBlacklist] });
+});
+
+app.post('/api/admin/desbloquear-ip', requireAuth, async (req, res) => {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const check = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
+        const tipo = (check.recordset[0]?.TipoUsuario || '').toLowerCase();
+        if (!['master','administrador'].includes(tipo)) return res.json({ success: false, message: 'Acesso negado' });
+        const ip = (req.body.ip || '').trim();
+        if (!ip) return res.json({ success: false, message: 'IP obrigatório' });
+        _loginBlocklist.delete(ip);
+        console.log(`🔓 [BruteForce] IP ${ip} desbloqueado manualmente por uid ${req.body.usuarioId}`);
+        res.json({ success: true });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
 // Rota curinga para servir o portifolio.html para todas as outras rotas (exceto API e rotas específicas)
 app.get('*', (req, res) => {
     // Verificar se é uma tentativa de acesso direto a recurso ou rota de API
@@ -2776,138 +2904,6 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
             ultimosLogins: logins.recordset,
             bfCfg: { tentativas: _bfCfg.tentativas, janelaMins: _bfCfg.janelaMins, bloqueioMins: _bfCfg.bloqueioMins },
         });
-    } catch(e) {
-        res.json({ success: false, message: e.message });
-    }
-});
-
-// ── Alertas de Abuso ──────────────────────────────────────────────────────
-app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
-    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
-    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
-    try {
-        await connectSQL(getDatabaseConfigFromEnv());
-
-        // 1) Escalada de horas: usuario/ip com variação > 30h nas últimas 24h (padrão de bot)
-        const escalada = await sql.query`
-            SELECT usuario_id, usuario, ip,
-                MIN(horas) as horas_inicio, MAX(horas) as horas_fim,
-                COUNT(*) as total_chamadas,
-                MAX(horas) - MIN(horas) as variacao,
-                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
-            FROM auditoria_requests
-            WHERE data_hora > DATEADD(hour, -24, GETUTCDATE())
-            GROUP BY usuario_id, usuario, ip
-            HAVING COUNT(*) >= 5 AND (MAX(horas) - MIN(horas)) > 30
-            ORDER BY variacao DESC
-        `;
-
-        // 2) Volume alto: usuario/ip com muitas chamadas de horas altas nas últimas 24h
-        const volume = await sql.query`
-            SELECT usuario_id, usuario, ip,
-                COUNT(*) as total_chamadas,
-                AVG(horas) as media_horas,
-                MAX(horas) as max_horas,
-                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
-            FROM auditoria_requests
-            WHERE data_hora > DATEADD(hour, -24, GETUTCDATE())
-            GROUP BY usuario_id, usuario, ip
-            HAVING COUNT(*) >= 10
-            ORDER BY total_chamadas DESC
-        `;
-
-        // 3) Relogin rápido: logout → login em menos de 30 segundos (padrão de script)
-        const reloginRapido = await sql.query`
-            SELECT usuario_id, usuario, ip,
-                COUNT(*) as relogins_rapidos,
-                MIN(seg) as min_segundos,
-                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
-            FROM (
-                SELECT usuario_id, usuario, ip, data_hora,
-                    DATEDIFF(SECOND,
-                        LAG(data_hora) OVER (PARTITION BY usuario_id ORDER BY data_hora),
-                        data_hora) as seg,
-                    LAG(tipo) OVER (PARTITION BY usuario_id ORDER BY data_hora) as tipo_ant,
-                    tipo
-                FROM HistoricoAcessos
-                WHERE data_hora > DATEADD(day, -7, GETUTCDATE())
-                  AND usuario_id IS NOT NULL
-            ) t
-            WHERE tipo = 'login_ok' AND tipo_ant IN ('logout','desconectado') AND seg < 30
-            GROUP BY usuario_id, usuario, ip
-            HAVING COUNT(*) >= 2
-            ORDER BY relogins_rapidos DESC
-        `;
-
-        // 4) IP único: usuários com 5+ logins todos do mesmo IP (últimos 30 dias)
-        const ipUnico = await sql.query`
-            SELECT usuario_id, usuario,
-                MAX(ip) as ip,
-                COUNT(*) as total_logins,
-                COUNT(DISTINCT ip) as ips_distintos,
-                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
-            FROM HistoricoAcessos
-            WHERE tipo = 'login_ok'
-              AND data_hora > DATEADD(day, -30, GETUTCDATE())
-              AND usuario_id IS NOT NULL
-            GROUP BY usuario_id, usuario
-            HAVING COUNT(DISTINCT ip) = 1 AND COUNT(*) >= 5
-            ORDER BY total_logins DESC
-        `;
-
-        res.json({
-            success: true,
-            escalada:      escalada.recordset,
-            volume:        volume.recordset,
-            reloginRapido: reloginRapido.recordset,
-            ipUnico:       ipUnico.recordset,
-        });
-    } catch(e) { res.json({ success: false, error: e.message }); }
-});
-
-// ── Blacklist de IPs (apenas master) ─────────────────────────────────────
-app.get('/api/admin/blacklist', requireAuth, (req, res) => {
-    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
-    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
-    res.json({ success: true, blacklist: [..._ipBlacklist] });
-});
-
-app.post('/api/admin/blacklist', requireAuth, async (req, res) => {
-    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
-    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
-    const { ip, acao } = req.body;
-    if (!ip || !/^[\d\.]+$/.test(ip)) return res.status(400).json({ success: false, message: 'IP inválido' });
-    try {
-        if (acao === 'adicionar') {
-            _ipBlacklist.add(ip);
-            await sqlConnectionPool.request()
-                .input('ip', ip)
-                .input('por', req.sessionUser?.usuario || '?')
-                .query(`IF NOT EXISTS (SELECT 1 FROM ip_blacklist WHERE ip=@ip)
-                        INSERT INTO ip_blacklist (ip, bloqueado_por) VALUES (@ip, @por)`);
-            console.warn(`🚫 [Blacklist] IP ${ip} bloqueado por ${req.sessionUser?.usuario}`);
-        } else if (acao === 'remover') {
-            _ipBlacklist.delete(ip);
-            await sqlConnectionPool.request()
-                .input('ip', ip)
-                .query('DELETE FROM ip_blacklist WHERE ip = @ip');
-            console.log(`✅ [Blacklist] IP ${ip} removido por ${req.sessionUser?.usuario}`);
-        }
-    } catch(e) { console.error('[Blacklist] Erro ao persistir:', e.message); }
-    res.json({ success: true, blacklist: [..._ipBlacklist] });
-});
-
-app.post('/api/admin/desbloquear-ip', requireAuth, async (req, res) => {
-    try {
-        await connectSQL(getDatabaseConfigFromEnv());
-        const check = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
-        const tipo = (check.recordset[0]?.TipoUsuario || '').toLowerCase();
-        if (!['master','administrador'].includes(tipo)) return res.json({ success: false, message: 'Acesso negado' });
-        const ip = (req.body.ip || '').trim();
-        if (!ip) return res.json({ success: false, message: 'IP obrigatório' });
-        _loginBlocklist.delete(ip);
-        console.log(`🔓 [BruteForce] IP ${ip} desbloqueado manualmente por uid ${req.body.usuarioId}`);
-        res.json({ success: true });
     } catch(e) {
         res.json({ success: false, message: e.message });
     }
