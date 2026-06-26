@@ -356,7 +356,7 @@ function requireAuth(req, res, next) {
 }
 
 // Middleware para rotas GET que passam usuarioId como query param (ex: /api/bet365/*)
-function requireAuthQuery(req, res, next) {
+async function requireAuthQuery(req, res, next) {
     // 1) Cookie httpOnly — validação forte
     const cookieToken = req.cookies?.sess;
     if (cookieToken) {
@@ -367,9 +367,22 @@ function requireAuthQuery(req, res, next) {
                 return next();
             }
         }
-        // Cookie presente mas token não encontrado — sessão expirou (ex: restart do servidor)
-        // Limpa o cookie mas deixa passar: usuário ainda tem uid no frontend
+        // Cookie presente mas token não encontrado em memória — pode ser restart do servidor
+        // Tenta reconstituir sessão a partir do banco
+        try {
+            const dbR = await pool.request()
+                .input('token', cookieToken)
+                .query('SELECT Id, Usuario, NomeCompleto, TipoUsuario FROM Usuarios WHERE sess_token = @token AND sess_expira > GETDATE() AND Ativo = 1');
+            if (dbR.recordset.length) {
+                const u = dbR.recordset[0];
+                const sess = { id: String(u.Id), usuario: u.Usuario, nome: u.NomeCompleto, tipo: u.TipoUsuario, token: cookieToken, lastSeen: new Date(), loginTime: new Date() };
+                activeSessions.set(String(u.Id), sess);
+                req.sessionUser = sess;
+                return next();
+            }
+        } catch (_) {}
         res.clearCookie('sess');
+        return res.status(401).json({ success: false, message: 'Não autenticado.' });
     }
     // 2) Fallback de transição: uid presente no body/query (browser já logado antes do deploy)
     const uid = String(req.query?.usuarioId || req.body?.usuarioId || '');
@@ -565,6 +578,13 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                     userAgent: req.headers['user-agent'] || '',
                     token: sessionToken,
                 });
+                // Persiste token no banco — sessão sobrevive restart do PM2
+                pool.request()
+                    .input('token', sessionToken)
+                    .input('expira', new Date(Date.now() + 8 * 60 * 60 * 1000))
+                    .input('id', user.Id)
+                    .query('UPDATE Usuarios SET sess_token = @token, sess_expira = @expira WHERE Id = @id')
+                    .catch(() => {});
                 _trackLoginSuccess(user.Id);
                 _geoLookup(_loginIp).then(geo => _registrarAcesso(user.Id, user.Usuario, 'login_ok', _loginIp, req.headers['user-agent'], geo, null)).catch(()=>{});
 
@@ -1700,6 +1720,11 @@ app.post('/api/logout', async (req, res) => {
         const _lgtIp   = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
         const _lgtDur  = _lgtSess?.loginTime ? Math.round((Date.now() - new Date(_lgtSess.loginTime).getTime()) / 1000) : null;
         activeSessions.delete(String(usuarioId));
+        // Invalida token persistido no banco
+        pool.request()
+            .input('id', usuarioId)
+            .query('UPDATE Usuarios SET sess_token = NULL, sess_expira = NULL WHERE Id = @id')
+            .catch(() => {});
         _geoLookup(_lgtIp).then(geo => _registrarAcesso(usuarioId, _lgtSess?.usuario || '?', 'logout', _lgtIp, req.headers['user-agent'], geo, _lgtDur)).catch(()=>{});
     }
     res.clearCookie('sess');

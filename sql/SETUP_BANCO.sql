@@ -34,7 +34,9 @@ BEGIN
         [Ativo]             BIT            NOT NULL DEFAULT 1,
         [Telefone]          NVARCHAR(20)   NULL,
         [UltimoAcesso]      DATETIME2      NULL,
-        [PlanoAtivo]        NVARCHAR(50)   NULL DEFAULT 'Mensal'
+        [PlanoAtivo]        NVARCHAR(50)   NULL DEFAULT 'Mensal',
+        [sess_token]        NVARCHAR(64)   NULL,
+        [sess_expira]       DATETIME2      NULL
     );
     CREATE INDEX IX_usuarios_email   ON Usuarios(Email);
     CREATE INDEX IX_usuarios_usuario ON Usuarios(Usuario);
@@ -53,6 +55,10 @@ BEGIN
         ALTER TABLE Usuarios ADD UltimoAcesso DATETIME2 NULL;
     IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Usuarios') AND name='PlanoAtivo')
         ALTER TABLE Usuarios ADD PlanoAtivo NVARCHAR(50) NULL DEFAULT 'Mensal';
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Usuarios') AND name='sess_token')
+        ALTER TABLE Usuarios ADD sess_token NVARCHAR(64) NULL;
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Usuarios') AND name='sess_expira')
+        ALTER TABLE Usuarios ADD sess_expira DATETIME2 NULL;
     PRINT 'ℹ️  Tabela Usuarios já existe';
 END
 GO
