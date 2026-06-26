@@ -462,6 +462,7 @@ class Bet365Coletor {
         } catch(errPorta) {
             this._edgeSemPortaConsec++;
             console.log(`   ⚠️  Edge não encontrado na porta ${DEBUG_PORT} (${this._edgeSemPortaConsec}x): ${errPorta.message}`);
+            this._logAuditoria('edge_sem_porta', `Edge não encontrado na porta ${DEBUG_PORT} (${this._edgeSemPortaConsec}x)`);
             // Após 3 falhas consecutivas: Edge reiniciou sem debug port (crash recovery) → reinicia tudo
             if (this._edgeSemPortaConsec >= 3 && !this._reinicioAgendado && this._cfgBool('coletor_auto_restart', true)) {
                 this._reinicioAgendado = true;
@@ -474,6 +475,7 @@ class Bet365Coletor {
                         `Edge não encontrado na porta ${DEBUG_PORT} (${this._edgeSemPortaConsec}x).\nReiniciando Edge + Node automaticamente.\n🕐 ${agora}`
                     ).catch(() => {});
                 }
+                this._logAuditoria('reinicio_disparado', `Edge crash — ${this._edgeSemPortaConsec}x sem porta debug`);
                 setTimeout(() => {
                     try {
                         const { spawn } = require('child_process');
@@ -1623,6 +1625,7 @@ class Bet365Coletor {
                 }
 
                 console.log('   🔄 Reiniciando tudo em 5s (Edge + Node)...');
+                this._logAuditoria('reinicio_disparado', 'Login falhou em todas as contas — reiniciar-tudo.bat');
                 setTimeout(() => {
                     try {
                         const { spawn } = require('child_process');
@@ -1952,6 +1955,7 @@ class Bet365Coletor {
         }
         this.coletando = true;
         this._coletas++;
+        if (this._coletas === 1) this._logAuditoria('processo_iniciado', 'Coletor 1 iniciado (primeiro ciclo)');
         await this._loadConfig();
 
         // ── Backoff de ligas: pula ciclo se estamos em período de espera ─────────

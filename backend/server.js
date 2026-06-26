@@ -2302,6 +2302,7 @@ server.listen(PORT, () => {
                         const pool  = await getDbPool().catch(() => null);
                         const agora = new Date().toLocaleString('pt-BR');
                         console.log(`\n🔄 [AutoReinicio] Sem coleta há ${Math.round(semColeta)} min — reiniciando tudo...\n`);
+                        coletor365._logAuditoria('reinicio_disparado', `Auto-restart: sem coleta há ${Math.round(semColeta)} min`);
                         dispararAlerta(cfg, pool,
                             '🔄 Reinício automático disparado',
                             `Sem coleta há ${Math.round(semColeta)} minuto(s).\nFechando Edge + Node e reiniciando tudo automaticamente.\n🕐 ${agora}`
