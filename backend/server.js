@@ -412,19 +412,30 @@ async function requireAuthQuery(req, res, next) {
 // =============================================
 const bet365Routes = require('./routes/bet365-api');
 
-// Auditoria de requisições suspeitas: horas > 20 logam IP + usuário para rastrear abuso
+// Auditoria de requisições suspeitas: horas > 20 — loga + persiste no banco
 app.use('/api/bet365/historico-mercados', (req, res, next) => {
     const horas = parseInt(req.query.horas) || 0;
     if (horas > 20) {
         const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
         const token = req.cookies?.sess;
         let usuario = 'anonimo';
+        let usuario_id = null;
         if (token) {
             for (const [, sess] of activeSessions.entries()) {
-                if (sess.token === token) { usuario = `${sess.usuario} (id:${sess.id})`; break; }
+                if (sess.token === token) { usuario = sess.usuario; usuario_id = parseInt(sess.id) || null; break; }
             }
         }
-        console.warn(`[AUDIT-HORAS] horas=${horas} ip=${ip} usuario=${usuario} ua="${(req.headers['user-agent']||'').substring(0,80)}"`);
+        console.warn(`[AUDIT-HORAS] horas=${horas} ip=${ip} usuario=${usuario_id ? `${usuario} (id:${usuario_id})` : 'anonimo'} ua="${(req.headers['user-agent']||'').substring(0,80)}"`);
+        // Persiste para análise no painel administrativo
+        if (sqlConnectionPool) {
+            sqlConnectionPool.request()
+                .input('uid',    usuario_id)
+                .input('usr',    usuario)
+                .input('ip',     ip)
+                .input('horas',  horas)
+                .query('INSERT INTO auditoria_requests (usuario_id, usuario, ip, horas) VALUES (@uid, @usr, @ip, @horas)')
+                .catch(() => {});
+        }
     }
     next();
 });
@@ -2718,6 +2729,90 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
     } catch(e) {
         res.json({ success: false, message: e.message });
     }
+});
+
+// ── Alertas de Abuso ──────────────────────────────────────────────────────
+app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
+    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
+    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+
+        // 1) Escalada de horas: usuario/ip com variação > 30h nas últimas 24h (padrão de bot)
+        const escalada = await sql.query`
+            SELECT usuario_id, usuario, ip,
+                MIN(horas) as horas_inicio, MAX(horas) as horas_fim,
+                COUNT(*) as total_chamadas,
+                MAX(horas) - MIN(horas) as variacao,
+                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
+            FROM auditoria_requests
+            WHERE data_hora > DATEADD(hour, -24, GETUTCDATE())
+            GROUP BY usuario_id, usuario, ip
+            HAVING COUNT(*) >= 5 AND (MAX(horas) - MIN(horas)) > 30
+            ORDER BY variacao DESC
+        `;
+
+        // 2) Volume alto: usuario/ip com muitas chamadas de horas altas nas últimas 24h
+        const volume = await sql.query`
+            SELECT usuario_id, usuario, ip,
+                COUNT(*) as total_chamadas,
+                AVG(horas) as media_horas,
+                MAX(horas) as max_horas,
+                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
+            FROM auditoria_requests
+            WHERE data_hora > DATEADD(hour, -24, GETUTCDATE())
+            GROUP BY usuario_id, usuario, ip
+            HAVING COUNT(*) >= 10
+            ORDER BY total_chamadas DESC
+        `;
+
+        // 3) Relogin rápido: logout → login em menos de 30 segundos (padrão de script)
+        const reloginRapido = await sql.query`
+            SELECT usuario_id, usuario, ip,
+                COUNT(*) as relogins_rapidos,
+                MIN(seg) as min_segundos,
+                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
+            FROM (
+                SELECT usuario_id, usuario, ip, data_hora,
+                    DATEDIFF(SECOND,
+                        LAG(data_hora) OVER (PARTITION BY usuario_id ORDER BY data_hora),
+                        data_hora) as seg,
+                    LAG(tipo) OVER (PARTITION BY usuario_id ORDER BY data_hora) as tipo_ant,
+                    tipo
+                FROM HistoricoAcessos
+                WHERE data_hora > DATEADD(day, -7, GETUTCDATE())
+                  AND usuario_id IS NOT NULL
+            ) t
+            WHERE tipo = 'login_ok' AND tipo_ant IN ('logout','desconectado') AND seg < 30
+            GROUP BY usuario_id, usuario, ip
+            HAVING COUNT(*) >= 2
+            ORDER BY relogins_rapidos DESC
+        `;
+
+        // 4) IP único: usuários com 5+ logins todos do mesmo IP (últimos 30 dias)
+        const ipUnico = await sql.query`
+            SELECT usuario_id, usuario,
+                MAX(ip) as ip,
+                COUNT(*) as total_logins,
+                COUNT(DISTINCT ip) as ips_distintos,
+                CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
+            FROM HistoricoAcessos
+            WHERE tipo = 'login_ok'
+              AND data_hora > DATEADD(day, -30, GETUTCDATE())
+              AND usuario_id IS NOT NULL
+            GROUP BY usuario_id, usuario
+            HAVING COUNT(DISTINCT ip) = 1 AND COUNT(*) >= 5
+            ORDER BY total_logins DESC
+        `;
+
+        res.json({
+            success: true,
+            escalada:      escalada.recordset,
+            volume:        volume.recordset,
+            reloginRapido: reloginRapido.recordset,
+            ipUnico:       ipUnico.recordset,
+        });
+    } catch(e) { res.json({ success: false, error: e.message }); }
 });
 
 // ── Blacklist de IPs (apenas master) ─────────────────────────────────────

@@ -13420,6 +13420,61 @@ async function _carregarDashboardSeguranca() {
                 </div>`;
             }).join('');
 
+        // ── Alertas de Abuso ────────────────────────────────────
+        let alertasHtml = '<div style="color:#475569;font-size:11px;padding:6px 0">Carregando...</div>';
+        try {
+            const ra = await fetch('/api/admin/alertas-abuso');
+            const da = await ra.json();
+            if (da.success) {
+                const _abTag = (txt, cor) => `<span style="background:${cor}22;border:1px solid ${cor}55;color:${cor};border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;white-space:nowrap">${txt}</span>`;
+                const _abRow = (titulo, tags, detalhes) => `
+                    <div style="padding:7px 0;border-bottom:1px solid #1e293b">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">${titulo} ${tags}</div>
+                        <div style="font-size:10px;color:#64748b">${detalhes}</div>
+                    </div>`;
+
+                const linhas = [];
+
+                (da.escalada || []).forEach(r => {
+                    linhas.push(_abRow(
+                        `<span style="color:#f87171;font-size:11px;font-weight:700">${r.usuario}</span> <span style="color:#64748b;font-size:10px">${r.ip}</span>`,
+                        _abTag('ESCALADA DE HORAS','#f87171') + ' ' + _abTag('BOT','#f87171'),
+                        `horas ${r.horas_inicio}h → ${r.horas_fim}h · variação ${r.variacao}h · ${r.total_chamadas}× chamadas · última: ${r.ultima_vez}`
+                    ));
+                });
+
+                (da.volume || []).forEach(r => {
+                    if ((da.escalada||[]).some(e => e.ip === r.ip && e.usuario === r.usuario)) return;
+                    linhas.push(_abRow(
+                        `<span style="color:#fbbf24;font-size:11px;font-weight:700">${r.usuario}</span> <span style="color:#64748b;font-size:10px">${r.ip}</span>`,
+                        _abTag('VOLUME ALTO','#fbbf24'),
+                        `${r.total_chamadas}× chamadas · média ${r.media_horas}h · máx ${r.max_horas}h · última: ${r.ultima_vez}`
+                    ));
+                });
+
+                (da.reloginRapido || []).forEach(r => {
+                    linhas.push(_abRow(
+                        `<span style="color:#fb923c;font-size:11px;font-weight:700">${r.usuario}</span> <span style="color:#64748b;font-size:10px">${r.ip}</span>`,
+                        _abTag('RELOGIN RÁPIDO','#fb923c') + ' ' + _abTag('POSSÍVEL SCRIPT','#fb923c'),
+                        `${r.relogins_rapidos}× logout→login em menos de 30s · mínimo ${r.min_segundos}s · última: ${r.ultima_vez}`
+                    ));
+                });
+
+                (da.ipUnico || []).forEach(r => {
+                    if ((da.reloginRapido||[]).some(e => e.usuario === r.usuario)) return;
+                    linhas.push(_abRow(
+                        `<span style="color:#94a3b8;font-size:11px;font-weight:700">${r.usuario}</span> <span style="color:#64748b;font-size:10px">${r.ip}</span>`,
+                        _abTag('IP ÚNICO','#94a3b8'),
+                        `${r.total_logins} logins sempre do mesmo IP · última: ${r.ultima_vez}`
+                    ));
+                });
+
+                alertasHtml = linhas.length === 0
+                    ? '<div style="color:#4ade80;font-size:11px;padding:6px 0">✅ Nenhum comportamento suspeito detectado nas últimas 24h.</div>'
+                    : linhas.join('');
+            }
+        } catch(_) { alertasHtml = '<div style="color:#475569;font-size:11px">Erro ao carregar alertas.</div>'; }
+
         // ── Últimos logins ──────────────────────────────────────
         const loginsHtml = d.ultimosLogins.map(l => {
             const ok = l.tipo === 'login_ok';
@@ -13455,6 +13510,9 @@ async function _carregarDashboardSeguranca() {
 
         <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Requisições por Usuário (último minuto)</div>
         <div style="margin-bottom:18px">${reqHtml}</div>
+
+        <div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">🚨 Alertas de Comportamento Suspeito</div>
+        <div style="margin-bottom:18px">${alertasHtml}</div>
 
         <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Últimos 50 Logins</div>
         <div>${loginsHtml}</div>`;
