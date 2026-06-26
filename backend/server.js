@@ -365,6 +365,24 @@ function requireAuthQuery(req, res, next) {
 // API BET365 - Dados em tempo real (tabelas bet365_*)
 // =============================================
 const bet365Routes = require('./routes/bet365-api');
+
+// Auditoria de requisições suspeitas: horas > 20 logam IP + usuário para rastrear abuso
+app.use('/api/bet365/historico-mercados', (req, res, next) => {
+    const horas = parseInt(req.query.horas) || 0;
+    if (horas > 20) {
+        const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
+        const token = req.cookies?.sess;
+        let usuario = 'anonimo';
+        if (token) {
+            for (const [, sess] of activeSessions.entries()) {
+                if (sess.token === token) { usuario = `${sess.usuario} (id:${sess.id})`; break; }
+            }
+        }
+        console.warn(`[AUDIT-HORAS] horas=${horas} ip=${ip} usuario=${usuario} ua="${(req.headers['user-agent']||'').substring(0,80)}"`);
+    }
+    next();
+});
+
 app.use('/api/bet365', userRateLimit, bet365Routes);
 
 // Simulador de apostas virtuais
