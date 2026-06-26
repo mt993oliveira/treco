@@ -129,7 +129,7 @@ class Bet365Coletor {
         this._ciclosSemResultados    = 0;   // contador de ciclos consecutivos com 0 resultados
         this._resultadosCache        = new Map(); // "liga|casa|fora|horario" → timestamp (TTL 3h)
         this._ligaUltimaColeta       = {};        // ligaNorm → { ts, todosCache } do último ciclo
-        this._contaAtualIdx          = 0;         // índice da conta ativa (rotação circular)
+        this._contaAtualIdx          = -1;        // índice da conta ativa (-1 = nenhuma ainda, começa da 0)
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
