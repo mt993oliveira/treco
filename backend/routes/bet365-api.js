@@ -1259,7 +1259,10 @@ router.get('/historico-mercados', async (req, res) => {
             }
         }
 
-        const partidas = [...gamesMap.values()];
+        // Cap de 1920 jogos — igual ao máximo selecionável na UI; evita resposta gigante (OOM)
+        // Mantém os mais recentes (slice final = ordem ASC → últimos N)
+        const _MAX_JOGOS = 1920;
+        const partidas = [...gamesMap.values()].slice(-_MAX_JOGOS);
 
         // Ligas distintas com contagem
         const ligasMap = {};
