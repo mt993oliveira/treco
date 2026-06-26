@@ -15,13 +15,26 @@ if not "%BET365_AUTO_RESTART%"=="1" (
     del "%TEMP%\bet365-login-fail.ts" 2>nul
     echo [Pre] Cooldowns de sessao limpos ^(inicio manual^).
 )
+
+rem ── Atualiza codigo so no inicio manual (auto-restart pula git pull) ──
+if not "%BET365_AUTO_RESTART%"=="1" (
+    echo [0/5] Atualizando codigo do servidor...
+    git pull origin master
+    echo.
+)
+
+rem ── Limpa variavel apos uso ──
 set BET365_AUTO_RESTART=
 
-echo [0/4] Atualizando codigo do servidor...
-git pull origin master
-echo.
+echo [1/5] Limpando locks do Edge ^(evita popup de restaurar sessao^)...
+del "%LOCALAPPDATA%\Microsoft\Edge\BetColetor\SingletonLock"    2>nul
+del "%LOCALAPPDATA%\Microsoft\Edge\BetColetor\SingletonCookie"  2>nul
+del "%LOCALAPPDATA%\Microsoft\Edge\BetColetor\SingletonSocket"  2>nul
+del "%LOCALAPPDATA%\Microsoft\Edge\BetColetorOdds\SingletonLock"   2>nul
+del "%LOCALAPPDATA%\Microsoft\Edge\BetColetorOdds\SingletonCookie" 2>nul
+del "%LOCALAPPDATA%\Microsoft\Edge\BetColetorOdds\SingletonSocket" 2>nul
 
-echo [1/4] Abrindo Edge porta 9222 — Coletor 1 (resultados)...
+echo [2/5] Abrindo Edge porta 9222 — Coletor 1 (resultados)...
 start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --remote-debugging-port=9222 ^
   --no-first-run ^
@@ -30,7 +43,7 @@ start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --user-data-dir="C:\Users\Administrador\AppData\Local\Microsoft\Edge\BetColetor" ^
   "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/"
 
-echo [2/4] Abrindo Edge porta 9223 — Coletor 2 (odds, conta propria)...
+echo [3/5] Abrindo Edge porta 9223 — Coletor 2 (odds, conta propria)...
 start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   --remote-debugging-port=9223 ^
   --no-first-run ^
@@ -40,14 +53,14 @@ start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" ^
   "https://www.bet365.bet.br/#/AVR/B146/R%%5E1/"
 
 echo.
-echo  Aguardando Edge carregar as paginas (15s)...
-timeout /t 15 /nobreak > nul
+echo  Aguardando Edge carregar as paginas (25s)...
+timeout /t 25 /nobreak > nul
 echo.
 
-echo [3/4] Iniciando Coletor 2 em janela separada (aguarda 35s para Edge 9223 estabilizar e fazer login)...
+echo [4/5] Iniciando Coletor 2 em janela separada (aguarda 35s para Edge 9223 estabilizar e fazer login)...
 start "Coletor 2 - Odds (porta 9223)" cmd /k "cd /d C:\PRODUCAO && echo  Aguardando Edge 9223 estabilizar... && timeout /t 35 /nobreak > nul && set BET365_ODDS_DEBUG_PORT=9223 && node -r dotenv/config backend/services/bet365-coletor-odds.js"
 
-echo [4/4] Iniciando servidor principal ^(Coletor 1 + backend^)...
+echo [5/5] Iniciando servidor principal ^(Coletor 1 + backend^)...
 echo  O coletor detectara e fara login automatico se necessario.
 echo.
 npm start
