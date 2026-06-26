@@ -3898,7 +3898,7 @@ function carregarCoresGrid() {
     catch(e) { return Object.assign({}, sys); }
 }
 function aplicarCoresGrid(c) {
-    if (c.grafPctCor) S._grafPctCor = c.grafPctCor;
+    try { if (c.grafPctCor) S._grafPctCor = c.grafPctCor; } catch(_) {}
     const canetaEl = document.getElementById('caneta-cor');
     const cor = c.canetaCor || '#f59e0b';
     if (canetaEl) canetaEl.value = cor;
