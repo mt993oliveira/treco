@@ -9,6 +9,11 @@ const crypto = require('crypto');
 // Map de sessões ativas: userId -> { id, usuario, nome, tipo, lastSeen, loginTime, ip, userAgent, token }
 const activeSessions = new Map();
 const forcedLogouts  = new Set(); // IDs desconectados pelo admin — próximo ping força logout
+
+// Blacklist de IPs bloqueados permanentemente (scraping, abuso, ataques)
+const _ipBlacklist = new Set([
+    '45.164.233.45', // bloqueado 2026-06-26: scraper automatizado (horas=29..167 sem autenticação)
+]);
 const loginHistory  = new Map(); // String(userId) -> { countToday, lastLoginDate }
 const loginFailures = new Map(); // username_lower -> [{ ip, ts }]
 const _geoCache     = new Map(); // ip -> { city, region, country, org, cachedAt }
@@ -67,6 +72,13 @@ app.use(mongoSanitize());
 app.use(xss());
 app.use(hpp());
 app.use(cookieParser());
+
+// Blacklist de IPs — bloqueia antes de qualquer outra lógica
+app.use((req, res, next) => {
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
+    if (_ipBlacklist.has(ip)) return res.status(403).json({ success: false, message: 'Acesso bloqueado.' });
+    next();
+});
 
 // Rate limit global por IP — barreira contra varredura e flood
 const limiter = rateLimit({
@@ -383,7 +395,7 @@ app.use('/api/bet365/historico-mercados', (req, res, next) => {
     next();
 });
 
-app.use('/api/bet365', userRateLimit, bet365Routes);
+app.use('/api/bet365', requireAuthQuery, userRateLimit, bet365Routes);
 
 // Simulador de apostas virtuais
 const simuladorRoutes = require('./routes/simulador-api');
@@ -2652,6 +2664,28 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
     } catch(e) {
         res.json({ success: false, message: e.message });
     }
+});
+
+// ── Blacklist de IPs (apenas master) ─────────────────────────────────────
+app.get('/api/admin/blacklist', requireAuth, (req, res) => {
+    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
+    if (!['master','administrador'].includes(tipo)) return res.status(403).json({ success: false });
+    res.json({ success: true, blacklist: [..._ipBlacklist] });
+});
+
+app.post('/api/admin/blacklist', requireAuth, (req, res) => {
+    const tipo = (req.sessionUser?.tipo || '').toLowerCase();
+    if (!['master','administrador'].includes(tipo)) return res.status(403).json({ success: false });
+    const { ip, acao } = req.body; // acao: 'adicionar' | 'remover'
+    if (!ip || !/^[\d\.]+$/.test(ip)) return res.status(400).json({ success: false, message: 'IP inválido' });
+    if (acao === 'adicionar') {
+        _ipBlacklist.add(ip);
+        console.warn(`🚫 [Blacklist] IP ${ip} bloqueado por ${req.sessionUser?.usuario}`);
+    } else if (acao === 'remover') {
+        _ipBlacklist.delete(ip);
+        console.log(`✅ [Blacklist] IP ${ip} removido por ${req.sessionUser?.usuario}`);
+    }
+    res.json({ success: true, blacklist: [..._ipBlacklist] });
 });
 
 app.post('/api/admin/desbloquear-ip', requireAuth, async (req, res) => {
