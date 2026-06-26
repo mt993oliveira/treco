@@ -129,6 +129,7 @@ class Bet365Coletor {
         this._ciclosSemResultados    = 0;   // contador de ciclos consecutivos com 0 resultados
         this._resultadosCache        = new Map(); // "liga|casa|fora|horario" → timestamp (TTL 3h)
         this._ligaUltimaColeta       = {};        // ligaNorm → { ts, todosCache } do último ciclo
+        this._contaAtualIdx          = 0;         // índice da conta ativa (rotação circular)
     }
 
     _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1857,9 +1858,13 @@ class Bet365Coletor {
             return false;
         }
 
-        for (let i = 0; i < contas.length; i++) {
+        const n = contas.length;
+        // Rotação circular: começa pela conta seguinte à que estava ativa
+        const inicio = n > 1 ? (this._contaAtualIdx + 1) % n : 0;
+        for (let offset = 0; offset < n; offset++) {
+            const i = (inicio + offset) % n;
             const [usuario, senha, dataNasc, emailVerif] = contas[i];
-            const label = contas.length > 1 ? ` [conta ${i + 1}/${contas.length}]` : '';
+            const label = n > 1 ? ` [conta ${i + 1}/${n}]` : '';
             console.log(`   🔑 Tentando login${label}: ${usuario}`);
             this._logAuditoria('login_tentativa', `Tentando login${label}`, usuario);
 
@@ -1869,21 +1874,23 @@ class Bet365Coletor {
             if (resultado === true) {
                 console.log(`   ✅ Login bem-sucedido${label}!`);
                 this._logAuditoria('login_ok', `Login bem-sucedido${label}`, usuario);
+                this._contaAtualIdx = i; // memoriza conta ativa para próxima rotação
                 return true;
             }
             if (resultado === 'verificacao') {
                 this._logAuditoria('verificacao_exigida', 'Conta solicitou verificação SMS/email', usuario);
-                // Notifica via Telegram mesmo que haja conta de fallback disponível
+                const proximaIdx = (i + 1) % n;
+                const temProxima = proximaIdx !== inicio || offset + 1 < n;
                 const pool = await this.conectarBanco().catch(() => null);
                 dispararAlerta(this.cfg, pool,
                     `⚠️ Bet365 — conta ${usuario} exige verificação`,
                     `A conta ${usuario} solicitou verificação de SMS/email durante o auto-login.\n` +
-                    `${i + 1 < contas.length ? `Tentando conta de fallback (${i + 2}/${contas.length})...` : 'Não há conta de fallback — intervenção manual necessária.'}\n` +
+                    `${temProxima ? `Tentando próxima conta (${contas[proximaIdx][0]})...` : 'Não há conta de fallback — intervenção manual necessária.'}\n` +
                     `🕐 ${new Date().toLocaleTimeString('pt-BR')}`
                 ).catch(() => {});
-                continue; // tenta próxima conta
+                continue;
             }
-            // false = falhou por outro motivo, tenta próxima mesmo assim
+            // false = falhou por outro motivo, tenta próxima
             console.log(`   ❌ Login falhou${label}`);
             this._logAuditoria('login_falhou', `Credencial rejeitada${label}`, usuario);
         }
