@@ -11589,14 +11589,17 @@ function _renderDestaquesProximos(timesProximos) {
     recente.forEach(p => {
         [p.time_casa, p.time_fora].forEach((nome, idx) => {
             if (!nome) return;
-            if (!tMap.has(nome)) tMap.set(nome, { nome, jogos:0, vit:0, under25:0, under35:0, btts_nao:0, casa_nao:0, vis_nao:0, empate_gols:0 });
+            if (!tMap.has(nome)) tMap.set(nome, { nome, jogos:0, vit:0, under25:0, under35:0, over25:0, over35:0, btts_sim:0, btts_nao:0, casa_nao:0, vis_nao:0, empate_gols:0 });
             const s = tMap.get(nome);
             const gc = p.gol_casa||0, gf = p.gol_fora||0, tot = gc+gf;
             const isC = idx === 0;
             s.jogos++;
             if (isC ? p.resultado==='CASA' : p.resultado==='FORA') s.vit++;
-            if (tot < 3) s.under25++;
-            if (tot < 4) s.under35++;
+            if (tot < 3)  s.under25++;
+            if (tot < 4)  s.under35++;
+            if (tot >= 3) s.over25++;
+            if (tot >= 4) s.over35++;
+            if (gc > 0 && gf > 0) s.btts_sim++;
             if (!(gc > 0 && gf > 0)) s.btts_nao++;
             if (gc === 0) s.casa_nao++;
             if (gf === 0) s.vis_nao++;
@@ -11609,9 +11612,12 @@ function _renderDestaquesProximos(timesProximos) {
 
     const mercados = [
         { nome: 'Venceu FT',                pct: t => t.vit         / t.jogos },
-        { nome: 'Under 3.5',                pct: t => t.under35     / t.jogos },
-        { nome: 'Ambas não marcam',         pct: t => t.btts_nao    / t.jogos },
+        { nome: 'Over 2.5',                 pct: t => t.over25      / t.jogos },
+        { nome: 'Over 3.5',                 pct: t => t.over35      / t.jogos },
         { nome: 'Under 2.5',                pct: t => t.under25     / t.jogos },
+        { nome: 'Under 3.5',                pct: t => t.under35     / t.jogos },
+        { nome: 'Ambas Marcam',             pct: t => t.btts_sim    / t.jogos },
+        { nome: 'Ambas não marcam',         pct: t => t.btts_nao    / t.jogos },
         { nome: 'Time Casa Não Marca',      pct: t => t.casa_nao    / t.jogos },
         { nome: 'Time Visitante Não Marca', pct: t => t.vis_nao     / t.jogos },
         { nome: 'Empates com Gols',         pct: t => t.empate_gols / t.jogos },
