@@ -427,31 +427,97 @@ async function requireAuthQuery(req, res, next) {
 // =============================================
 const bet365Routes = require('./routes/bet365-api');
 
+// ── Anti-raspagem: tracker por usuário/IP para horas > 20 ─────────────────
+// Estrutura: chave → { calls: [{horas, ts}], bloqueadoAte: timestamp|null }
+const _horasTracker = new Map();
+const _HORAS_RATE_JANELA_MS  = 60 * 1000;   // janela de 60 segundos
+const _HORAS_RATE_LIMITE     = 5;            // max 5 chamadas horas>20 em 60s
+const _HORAS_ESCAL_MINIMO    = 3;            // 3 consecutivas crescentes = bot
+const _HORAS_BLOQUEIO_MS     = 15 * 60 * 1000; // bloqueio de 15 minutos
+
+function _horasTrackerKey(usuario_id, ip) {
+    return usuario_id ? `uid:${usuario_id}` : `ip:${ip}`;
+}
+
 // Auditoria de requisições suspeitas: horas > 20 — loga + persiste no banco
 app.use('/api/bet365/historico-mercados', (req, res, next) => {
     const horas = parseInt(req.query.horas) || 0;
-    if (horas > 20) {
-        const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
-        const token = req.cookies?.sess;
-        let usuario = 'anonimo';
-        let usuario_id = null;
-        if (token) {
-            for (const [, sess] of activeSessions.entries()) {
-                if (sess.token === token) { usuario = sess.usuario; usuario_id = parseInt(sess.id) || null; break; }
-            }
+    if (horas <= 20) return next();
+
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
+    const token = req.cookies?.sess;
+    let usuario = 'anonimo';
+    let usuario_id = null;
+    if (token) {
+        for (const [, sess] of activeSessions.entries()) {
+            if (sess.token === token) { usuario = sess.usuario; usuario_id = parseInt(sess.id) || null; break; }
         }
-        console.warn(`[AUDIT-HORAS] horas=${horas} ip=${ip} usuario=${usuario_id ? `${usuario} (id:${usuario_id})` : 'anonimo'} ua="${(req.headers['user-agent']||'').substring(0,80)}"`);
-        // Persiste para análise no painel administrativo
-        if (sqlConnectionPool) {
-            sqlConnectionPool.request()
-                .input('uid',    usuario_id)
-                .input('usr',    usuario)
-                .input('ip',     ip)
-                .input('horas',  horas)
-                .input('rota',   req.path)
-                .query('INSERT INTO auditoria_requests (usuario_id, usuario, ip, horas, rota) VALUES (@uid, @usr, @ip, @horas, @rota)')
-                .catch(() => {});
-        }
+    }
+
+    const key   = _horasTrackerKey(usuario_id, ip);
+    const agora = Date.now();
+
+    // Inicializa entrada se necessário
+    if (!_horasTracker.has(key)) _horasTracker.set(key, { calls: [], bloqueadoAte: null });
+    const entry = _horasTracker.get(key);
+
+    // Verifica bloqueio ativo
+    if (entry.bloqueadoAte && agora < entry.bloqueadoAte) {
+        const restanteMin = Math.ceil((entry.bloqueadoAte - agora) / 60000);
+        console.warn(`[ANTI-RASP] BLOQUEADO ${usuario} (${ip}) horas=${horas} — restam ${restanteMin}min`);
+        return res.status(429).json({
+            success: false,
+            message: `Muitas requisições de histórico. Tente novamente em ${restanteMin} minuto(s).`,
+            bloqueadoAte: new Date(entry.bloqueadoAte).toISOString(),
+        });
+    }
+    if (entry.bloqueadoAte && agora >= entry.bloqueadoAte) {
+        entry.bloqueadoAte = null;
+        entry.calls = [];
+    }
+
+    // Remove chamadas fora da janela de 60s
+    entry.calls = entry.calls.filter(c => agora - c.ts < _HORAS_RATE_JANELA_MS);
+
+    // Adiciona chamada atual
+    entry.calls.push({ horas, ts: agora });
+
+    let motivo = null;
+
+    // Item 2: Rate limit — 5+ chamadas horas>20 em 60s
+    if (entry.calls.length >= _HORAS_RATE_LIMITE) {
+        motivo = `rate_limit (${entry.calls.length} chamadas em 60s)`;
+    }
+
+    // Item 3: Escalonamento — 3 consecutivas com horas crescente
+    if (!motivo && entry.calls.length >= _HORAS_ESCAL_MINIMO) {
+        const ultimas = entry.calls.slice(-_HORAS_ESCAL_MINIMO);
+        const crescente = ultimas.every((c, i) => i === 0 || c.horas > ultimas[i - 1].horas);
+        if (crescente) motivo = `escalamento (${ultimas.map(c => c.horas + 'h').join('→')})`;
+    }
+
+    if (motivo) {
+        entry.bloqueadoAte = agora + _HORAS_BLOQUEIO_MS;
+        entry.calls = [];
+        console.warn(`[ANTI-RASP] BLOQUEANDO ${usuario} (${ip}) por 15min — motivo: ${motivo}`);
+        return res.status(429).json({
+            success: false,
+            message: 'Uso automatizado detectado. Acesso bloqueado por 15 minutos.',
+            bloqueadoAte: new Date(entry.bloqueadoAte).toISOString(),
+        });
+    }
+
+    console.warn(`[AUDIT-HORAS] horas=${horas} ip=${ip} usuario=${usuario_id ? `${usuario} (id:${usuario_id})` : 'anonimo'} ua="${(req.headers['user-agent']||'').substring(0,80)}"`);
+    // Persiste para análise no painel administrativo
+    if (sqlConnectionPool) {
+        sqlConnectionPool.request()
+            .input('uid',    usuario_id)
+            .input('usr',    usuario)
+            .input('ip',     ip)
+            .input('horas',  horas)
+            .input('rota',   req.path)
+            .query('INSERT INTO auditoria_requests (usuario_id, usuario, ip, horas, rota) VALUES (@uid, @usr, @ip, @horas, @rota)')
+            .catch(() => {});
     }
     next();
 });
