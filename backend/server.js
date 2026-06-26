@@ -2241,7 +2241,7 @@ app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
                 MIN(a.horas) as horas_inicio, MAX(a.horas) as horas_fim,
                 COUNT(*) as total_chamadas,
                 MAX(a.horas) - MIN(a.horas) as variacao,
-                MIN(a.rota) as rota,
+                MAX(CASE WHEN a.rota IS NOT NULL AND a.rota <> '/' THEN a.rota END) as rota,
                 CONVERT(VARCHAR(19), MIN(a.data_hora), 120) as primeira_vez,
                 CONVERT(VARCHAR(19), MAX(a.data_hora), 120) as ultima_vez,
                 DATEDIFF(MINUTE, MIN(a.data_hora), MAX(a.data_hora)) as duracao_min
@@ -2261,7 +2261,7 @@ app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
                 COUNT(*) as total_chamadas,
                 AVG(a.horas) as media_horas,
                 MAX(a.horas) as max_horas,
-                MIN(a.rota) as rota,
+                MAX(CASE WHEN a.rota IS NOT NULL AND a.rota <> '/' THEN a.rota END) as rota,
                 CONVERT(VARCHAR(19), MIN(a.data_hora), 120) as primeira_vez,
                 CONVERT(VARCHAR(19), MAX(a.data_hora), 120) as ultima_vez,
                 DATEDIFF(MINUTE, MIN(a.data_hora), MAX(a.data_hora)) as duracao_min

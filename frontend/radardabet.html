@@ -13492,7 +13492,7 @@ async function _carregarAlertasAbuso() {
     const _abTag = (txt, cor) => `<span style="background:${cor}22;border:1px solid ${cor}55;color:${cor};border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;white-space:nowrap">${txt}</span>`;
 
     const _abRelatorio = (r, tipo) => {
-        const rota = r.rota || '/api/bet365/historico-mercados';
+        const rota = (r.rota && r.rota !== '/') ? r.rota : '/api/bet365/historico-mercados';
         const inc  = r.total_chamadas > 1 ? Math.round((r.horas_fim - r.horas_inicio) / (r.total_chamadas - 1) * 10) / 10 : '?';
         const dur  = r.duracao_min != null ? `${r.duracao_min} minuto(s)` : '?';
         if (tipo === 'escalada') return [
@@ -13532,7 +13532,7 @@ async function _carregarAlertasAbuso() {
 
     if (!window._abRels) window._abRels = {};
     const _abBloco = (r, tags, tipo, corBorda) => {
-        const rota = r.rota || '/api/bet365/historico-mercados';
+        const rota = (r.rota && r.rota !== '/') ? r.rota : '/api/bet365/historico-mercados';
         const dur  = r.duracao_min != null ? `${r.duracao_min}min` : null;
         const durStr = dur ? ` em ${dur}` : '';
         const inc  = (r.horas_inicio != null && r.total_chamadas > 1)
@@ -13587,7 +13587,10 @@ async function _carregarAlertasAbuso() {
             _abTag('RELOGIN RÁPIDO','#fb923c') + ' ' + _abTag('POSSÍVEL SCRIPT','#fb923c'),
             'relogin', '#fb923c')));
         (da.ipUnico || []).forEach(r => {
-            if ((da.reloginRapido||[]).some(e => e.usuario === r.usuario)) return;
+            const jaVisto = (da.escalada||[]).some(e => e.usuario === r.usuario) ||
+                            (da.volume||[]).some(e => e.usuario === r.usuario) ||
+                            (da.reloginRapido||[]).some(e => e.usuario === r.usuario);
+            if (jaVisto) return;
             linhas.push(_abBloco(r, _abTag('IP ÚNICO','#94a3b8'), 'ip_unico', '#94a3b8'));
         });
         const periodo = ini === fim ? ini : `${ini} a ${fim}`;
