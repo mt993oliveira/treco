@@ -13369,6 +13369,21 @@ async function _carregarDashboardSeguranca() {
                 ${(isMaster && s.tipo!=='master')?`<button onclick="_segDesconectar('${s.id}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">Desconectar</button>`:''}
             </div>`).join('');
 
+        // ── Blacklist permanente ────────────────────────────────
+        let blacklist = [];
+        try {
+            const rb = await fetch('/api/admin/blacklist');
+            const db = await rb.json();
+            if (db.success) blacklist = db.blacklist;
+        } catch(_) {}
+        const blacklistHtml = blacklist.length === 0
+            ? '<div style="color:#475569;font-size:11px;padding:6px 0">Nenhum IP na blacklist.</div>'
+            : blacklist.map(ip => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1e293b;gap:8px">
+                <span style="font-size:12px;color:#f87171;font-weight:700;font-family:monospace">${ip}</span>
+                <button onclick="_blacklistAcao('${ip}','remover')" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer">🔓 Remover</button>
+            </div>`).join('');
+
         // ── IPs bloqueados ──────────────────────────────────────
         const bloqHtml = d.ipsBlockeados.length === 0
             ? '<div style="color:#475569;font-size:11px;padding:10px">Nenhum IP bloqueado.</div>'
@@ -13419,6 +13434,15 @@ async function _carregarDashboardSeguranca() {
         <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Sessões Ativas (${d.sessoesAtivas.length})</div>
         <div style="margin-bottom:18px">${sessoesHtml}</div>
 
+        <div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">🚫 Blacklist Permanente (${blacklist.length})</div>
+        <div style="margin-bottom:6px">${blacklistHtml}</div>
+        <div style="display:flex;gap:6px;margin-bottom:18px">
+            <input id="blacklist-novo-ip" type="text" placeholder="IP a bloquear (ex: 45.164.233.45)"
+                style="flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:5px 10px;font-size:11px;font-family:monospace">
+            <button onclick="_blacklistAcao(document.getElementById('blacklist-novo-ip').value,'adicionar')"
+                style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171;border-radius:5px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">🚫 Bloquear</button>
+        </div>
+
         <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">IPs Bloqueados por Brute Force (${d.ipsBlockeados.length})</div>
         <div style="margin-bottom:18px">${bloqHtml}</div>
 
@@ -13431,6 +13455,21 @@ async function _carregarDashboardSeguranca() {
     } catch(e) {
         el.innerHTML = `<div style="color:#f87171;padding:16px;font-size:12px">Erro: ${e.message}</div>`;
     }
+}
+
+async function _blacklistAcao(ip, acao) {
+    ip = (ip || '').trim();
+    if (!ip) return alert('Digite um IP válido.');
+    if (acao === 'adicionar' && !confirm(`Bloquear permanentemente o IP ${ip}?`)) return;
+    if (acao === 'remover'   && !confirm(`Remover ${ip} da blacklist?`)) return;
+    const r = await fetch('/api/admin/blacklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip, acao }),
+    });
+    const d = await r.json();
+    if (d.success) _carregarDashboardSeguranca();
+    else alert(d.message || 'Erro');
 }
 
 async function _segDesbloquearIp(ip) {
