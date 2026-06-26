@@ -2675,7 +2675,7 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
         // Req/min por usuário (instantâneo)
         const reqPorUsuario = [..._userReqCount.entries()]
             .filter(([, v]) => Date.now() - v.windowStart < 60000)
-            .map(([uid, v]) => ({ uid, reqUltimoMin: v.count }))
+            .map(([uid, v]) => ({ uid, usuario: activeSessions.get(uid)?.usuario || '?', reqUltimoMin: v.count }))
             .sort((a, b) => b.reqUltimoMin - a.reqUltimoMin);
 
         // Últimas 50 tentativas de login no banco

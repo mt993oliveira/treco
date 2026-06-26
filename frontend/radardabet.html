@@ -13409,7 +13409,7 @@ async function _carregarDashboardSeguranca() {
                 const barW = Math.min(100, Math.round(r.reqUltimoMin / 3));
                 return `<div style="padding:5px 0;border-bottom:1px solid #1e293b">
                     <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-                        <span style="color:#e2e8f0">uid ${r.uid}</span>
+                        <span style="color:#e2e8f0">${r.usuario} <span style="color:#64748b;font-size:10px">(uid ${r.uid})</span></span>
                         <span style="color:${cor};font-weight:700">${r.reqUltimoMin} req/min</span>
                     </div>
                     <div style="height:4px;background:#1e293b;border-radius:2px"><div style="height:4px;width:${barW}%;background:${cor};border-radius:2px;transition:width .3s"></div></div>
