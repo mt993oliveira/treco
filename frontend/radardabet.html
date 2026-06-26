@@ -13576,21 +13576,24 @@ async function _carregarAlertasAbuso() {
         if (!da.success) { const msg = da.error||da.message||'falha ao carregar'; el.innerHTML = `<div style="color:#f87171;font-size:11px">Erro: ${msg}</div>`; if (msg.includes('expirada')||msg.includes('autenticado')) _sessaoExpirou(); return; }
 
         const linhas = [];
-        (da.escalada || []).forEach(r => linhas.push(_abBloco(r,
-            _abTag('ESCALADA DE HORAS','#f87171') + ' ' + _abTag('BOT','#f87171'),
-            'escalada', '#f87171')));
+        const _abVistos = new Set(); // dedup por usuario — prioridade: escalada > volume > relogin > ipUnico
+        (da.escalada || []).forEach(r => {
+            _abVistos.add(r.usuario);
+            linhas.push(_abBloco(r, _abTag('ESCALADA DE HORAS','#f87171') + ' ' + _abTag('BOT','#f87171'), 'escalada', '#f87171'));
+        });
         (da.volume || []).forEach(r => {
-            if ((da.escalada||[]).some(e => e.ip === r.ip && e.usuario === r.usuario)) return;
+            if (_abVistos.has(r.usuario)) return;
+            _abVistos.add(r.usuario);
             linhas.push(_abBloco(r, _abTag('VOLUME ALTO','#fbbf24'), 'volume', '#fbbf24'));
         });
-        (da.reloginRapido || []).forEach(r => linhas.push(_abBloco(r,
-            _abTag('RELOGIN RÁPIDO','#fb923c') + ' ' + _abTag('POSSÍVEL SCRIPT','#fb923c'),
-            'relogin', '#fb923c')));
+        (da.reloginRapido || []).forEach(r => {
+            if (_abVistos.has(r.usuario)) return;
+            _abVistos.add(r.usuario);
+            linhas.push(_abBloco(r, _abTag('RELOGIN RÁPIDO','#fb923c') + ' ' + _abTag('POSSÍVEL SCRIPT','#fb923c'), 'relogin', '#fb923c'));
+        });
         (da.ipUnico || []).forEach(r => {
-            const jaVisto = (da.escalada||[]).some(e => e.usuario === r.usuario) ||
-                            (da.volume||[]).some(e => e.usuario === r.usuario) ||
-                            (da.reloginRapido||[]).some(e => e.usuario === r.usuario);
-            if (jaVisto) return;
+            if (_abVistos.has(r.usuario)) return;
+            _abVistos.add(r.usuario);
             linhas.push(_abBloco(r, _abTag('IP ÚNICO','#94a3b8'), 'ip_unico', '#94a3b8'));
         });
         const periodo = ini === fim ? ini : `${ini} a ${fim}`;
