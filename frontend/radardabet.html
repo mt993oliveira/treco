@@ -4281,7 +4281,12 @@ function setView(v) {
     if (v === 'clubes')       { renderClubes(); }
     if (v === 'youtube')      { renderYoutubeView(); }
     if (v === 'diagnostico')  { carregarDiagnostico(); _bfInit(); }
-    if (v === 'proximos')     { renderProximosJogos(); }
+    if (v === 'proximos') {
+        renderProximosJogos();
+        if (!_proximosTimer) _proximosTimer = setInterval(() => { _proximosCache = null; renderProximosJogos(); }, 30000);
+    } else {
+        if (_proximosTimer) { clearInterval(_proximosTimer); _proximosTimer = null; }
+    }
     if (v === 'simulador')    { renderSimulador(); }
 }
 
@@ -10438,6 +10443,7 @@ async function renderDetalheClube(nomeTime) {
 // ============================================================
 let _proximosCache  = null;
 let _proximosTs     = 0;
+let _proximosTimer  = null;
 let _proximosLista  = [];
 
 // ============================================================
