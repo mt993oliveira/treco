@@ -13462,14 +13462,18 @@ async function _blacklistAcao(ip, acao) {
     if (!ip) return alert('Digite um IP válido.');
     if (acao === 'adicionar' && !confirm(`Bloquear permanentemente o IP ${ip}?`)) return;
     if (acao === 'remover'   && !confirm(`Remover ${ip} da blacklist?`)) return;
-    const r = await fetch('/api/admin/blacklist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip, acao }),
-    });
-    const d = await r.json();
-    if (d.success) _carregarDashboardSeguranca();
-    else alert(d.message || 'Erro');
+    try {
+        const r = await fetch('/api/admin/blacklist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, acao }),
+        });
+        const d = await r.json();
+        if (d.success) _carregarDashboardSeguranca();
+        else alert(d.message || `Erro ao ${acao} IP (status ${r.status})`);
+    } catch(e) {
+        alert('Erro na requisição: ' + e.message);
+    }
 }
 
 async function _segDesbloquearIp(ip) {

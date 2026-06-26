@@ -2668,13 +2668,13 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
 // ── Blacklist de IPs (apenas master) ─────────────────────────────────────
 app.get('/api/admin/blacklist', requireAuth, (req, res) => {
     const tipo = (req.sessionUser?.tipo || '').toLowerCase();
-    if (!['master','administrador'].includes(tipo)) return res.status(403).json({ success: false });
+    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
     res.json({ success: true, blacklist: [..._ipBlacklist] });
 });
 
 app.post('/api/admin/blacklist', requireAuth, (req, res) => {
     const tipo = (req.sessionUser?.tipo || '').toLowerCase();
-    if (!['master','administrador'].includes(tipo)) return res.status(403).json({ success: false });
+    if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
     const { ip, acao } = req.body; // acao: 'adicionar' | 'remover'
     if (!ip || !/^[\d\.]+$/.test(ip)) return res.status(400).json({ success: false, message: 'IP inválido' });
     if (acao === 'adicionar') {
