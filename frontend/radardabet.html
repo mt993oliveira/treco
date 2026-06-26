@@ -14941,6 +14941,9 @@ async function _prefLoad() {
         if (p.rdbt_fichaJogos)   S_clubes.nPartidas = parseInt(p.rdbt_fichaJogos) || 10;
         // Re-aplica cores do grid caso gridCores tenha sido restaurado do banco
         if (p.gridCores) aplicarCoresGrid(carregarCoresGrid());
+        // Re-aplica cores dos gráficos (chartCores / chartCoresGols) em S direto
+        try { if (p.chartCores)     Object.assign(S._chartCores,     JSON.parse(p.chartCores));     } catch(e) {}
+        try { if (p.chartCoresGols) Object.assign(S._chartCoresGols, JSON.parse(p.chartCoresGols)); } catch(e) {}
         console.log('[pref] preferências aplicadas com sucesso');
     } catch(e) { console.error('[pref] _prefLoad erro:', e.message); }
 }
