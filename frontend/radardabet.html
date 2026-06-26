@@ -3923,9 +3923,6 @@ function aplicarCoresGrid(c) {
         `.tabela-hist span.cell-match-score { outline: 2px solid ${c.selScoreBrd||'#fbbf24'} !important; background: ${c.selScoreBg||'#422006'} !important; border-radius: 2px; }\n` +
         `.tabela-hist span.cell-match-club  { outline: 2px solid ${c.selClubBrd||'#1fcc59'} !important; background: ${c.selClubBg||'#052e16'} !important; border-radius: 2px; }`;
 }
-// Aplica cores salvas imediatamente (antes de qualquer render)
-aplicarCoresGrid(carregarCoresGrid());
-
 // ESTADO
 // ============================================================
 const S = {
@@ -4046,6 +4043,8 @@ const S = {
         nRecente:    20,      // janela de jogos recentes para tendências
     },
 };
+// Aplica cores salvas imediatamente — chamada APÓS const S para evitar TDZ
+aplicarCoresGrid(carregarCoresGrid());
 
 // Por padrão todos desligados — usuário seleciona em Mercados ou aplica um Padrão
 TODOS_FILTROS.forEach(f => { S.linhas[f.id] = false; });
