@@ -6925,6 +6925,11 @@ function _renderSubGrafRsi(rawAll, offsetGols, labels) {
     const dat30 = lbl.map((_, i) => i < nDados ? 30 : null);
     if (S._graficoRSI) { try { S._graficoRSI.destroy(); } catch(_){} S._graficoRSI = null; }
     const _old = Chart.getChart(canv); if (_old) { try { _old.destroy(); } catch(_){} }
+    const _validRsi = datRsi.filter(v => v != null);
+    const _rsiMin = _validRsi.length ? Math.min(..._validRsi) : 30;
+    const _rsiMax = _validRsi.length ? Math.max(..._validRsi) : 70;
+    const _yMin = Math.max(0,   Math.min(_rsiMin - 5, 25));
+    const _yMax = Math.min(100, Math.max(_rsiMax + 5, 75));
     try {
         S._graficoRSI = new Chart(canv.getContext('2d'), {
             type: 'line',
@@ -6960,9 +6965,9 @@ function _renderSubGrafRsi(rawAll, offsetGols, labels) {
                 },
                 scales:{
                     x:{ grid:{color:'#1a2740'}, ticks:{color:'#64748b',font:{size:8},maxRotation:45,autoSkip:true,maxTicksLimit:30} },
-                    y:{ min:0, max:100, grid:{color:'#1a2740'},
-                        ticks:{ color:'#94a3b8', font:{size:8}, stepSize:25,
-                            callback: v => v===70?'70':v===50?'50':v===30?'30':v===0?'0':v===100?'100':null } }
+                    y:{ min:_yMin, max:_yMax, grid:{color:'#1a2740'},
+                        ticks:{ color:'#94a3b8', font:{size:8},
+                            callback: v => v===70?'70':v===50?'50':v===30?'30':v===_yMin?String(_yMin):v===_yMax?String(_yMax):null } }
                 }
             }
         });
