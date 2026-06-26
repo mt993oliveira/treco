@@ -12,7 +12,16 @@ const forcedLogouts  = new Set(); // IDs desconectados pelo admin — próximo p
 
 // Blacklist de IPs bloqueados permanentemente (scraping, abuso, ataques)
 // Gerenciado via UI: Diagnóstico → Blacklist Permanente
+// Persistido na tabela ip_blacklist — sobrevive restart do PM2
 const _ipBlacklist = new Set();
+async function _blacklistCarregarDB() {
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const r = await sql.query`SELECT ip FROM ip_blacklist`;
+        r.recordset.forEach(row => _ipBlacklist.add(row.ip));
+        if (_ipBlacklist.size) console.log(`🚫 [Blacklist] ${_ipBlacklist.size} IP(s) carregados do banco`);
+    } catch(e) { console.error('[Blacklist] Erro ao carregar:', e.message); }
+}
 const loginHistory  = new Map(); // String(userId) -> { countToday, lastLoginDate }
 const loginFailures = new Map(); // username_lower -> [{ ip, ts }]
 const _geoCache     = new Map(); // ip -> { city, region, country, org, cachedAt }
@@ -2318,6 +2327,9 @@ server.listen(PORT, () => {
         } catch(e) { console.warn('⚠️ Schema HistoricoAcessos:', e.message); }
     })();
 
+    // Carrega blacklist persistida do banco na memória
+    _blacklistCarregarDB();
+
     // ── Inicia o agendador Bet365 junto com o servidor ──
     if (process.env.BET365_AGENDADOR_ATIVADO !== 'false') {
         const Bet365Coletor               = require('./services/bet365-coletor');
@@ -2715,18 +2727,28 @@ app.get('/api/admin/blacklist', requireAuth, (req, res) => {
     res.json({ success: true, blacklist: [..._ipBlacklist] });
 });
 
-app.post('/api/admin/blacklist', requireAuth, (req, res) => {
+app.post('/api/admin/blacklist', requireAuth, async (req, res) => {
     const tipo = (req.sessionUser?.tipo || '').toLowerCase();
     if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
-    const { ip, acao } = req.body; // acao: 'adicionar' | 'remover'
+    const { ip, acao } = req.body;
     if (!ip || !/^[\d\.]+$/.test(ip)) return res.status(400).json({ success: false, message: 'IP inválido' });
-    if (acao === 'adicionar') {
-        _ipBlacklist.add(ip);
-        console.warn(`🚫 [Blacklist] IP ${ip} bloqueado por ${req.sessionUser?.usuario}`);
-    } else if (acao === 'remover') {
-        _ipBlacklist.delete(ip);
-        console.log(`✅ [Blacklist] IP ${ip} removido por ${req.sessionUser?.usuario}`);
-    }
+    try {
+        if (acao === 'adicionar') {
+            _ipBlacklist.add(ip);
+            await sqlConnectionPool.request()
+                .input('ip', ip)
+                .input('por', req.sessionUser?.usuario || '?')
+                .query(`IF NOT EXISTS (SELECT 1 FROM ip_blacklist WHERE ip=@ip)
+                        INSERT INTO ip_blacklist (ip, bloqueado_por) VALUES (@ip, @por)`);
+            console.warn(`🚫 [Blacklist] IP ${ip} bloqueado por ${req.sessionUser?.usuario}`);
+        } else if (acao === 'remover') {
+            _ipBlacklist.delete(ip);
+            await sqlConnectionPool.request()
+                .input('ip', ip)
+                .query('DELETE FROM ip_blacklist WHERE ip = @ip');
+            console.log(`✅ [Blacklist] IP ${ip} removido por ${req.sessionUser?.usuario}`);
+        }
+    } catch(e) { console.error('[Blacklist] Erro ao persistir:', e.message); }
     res.json({ success: true, blacklist: [..._ipBlacklist] });
 });
 

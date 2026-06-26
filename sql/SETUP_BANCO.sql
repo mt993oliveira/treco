@@ -113,6 +113,22 @@ ELSE
 GO
 
 -- ============================================================
+-- TABELA: ip_blacklist
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name='ip_blacklist' AND xtype='U')
+BEGIN
+    CREATE TABLE ip_blacklist (
+        ip           NVARCHAR(45)  NOT NULL PRIMARY KEY,
+        bloqueado_por NVARCHAR(50) NULL,
+        bloqueado_em  DATETIME2    NOT NULL DEFAULT GETDATE()
+    );
+    PRINT '✅ Tabela ip_blacklist criada!';
+END
+ELSE
+    PRINT 'ℹ️  Tabela ip_blacklist já existe';
+GO
+
+-- ============================================================
 -- TABELA: HistoricoAlteracoes
 -- ============================================================
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[HistoricoAlteracoes]') AND type = 'U')
