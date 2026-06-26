@@ -2153,6 +2153,16 @@ app.get('/api/chat/historico', requireAuth, async (req, res) => {
 app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
     const tipo = (req.sessionUser?.tipo || '').toLowerCase();
     if (!['master','administrador','admin'].includes(tipo)) return res.status(403).json({ success: false });
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const dataInicio = (req.query.dataInicio || hoje).slice(0, 10);
+    const dataFim    = (req.query.dataFim    || hoje).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataInicio) || !/^\d{4}-\d{2}-\d{2}$/.test(dataFim))
+        return res.status(400).json({ success: false, error: 'Datas inválidas' });
+
+    const dtIni = `${dataInicio} 00:00:00`;
+    const dtFim = `${dataFim} 23:59:59`;
+
     try {
         await connectSQL(getDatabaseConfigFromEnv());
 
@@ -2163,7 +2173,7 @@ app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
                 MAX(horas) - MIN(horas) as variacao,
                 CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
             FROM auditoria_requests
-            WHERE data_hora > DATEADD(hour, -24, GETUTCDATE())
+            WHERE data_hora BETWEEN ${dtIni} AND ${dtFim}
             GROUP BY usuario_id, usuario, ip
             HAVING COUNT(*) >= 5 AND (MAX(horas) - MIN(horas)) > 30
             ORDER BY variacao DESC
@@ -2176,7 +2186,7 @@ app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
                 MAX(horas) as max_horas,
                 CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
             FROM auditoria_requests
-            WHERE data_hora > DATEADD(hour, -24, GETUTCDATE())
+            WHERE data_hora BETWEEN ${dtIni} AND ${dtFim}
             GROUP BY usuario_id, usuario, ip
             HAVING COUNT(*) >= 10
             ORDER BY total_chamadas DESC
@@ -2195,7 +2205,7 @@ app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
                     LAG(tipo) OVER (PARTITION BY usuario_id ORDER BY data_hora) as tipo_ant,
                     tipo
                 FROM HistoricoAcessos
-                WHERE data_hora > DATEADD(day, -7, GETUTCDATE())
+                WHERE data_hora BETWEEN ${dtIni} AND ${dtFim}
                   AND usuario_id IS NOT NULL
             ) t
             WHERE tipo = 'login_ok' AND tipo_ant IN ('logout','desconectado') AND seg < 30
@@ -2212,7 +2222,7 @@ app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
                 CONVERT(VARCHAR(19), MAX(data_hora), 120) as ultima_vez
             FROM HistoricoAcessos
             WHERE tipo = 'login_ok'
-              AND data_hora > DATEADD(day, -30, GETUTCDATE())
+              AND data_hora BETWEEN ${dtIni} AND ${dtFim}
               AND usuario_id IS NOT NULL
             GROUP BY usuario_id, usuario
             HAVING COUNT(DISTINCT ip) = 1 AND COUNT(*) >= 5
@@ -2221,6 +2231,7 @@ app.get('/api/admin/alertas-abuso', requireAuth, async (req, res) => {
 
         res.json({
             success: true,
+            dataInicio, dataFim,
             escalada:      escalada.recordset,
             volume:        volume.recordset,
             reloginRapido: reloginRapido.recordset,
