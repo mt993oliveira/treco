@@ -13407,12 +13407,16 @@ async function _carregarDashboardSeguranca() {
             : d.reqPorUsuario.slice(0,10).map(r => {
                 const cor = r.reqUltimoMin > 200 ? '#f87171' : r.reqUltimoMin > 100 ? '#fbbf24' : '#1fcc59';
                 const barW = Math.min(100, Math.round(r.reqUltimoMin / 3));
+                const rotasHtml = (r.rotas || []).map(x =>
+                    `<span style="background:#1e293b;border-radius:3px;padding:1px 5px;white-space:nowrap">${x.r} <b style="color:#e2e8f0">×${x.c}</b></span>`
+                ).join(' ');
                 return `<div style="padding:5px 0;border-bottom:1px solid #1e293b">
                     <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
                         <span style="color:#e2e8f0">${r.usuario} <span style="color:#64748b;font-size:10px">(uid ${r.uid})</span></span>
                         <span style="color:${cor};font-weight:700">${r.reqUltimoMin} req/min</span>
                     </div>
-                    <div style="height:4px;background:#1e293b;border-radius:2px"><div style="height:4px;width:${barW}%;background:${cor};border-radius:2px;transition:width .3s"></div></div>
+                    <div style="height:4px;background:#1e293b;border-radius:2px;margin-bottom:4px"><div style="height:4px;width:${barW}%;background:${cor};border-radius:2px;transition:width .3s"></div></div>
+                    ${rotasHtml ? `<div style="font-size:10px;color:#64748b;display:flex;flex-wrap:wrap;gap:3px">${rotasHtml}</div>` : ''}
                 </div>`;
             }).join('');
 

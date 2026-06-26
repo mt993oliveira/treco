@@ -108,17 +108,21 @@ const loginLimiter = rateLimit({
 });
 
 // Rate limit por usuário autenticado — máx 300 req/min por userId
-const _userReqCount = new Map(); // uid -> { count, windowStart }
+const _userReqCount = new Map(); // uid -> { count, windowStart, rotas: Map<rota, count> }
 function userRateLimit(req, res, next) {
     const uid = req.sessionUser?.id || req.body?.usuarioId || req.query?.usuarioId;
     if (!uid) return next();
     const agora = Date.now();
-    const entry = _userReqCount.get(uid) || { count: 0, windowStart: agora };
+    const entry = _userReqCount.get(uid) || { count: 0, windowStart: agora, rotas: new Map() };
     if (agora - entry.windowStart > 60000) {
         entry.count = 0;
         entry.windowStart = agora;
+        entry.rotas = new Map();
     }
     entry.count++;
+    // Registra rota sem query string e sem prefixo /api/bet365 /api/simulador etc.
+    const rota = (req.originalUrl || req.path).split('?')[0].replace(/^\/api\/[^/]+/, '') || req.path;
+    entry.rotas.set(rota, (entry.rotas.get(rota) || 0) + 1);
     _userReqCount.set(uid, entry);
     if (entry.count > 300) {
         console.warn(`[Segurança] Rate limit por usuário: uid=${uid} count=${entry.count}`);
@@ -2675,7 +2679,12 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
         // Req/min por usuário (instantâneo)
         const reqPorUsuario = [..._userReqCount.entries()]
             .filter(([, v]) => Date.now() - v.windowStart < 60000)
-            .map(([uid, v]) => ({ uid, usuario: activeSessions.get(uid)?.usuario || '?', reqUltimoMin: v.count }))
+            .map(([uid, v]) => ({
+                uid,
+                usuario: activeSessions.get(uid)?.usuario || '?',
+                reqUltimoMin: v.count,
+                rotas: [...v.rotas.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([r, c]) => ({ r, c })),
+            }))
             .sort((a, b) => b.reqUltimoMin - a.reqUltimoMin);
 
         // Últimas 50 tentativas de login no banco
