@@ -11,9 +11,8 @@ const activeSessions = new Map();
 const forcedLogouts  = new Set(); // IDs desconectados pelo admin — próximo ping força logout
 
 // Blacklist de IPs bloqueados permanentemente (scraping, abuso, ataques)
-const _ipBlacklist = new Set([
-    '45.164.233.45', // bloqueado 2026-06-26: scraper automatizado (horas=29..167 sem autenticação)
-]);
+// Gerenciado via UI: Diagnóstico → Blacklist Permanente
+const _ipBlacklist = new Set();
 const loginHistory  = new Map(); // String(userId) -> { countToday, lastLoginDate }
 const loginFailures = new Map(); // username_lower -> [{ ip, ts }]
 const _geoCache     = new Map(); // ip -> { city, region, country, org, cachedAt }
