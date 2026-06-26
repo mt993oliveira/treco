@@ -370,7 +370,7 @@ async function requireAuthQuery(req, res, next) {
         // Cookie presente mas token não encontrado em memória — pode ser restart do servidor
         // Tenta reconstituir sessão a partir do banco
         try {
-            const dbR = await pool.request()
+            const dbR = await sqlConnectionPool.request()
                 .input('token', cookieToken)
                 .query('SELECT Id, Usuario, NomeCompleto, TipoUsuario FROM Usuarios WHERE sess_token = @token AND sess_expira > GETDATE() AND Ativo = 1');
             if (dbR.recordset.length) {
@@ -579,7 +579,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                     token: sessionToken,
                 });
                 // Persiste token no banco — sessão sobrevive restart do PM2
-                pool.request()
+                sqlConnectionPool.request()
                     .input('token', sessionToken)
                     .input('expira', new Date(Date.now() + 8 * 60 * 60 * 1000))
                     .input('id', user.Id)
@@ -1721,7 +1721,7 @@ app.post('/api/logout', async (req, res) => {
         const _lgtDur  = _lgtSess?.loginTime ? Math.round((Date.now() - new Date(_lgtSess.loginTime).getTime()) / 1000) : null;
         activeSessions.delete(String(usuarioId));
         // Invalida token persistido no banco
-        pool.request()
+        sqlConnectionPool.request()
             .input('id', usuarioId)
             .query('UPDATE Usuarios SET sess_token = NULL, sess_expira = NULL WHERE Id = @id')
             .catch(() => {});
