@@ -3892,7 +3892,8 @@ function carregarCoresGrid() {
     let sysExt = {};
     try { if (S && S._gridCoresSistema) sysExt = S._gridCoresSistema; } catch(_) {}
     const sys = Object.assign({}, GRID_CORES_PADRAO, sysExt);
-    try { return Object.assign({}, JSON.parse(localStorage.getItem('gridCores') || '{}'), sys); }
+    // userCores por último: preferência do usuário prevalece sobre padrões do sistema
+    try { return Object.assign({}, sys, JSON.parse(localStorage.getItem('gridCores') || '{}')); }
     catch(e) { return Object.assign({}, sys); }
 }
 function aplicarCoresGrid(c) {
@@ -14938,6 +14939,8 @@ async function _prefLoad() {
         if (p.s_grafGolsMACD   !== undefined) S.grafGolsMACD   = p.s_grafGolsMACD   === 'true';
         if (p.rdbt_filtroMosaico) S.filtroMosaico  = p.rdbt_filtroMosaico;
         if (p.rdbt_fichaJogos)   S_clubes.nPartidas = parseInt(p.rdbt_fichaJogos) || 10;
+        // Re-aplica cores do grid caso gridCores tenha sido restaurado do banco
+        if (p.gridCores) aplicarCoresGrid(carregarCoresGrid());
         console.log('[pref] preferências aplicadas com sucesso');
     } catch(e) { console.error('[pref] _prefLoad erro:', e.message); }
 }
