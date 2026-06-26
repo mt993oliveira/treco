@@ -13485,7 +13485,7 @@ async function _carregarAlertasAbuso() {
         const ra = await fetch('/api/admin/alertas-abuso', { signal: ctrl.signal });
         clearTimeout(timer);
         const da = await ra.json();
-        if (!da.success) { el.innerHTML = `<div style="color:#f87171;font-size:11px">Erro: ${da.error||'falha ao carregar'}</div>`; return; }
+        if (!da.success) { const msg = da.error||da.message||'falha ao carregar'; el.innerHTML = `<div style="color:#f87171;font-size:11px">Erro: ${msg}</div>`; if (msg.includes('expirada')||msg.includes('autenticado')) _sessaoExpirou(); return; }
 
         const linhas = [];
         (da.escalada || []).forEach(r => linhas.push(_abRow(

@@ -339,7 +339,7 @@ async function _registrarAcesso(usuarioId, usuario, tipo, ip, userAgent, geo, du
 // ──────────────────────────────────────────────────────────────
 
 // Middleware de autenticação — valida sessão ativa via cookie (preferido) ou body/query (legado)
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
     // 1) Token via cookie httpOnly (novo padrão)
     const cookieToken = req.cookies?.sess;
     if (cookieToken) {
@@ -352,8 +352,23 @@ function requireAuth(req, res, next) {
                 return next();
             }
         }
+        // Cookie presente mas token não encontrado em memória — reconstitui do banco após restart
+        try {
+            const dbR = await sqlConnectionPool.request()
+                .input('token', cookieToken)
+                .query('SELECT Id, Usuario, NomeCompleto, TipoUsuario FROM Usuarios WHERE sess_token = @token AND sess_expira > GETDATE() AND Ativo = 1');
+            if (dbR.recordset.length) {
+                const u = dbR.recordset[0];
+                const sess = { id: String(u.Id), usuario: u.Usuario, nome: u.NomeCompleto, tipo: u.TipoUsuario, token: cookieToken, lastSeen: new Date(), loginTime: new Date() };
+                activeSessions.set(String(u.Id), sess);
+                req.sessionUser = sess;
+                if (!req.body) req.body = {};
+                req.body.usuarioId = req.body.usuarioId || String(u.Id);
+                return next();
+            }
+        } catch (_) {}
         res.clearCookie('sess');
-        return res.json({ success: false, message: 'Sessão expirada. Faça login novamente.' });
+        return res.status(401).json({ success: false, message: 'Sessão expirada. Faça login novamente.' });
     }
 
     // 2) Fallback legado: usuarioId no body ou query validado contra activeSessions
@@ -365,7 +380,7 @@ function requireAuth(req, res, next) {
         return next();
     }
 
-    return res.json({ success: false, message: 'Não autenticado. Faça login novamente.' });
+    return res.status(401).json({ success: false, message: 'Não autenticado. Faça login novamente.' });
 }
 
 // Middleware para rotas GET que passam usuarioId como query param (ex: /api/bet365/*)
