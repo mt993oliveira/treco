@@ -1626,6 +1626,7 @@ class Bet365Coletor {
 
                 console.log('   🔄 Reiniciando tudo em 5s (Edge + Node)...');
                 this._logAuditoria('reinicio_disparado', 'Login falhou em todas as contas — reiniciar-tudo.bat');
+                await this._tirarScreenshotFalha(pg, 'reinicio_login_falhou').catch(() => {});
                 setTimeout(() => {
                     try {
                         const { spawn } = require('child_process');
