@@ -1211,6 +1211,29 @@ router.get('/historico-mercados', async (req, res) => {
                 }
             }
 
+            // Fallback: só um dos placares definido → estima o outro via "Margem de Vitória"
+            // Ex: gol_casa=2 (Penarol) + rfMkt=SP + "Margem: SP - 3+ Gols" → gol_fora=5
+            if ((j.gol_casa !== null) !== (j.gol_fora !== null)) {
+                const mvMkt = mkts.find(m => /margem de vit/i.test(m.mercado));
+                if (mvMkt && rfMkt) {
+                    const mvMatch = (mvMkt.selecao || '').match(/(\d+)\+?\s*gol/i);
+                    if (mvMatch) {
+                        const margem   = parseInt(mvMatch[1]);
+                        const winner   = (rfMkt.selecao || '').toLowerCase().trim();
+                        const casaLow  = (j.time_casa || '').toLowerCase().trim();
+                        const foraLow  = (j.time_fora || '').toLowerCase().trim();
+                        if (j.gol_casa !== null && j.gol_fora === null && foraLow && winner.includes(foraLow)) {
+                            j.gol_fora = j.gol_casa + margem;
+                        } else if (j.gol_fora !== null && j.gol_casa === null && casaLow && winner.includes(casaLow)) {
+                            j.gol_casa = j.gol_fora + margem;
+                        }
+                        if (j.gol_casa !== null && j.gol_fora !== null) {
+                            j.total_gols = j.gol_casa + j.gol_fora;
+                        }
+                    }
+                }
+            }
+
             // Deriva total_gols para exibição quando placar exato não disponível
             if (j.gol_casa === null) {
                 // 1ª prioridade: "Total Exato de Gols" (mais preciso)
