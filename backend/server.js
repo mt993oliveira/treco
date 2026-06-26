@@ -2338,6 +2338,41 @@ server.listen(PORT, () => {
         } catch(e) { console.warn('⚠️ Schema HistoricoAcessos:', e.message); }
     })();
 
+    // Garante tabela auditoria_requests
+    (async () => {
+        try {
+            await sql.query`
+                IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name='auditoria_requests' AND xtype='U')
+                BEGIN
+                    CREATE TABLE auditoria_requests (
+                        id         INT IDENTITY(1,1) PRIMARY KEY,
+                        usuario_id INT NULL,
+                        usuario    NVARCHAR(100) NOT NULL DEFAULT 'anonimo',
+                        ip         NVARCHAR(45)  NOT NULL,
+                        horas      INT           NOT NULL,
+                        data_hora  DATETIME2     NOT NULL DEFAULT GETUTCDATE()
+                    );
+                    CREATE INDEX IX_ar_data ON auditoria_requests(data_hora DESC);
+                    CREATE INDEX IX_ar_uid  ON auditoria_requests(usuario_id, data_hora DESC);
+                END
+            `;
+        } catch(e) { console.warn('⚠️ Schema auditoria_requests:', e.message); }
+    })();
+
+    // Garante tabela ip_blacklist
+    (async () => {
+        try {
+            await sql.query`
+                IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name='ip_blacklist' AND xtype='U')
+                CREATE TABLE ip_blacklist (
+                    ip            NVARCHAR(45)  NOT NULL PRIMARY KEY,
+                    bloqueado_por NVARCHAR(50)  NULL,
+                    bloqueado_em  DATETIME2     NOT NULL DEFAULT GETDATE()
+                )
+            `;
+        } catch(e) { console.warn('⚠️ Schema ip_blacklist:', e.message); }
+    })();
+
     // Carrega blacklist persistida do banco na memória
     _blacklistCarregarDB();
 
