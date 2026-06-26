@@ -3377,6 +3377,7 @@ async function carregarConfigLigas(_tentativa) {
     console.log(`[Config] tentativa ${_tentativa}/3 — buscando /api/bet365/admin/config`);
     try {
         const r    = await fetch('/api/bet365/admin/config');
+        if (r.status === 401) { _sessaoExpirou(); return; }
         const data = await r.json();
         console.log(`[Config] resposta:`, data.success ? `OK (${data.data?.length} itens)` : `FALHA — ${data.error || 'success=false'}`);
         if (!data.success) throw new Error('config: success=false');
@@ -3686,6 +3687,7 @@ async function _aplicarConfigFrontend() {
         // Se não temos config carregada, busca
         if (!S._cfgSecoes) {
             const r = await fetch('/api/bet365/admin/config');
+            if (r.status === 401) { _sessaoExpirou(); return; }
             const data = await r.json();
             if (!data.success) return;
             S._cfgSecoes = {};
@@ -4498,6 +4500,7 @@ async function carregarHistorico(horasOverride) {
         const _fetchHoras = horasOverride ?? Math.max(S.horas, S._horasCarregadas || 0);
         if (!horasOverride) S._horasCarregadas = _fetchHoras;
         const r = await fetch(`/api/bet365/historico-mercados?horas=${_fetchHoras}${S.showProximos ? '&incluirFuturos=true' : ''}`);
+        if (r.status === 401) { _sessaoExpirou(); return; }
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Erro');
 
@@ -14997,6 +15000,17 @@ async function _prefLoad() {
     } catch(e) { console.error('[pref] _prefLoad erro:', e.message); }
 }
 // ────────────────────────────────────────────────────────────────────────────
+
+// Chamado quando servidor retorna 401 — sessão expirou (ex: restart do servidor)
+function _sessaoExpirou() {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('loginTime');
+    // Evita múltiplos redirecionamentos simultâneos
+    if (window._sessaoExpirouEmAndamento) return;
+    window._sessaoExpirouEmAndamento = true;
+    alert('Sua sessão expirou. Faça login novamente.');
+    window.location.replace('/');
+}
 
 // Ping periódico para manter sessão ativa no servidor
 function _pingSession() {
