@@ -2510,6 +2510,7 @@ server.listen(PORT, () => {
     // Garante tabela auditoria_requests
     (async () => {
         try {
+            await connectSQL(getDatabaseConfigFromEnv());
             await sql.query`
                 IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name='auditoria_requests' AND xtype='U')
                 BEGIN
@@ -2526,11 +2527,11 @@ server.listen(PORT, () => {
                     CREATE INDEX IX_ar_uid  ON auditoria_requests(usuario_id, data_hora DESC);
                 END
             `;
-            // Migração: adiciona coluna rota se não existir
             await sql.query`
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('auditoria_requests') AND name='rota')
                     ALTER TABLE auditoria_requests ADD rota NVARCHAR(200) NULL
             `;
+            console.log('✅ Schema auditoria_requests verificado');
         } catch(e) { console.warn('⚠️ Schema auditoria_requests:', e.message); }
     })();
 
