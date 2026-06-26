@@ -3884,6 +3884,7 @@ const GRID_CORES_PADRAO = {
     selClubBg:  '#052e16', selClubBrd:  '#1fcc59',
     filtroInativoBg: '#1fcc59', filtroAtivoBg: '#1fcc59', filtroAtivoTxt: '#ffffff',
     canetaCor:  '#f59e0b',
+    grafPctCor: '#64748b',
     // tamanhos de fonte do mosaico (px)
     horaMinFs: 10,
     clubeFs: 7, ftFs: 10, htFs: 10, oddFs: 6, proxFs: 9,
@@ -3897,6 +3898,7 @@ function carregarCoresGrid() {
     catch(e) { return Object.assign({}, sys); }
 }
 function aplicarCoresGrid(c) {
+    if (c.grafPctCor) S._grafPctCor = c.grafPctCor;
     const canetaEl = document.getElementById('caneta-cor');
     const cor = c.canetaCor || '#f59e0b';
     if (canetaEl) canetaEl.value = cor;
@@ -9446,6 +9448,9 @@ function _cfgPanelHTML() {
         ${_sec('Cor Placar HT (intervalo)', false, _row2(
             _col('Texto','htTxt'),
             `<div id="prev-ht-txt" style="font-size:10px;font-weight:700;min-width:36px;text-align:center">(0-0)</div>`))}
+        ${_sec('% Valor (gráfico de linha)', false, _row2(
+            _col('Cor','grafPctCor'),
+            `<div id="prev-grafpct-cor" style="font-size:10px;font-weight:800;min-width:36px;text-align:center">67%</div>`))}
         ${_sec('✏️ Caneta (cor padrão)', false, _row2(
             _col('Cor','canetaCor'),
             `<div id="prev-caneta-cor" style="font-size:11px;font-weight:800;min-width:36px;text-align:center">✏️</div>`))}
@@ -9591,6 +9596,8 @@ function _atualizarPreviewCores(c) {
     if (psr) { psr.style.background = c.selRowBg; psr.style.color = c.selRowTxt; psr.style.outline = `2px solid ${c.selRowBrd}`; }
     const pca = document.getElementById('prev-caneta-cor');
     if (pca) pca.style.color = c.canetaCor || '#f59e0b';
+    const pgp = document.getElementById('prev-grafpct-cor');
+    if (pgp) pgp.style.color = c.grafPctCor || '#64748b';
     document.documentElement.style.setProperty('--clube-txt', c.clubeTxt);
     document.documentElement.style.setProperty('--ft-txt', c.ftTxt);
     document.documentElement.style.setProperty('--ht-txt', c.htTxt);
