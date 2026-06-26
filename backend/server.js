@@ -515,7 +515,7 @@ app.use('/api/bet365/historico-mercados', (req, res, next) => {
             .input('usr',    usuario)
             .input('ip',     ip)
             .input('horas',  horas)
-            .input('rota',   req.path)
+            .input('rota',   req.originalUrl.split('?')[0])
             .query('INSERT INTO auditoria_requests (usuario_id, usuario, ip, horas, rota) VALUES (@uid, @usr, @ip, @horas, @rota)')
             .catch(() => {});
     }

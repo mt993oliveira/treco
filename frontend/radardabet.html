@@ -13530,6 +13530,7 @@ async function _carregarAlertasAbuso() {
         ].join('\n');
     };
 
+    if (!window._abRels) window._abRels = {};
     const _abBloco = (r, tags, tipo, corBorda) => {
         const rota = r.rota || '/api/bet365/historico-mercados';
         const dur  = r.duracao_min != null ? `${r.duracao_min}min` : null;
@@ -13537,8 +13538,8 @@ async function _carregarAlertasAbuso() {
         const inc  = (r.horas_inicio != null && r.total_chamadas > 1)
             ? `+${Math.round((r.horas_fim - r.horas_inicio) / (r.total_chamadas - 1) * 10) / 10}h/req`
             : null;
-        const uid = `ab-copy-${r.usuario}-${r.ip}`.replace(/[^a-z0-9-]/gi,'_');
-        const relTxt = _abRelatorio(r, tipo).replace(/`/g,'\\`');
+        const key = `${r.usuario}_${r.ip}`.replace(/[^a-z0-9_]/gi,'_');
+        window._abRels[key] = _abRelatorio(r, tipo);
         const nomeExtra = r.nome_completo ? ` <span style="color:#64748b;font-size:10px">(${r.nome_completo})</span>` : '';
         const tipoChip = r.tipo_usuario ? ` <span style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:3px;padding:0 5px;font-size:9px">${r.tipo_usuario}</span>` : '';
         const desdeStr = r.desde ? `<span style="color:#475569;font-size:10px"> · desde ${r.desde}</span>` : '';
@@ -13558,7 +13559,7 @@ async function _carregarAlertasAbuso() {
                   ${r.total_logins != null ? `<span style="color:#94a3b8">🔑 Logins:</span> <b style="color:#e2e8f0">${r.total_logins}×</b> sempre do mesmo IP<br>` : ''}
                 </div>
               </div>
-              <button id="${uid}" onclick="navigator.clipboard.writeText(\`${relTxt}\`).then(()=>{const b=document.getElementById('${uid}');const o=b.textContent;b.textContent='✅ Copiado!';b.style.color='#4ade80';setTimeout(()=>{b.textContent=o;b.style.color='';},2000)})"
+              <button onclick="_abCopiar('${key}', this)"
                 style="font-size:10px;background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:3px 10px;border-radius:3px;cursor:pointer;white-space:nowrap;flex-shrink:0">
                 📋 Copiar relatório
               </button>
@@ -13596,6 +13597,16 @@ async function _carregarAlertasAbuso() {
     } catch(e) {
         el.innerHTML = `<div style="color:#475569;font-size:11px">${e.name==='AbortError'?'Timeout ao carregar alertas.':'Erro: '+e.message}</div>`;
     }
+}
+
+function _abCopiar(key, btn) {
+    const txt = (window._abRels || {})[key] || '';
+    navigator.clipboard.writeText(txt).then(() => {
+        const o = btn.textContent;
+        btn.textContent = '✅ Copiado!';
+        btn.style.color = '#4ade80';
+        setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 2000);
+    }).catch(() => alert(txt));
 }
 
 async function _blacklistAcao(ip, acao) {
