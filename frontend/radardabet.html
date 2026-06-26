@@ -7254,8 +7254,8 @@ function _renderMiniMosaico(ligaKey, ligaLabel, nJogos, filtroId) {
         </tr>`;
     }).join('');
 
-    const corPctV = pctV >= 55 ? '#4ade80' : pctV >= 45 ? '#fbbf24' : '#f87171';
-    const corPctR = pctR >= 55 ? '#f87171' : pctR >= 45 ? '#fbbf24' : '#94a3b8';
+    const corPctV = '#4ade80';
+    const corPctR = '#f87171';
     const fiLabel  = fi ? fi.label : '—';
     const fiCor    = fi ? fi.cor   : '#64748b';
 
@@ -7491,9 +7491,7 @@ function _renderMiniLinhaChart(ligaKey, canvasEl, nJogos, filtroId) {
     const statEl = document.getElementById(`mlinha-stat-${idx}`);
     if (statEl) {
         const _pctR    = 100 - pctGeral;
-        const _corG    = pctGeral >= 55 ? '#4ade80' : pctGeral >= 45 ? '#fbbf24' : '#f87171';
-        const _corR    = _pctR   >= 55 ? '#f87171' : _pctR   >= 45 ? '#fbbf24' : '#94a3b8';
-        statEl.innerHTML = `<span style="font-weight:900;color:${_corG}">GREEN ${pctGeral}%</span><span style="color:#334155;margin:0 4px">|</span><span style="font-weight:900;color:${_corR}">${_pctR}% RED</span>`;
+        statEl.innerHTML = `<span style="font-weight:900;color:#4ade80">GREEN ${pctGeral}%</span><span style="color:#334155;margin:0 4px">|</span><span style="font-weight:900;color:#f87171">${_pctR}% RED</span>`;
     }
     const cor = fi.cor;
     const vals = pctSlice.filter(v => isFinite(v));
@@ -7713,8 +7711,7 @@ function renderTabela() {
             const _hits = _comResult.filter(j => checa(j, fi.id)).length;
             const _pctG = Math.round(_hits / _comResult.length * 100);
             const _pctR = 100 - _pctG;
-            const _corG = _pctG >= 55 ? '#4ade80' : _pctG >= 45 ? '#fbbf24' : '#f87171';
-            _mGREl.innerHTML = `<span style="color:${_corG}">GREEN ${_pctG}%</span><span style="color:#334155;margin:0 5px">|</span><span style="color:#f87171">${_pctR}% RED</span>`;
+            _mGREl.innerHTML = `<span style="color:#4ade80">GREEN ${_pctG}%</span><span style="color:#334155;margin:0 5px">|</span><span style="color:#f87171">${_pctR}% RED</span>`;
         } else {
             _mGREl.innerHTML = '';
         }
