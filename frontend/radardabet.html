@@ -13346,7 +13346,9 @@ async function _carregarDashboardSeguranca() {
     const el = document.getElementById('ol-seg-fields');
     if (!el) return;
     const _u = _getUser();
-    const isMaster = (_u?.TipoUsuario || '').toLowerCase() === 'master';
+    const _tipoU   = (_u?.TipoUsuario || '').toLowerCase();
+    const isMaster = _tipoU === 'master';
+    const isAdmin  = _tipoU === 'administrador' || _tipoU === 'admin';
     el.innerHTML = '<div style="color:#475569;font-size:11px;padding:20px;text-align:center">Carregando...</div>';
     try {
         const r = await fetch('/api/admin/seguranca', {
@@ -13369,7 +13371,7 @@ async function _carregarDashboardSeguranca() {
                     <div style="font-size:12px;font-weight:700;color:#e2e8f0">${s.usuario} <span style="color:#64748b;font-weight:400">${s.nome||''}</span> ${s.tipo==='master'?_tag('MASTER','#f59e0b'):''}</div>
                     <div style="font-size:10px;color:#64748b;margin-top:2px">IP: ${s.ip} · Login: ${_ago(s.loginTime)} · Ativo: ${_ago(s.lastSeen)} · ${s.inativoMin}min inativo</div>
                 </div>
-                ${(isMaster && s.tipo!=='master')?`<button onclick="_segDesconectar('${s.id}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">Desconectar</button>`:''}
+                ${((isMaster || isAdmin) && s.tipo!=='master' && !(isAdmin && ['administrador','admin'].includes((s.tipo||'').toLowerCase())))?`<button onclick="_segDesconectar('${s.id}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">Desconectar</button>`:''}
             </div>`).join('');
 
         // ── Blacklist permanente ────────────────────────────────

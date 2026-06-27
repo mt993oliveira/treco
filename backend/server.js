@@ -1866,9 +1866,8 @@ app.post('/api/usuarios/desconectar-todos', requireAuth, async (req, res) => {
  */
 app.post('/api/usuarios/desconectar/:id', requireAuth, async (req, res) => {
     try {
-        await connectSQL(getDatabaseConfigFromEnv());
-        const check = await sql.query`SELECT TipoUsuario FROM Usuarios WHERE Id = ${req.body.usuarioId}`;
-        if (!check.recordset.length || check.recordset[0].TipoUsuario !== 'master') {
+        const tipoReq = (req.sessionUser?.tipo || '').toLowerCase();
+        if (!['master','administrador','admin'].includes(tipoReq)) {
             return res.json({ success: false, message: 'Acesso negado' });
         }
         const targetId = String(req.params.id);
@@ -1876,6 +1875,10 @@ app.post('/api/usuarios/desconectar/:id', requireAuth, async (req, res) => {
         if (target && target.tipo === 'master') {
             return res.json({ success: false, message: 'Não é possível desconectar um Master' });
         }
+        if (['administrador','admin'].includes(tipoReq) && target && ['administrador','admin'].includes((target.tipo||'').toLowerCase())) {
+            return res.json({ success: false, message: 'Administrador não pode desconectar outro administrador' });
+        }
+        await connectSQL(getDatabaseConfigFromEnv());
         if (target) {
             const _dur = target.loginTime ? Math.round((Date.now() - new Date(target.loginTime).getTime()) / 1000) : null;
             activeSessions.delete(targetId);
