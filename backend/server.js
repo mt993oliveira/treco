@@ -657,16 +657,12 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                     return;
                 }
 
-                // Bloquear acesso simultâneo (exceto master)
+                // Derrubar sessão anterior ao fazer novo login (exceto master)
                 if (user.TipoUsuario !== 'master') {
-                    const sessao = activeSessions.get(String(user.Id));
-                    const limite = Date.now() - 1 * 60 * 1000;
-                    if (sessao && sessao.lastSeen.getTime() >= limite) {
-                        const restam = Math.ceil((sessao.lastSeen.getTime() + 1 * 60 * 1000 - Date.now()) / 60000);
-                        return res.json({
-                            success: false,
-                            message: `Usuário já possui uma sessão ativa em outro dispositivo. Faça logout no outro dispositivo ou aguarde ${restam} minuto(s).`
-                        });
+                    const sessaoAnterior = activeSessions.get(String(user.Id));
+                    if (sessaoAnterior) {
+                        forcedLogouts.add(String(user.Id));
+                        activeSessions.delete(String(user.Id));
                     }
                 }
 
