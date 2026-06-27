@@ -1861,6 +1861,12 @@ class Bet365Coletor {
         const n = contas.length;
         // Rotação circular: começa pela conta seguinte à que estava ativa
         const inicio = n > 1 ? (this._contaAtualIdx + 1) % n : 0;
+        if (n > 1) {
+            const _lblAtual = this._contaAtualIdx >= 0
+                ? `conta ${this._contaAtualIdx + 1}/${n} (${contas[this._contaAtualIdx][0]})`
+                : 'nenhuma';
+            console.log(`   🔄 [Rotação] Ativa: ${_lblAtual} → iniciando por conta ${inicio + 1}/${n} (${contas[inicio][0]})`);
+        }
         for (let offset = 0; offset < n; offset++) {
             const i = (inicio + offset) % n;
             const [usuario, senha, dataNasc, emailVerif] = contas[i];
@@ -1872,7 +1878,7 @@ class Bet365Coletor {
             const resultado = await this._tentarLoginComPar(pg, usuario, senha, dataNasc, emailVerif);
             console.log(`   ⏱️  [login${label}] _tentarLoginComPar: ${Date.now()-_t0conta}ms — resultado=${resultado}`);
             if (resultado === true) {
-                console.log(`   ✅ Login bem-sucedido${label}!`);
+                console.log(`   ✅ Login bem-sucedido${label}! (${usuario}) → próxima rotação usará conta ${((i + 1) % n) + 1}/${n}`);
                 this._logAuditoria('login_ok', `Login bem-sucedido${label}`, usuario);
                 this._contaAtualIdx = i; // memoriza conta ativa para próxima rotação
                 return true;
@@ -1977,6 +1983,13 @@ class Bet365Coletor {
         const inicio = new Date();
         console.log(`\n============================================`);
         console.log(`🔄 Bet365 - Coleta #${this._coletas} - ${inicio.toLocaleTimeString('pt-BR')}`);
+        const _contas = this._listarContas();
+        if (_contas.length > 1) {
+            const _ativa = this._contaAtualIdx >= 0
+                ? `conta ${this._contaAtualIdx + 1}/${_contas.length} · ${_contas[this._contaAtualIdx][0]}`
+                : 'nenhuma (primeiro login do ciclo)';
+            console.log(`   🔑 Conta Bet365 ativa: ${_ativa}`);
+        }
         console.log(`============================================`);
 
         try {
