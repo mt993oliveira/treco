@@ -5812,6 +5812,7 @@ function _toggleLinhaPills() {
     if (btn) btn.classList.toggle('ativo', S.linhaShowPills);
     const el = document.getElementById('pills-linha');
     if (el) el.style.display = S.linhaShowPills ? 'flex' : 'none';
+    _prefSave('rdbt_linhaShowPills', S.linhaShowPills);
 }
 
 function _togglePontoFlat() {
@@ -5819,6 +5820,7 @@ function _togglePontoFlat() {
     const b = document.getElementById('btn-linha-flat');
     if (b) b.classList.toggle('ativo', S.grafPontoFlat);
     if (S.showLinha) renderGraficoLinha();
+    _prefSave('rdbt_grafPontoFlat', S.grafPontoFlat);
 }
 
 function _toggleGolsFlat() {
@@ -5826,6 +5828,7 @@ function _toggleGolsFlat() {
     const b = document.getElementById('btn-gols-flat');
     if (b) b.classList.toggle('ativo', S.grafGolsFlat);
     renderGraficoGols();
+    _prefSave('rdbt_grafGolsFlat', S.grafGolsFlat);
 }
 
 function _togglePontoCores() {
@@ -5833,6 +5836,7 @@ function _togglePontoCores() {
     const b = document.getElementById('btn-linha-cores');
     if (b) b.classList.toggle('ativo', S.grafPontoCores);
     if (S.showLinha) renderGraficoLinha();
+    _prefSave('rdbt_grafPontoCores', S.grafPontoCores);
 }
 
 // Toggle independente para o Gráfico de Linha (não afeta o Gráfico de Mercado)
@@ -5840,6 +5844,7 @@ function _linhaToggle(key, btnId) {
     S[key] = !S[key];
     const btn = document.getElementById(btnId);
     if (btn) btn.classList.toggle('ativo', S[key]);
+    _prefSave('rdbt_' + key, S[key]);
     if (key === 'linhaGrafPct' || key === 'linhaGrafCongest') {
         if (S._graficoLinha) { try { S._graficoLinha.update(); } catch(_) { renderGraficoLinha(); } }
         else renderGraficoLinha();
@@ -5853,6 +5858,7 @@ function toggleLinhaLegendas() {
     const btn = document.getElementById('btn-linha-legendas');
     if (btn) btn.classList.toggle('ativo', S.linhaShowLegendas);
     renderGraficoLinha();
+    _prefSave('rdbt_linhaShowLegendas', S.linhaShowLegendas);
 }
 
 function toggleGolsLegendas() {
@@ -5860,6 +5866,7 @@ function toggleGolsLegendas() {
     const btn = document.getElementById('btn-gols-legendas');
     if (btn) btn.classList.toggle('ativo', S.grafGolsShowLegendas);
     renderGraficoGols();
+    _prefSave('rdbt_grafGolsShowLegendas', S.grafGolsShowLegendas);
 }
 
 function _golsEspessura(delta) {
@@ -5867,6 +5874,7 @@ function _golsEspessura(delta) {
     const el = document.getElementById('gols-esp-val');
     if (el) el.textContent = S.grafGolsEspessura;
     renderGraficoGols();
+    _prefSave('rdbt_grafGolsEspessura', S.grafGolsEspessura);
 }
 
 function _linhaEspessura(delta) {
@@ -5874,12 +5882,14 @@ function _linhaEspessura(delta) {
     const el = document.getElementById('linha-esp-val');
     if (el) el.textContent = S.grafLinhaEspessura;
     renderGraficoLinha();
+    _prefSave('rdbt_grafLinhaEspessura', S.grafLinhaEspessura);
 }
 
 function _toggleLinhaMarcaDagua() {
     S.linhaMarcaDagua = !S.linhaMarcaDagua;
     const btn = document.getElementById('btn-linha-marca-dagua');
     if (btn) btn.classList.toggle('ativo', S.linhaMarcaDagua);
+    _prefSave('rdbt_linhaMarcaDagua', S.linhaMarcaDagua);
 }
 
 // ============================================================
@@ -15153,6 +15163,20 @@ async function _prefLoad() {
         // Re-aplica cores dos gráficos (chartCores / chartCoresGols) em S direto
         try { if (p.chartCores)     Object.assign(S._chartCores,     JSON.parse(p.chartCores));     } catch(e) {}
         try { if (p.chartCoresGols) Object.assign(S._chartCoresGols, JSON.parse(p.chartCoresGols)); } catch(e) {}
+        // Gráfico de Linha — preferências da toolbar
+        if (p.rdbt_linhaMarcaDagua   !== undefined) S.linhaMarcaDagua   = p.rdbt_linhaMarcaDagua   === 'true';
+        if (p.rdbt_grafPontoCores    !== undefined) S.grafPontoCores    = p.rdbt_grafPontoCores    === 'true';
+        if (p.rdbt_linhaShowPills    !== undefined) S.linhaShowPills    = p.rdbt_linhaShowPills    === 'true';
+        if (p.rdbt_linhaShowLegendas !== undefined) S.linhaShowLegendas = p.rdbt_linhaShowLegendas === 'true';
+        if (p.rdbt_linhaGrafPct         !== undefined) S.linhaGrafPct         = p.rdbt_linhaGrafPct         === 'true';
+        if (p.rdbt_linhaGrafTopoFundo   !== undefined) S.linhaGrafTopoFundo   = p.rdbt_linhaGrafTopoFundo   === 'true';
+        if (p.rdbt_linhaGrafCongest     !== undefined) S.linhaGrafCongest     = p.rdbt_linhaGrafCongest     === 'true';
+        if (p.rdbt_grafPontoFlat        !== undefined) S.grafPontoFlat        = p.rdbt_grafPontoFlat        === 'true';
+        if (p.rdbt_grafLinhaEspessura   !== undefined) S.grafLinhaEspessura   = parseInt(p.rdbt_grafLinhaEspessura)   || 2;
+        // Gráfico de Gols — preferências da toolbar
+        if (p.rdbt_grafGolsShowLegendas !== undefined) S.grafGolsShowLegendas = p.rdbt_grafGolsShowLegendas === 'true';
+        if (p.rdbt_grafGolsFlat         !== undefined) S.grafGolsFlat         = p.rdbt_grafGolsFlat         === 'true';
+        if (p.rdbt_grafGolsEspessura    !== undefined) S.grafGolsEspessura    = parseInt(p.rdbt_grafGolsEspessura)    || 2;
         console.log('[pref] preferências aplicadas com sucesso');
     } catch(e) { console.error('[pref] _prefLoad erro:', e.message); }
 }
@@ -16617,6 +16641,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     _initThemePicker();
     _faInit();
     carregarConfigLigas().then(async () => {
+        // Re-aplica prefs do usuário que carregarConfigLigas pode ter sobrescrito
+        [['rdbt_grafPontoFlat','grafPontoFlat'],['rdbt_grafPontoCores','grafPontoCores'],
+         ['rdbt_grafGolsFlat','grafGolsFlat'],['rdbt_linhaShowPills','linhaShowPills']].forEach(([lk,sk]) => {
+            const v = localStorage.getItem(lk); if (v !== null) S[sk] = v === 'true';
+        });
         _faInit();
         await _carregarPadroesParaAlertas();
         await _carregarAlertaCfgRuntime();
