@@ -14182,7 +14182,13 @@ async function _loadConfigSistema() {
                     🔔 Testar Alertas
                 </button>
                 <span id="cfg-testar-msg" style="font-size:11px;margin-left:10px"></span>
-            </div>`;
+            </div>` +
+            `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;margin-bottom:12px">
+                <span style="font-size:11px;font-weight:700;color:#e2e8f0">🔮 Features Futuras</span>
+                <div style="font-size:10px;color:#475569;margin-top:4px">Desativadas por padrão — ativar somente quando a feature estiver implementada.</div>
+            </div>` +
+            _toggleHtml({ chave:'alerta_preditivo_ativo', valor: cfgAlertas.alerta_preditivo_ativo ?? 'false', descricao:'🔮 Alertas Preditivos: avisar ANTES do padrão acontecer, com base no slot atual e histórico da liga' }) +
+            _toggleHtml({ chave:'push_notificacao_ativo', valor: cfgAlertas.push_notificacao_ativo ?? 'false', descricao:'📲 Notificação Push: enviar alertas para o celular mesmo com a aba fechada (requer PWA)' });
 
         const _dashOpts = (val) => [
             {v:'0',    l:'— Sólido'},
