@@ -356,10 +356,10 @@ async function requireAuth(req, res, next) {
         try {
             const dbR = await sqlConnectionPool.request()
                 .input('token', cookieToken)
-                .query('SELECT Id, Usuario, NomeCompleto, TipoUsuario FROM Usuarios WHERE sess_token = @token AND sess_expira > GETDATE() AND Ativo = 1');
+                .query('SELECT Id, Usuario, NomeCompleto, TipoUsuario, sess_ip FROM Usuarios WHERE sess_token = @token AND sess_expira > GETDATE() AND Ativo = 1');
             if (dbR.recordset.length) {
                 const u = dbR.recordset[0];
-                const sess = { id: String(u.Id), usuario: u.Usuario, nome: u.NomeCompleto, tipo: u.TipoUsuario, token: cookieToken, lastSeen: new Date(), loginTime: new Date() };
+                const sess = { id: String(u.Id), usuario: u.Usuario, nome: u.NomeCompleto, tipo: u.TipoUsuario, token: cookieToken, lastSeen: new Date(), loginTime: new Date(), ip: u.sess_ip || '' };
                 activeSessions.set(String(u.Id), sess);
                 req.sessionUser = sess;
                 if (!req.body) req.body = {};
@@ -400,10 +400,10 @@ async function requireAuthQuery(req, res, next) {
         try {
             const dbR = await sqlConnectionPool.request()
                 .input('token', cookieToken)
-                .query('SELECT Id, Usuario, NomeCompleto, TipoUsuario FROM Usuarios WHERE sess_token = @token AND sess_expira > GETDATE() AND Ativo = 1');
+                .query('SELECT Id, Usuario, NomeCompleto, TipoUsuario, sess_ip FROM Usuarios WHERE sess_token = @token AND sess_expira > GETDATE() AND Ativo = 1');
             if (dbR.recordset.length) {
                 const u = dbR.recordset[0];
-                const sess = { id: String(u.Id), usuario: u.Usuario, nome: u.NomeCompleto, tipo: u.TipoUsuario, token: cookieToken, lastSeen: new Date(), loginTime: new Date() };
+                const sess = { id: String(u.Id), usuario: u.Usuario, nome: u.NomeCompleto, tipo: u.TipoUsuario, token: cookieToken, lastSeen: new Date(), loginTime: new Date(), ip: u.sess_ip || '' };
                 activeSessions.set(String(u.Id), sess);
                 req.sessionUser = sess;
                 return next();
@@ -684,8 +684,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                 sqlConnectionPool.request()
                     .input('token', sessionToken)
                     .input('expira', new Date(Date.now() + 8 * 60 * 60 * 1000))
+                    .input('ip', _loginIp)
                     .input('id', user.Id)
-                    .query('UPDATE Usuarios SET sess_token = @token, sess_expira = @expira WHERE Id = @id')
+                    .query('UPDATE Usuarios SET sess_token = @token, sess_expira = @expira, sess_ip = @ip WHERE Id = @id')
                     .catch(() => {});
                 _trackLoginSuccess(user.Id);
                 _geoLookup(_loginIp).then(geo => _registrarAcesso(user.Id, user.Usuario, 'login_ok', _loginIp, req.headers['user-agent'], geo, null)).catch(()=>{});
@@ -2477,6 +2478,13 @@ server.listen(PORT, () => {
                 )
                     ALTER TABLE Usuarios ADD PlanoAtivo NVARCHAR(50) NULL DEFAULT 'Mensal'
             `;
+            await sql.query`
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'Usuarios' AND COLUMN_NAME = 'sess_ip'
+                )
+                    ALTER TABLE Usuarios ADD sess_ip NVARCHAR(100) NULL
+            `;
         } catch(e) { console.warn('⚠️ Schema Usuarios:', e.message); }
 
         // Cria tabela de preferencias do usuario se nao existir
@@ -2993,6 +3001,14 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
             ORDER BY data_hora DESC
         `;
 
+        // Flags de features para o frontend
+        const cfgFlags = await sqlConnectionPool.request().query(`
+            SELECT chave, valor FROM bet365_config
+            WHERE chave IN ('sessao_salvar_ip','alerta_preditivo_ativo','calibracao_odds_ativo','push_notificacao_ativo')
+        `);
+        const flags = {};
+        cfgFlags.recordset.forEach(r => { flags[r.chave] = r.valor === 'true'; });
+
         res.json({
             success: true,
             sessoesAtivas: sessoes,
@@ -3000,6 +3016,7 @@ app.post('/api/admin/seguranca', requireAuth, async (req, res) => {
             reqPorUsuario,
             ultimosLogins: logins.recordset,
             bfCfg: { tentativas: _bfCfg.tentativas, janelaMins: _bfCfg.janelaMins, bloqueioMins: _bfCfg.bloqueioMins },
+            flags,
         });
     } catch(e) {
         res.json({ success: false, message: e.message });

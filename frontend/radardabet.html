@@ -13387,13 +13387,14 @@ async function _carregarDashboardSeguranca() {
         const _ago = (dt) => { if (!dt) return '—'; const m = Math.round((Date.now()-new Date(dt).getTime())/60000); return m < 1 ? 'agora' : m < 60 ? `${m}min atrás` : `${Math.floor(m/60)}h atrás`; };
 
         // ── Sessões ativas ──────────────────────────────────────
+        const _mostrarIp = !!(d.flags?.sessao_salvar_ip);
         const sessoesHtml = d.sessoesAtivas.length === 0
             ? '<div style="color:#475569;font-size:11px;padding:10px">Nenhuma sessão ativa.</div>'
             : d.sessoesAtivas.map(s => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b;gap:8px;flex-wrap:wrap">
                 <div style="min-width:0">
                     <div style="font-size:12px;font-weight:700;color:#e2e8f0">${s.usuario} <span style="color:#64748b;font-weight:400">${s.nome||''}</span> ${s.tipo==='master'?_tag('MASTER','#f59e0b'):''}</div>
-                    <div style="font-size:10px;color:#64748b;margin-top:2px">IP: ${s.ip} · Login: ${_ago(s.loginTime)} · Ativo: ${_ago(s.lastSeen)} · ${s.inativoMin}min inativo</div>
+                    <div style="font-size:10px;color:#64748b;margin-top:2px">${_mostrarIp ? `IP: <span style="color:#e2e8f0;font-family:monospace">${s.ip||'desconhecido'}</span> · ` : ''}Login: ${_ago(s.loginTime)} · Ativo: ${_ago(s.lastSeen)} · ${s.inativoMin}min inativo</div>
                 </div>
                 ${((isMaster || isAdmin) && s.tipo!=='master' && !(isAdmin && ['administrador','admin'].includes((s.tipo||'').toLowerCase())))?`<button onclick="_segDesconectar('${s.id}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">Desconectar</button>`:''}
             </div>`).join('');
