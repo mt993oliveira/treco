@@ -14189,6 +14189,32 @@ async function _loadConfigSistema() {
                 <div style="font-size:10px;color:#475569;margin-top:4px">Desativadas por padrão — ativar somente quando a feature estiver implementada.</div>
             </div>` +
             _toggleHtml({ chave:'alerta_preditivo_ativo', valor: cfgAlertas.alerta_preditivo_ativo ?? 'false', descricao:'🔮 Alertas Preditivos: avisar ANTES do padrão acontecer, com base no slot atual e histórico da liga' }) +
+            `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:10px 12px;margin:6px 0 10px 0">
+                <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:8px">PARÂMETROS DOS ALERTAS PREDITIVOS</div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div style="flex:1;min-width:100px">
+                        <label style="display:block;font-size:10px;color:#64748b;margin-bottom:3px">% Mínimo (threshold)</label>
+                        <input type="number" id="cfg-alerta_preditivo_threshold" value="${cfgAlertas.alerta_preditivo_threshold ?? '70'}"
+                            min="50" max="100" step="5"
+                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:5px 8px;font-size:12px;outline:none">
+                        <span style="font-size:9px;color:#475569">% histórico mínimo</span>
+                    </div>
+                    <div style="flex:1;min-width:100px">
+                        <label style="display:block;font-size:10px;color:#64748b;margin-bottom:3px">Antecedência (min)</label>
+                        <input type="number" id="cfg-alerta_preditivo_antecedencia" value="${cfgAlertas.alerta_preditivo_antecedencia ?? '3'}"
+                            min="1" max="10" step="1"
+                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:5px 8px;font-size:12px;outline:none">
+                        <span style="font-size:9px;color:#475569">min antes do slot</span>
+                    </div>
+                    <div style="flex:1;min-width:100px">
+                        <label style="display:block;font-size:10px;color:#64748b;margin-bottom:3px">Janela histórica (dias)</label>
+                        <input type="number" id="cfg-alerta_preditivo_janela_dias" value="${cfgAlertas.alerta_preditivo_janela_dias ?? '14'}"
+                            min="3" max="60" step="1"
+                            style="width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:4px;padding:5px 8px;font-size:12px;outline:none">
+                        <span style="font-size:9px;color:#475569">dias de histórico</span>
+                    </div>
+                </div>
+            </div>` +
             _toggleHtml({ chave:'push_notificacao_ativo', valor: cfgAlertas.push_notificacao_ativo ?? 'false', descricao:'📲 Notificação Push: enviar alertas para o celular mesmo com a aba fechada (requer PWA)' });
 
         const _dashOpts = (val) => [
@@ -16337,6 +16363,57 @@ function _fecharNotificacaoAlerta() {
     // Não para o piscar: as abas continuam piscando enquanto o alerta permanecer válido
 }
 
+// ── Alertas Preditivos ──────────────────────────────────────────────────────
+let _alertasPredInterval = null;
+
+async function _iniciarAlertasPreditivos() {
+    if (_alertasPredInterval) return;
+    const _poll = async () => {
+        try {
+            const r = await fetch('/api/bet365/alertas-preditivos');
+            if (!r.ok) return;
+            const d = await r.json();
+            if (d.ativo && d.predicoes?.length) _mostrarAlertaPreditivo(d.predicoes);
+            else {
+                const el = document.getElementById('alerta-preditivo-notif');
+                if (el) el.style.display = 'none';
+            }
+        } catch(e) {}
+    };
+    await _poll();
+    _alertasPredInterval = setInterval(_poll, 60_000);
+}
+
+function _mostrarAlertaPreditivo(predicoes) {
+    let el = document.getElementById('alerta-preditivo-notif');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'alerta-preditivo-notif';
+        el.style.cssText = 'position:fixed;top:54px;right:14px;z-index:9997;background:#0f172a;border:1.5px solid #a78bfa;border-radius:10px;padding:14px 16px;min-width:260px;max-width:320px;box-shadow:0 4px 24px rgba(0,0,0,.7)';
+        document.body.appendChild(el);
+    }
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    el.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span style="font-size:13px;font-weight:700;color:#a78bfa">🔮 Preditivo</span>
+            <button onclick="document.getElementById('alerta-preditivo-notif').style.display='none'"
+                style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;line-height:1">×</button>
+        </div>
+        ${predicoes.map(p => {
+            const mStr = p.mercados.map(m => `<span style="color:${m.mercado==='Over 2.5'?'#34d399':'#60a5fa'};font-weight:700">${esc(m.mercado)} ${m.pct}%</span>`).join(' · ');
+            const tempoTxt = p.minAte === 0 ? '<span style="color:#f87171">agora</span>' : `<span style="color:#fbbf24">em ${p.minAte}min</span>`;
+            return `
+            <div style="background:#1e293b;border-radius:6px;padding:8px 10px;margin-bottom:6px">
+                <div style="font-size:11px;color:#c4b5fd;font-weight:700;margin-bottom:3px">🏆 ${esc(p.liga)}</div>
+                <div style="font-size:11px;color:#94a3b8">Slot :${String(p.slot).padStart(2,'0')} · ${tempoTxt}</div>
+                <div style="margin-top:4px;font-size:11px">${mStr}</div>
+                <div style="font-size:9px;color:#475569;margin-top:2px">${p.amostras} amostras (${p.amostras < 10 ? 'poucos dados' : 'dados históricos'})</div>
+            </div>`;
+        }).join('')}
+        <div style="font-size:10px;color:#475569;margin-top:6px;text-align:right">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`;
+    el.style.display = 'block';
+}
+
 // ============================================================
 // MODO MANUTENÇÃO
 // ============================================================
@@ -16670,6 +16747,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         _faInit();
         await _carregarPadroesParaAlertas();
         await _carregarAlertaCfgRuntime();
+        if ((S._cfgRaw?.alerta_preditivo_ativo ?? 'false') === 'true') _iniciarAlertasPreditivos();
         await carregarTudo();
         _atualizarCoresCharts(localStorage.getItem('rdbt_tema') || 'dark');
         // Auto-aplica padrão principal (se existir) logo após carregar dados

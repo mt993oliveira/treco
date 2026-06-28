@@ -2058,10 +2058,13 @@ const CONFIG_DEFAULTS = [
     { chave:'grid_filtroAtivoBg',   valor:'#1fcc59',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado ativo: cor de fundo' },
     { chave:'grid_filtroAtivoTxt',  valor:'#ffffff',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado ativo: cor do texto' },
     // ── Features futuras (desativadas por padrão — não alteram comportamento atual) ──
-    { chave:'sessao_salvar_ip',          valor:'false', tipo:'boolean', grupo:'sistema', descricao:'🔐 Sessões: salvar IP no login e exibir nas Sessões Ativas (corrige "IP: undefined" após restart)' },
-    { chave:'alerta_preditivo_ativo',    valor:'false', tipo:'boolean', grupo:'alertas', descricao:'🔮 Alertas Preditivos: avisar ANTES do padrão acontecer, com base no slot de minuto atual e histórico da liga' },
-    { chave:'calibracao_odds_ativo',     valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📐 Calibração de Odds: cruzar odd paga pela Bet365 com frequência real do resultado — mostra onde há edge' },
-    { chave:'push_notificacao_ativo',    valor:'false', tipo:'boolean', grupo:'alertas', descricao:'📲 Notificação Push: enviar alertas para o celular do usuário mesmo com a aba fechada (requer PWA)' },
+    { chave:'sessao_salvar_ip',               valor:'false', tipo:'boolean', grupo:'sistema', descricao:'🔐 Sessões: salvar IP no login e exibir nas Sessões Ativas (corrige "IP: undefined" após restart)' },
+    { chave:'alerta_preditivo_ativo',         valor:'false', tipo:'boolean', grupo:'alertas', descricao:'🔮 Alertas Preditivos: avisar ANTES do padrão acontecer, com base no slot de minuto atual e histórico da liga' },
+    { chave:'alerta_preditivo_threshold',     valor:'70',    tipo:'number',  grupo:'alertas', descricao:'🔮 Alertas Preditivos: % mínimo de ocorrência histórica para disparar o alerta (padrão: 70%)' },
+    { chave:'alerta_preditivo_antecedencia',  valor:'3',     tipo:'number',  grupo:'alertas', descricao:'🔮 Alertas Preditivos: minutos de antecedência antes do slot para emitir o alerta (padrão: 3 min)' },
+    { chave:'alerta_preditivo_janela_dias',   valor:'14',    tipo:'number',  grupo:'alertas', descricao:'🔮 Alertas Preditivos: janela histórica em dias para calcular probabilidades (padrão: 14 dias)' },
+    { chave:'calibracao_odds_ativo',          valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📐 Calibração de Odds: cruzar odd paga pela Bet365 com frequência real do resultado — mostra onde há edge' },
+    { chave:'push_notificacao_ativo',         valor:'false', tipo:'boolean', grupo:'alertas', descricao:'📲 Notificação Push: enviar alertas para o celular do usuário mesmo com a aba fechada (requer PWA)' },
 ];
 
 let _configTableEnsured = false;
@@ -2535,6 +2538,103 @@ router.post('/admin/testar-alerta', async (req, res) => {
         res.json({ success: true });
     } catch(e) {
         res.json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * GET /api/bet365/alertas-preditivos
+ * Retorna slots próximos com alta probabilidade histórica de Over 2.5 / BTTS.
+ * Só funciona quando alerta_preditivo_ativo=true em bet365_config.
+ */
+const _predCache = { data: null, ts: 0 };
+const _PRED_CACHE_TTL = 45_000; // 45s — evita sobrecarga com múltiplos usuários
+
+router.get('/alertas-preditivos', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const cfg  = await getSystemConfig(pool);
+
+        if (cfg.alerta_preditivo_ativo !== 'true')
+            return res.json({ ativo: false, predicoes: [] });
+
+        if (_predCache.data && Date.now() - _predCache.ts < _PRED_CACHE_TTL)
+            return res.json({ ativo: true, predicoes: _predCache.data });
+
+        const threshold    = parseInt(cfg.alerta_preditivo_threshold    ?? '70');
+        const antecedencia = parseInt(cfg.alerta_preditivo_antecedencia ?? '3');
+        const janelaDias   = parseInt(cfg.alerta_preditivo_janela_dias  ?? '14');
+
+        const agora    = new Date();
+        const minAtual = agora.getUTCMinutes();
+
+        // Seleciona slots de cada liga que ocorrem nos próximos `antecedencia` minutos
+        const ligasAlvo = {};
+        for (const [liga, slots] of Object.entries(LIGA_SLOTS_SRV)) {
+            if (liga === 'Express Cup') continue; // 60 slots/h — sem padrão significativo
+            const proxSlots = slots.filter(s => {
+                const diff = s - minAtual;
+                return diff >= 0 && diff <= antecedencia;
+            });
+            if (proxSlots.length) ligasAlvo[liga] = proxSlots;
+        }
+
+        if (!Object.keys(ligasAlvo).length) {
+            _predCache.data = [];
+            _predCache.ts   = Date.now();
+            return res.json({ ativo: true, predicoes: [] });
+        }
+
+        // Agrega histórico por liga + slot_minuto (pivot de mercados → evento)
+        const r = await pool.request()
+            .input('janela', sql.Int, janelaDias)
+            .query(`
+                WITH base AS (
+                    SELECT
+                        evento_id, liga, data_partida,
+                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over25,
+                        MAX(CASE WHEN mercado = 'Ambos Marcam' AND selecao = 'Sim'  THEN 1 ELSE 0 END) AS btts
+                    FROM bet365_resultados_mercados
+                    WHERE data_partida >= DATEADD(DAY, -@janela, GETUTCDATE())
+                    GROUP BY evento_id, liga, data_partida
+                )
+                SELECT
+                    liga,
+                    DATEPART(MINUTE, data_partida) AS slot_minuto,
+                    COUNT(*) AS total,
+                    SUM(over25) AS over25_count,
+                    SUM(btts)   AS btts_count
+                FROM base
+                GROUP BY liga, DATEPART(MINUTE, data_partida)
+            `);
+
+        const MIN_AMOSTRAS = 5;
+        const predicoes    = [];
+
+        for (const [liga, slots] of Object.entries(ligasAlvo)) {
+            for (const slot of slots) {
+                const row = r.recordset.find(x => x.liga === liga && x.slot_minuto === slot);
+                if (!row || row.total < MIN_AMOSTRAS) continue;
+
+                const pctOver25 = Math.round(row.over25_count / row.total * 100);
+                const pctBtts   = Math.round(row.btts_count   / row.total * 100);
+
+                const mercados = [];
+                if (pctOver25 >= threshold) mercados.push({ mercado: 'Over 2.5', pct: pctOver25 });
+                if (pctBtts   >= threshold) mercados.push({ mercado: 'BTTS',     pct: pctBtts   });
+
+                if (mercados.length) {
+                    predicoes.push({ liga, slot, minAte: slot - minAtual, mercados, amostras: row.total });
+                }
+            }
+        }
+
+        predicoes.sort((a, b) => a.minAte - b.minAte);
+        _predCache.data = predicoes;
+        _predCache.ts   = Date.now();
+        res.json({ ativo: true, predicoes });
+    } catch(e) {
+        console.error('[alertas-preditivos]', e.message);
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
