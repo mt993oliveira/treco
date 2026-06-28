@@ -9771,7 +9771,7 @@ function abrirModalLigaResultados() {
 // CLUBES — Histórico por time + próximos jogos
 // ============================================================
 
-let S_clubes = { busca: '', timeSel: null, proximosEvts: [], nPartidas: parseInt(localStorage.getItem('rdbt_fichaJogos') || '10'), tab: 'ranking', compN: 20 };
+let S_clubes = { busca: '', timeSel: null, proximosEvts: [], nPartidas: parseInt(localStorage.getItem('rdbt_fichaJogos') || '20'), tab: 'ranking', compN: 20 };
 
 // Mapeamento nome do time → código ISO da bandeira (flagcdn.com)
 const CLUBES_FLAG_MAP = {
@@ -9961,11 +9961,6 @@ function _fichaStatusGeral(nomeTime, jogos) {
 function _clubeSetN(n) {
     S_clubes.nPartidas = n;
     _prefSave('rdbt_fichaJogos', n);
-    document.querySelectorAll('.clube-n-btn').forEach(b => {
-        b.style.background = +b.dataset.n === n ? '#7c3aed' : '#1e293b';
-        b.style.borderColor = +b.dataset.n === n ? '#7c3aed' : '#334155';
-        b.style.color = +b.dataset.n === n ? '#fff' : '#64748b';
-    });
     if (S_clubes.timeSel) renderDetalheClube(S_clubes.timeSel);
 }
 
@@ -10431,12 +10426,12 @@ async function renderDetalheClube(nomeTime) {
         <!-- Seletor N + Forma recente -->
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
             <span style="font-size:12px;font-weight:700;color:#475569">ÚLTIMAS:</span>
-            ${[10,20,30,50,100,150,200,300,500].map(n => `<button class="clube-n-btn" data-n="${n}" onclick="_clubeSetN(${n})"
-                style="padding:4px 12px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid;
-                background:${S_clubes.nPartidas===n?'#7c3aed':'#1e293b'};
-                border-color:${S_clubes.nPartidas===n?'#7c3aed':'#334155'};
-                color:${S_clubes.nPartidas===n?'#fff':'#64748b'}">${n}</button>`).join('')}
-            <span style="font-size:12px;color:#475569">partidas</span>
+            <select onchange="_clubeSetN(parseInt(this.value))"
+                style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;height:26px;outline:none;min-width:95px">
+                ${[20,40,60,80,100,120,140,160,180,200,220,240,480,600,960,1920].map(n =>
+                    `<option value="${n}" ${S_clubes.nPartidas===n?'selected':''}>${n} Jogos</option>`
+                ).join('')}
+            </select>
         </div>
         <div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:7px;letter-spacing:.05em">FORMA RECENTE</div>
         <div style="display:flex;gap:3px;flex-wrap:wrap">${forma10 || '<span style="color:#334155;font-size:12px">Sem dados</span>'}</div>
