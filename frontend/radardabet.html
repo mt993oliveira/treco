@@ -9961,7 +9961,23 @@ function _fichaStatusGeral(nomeTime, jogos) {
 function _clubeSetN(n) {
     S_clubes.nPartidas = n;
     _prefSave('rdbt_fichaJogos', n);
-    if (S_clubes.timeSel) renderDetalheClube(S_clubes.timeSel);
+    if (!S_clubes.timeSel) return;
+
+    // Calcula taxa de partidas do time selecionado e expande janela se necessário
+    const map = buildTimesMap(null);
+    const t   = map.get(S_clubes.timeSel);
+    const nDisp = t ? t.partidas.length : 0;
+
+    if (nDisp < n && S._horasCarregadas > 0) {
+        const taxa = nDisp / S._horasCarregadas || 0.5;
+        const horasNec = Math.ceil(n / taxa) + 2;
+        if (horasNec > S._horasCarregadas) {
+            S._horasCarregadas = horasNec;
+            carregarHistorico().then(() => renderDetalheClube(S_clubes.timeSel));
+            return;
+        }
+    }
+    renderDetalheClube(S_clubes.timeSel);
 }
 
 // Monta mapa de stats por time a partir de S.todasPartidas
