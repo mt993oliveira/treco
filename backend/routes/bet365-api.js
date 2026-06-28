@@ -2543,11 +2543,33 @@ router.post('/admin/testar-alerta', async (req, res) => {
 
 /**
  * GET /api/bet365/alertas-preditivos
- * Retorna slots próximos com alta probabilidade histórica de Over 2.5 / BTTS.
+ * Para cada liga, calcula a probabilidade histórica de cada mercado principal
+ * nos slots de minuto próximos ao horário atual UTC.
+ * Retorna somente mercados acima do threshold configurado.
  * Só funciona quando alerta_preditivo_ativo=true em bet365_config.
  */
 const _predCache = { data: null, ts: 0 };
-const _PRED_CACHE_TTL = 45_000; // 45s — evita sobrecarga com múltiplos usuários
+const _PRED_CACHE_TTL = 45_000;
+
+// Definição de todos os mercados monitorados — id corresponde à coluna no resultado SQL
+const _PRED_MERCADOS = [
+    { id: 'over05',    label: 'Over 0.5',    cor: '#fbbf24' },
+    { id: 'over15',    label: 'Over 1.5',    cor: '#10b981' },
+    { id: 'over25',    label: 'Over 2.5',    cor: '#3b82f6' },
+    { id: 'over35',    label: 'Over 3.5',    cor: '#8b5cf6' },
+    { id: 'over45',    label: 'Over 4.5',    cor: '#ec4899' },
+    { id: 'under15',   label: 'Under 1.5',   cor: '#f97316' },
+    { id: 'under25',   label: 'Under 2.5',   cor: '#ef4444' },
+    { id: 'btts',      label: 'BTTS',        cor: '#06b6d4' },
+    { id: 'btts_nao',  label: 'Sem BTTS',    cor: '#0e7490' },
+    { id: 'ft_casa',   label: 'Casa FT',     cor: '#84cc16' },
+    { id: 'ft_empate', label: 'Empate FT',   cor: '#a78bfa' },
+    { id: 'ft_fora',   label: 'Fora FT',     cor: '#fb923c' },
+    { id: 'ht_casa',   label: 'Casa HT',     cor: '#65a30d' },
+    { id: 'ht_empate', label: 'Empate HT',   cor: '#c4b5fd' },
+    { id: 'ht_fora',   label: 'Fora HT',     cor: '#f97316' },
+    { id: 'gols5p',    label: '5+ Gols',     cor: '#f472b6' },
+];
 
 router.get('/alertas-preditivos', async (req, res) => {
     try {
@@ -2558,7 +2580,7 @@ router.get('/alertas-preditivos', async (req, res) => {
             return res.json({ ativo: false, predicoes: [] });
 
         if (_predCache.data && Date.now() - _predCache.ts < _PRED_CACHE_TTL)
-            return res.json({ ativo: true, predicoes: _predCache.data });
+            return res.json({ ativo: true, predicoes: _predCache.data, mercados: _PRED_MERCADOS });
 
         const threshold    = parseInt(cfg.alerta_preditivo_threshold    ?? '70');
         const antecedencia = parseInt(cfg.alerta_preditivo_antecedencia ?? '3');
@@ -2567,42 +2589,68 @@ router.get('/alertas-preditivos', async (req, res) => {
         const agora    = new Date();
         const minAtual = agora.getUTCMinutes();
 
-        // Seleciona slots de cada liga que ocorrem nos próximos `antecedencia` minutos
+        // Slots de cada liga que ocorrem nos próximos `antecedencia` minutos
         const ligasAlvo = {};
         for (const [liga, slots] of Object.entries(LIGA_SLOTS_SRV)) {
-            if (liga === 'Express Cup') continue; // 60 slots/h — sem padrão significativo
-            const proxSlots = slots.filter(s => {
-                const diff = s - minAtual;
-                return diff >= 0 && diff <= antecedencia;
-            });
+            if (liga === 'Express Cup') continue;
+            const proxSlots = slots.filter(s => s >= minAtual && s <= minAtual + antecedencia);
             if (proxSlots.length) ligasAlvo[liga] = proxSlots;
         }
 
         if (!Object.keys(ligasAlvo).length) {
             _predCache.data = [];
             _predCache.ts   = Date.now();
-            return res.json({ ativo: true, predicoes: [] });
+            return res.json({ ativo: true, predicoes: [], mercados: _PRED_MERCADOS });
         }
 
-        // Agrega histórico por liga + slot_minuto (pivot de mercados → evento)
+        // CTE: pivô por evento (1 linha por jogo) com todos os mercados principais
         const r = await pool.request()
             .input('janela', sql.Int, janelaDias)
             .query(`
                 WITH base AS (
                     SELECT
-                        evento_id, liga, data_partida,
-                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over25,
-                        MAX(CASE WHEN mercado = 'Ambos Marcam' AND selecao = 'Sim'  THEN 1 ELSE 0 END) AS btts
+                        evento_id, liga, time_casa, time_fora, data_partida,
+                        -- Over / Under Total de Gols (FT)
+                        MAX(CASE WHEN mercado LIKE '%0.5%' AND selecao LIKE 'Mais%'  THEN 1 ELSE 0 END) AS over05,
+                        MAX(CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Mais%'
+                                  AND mercado NOT LIKE '%Intervalo%'                 THEN 1 ELSE 0 END) AS over15,
+                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Mais%'  THEN 1 ELSE 0 END) AS over25,
+                        MAX(CASE WHEN mercado LIKE '%3.5%' AND selecao LIKE 'Mais%'  THEN 1 ELSE 0 END) AS over35,
+                        MAX(CASE WHEN mercado LIKE '%4.5%' AND selecao LIKE 'Mais%'  THEN 1 ELSE 0 END) AS over45,
+                        MAX(CASE WHEN mercado LIKE '%1.5%' AND selecao LIKE 'Menos%'
+                                  AND mercado NOT LIKE '%Intervalo%'                 THEN 1 ELSE 0 END) AS under15,
+                        MAX(CASE WHEN mercado LIKE '%2.5%' AND selecao LIKE 'Menos%' THEN 1 ELSE 0 END) AS under25,
+                        -- BTTS / Sem BTTS
+                        MAX(CASE WHEN mercado = 'Ambos Marcam' AND selecao = 'Sim'                         THEN 1 ELSE 0 END) AS btts,
+                        MAX(CASE WHEN mercado = 'Ambos Marcam' AND selecao IN ('Não','Nao','Não')     THEN 1 ELSE 0 END) AS btts_nao,
+                        -- Resultado FT (selecao é o nome do time ou "Empate")
+                        MAX(CASE WHEN mercado = 'Resultado Final' AND selecao = time_casa  THEN 1 ELSE 0 END) AS ft_casa,
+                        MAX(CASE WHEN mercado = 'Resultado Final' AND selecao = 'Empate'   THEN 1 ELSE 0 END) AS ft_empate,
+                        MAX(CASE WHEN mercado = 'Resultado Final' AND selecao = time_fora  THEN 1 ELSE 0 END) AS ft_fora,
+                        -- Resultado HT (mercado simples, selecao = nome do time ou "Empate")
+                        MAX(CASE WHEN mercado = 'Resultado Intervalo' AND selecao = time_casa  THEN 1 ELSE 0 END) AS ht_casa,
+                        MAX(CASE WHEN mercado = 'Resultado Intervalo' AND selecao = 'Empate'   THEN 1 ELSE 0 END) AS ht_empate,
+                        MAX(CASE WHEN mercado = 'Resultado Intervalo' AND selecao = time_fora  THEN 1 ELSE 0 END) AS ht_fora,
+                        -- 5+ gols (Total Exato)
+                        MAX(CASE WHEN mercado = 'Total Exato de Gols' AND selecao = '5+ Gols'  THEN 1 ELSE 0 END) AS gols5p
                     FROM bet365_resultados_mercados
                     WHERE data_partida >= DATEADD(DAY, -@janela, GETUTCDATE())
-                    GROUP BY evento_id, liga, data_partida
+                    GROUP BY evento_id, liga, time_casa, time_fora, data_partida
                 )
                 SELECT
                     liga,
                     DATEPART(MINUTE, data_partida) AS slot_minuto,
                     COUNT(*) AS total,
-                    SUM(over25) AS over25_count,
-                    SUM(btts)   AS btts_count
+                    SUM(over05)    AS over05_n,  SUM(over15)   AS over15_n,
+                    SUM(over25)    AS over25_n,  SUM(over35)   AS over35_n,
+                    SUM(over45)    AS over45_n,
+                    SUM(under15)   AS under15_n, SUM(under25)  AS under25_n,
+                    SUM(btts)      AS btts_n,    SUM(btts_nao) AS btts_nao_n,
+                    SUM(ft_casa)   AS ft_casa_n, SUM(ft_empate) AS ft_empate_n,
+                    SUM(ft_fora)   AS ft_fora_n,
+                    SUM(ht_casa)   AS ht_casa_n, SUM(ht_empate) AS ht_empate_n,
+                    SUM(ht_fora)   AS ht_fora_n,
+                    SUM(gols5p)    AS gols5p_n
                 FROM base
                 GROUP BY liga, DATEPART(MINUTE, data_partida)
             `);
@@ -2615,15 +2663,26 @@ router.get('/alertas-preditivos', async (req, res) => {
                 const row = r.recordset.find(x => x.liga === liga && x.slot_minuto === slot);
                 if (!row || row.total < MIN_AMOSTRAS) continue;
 
-                const pctOver25 = Math.round(row.over25_count / row.total * 100);
-                const pctBtts   = Math.round(row.btts_count   / row.total * 100);
-
+                // Calcula % de cada mercado e filtra pelo threshold
                 const mercados = [];
-                if (pctOver25 >= threshold) mercados.push({ mercado: 'Over 2.5', pct: pctOver25 });
-                if (pctBtts   >= threshold) mercados.push({ mercado: 'BTTS',     pct: pctBtts   });
+                for (const def of _PRED_MERCADOS) {
+                    const n = row[`${def.id}_n`] ?? 0;
+                    if (n === 0) continue;
+                    const pct = Math.round(n / row.total * 100);
+                    if (pct >= threshold) {
+                        mercados.push({ id: def.id, label: def.label, cor: def.cor, pct });
+                    }
+                }
+                mercados.sort((a, b) => b.pct - a.pct);
 
                 if (mercados.length) {
-                    predicoes.push({ liga, slot, minAte: slot - minAtual, mercados, amostras: row.total });
+                    predicoes.push({
+                        liga,
+                        slot,
+                        minAte:   slot - minAtual,
+                        mercados,
+                        amostras: row.total,
+                    });
                 }
             }
         }
@@ -2631,7 +2690,7 @@ router.get('/alertas-preditivos', async (req, res) => {
         predicoes.sort((a, b) => a.minAte - b.minAte);
         _predCache.data = predicoes;
         _predCache.ts   = Date.now();
-        res.json({ ativo: true, predicoes });
+        res.json({ ativo: true, predicoes, mercados: _PRED_MERCADOS });
     } catch(e) {
         console.error('[alertas-preditivos]', e.message);
         res.status(500).json({ success: false, error: e.message });
