@@ -2057,6 +2057,11 @@ const CONFIG_DEFAULTS = [
     { chave:'grid_filtroInativoBg', valor:'#1fcc59',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado inativo: cor base' },
     { chave:'grid_filtroAtivoBg',   valor:'#1fcc59',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado ativo: cor de fundo' },
     { chave:'grid_filtroAtivoTxt',  valor:'#ffffff',  tipo:'color', grupo:'grid', descricao:'🎯 Botões Mercado ativo: cor do texto' },
+    // ── Features futuras (desativadas por padrão — não alteram comportamento atual) ──
+    { chave:'sessao_salvar_ip',          valor:'false', tipo:'boolean', grupo:'sistema', descricao:'🔐 Sessões: salvar IP no login e exibir nas Sessões Ativas (corrige "IP: undefined" após restart)' },
+    { chave:'alerta_preditivo_ativo',    valor:'false', tipo:'boolean', grupo:'alertas', descricao:'🔮 Alertas Preditivos: avisar ANTES do padrão acontecer, com base no slot de minuto atual e histórico da liga' },
+    { chave:'calibracao_odds_ativo',     valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📐 Calibração de Odds: cruzar odd paga pela Bet365 com frequência real do resultado — mostra onde há edge' },
+    { chave:'push_notificacao_ativo',    valor:'false', tipo:'boolean', grupo:'alertas', descricao:'📲 Notificação Push: enviar alertas para o celular do usuário mesmo com a aba fechada (requer PWA)' },
 ];
 
 let _configTableEnsured = false;
