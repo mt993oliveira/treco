@@ -2248,6 +2248,21 @@
         </div>
     </div>
 
+    <!-- CALIBRAÇÃO DE ODDS — só visível quando calibracao_odds_ativo=true -->
+    <div id="analise-secao-calibracao" style="display:none;background:#0a0f1e;border:1px solid #1e3a5f;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+            <span style="font-size:10px;font-weight:700;color:#60a5fa;letter-spacing:.08em">📐 CALIBRAÇÃO DE ODDS — EDGE FINDER</span>
+            <select id="calib-liga-sel" onchange="carregarCalibracaoOdds(this.value)"
+                style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:4px;font-size:10px;padding:3px 7px;cursor:pointer">
+                <option value="all">Todas as ligas</option>
+            </select>
+            <span style="font-size:9px;color:#334155">Edge = frequência real − probabilidade implícita da odd</span>
+        </div>
+        <div id="analise-calibracao-content">
+            <div style="color:#334155;font-size:11px;padding:16px;text-align:center">Carregando calibração...</div>
+        </div>
+    </div>
+
 </div>
 
 <!-- ========== VIEW: HISTÓRICO ========== -->
@@ -4284,7 +4299,15 @@ function setView(v) {
         if (el) el.className = 'view-btn' + (v === id ? ' ativo' : '');
     });
     if (v === 'historico')    { carregarHistorico(); }
-    if (v === 'analise')      { renderAnalise(); carregarAnalise(); }
+    if (v === 'analise')      {
+        renderAnalise(); carregarAnalise();
+        const secCal = document.getElementById('analise-secao-calibracao');
+        if (secCal) {
+            const ativo = (S._cfgRaw?.calibracao_odds_ativo ?? 'false') === 'true';
+            secCal.style.display = ativo ? '' : 'none';
+            if (ativo) carregarCalibracaoOdds();
+        }
+    }
     if (v === 'multi')        { renderMultiHorarios(); }
     if (v === 'multi-gols')   { renderMultiGols(); }
     if (v === 'multi-linhas') { renderMultiLinhas(); }
@@ -4781,6 +4804,114 @@ async function carregarAnalise(forceRender = false) {
 // Aliases retrocompatíveis
 async function carregarSugestoes(forceRender = false) { return carregarAnalise(forceRender); }
 async function carregarMercados()                      { return carregarAnalise(); }
+
+// ── Calibração de Odds ──────────────────────────────────────────────────────
+let _calibLoading = false;
+
+async function carregarCalibracaoOdds(liga = 'all') {
+    if (_calibLoading) return;
+    const sec = document.getElementById('analise-secao-calibracao');
+    const el  = document.getElementById('analise-calibracao-content');
+    if (!sec || !el) return;
+    _calibLoading = true;
+    el.innerHTML = '<div style="color:#334155;font-size:11px;padding:16px;text-align:center">Calculando calibração...</div>';
+    try {
+        const qs = liga !== 'all' ? `?liga=${encodeURIComponent(liga)}` : '';
+        const r  = await fetch('/api/bet365/calibracao-odds' + qs);
+        const d  = await r.json();
+        if (!d.ativo) {
+            el.innerHTML = '<div style="color:#334155;font-size:11px;padding:16px">Feature desativada. Ative "📐 Calibração de Odds" em ⚙️ Configurações → Sistema.</div>';
+            return;
+        }
+        _renderCalibracaoOdds(d, el);
+    } catch(e) {
+        el.innerHTML = `<div style="color:#f87171;font-size:11px;padding:8px">Erro: ${e.message}</div>`;
+    } finally {
+        _calibLoading = false;
+    }
+}
+
+function _renderCalibracaoOdds(d, el) {
+    if (!d.ligas?.length) {
+        el.innerHTML = `<div style="color:#475569;font-size:11px;padding:16px;text-align:center">
+            Sem dados suficientes para calibrar odds.<br>
+            <span style="color:#334155;font-size:10px">O Coletor 2 precisa ter coletado odds pré-jogo (odd_over25, odd_casa etc.) para que a calibração funcione.<br>
+            Aguarde acumulação de ao menos 5 jogos com odds registradas em bet365_eventos.</span>
+        </div>`;
+        // Popula o select com as ligas disponíveis, se chegaram mas sem mercados
+        return;
+    }
+
+    // Popula select de ligas na primeira carga
+    const sel = document.getElementById('calib-liga-sel');
+    if (sel && sel.options.length <= 1) {
+        d.ligas.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l.liga;
+            opt.textContent = l.liga;
+            sel.appendChild(opt);
+        });
+    }
+
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const edgeBar = (edge) => {
+        const w  = Math.min(Math.abs(edge), 30);
+        const cor = edge > 0 ? '#4ade80' : '#f87171';
+        return `<div style="display:inline-block;width:${w*2}px;height:6px;background:${cor};border-radius:2px;vertical-align:middle;margin-left:4px"></div>`;
+    };
+
+    el.innerHTML = d.ligas.map(l => {
+        if (!l.mercados?.length) return '';
+        const rows = l.mercados.map(m => {
+            const edgeCor  = m.edge > 3 ? '#4ade80' : m.edge < -3 ? '#f87171' : '#94a3b8';
+            const edgeTxt  = m.edge > 0 ? `+${m.edge}pp` : `${m.edge}pp`;
+            const ve       = m.real > 0 && m.implied > 0 ? (m.real / m.implied).toFixed(2) : '—';
+            const veCor    = parseFloat(ve) >= 1.05 ? '#4ade80' : parseFloat(ve) < 0.95 ? '#f87171' : '#94a3b8';
+            return `<tr style="border-bottom:1px solid #0f172a">
+                <td style="padding:5px 8px;font-size:11px;white-space:nowrap">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${m.cor};margin-right:5px;vertical-align:middle"></span>
+                    ${esc(m.label)}
+                </td>
+                <td style="padding:5px 8px;font-size:11px;color:#64748b;text-align:center">${m.implied}%</td>
+                <td style="padding:5px 8px;font-size:11px;color:#e2e8f0;text-align:center;font-weight:700">${m.real}%</td>
+                <td style="padding:5px 8px;font-size:11px;color:${edgeCor};text-align:center;font-weight:700;white-space:nowrap">
+                    ${edgeTxt}${edgeBar(m.edge)}
+                </td>
+                <td style="padding:5px 8px;font-size:11px;color:${veCor};text-align:center;font-weight:700">${ve}</td>
+                <td style="padding:5px 8px;font-size:10px;color:#334155;text-align:center">${m.n}</td>
+            </tr>`;
+        }).join('');
+
+        return `<div style="margin-bottom:16px">
+            <div style="font-size:10px;font-weight:700;color:#60a5fa;margin-bottom:6px">
+                🏆 ${esc(l.liga)}
+                <span style="color:#334155;font-weight:400;margin-left:6px">${l.total_jogos} jogos com odds · ${d.dias} dias</span>
+            </div>
+            <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;background:#0f172a;border-radius:6px;overflow:hidden;min-width:380px">
+                <thead>
+                    <tr style="background:#1e293b">
+                        <th style="padding:5px 8px;font-size:9px;color:#475569;text-align:left;font-weight:700">MERCADO</th>
+                        <th style="padding:5px 8px;font-size:9px;color:#475569;text-align:center;font-weight:700" title="1/odd × 100%">IMPLÍCITA</th>
+                        <th style="padding:5px 8px;font-size:9px;color:#475569;text-align:center;font-weight:700">REAL</th>
+                        <th style="padding:5px 8px;font-size:9px;color:#475569;text-align:center;font-weight:700" title="Real − Implícita">EDGE</th>
+                        <th style="padding:5px 8px;font-size:9px;color:#475569;text-align:center;font-weight:700" title="Real ÷ Implícita — VE > 1 = valor positivo">VE</th>
+                        <th style="padding:5px 8px;font-size:9px;color:#475569;text-align:center;font-weight:700">N</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            </div>
+        </div>`;
+    }).join('');
+
+    // Legenda
+    el.innerHTML += `<div style="font-size:9px;color:#334155;margin-top:4px;line-height:1.6">
+        <span style="color:#4ade80">▲ Edge positivo</span> = mercado ocorre mais do que a odd sugere.
+        <span style="color:#f87171">▼ Edge negativo</span> = odds mais generosas que a realidade.
+        <b style="color:#94a3b8">VE</b> = Valor Esperado (real ÷ implícita) — acima de 1.05 é positivo.
+    </div>`;
+}
 
 // ============================================================
 // MERCADOS DIVERSIFICADOS — seleciona 1 melhor por categoria de mercado
@@ -13690,6 +13821,7 @@ const _CFG_LABELS = {
     brute_force_janela_min:     '🔒 Brute Force: janela de tempo (minutos)',
     brute_force_bloqueio_min:   '🔒 Brute Force: duração do bloqueio (minutos)',
     cache_resultados_ativo:     '⚡ Cache de resultados: pular re-coleta no mesmo ciclo',
+    calibracao_odds_dias:       '📐 Calibração de Odds: janela histórica (dias)',
     intervalo_coleta_seg:       'Intervalo entre ciclos de coleta (segundos)',
     odds_intervalo_seg:         'Intervalo entre ciclos do Coletor de Odds (segundos)',
     retry_liga_sem_resultado:        '🔁 Retry automático quando liga sem resultados (jogo em andamento)',

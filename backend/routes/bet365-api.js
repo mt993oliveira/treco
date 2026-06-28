@@ -2064,6 +2064,7 @@ const CONFIG_DEFAULTS = [
     { chave:'alerta_preditivo_antecedencia',  valor:'3',     tipo:'number',  grupo:'alertas', descricao:'🔮 Alertas Preditivos: minutos de antecedência antes do slot para emitir o alerta (padrão: 3 min)' },
     { chave:'alerta_preditivo_janela_dias',   valor:'14',    tipo:'number',  grupo:'alertas', descricao:'🔮 Alertas Preditivos: janela histórica em dias para calcular probabilidades (padrão: 14 dias)' },
     { chave:'calibracao_odds_ativo',          valor:'false', tipo:'boolean', grupo:'sistema', descricao:'📐 Calibração de Odds: cruzar odd paga pela Bet365 com frequência real do resultado — mostra onde há edge' },
+    { chave:'calibracao_odds_dias',           valor:'30',    tipo:'number',  grupo:'sistema', descricao:'📐 Calibração de Odds: janela em dias para o cálculo de probabilidade implícita vs frequência real (padrão: 30 dias)' },
     { chave:'push_notificacao_ativo',         valor:'false', tipo:'boolean', grupo:'alertas', descricao:'📲 Notificação Push: enviar alertas para o celular do usuário mesmo com a aba fechada (requer PWA)' },
 ];
 
@@ -2693,6 +2694,156 @@ router.get('/alertas-preditivos', async (req, res) => {
         res.json({ ativo: true, predicoes, mercados: _PRED_MERCADOS });
     } catch(e) {
         console.error('[alertas-preditivos]', e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * GET /api/bet365/calibracao-odds
+ * Cruza odds pré-jogo (bet365_eventos) com resultados reais (bet365_resultados_mercados).
+ * Para cada mercado e liga, retorna probabilidade implícita vs frequência real → edge.
+ * Requer calibracao_odds_ativo=true e dados do Coletor 2 (odd_over25 etc. em bet365_eventos).
+ */
+const _calibCache = { data: null, ts: 0 };
+const _CALIB_CACHE_TTL = 5 * 60_000; // 5 min
+
+const _CALIB_MERCADOS = [
+    { id: 'over15',    label: 'Over 1.5',   col_odd: 'odd_over15',   cor: '#10b981' },
+    { id: 'over25',    label: 'Over 2.5',   col_odd: 'odd_over25',   cor: '#3b82f6' },
+    { id: 'over35',    label: 'Over 3.5',   col_odd: 'odd_over35',   cor: '#8b5cf6' },
+    { id: 'under25',   label: 'Under 2.5',  col_odd: 'odd_under25',  cor: '#ef4444' },
+    { id: 'btts',      label: 'BTTS',       col_odd: 'odd_btts_sim', cor: '#06b6d4' },
+    { id: 'ft_casa',   label: 'Casa FT',    col_odd: 'odd_casa',     cor: '#84cc16' },
+    { id: 'ft_empate', label: 'Empate FT',  col_odd: 'odd_empate',   cor: '#a78bfa' },
+    { id: 'ft_fora',   label: 'Fora FT',    col_odd: 'odd_fora',     cor: '#fb923c' },
+    { id: 'ht_casa',   label: 'Casa HT',    col_odd: 'odd_ht_casa',  cor: '#65a30d' },
+    { id: 'ht_empate', label: 'Empate HT',  col_odd: 'odd_ht_empate',cor: '#c4b5fd' },
+    { id: 'ht_fora',   label: 'Fora HT',    col_odd: 'odd_ht_fora',  cor: '#f97316' },
+];
+
+router.get('/calibracao-odds', async (req, res) => {
+    try {
+        const pool = await getDbPool();
+        const cfg  = await getSystemConfig(pool);
+
+        if (cfg.calibracao_odds_ativo !== 'true')
+            return res.json({ ativo: false, ligas: [], mercados: _CALIB_MERCADOS });
+
+        const cacheKey = `calib:${req.query.liga||'all'}`;
+        if (_calibCache.data && _calibCache.data._key === cacheKey
+                && Date.now() - _calibCache.ts < _CALIB_CACHE_TTL)
+            return res.json({ ativo: true, ..._calibCache.data });
+
+        const dias = parseInt(cfg.calibracao_odds_dias ?? '30');
+        const ligaFiltro = req.query.liga && req.query.liga !== 'all'
+            ? ligaParaBanco(req.query.liga) : null;
+
+        const request = pool.request().input('dias', sql.Int, dias);
+        if (ligaFiltro) request.input('liga', sql.NVarChar(200), ligaFiltro);
+
+        // CTE: pivot por evento — resultados reais + odds pré-jogo em uma linha só
+        const r = await request.query(`
+            WITH res AS (
+                SELECT
+                    r.evento_id, r.liga, r.time_casa, r.time_fora,
+                    MAX(CASE WHEN r.mercado LIKE '%1.5%' AND r.selecao LIKE 'Mais%'
+                              AND r.mercado NOT LIKE '%Intervalo%'                   THEN 1 ELSE 0 END) AS over15,
+                    MAX(CASE WHEN r.mercado LIKE '%2.5%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over25,
+                    MAX(CASE WHEN r.mercado LIKE '%3.5%' AND r.selecao LIKE 'Mais%' THEN 1 ELSE 0 END) AS over35,
+                    MAX(CASE WHEN r.mercado LIKE '%2.5%' AND r.selecao LIKE 'Menos%'THEN 1 ELSE 0 END) AS under25,
+                    MAX(CASE WHEN r.mercado = 'Ambos Marcam' AND r.selecao = 'Sim'  THEN 1 ELSE 0 END) AS btts,
+                    MAX(CASE WHEN r.mercado = 'Resultado Final'    AND r.selecao = r.time_casa  THEN 1 ELSE 0 END) AS ft_casa,
+                    MAX(CASE WHEN r.mercado = 'Resultado Final'    AND r.selecao = 'Empate'     THEN 1 ELSE 0 END) AS ft_empate,
+                    MAX(CASE WHEN r.mercado = 'Resultado Final'    AND r.selecao = r.time_fora  THEN 1 ELSE 0 END) AS ft_fora,
+                    MAX(CASE WHEN r.mercado = 'Resultado Intervalo' AND r.selecao = r.time_casa THEN 1 ELSE 0 END) AS ht_casa,
+                    MAX(CASE WHEN r.mercado = 'Resultado Intervalo' AND r.selecao = 'Empate'   THEN 1 ELSE 0 END) AS ht_empate,
+                    MAX(CASE WHEN r.mercado = 'Resultado Intervalo' AND r.selecao = r.time_fora THEN 1 ELSE 0 END) AS ht_fora
+                FROM bet365_resultados_mercados r
+                WHERE r.data_partida >= DATEADD(DAY, -@dias, GETUTCDATE())
+                ${ligaFiltro ? 'AND r.liga = @liga' : ''}
+                GROUP BY r.evento_id, r.liga, r.time_casa, r.time_fora
+            )
+            SELECT
+                r.liga,
+                COUNT(*) AS total_jogos,
+                -- Over 1.5
+                SUM(CASE WHEN e.odd_over15  > 1.01 THEN 1 ELSE 0 END) AS over15_n,
+                AVG(CASE WHEN e.odd_over15  > 1.01 THEN CAST(100.0/e.odd_over15  AS FLOAT) ELSE NULL END) AS over15_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_over15  > 1.01 THEN r.over15  ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_over15  > 1.01 THEN 1 ELSE 0 END),0),1) AS over15_real,
+                -- Over 2.5
+                SUM(CASE WHEN e.odd_over25  > 1.01 THEN 1 ELSE 0 END) AS over25_n,
+                AVG(CASE WHEN e.odd_over25  > 1.01 THEN CAST(100.0/e.odd_over25  AS FLOAT) ELSE NULL END) AS over25_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_over25  > 1.01 THEN r.over25  ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_over25  > 1.01 THEN 1 ELSE 0 END),0),1) AS over25_real,
+                -- Over 3.5
+                SUM(CASE WHEN e.odd_over35  > 1.01 THEN 1 ELSE 0 END) AS over35_n,
+                AVG(CASE WHEN e.odd_over35  > 1.01 THEN CAST(100.0/e.odd_over35  AS FLOAT) ELSE NULL END) AS over35_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_over35  > 1.01 THEN r.over35  ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_over35  > 1.01 THEN 1 ELSE 0 END),0),1) AS over35_real,
+                -- Under 2.5
+                SUM(CASE WHEN e.odd_under25 > 1.01 THEN 1 ELSE 0 END) AS under25_n,
+                AVG(CASE WHEN e.odd_under25 > 1.01 THEN CAST(100.0/e.odd_under25 AS FLOAT) ELSE NULL END) AS under25_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_under25 > 1.01 THEN r.under25 ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_under25 > 1.01 THEN 1 ELSE 0 END),0),1) AS under25_real,
+                -- BTTS
+                SUM(CASE WHEN e.odd_btts_sim > 1.01 THEN 1 ELSE 0 END) AS btts_n,
+                AVG(CASE WHEN e.odd_btts_sim > 1.01 THEN CAST(100.0/e.odd_btts_sim AS FLOAT) ELSE NULL END) AS btts_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_btts_sim > 1.01 THEN r.btts ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_btts_sim > 1.01 THEN 1 ELSE 0 END),0),1) AS btts_real,
+                -- FT Casa
+                SUM(CASE WHEN e.odd_casa    > 1.01 THEN 1 ELSE 0 END) AS ft_casa_n,
+                AVG(CASE WHEN e.odd_casa    > 1.01 THEN CAST(100.0/e.odd_casa    AS FLOAT) ELSE NULL END) AS ft_casa_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_casa    > 1.01 THEN r.ft_casa   ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_casa    > 1.01 THEN 1 ELSE 0 END),0),1) AS ft_casa_real,
+                -- FT Empate
+                SUM(CASE WHEN e.odd_empate  > 1.01 THEN 1 ELSE 0 END) AS ft_empate_n,
+                AVG(CASE WHEN e.odd_empate  > 1.01 THEN CAST(100.0/e.odd_empate  AS FLOAT) ELSE NULL END) AS ft_empate_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_empate  > 1.01 THEN r.ft_empate ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_empate  > 1.01 THEN 1 ELSE 0 END),0),1) AS ft_empate_real,
+                -- FT Fora
+                SUM(CASE WHEN e.odd_fora    > 1.01 THEN 1 ELSE 0 END) AS ft_fora_n,
+                AVG(CASE WHEN e.odd_fora    > 1.01 THEN CAST(100.0/e.odd_fora    AS FLOAT) ELSE NULL END) AS ft_fora_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_fora    > 1.01 THEN r.ft_fora   ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_fora    > 1.01 THEN 1 ELSE 0 END),0),1) AS ft_fora_real,
+                -- HT Casa
+                SUM(CASE WHEN e.odd_ht_casa   > 1.01 THEN 1 ELSE 0 END) AS ht_casa_n,
+                AVG(CASE WHEN e.odd_ht_casa   > 1.01 THEN CAST(100.0/e.odd_ht_casa   AS FLOAT) ELSE NULL END) AS ht_casa_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_ht_casa   > 1.01 THEN r.ht_casa   ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_ht_casa   > 1.01 THEN 1 ELSE 0 END),0),1) AS ht_casa_real,
+                -- HT Empate
+                SUM(CASE WHEN e.odd_ht_empate > 1.01 THEN 1 ELSE 0 END) AS ht_empate_n,
+                AVG(CASE WHEN e.odd_ht_empate > 1.01 THEN CAST(100.0/e.odd_ht_empate AS FLOAT) ELSE NULL END) AS ht_empate_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_ht_empate > 1.01 THEN r.ht_empate ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_ht_empate > 1.01 THEN 1 ELSE 0 END),0),1) AS ht_empate_real,
+                -- HT Fora
+                SUM(CASE WHEN e.odd_ht_fora   > 1.01 THEN 1 ELSE 0 END) AS ht_fora_n,
+                AVG(CASE WHEN e.odd_ht_fora   > 1.01 THEN CAST(100.0/e.odd_ht_fora   AS FLOAT) ELSE NULL END) AS ht_fora_impl,
+                ROUND(100.0*SUM(CASE WHEN e.odd_ht_fora   > 1.01 THEN r.ht_fora   ELSE 0 END)/NULLIF(SUM(CASE WHEN e.odd_ht_fora   > 1.01 THEN 1 ELSE 0 END),0),1) AS ht_fora_real
+            FROM res r
+            JOIN bet365_eventos e ON e.id = r.evento_id
+            GROUP BY r.liga
+            HAVING COUNT(*) >= 5
+            ORDER BY r.liga
+        `);
+
+        // Converte cada linha (por liga) em objeto com lista de mercados
+        const ligas = r.recordset.map(row => {
+            const mkts = _CALIB_MERCADOS.map(def => {
+                const n       = row[`${def.id}_n`]    ?? 0;
+                const implied = row[`${def.id}_impl`];
+                const real    = row[`${def.id}_real`];
+                if (!n || implied == null || real == null) return null;
+                return {
+                    id:      def.id,
+                    label:   def.label,
+                    cor:     def.cor,
+                    n,
+                    implied: Math.round(implied),
+                    real:    Math.round(real * 10) / 10,
+                    edge:    Math.round((real - implied) * 10) / 10,
+                };
+            }).filter(Boolean).sort((a, b) => b.edge - a.edge);
+
+            return { liga: row.liga, total_jogos: row.total_jogos, mercados: mkts };
+        }).filter(l => l.mercados.length > 0);
+
+        const out = { _key: cacheKey, ligas, mercados: _CALIB_MERCADOS, dias };
+        _calibCache.data = out;
+        _calibCache.ts   = Date.now();
+        res.json({ ativo: true, ...out });
+    } catch(e) {
+        console.error('[calibracao-odds]', e.message);
         res.status(500).json({ success: false, error: e.message });
     }
 });
