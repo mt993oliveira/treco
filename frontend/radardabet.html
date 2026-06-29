@@ -14347,7 +14347,26 @@ async function _loadConfigSistema() {
                     </div>
                 </div>
             </div>` +
-            _toggleHtml({ chave:'push_notificacao_ativo', valor: cfgAlertas.push_notificacao_ativo ?? 'false', descricao:'📲 Notificação Push: enviar alertas para o celular mesmo com a aba fechada (requer PWA)' });
+            _toggleHtml({ chave:'push_notificacao_ativo', valor: cfgAlertas.push_notificacao_ativo ?? 'false', descricao:'📲 Notificação Push: enviar alertas para o celular mesmo com a aba fechada (requer PWA)' }) +
+            ((cfgAlertas.push_notificacao_ativo ?? 'false') === 'true' ? `
+            <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:10px 12px;margin-top:6px">
+                <div style="font-size:10px;color:#64748b;margin-bottom:8px">
+                    Receba alertas preditivos mesmo com a aba fechada. O navegador precisa suportar notificações push.
+                </div>
+                <button id="push-btn-toggle"
+                    onclick="if(this.dataset.push==='subscribed'){_desativarPushNotificacoes()}else{_iniciarPushNotificacoes()}"
+                    style="width:100%;padding:8px 14px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#3b82f6;font-size:12px;cursor:pointer;text-align:left">
+                    🔕 Ativar notificações push
+                </button>
+                <div style="font-size:9px;color:#334155;margin-top:5px">
+                    Funciona em HTTPS · Chrome, Edge, Firefox, Android (não suportado no Safari iOS)
+                </div>
+            </div>` : '');
+
+        // Atualiza estado do botão push após DOM ser montado
+        if ((cfgAlertas.push_notificacao_ativo ?? 'false') === 'true') {
+            setTimeout(_verificarPushExistente, 50);
+        }
 
         const _dashOpts = (val) => [
             {v:'0',    l:'— Sólido'},
@@ -16583,6 +16602,81 @@ function _mostrarAlertaPreditivo(predicoes) {
     el.style.display = 'block';
 }
 
+// ─────────────────────────────────────────────────────────────
+// NOTIFICAÇÕES PUSH — Feature 4
+// ─────────────────────────────────────────────────────────────
+let _swReg   = null;
+let _pushSub = null;
+
+function _urlBase64ToUint8Array(b64) {
+    const pad = '='.repeat((4 - b64.length % 4) % 4);
+    const raw = atob((b64 + pad).replace(/-/g,'+').replace(/_/g,'/'));
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function _iniciarPushNotificacoes() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+        _swReg = await navigator.serviceWorker.register('/sw.js');
+        const kResp = await fetch('/api/bet365/push/publickey');
+        if (!kResp.ok) return;
+        const { publicKey } = await kResp.json();
+
+        _pushSub = await _swReg.pushManager.getSubscription();
+        if (!_pushSub) {
+            const perm = await Notification.requestPermission();
+            if (perm !== 'granted') { _atualizarBotaoPush('blocked'); return; }
+            _pushSub = await _swReg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: _urlBase64ToUint8Array(publicKey),
+            });
+        }
+        const sub = _pushSub.toJSON();
+        await fetch('/api/bet365/push/subscribe', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth }),
+        });
+        _atualizarBotaoPush('subscribed');
+    } catch(e) {
+        console.warn('[Push]', e.message);
+        _atualizarBotaoPush('error');
+    }
+}
+
+async function _desativarPushNotificacoes() {
+    try {
+        if (_pushSub) {
+            const ep = _pushSub.endpoint;
+            await _pushSub.unsubscribe();
+            _pushSub = null;
+            await fetch('/api/bet365/push/subscribe', {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: ep }),
+            });
+        }
+        _atualizarBotaoPush('unsubscribed');
+    } catch(e) { console.warn('[Push desativar]', e.message); }
+}
+
+function _atualizarBotaoPush(estado) {
+    const btn = document.getElementById('push-btn-toggle');
+    if (!btn) return;
+    const cfg = { subscribed:'🔔 Ativado — clique para desativar', unsubscribed:'🔕 Ativar notificações push', blocked:'🚫 Permissão negada', error:'⚠️ Erro ao ativar push' };
+    const cor = { subscribed:'#22c55e', unsubscribed:'#3b82f6', blocked:'#ef4444', error:'#f97316' };
+    btn.textContent  = cfg[estado] || cfg.unsubscribed;
+    btn.style.color  = cor[estado] || cor.unsubscribed;
+    btn.dataset.push = estado;
+}
+
+async function _verificarPushExistente() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+        _swReg = _swReg || await navigator.serviceWorker.register('/sw.js');
+        _pushSub = await _swReg.pushManager.getSubscription();
+        _atualizarBotaoPush(_pushSub ? 'subscribed' : 'unsubscribed');
+    } catch(e) {}
+}
+
 // ============================================================
 // MODO MANUTENÇÃO
 // ============================================================
@@ -16917,6 +17011,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         await _carregarPadroesParaAlertas();
         await _carregarAlertaCfgRuntime();
         if ((S._cfgRaw?.alerta_preditivo_ativo ?? 'false') === 'true') _iniciarAlertasPreditivos();
+        if ((S._cfgRaw?.push_notificacao_ativo ?? 'false') === 'true') {
+            _iniciarPushNotificacoes();
+        }
         await carregarTudo();
         _atualizarCoresCharts(localStorage.getItem('rdbt_tema') || 'dark');
         // Auto-aplica padrão principal (se existir) logo após carregar dados

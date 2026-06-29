@@ -2848,6 +2848,136 @@ router.get('/calibracao-odds', async (req, res) => {
     }
 });
 
+// ─────────────────────────────────────────────────────────────
+// FEATURE 4 — NOTIFICAÇÕES PUSH (web-push + VAPID)
+// ─────────────────────────────────────────────────────────────
+let _webpush = null;
+function _getWebPush() {
+    if (_webpush) return _webpush;
+    if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return null;
+    try {
+        _webpush = require('web-push');
+        _webpush.setVapidDetails(
+            'mailto:radardabetoficial@gmail.com',
+            process.env.VAPID_PUBLIC_KEY,
+            process.env.VAPID_PRIVATE_KEY
+        );
+        return _webpush;
+    } catch(e) {
+        console.warn('[push] web-push não disponível:', e.message);
+        return null;
+    }
+}
+
+/**
+ * GET /api/bet365/push/publickey
+ * Retorna a chave pública VAPID para o frontend se inscrever.
+ */
+router.get('/push/publickey', (req, res) => {
+    const key = process.env.VAPID_PUBLIC_KEY;
+    if (!key) return res.status(503).json({ error: 'VAPID não configurado no servidor' });
+    res.json({ publicKey: key });
+});
+
+/**
+ * POST /api/bet365/push/subscribe
+ * Armazena ou atualiza a subscription de push do usuário.
+ * Body: { endpoint, p256dh, auth }
+ */
+router.post('/push/subscribe', async (req, res) => {
+    try {
+        const cfg = await getSystemConfig();
+        if ((cfg.push_notificacao_ativo ?? 'false') !== 'true')
+            return res.status(403).json({ error: 'Push desativado' });
+
+        const { endpoint, p256dh, auth } = req.body || {};
+        if (!endpoint || !p256dh || !auth)
+            return res.status(400).json({ error: 'endpoint, p256dh e auth são obrigatórios' });
+
+        const pool = await getDbPool();
+        await pool.request()
+            .input('endpoint',    sql.NVarChar(sql.MAX), endpoint)
+            .input('p256dh',      sql.NVarChar(500),     p256dh)
+            .input('auth_key',    sql.NVarChar(200),     auth)
+            .query(`
+                MERGE push_subscriptions AS tgt
+                USING (SELECT @endpoint AS ep) AS src ON tgt.endpoint = src.ep
+                WHEN MATCHED THEN
+                    UPDATE SET p256dh=@p256dh, auth_key=@auth_key, criado_em=GETUTCDATE()
+                WHEN NOT MATCHED THEN
+                    INSERT (endpoint, p256dh, auth_key) VALUES (@endpoint, @p256dh, @auth_key);
+            `);
+        res.json({ success: true });
+    } catch(e) {
+        console.error('[push-subscribe]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * DELETE /api/bet365/push/subscribe
+ * Remove a subscription de push do usuário.
+ * Body: { endpoint }
+ */
+router.delete('/push/subscribe', async (req, res) => {
+    try {
+        const { endpoint } = req.body || {};
+        if (!endpoint) return res.status(400).json({ error: 'endpoint obrigatório' });
+        const pool = await getDbPool();
+        await pool.request()
+            .input('endpoint', sql.NVarChar(sql.MAX), endpoint)
+            .query(`DELETE FROM push_subscriptions WHERE endpoint = @endpoint`);
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * Disparar push para todos os inscritos quando há predições ativas.
+ * Chamado pelo server.js após cada ciclo de coleta (quando push_notificacao_ativo=true).
+ * Usa o cache interno _predCache para evitar re-query ao banco.
+ */
+let _pushLastHash = '';
+async function dispararPushPreditivos() {
+    const wp = _getWebPush();
+    if (!wp) return;
+
+    const predicoes = _predCache?.data;
+    if (!predicoes || !predicoes.length) return;
+
+    // Cria hash dos slots ativos para não reenviar o mesmo conjunto de alertas
+    const hash = predicoes.map(p => `${p.liga}:${p.slot}`).sort().join('|');
+    if (hash === _pushLastHash) return;
+    _pushLastHash = hash;
+
+    const pool = await getDbPool();
+    const subs = await pool.request().query(`SELECT endpoint, p256dh, auth_key FROM push_subscriptions`);
+    if (!subs.recordset.length) return;
+
+    const ligasStr = [...new Set(predicoes.map(p => p.liga))].join(', ');
+    const payload  = JSON.stringify({
+        title: '🎯 Alerta Preditivo',
+        body:  `${predicoes.length} predição(ões) ativas: ${ligasStr}`,
+        tag:   'alerta-preditivo',
+        url:   '/',
+    });
+
+    for (const sub of subs.recordset) {
+        try {
+            await wp.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } }, payload);
+        } catch(e) {
+            if (e.statusCode === 410 || e.statusCode === 404) {
+                // Subscription expirada — remover
+                await pool.request()
+                    .input('ep', sql.NVarChar(sql.MAX), sub.endpoint)
+                    .query(`DELETE FROM push_subscriptions WHERE endpoint=@ep`).catch(() => {});
+            }
+        }
+    }
+    console.log(`[push] ${subs.recordset.length} push(s) enviado(s) para: ${ligasStr}`);
+}
+
 /**
  * Normalização automática em background — chamada pelo servidor a cada 10 min.
  * Processa apenas registros recentes (últimas N horas) para ser rápido.
@@ -2869,6 +2999,7 @@ async function normalizarAutomaticamente(horas = 1) {
 }
 
 module.exports = router;
-module.exports.getSystemConfig          = getSystemConfig;
-module.exports.getDbPool                = getDbPool;
+module.exports.getSystemConfig           = getSystemConfig;
+module.exports.getDbPool                 = getDbPool;
 module.exports.normalizarAutomaticamente = normalizarAutomaticamente;
+module.exports.dispararPushPreditivos    = dispararPushPreditivos;

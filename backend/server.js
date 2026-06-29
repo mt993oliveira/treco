@@ -2622,13 +2622,32 @@ server.listen(PORT, () => {
         } catch(e) { console.warn('⚠️ Schema ip_blacklist:', e.message); }
     })();
 
+    // Garante tabela push_subscriptions
+    (async () => {
+        try {
+            await sql.query`
+                IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name='push_subscriptions' AND xtype='U')
+                CREATE TABLE push_subscriptions (
+                    id          INT IDENTITY(1,1) PRIMARY KEY,
+                    usuario_id  INT NULL,
+                    endpoint    NVARCHAR(MAX) NOT NULL,
+                    p256dh      NVARCHAR(500) NOT NULL,
+                    auth_key    NVARCHAR(200) NOT NULL,
+                    criado_em   DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    CONSTRAINT UQ_push_endpoint UNIQUE (endpoint)
+                )
+            `;
+            console.log('✅ Schema push_subscriptions verificado');
+        } catch(e) { console.warn('⚠️ Schema push_subscriptions:', e.message); }
+    })();
+
     // Carrega blacklist persistida do banco na memória
     _blacklistCarregarDB();
 
     // ── Inicia o agendador Bet365 junto com o servidor ──
     if (process.env.BET365_AGENDADOR_ATIVADO !== 'false') {
         const Bet365Coletor               = require('./services/bet365-coletor');
-        const { getSystemConfig, getDbPool } = require('./routes/bet365-api');
+        const { getSystemConfig, getDbPool, dispararPushPreditivos } = require('./routes/bet365-api');
         const { dispararAlerta }          = require('./services/alertas');
         const coletor365 = new Bet365Coletor();
 
@@ -2641,6 +2660,10 @@ server.listen(PORT, () => {
             const inicio = Date.now();
             await coletor365.coletar().catch(e => console.error('Bet365 coletar:', e.message));
             const cfg  = await getSystemConfig().catch(() => ({}));
+            // Dispara push preditivos após cada coleta (só quando flag ativa)
+            if ((cfg.push_notificacao_ativo ?? 'false') === 'true') {
+                dispararPushPreditivos().catch(() => {});
+            }
 
             // ── Verificar alertas ──────────────────────────────────
             if (coletor365.ultimaColetaSucesso && coletor365.ultimaColetaSucesso > _ultimaColetaOk) {
