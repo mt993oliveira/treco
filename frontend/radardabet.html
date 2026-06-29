@@ -912,6 +912,12 @@
                     ⚙️ Configurações do Sistema
                 </button>
 
+                <button id="dd-btn-dados-manuais" onclick="abrirDadosManuais()"
+                    style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
+                           padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
+                    onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">
+                    📝 Dados Manuais
+                </button>
                 <button id="dd-btn-kirvano" onclick="abrirKirvano()"
                     style="width:100%;background:none;border:none;color:#94a3b8;font-size:12px;
                            padding:9px 14px;text-align:left;cursor:pointer;display:none;gap:8px;align-items:center"
@@ -1178,6 +1184,100 @@
                            padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer">Salvar</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- ========== MODAL: DADOS MANUAIS ========== -->
+<div class="modal-overlay" id="modal-dados-manuais">
+    <div class="modal-box" style="max-width:540px;width:98%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="font-size:14px;font-weight:700">📝 Dados Manuais</h2>
+            <button onclick="fecharModal('modal-dados-manuais')"
+                style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+
+        <!-- Formulário de inserção -->
+        <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.08em;margin-bottom:10px">NOVO JOGO</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div style="grid-column:1/-1">
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">LIGA</label>
+                <input id="dm-liga" type="text" list="dm-ligas-list" placeholder="Ex: Brasileirão Série A"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                <datalist id="dm-ligas-list"></datalist>
+            </div>
+            <div>
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">DATA</label>
+                <input id="dm-data" type="date"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            </div>
+            <div>
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">HORA</label>
+                <input id="dm-hora" type="time"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            </div>
+            <div>
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">TIME CASA</label>
+                <input id="dm-casa" type="text" placeholder="Ex: Flamengo"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            </div>
+            <div>
+                <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">TIME FORA</label>
+                <input id="dm-fora" type="text" placeholder="Ex: Palmeiras"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+            </div>
+        </div>
+
+        <!-- Placares HT e FT lado a lado -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:#0f172a;border:1px solid #1e3a5f;border-radius:7px;padding:12px">
+                <div style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.08em;margin-bottom:10px;text-align:center">INTERVALO (HT)</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+                    <input id="dm-gol-casa-ht" type="number" min="0" max="20" value="0"
+                        style="width:52px;text-align:center;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 4px;font-size:18px;font-weight:700;outline:none"
+                        onfocus="this.style.borderColor='#60a5fa'" onblur="this.style.borderColor='#334155'">
+                    <span style="color:#475569;font-size:16px;font-weight:700">×</span>
+                    <input id="dm-gol-fora-ht" type="number" min="0" max="20" value="0"
+                        style="width:52px;text-align:center;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 4px;font-size:18px;font-weight:700;outline:none"
+                        onfocus="this.style.borderColor='#60a5fa'" onblur="this.style.borderColor='#334155'">
+                </div>
+            </div>
+            <div style="background:#0f172a;border:1px solid #1e4a2f;border-radius:7px;padding:12px">
+                <div style="font-size:9px;font-weight:700;color:#1fcc59;letter-spacing:.08em;margin-bottom:10px;text-align:center">RESULTADO FINAL (FT)</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+                    <input id="dm-gol-casa-ft" type="number" min="0" max="20" value="0"
+                        style="width:52px;text-align:center;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 4px;font-size:18px;font-weight:700;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                    <span style="color:#475569;font-size:16px;font-weight:700">×</span>
+                    <input id="dm-gol-fora-ft" type="number" min="0" max="20" value="0"
+                        style="width:52px;text-align:center;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 4px;font-size:18px;font-weight:700;outline:none"
+                        onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
+                </div>
+            </div>
+        </div>
+
+        <div id="dm-msg" style="display:none;padding:7px 10px;border-radius:5px;font-size:11px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:18px">
+            <button type="button" onclick="fecharModal('modal-dados-manuais')"
+                style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:5px;padding:7px 16px;font-size:12px;cursor:pointer">Cancelar</button>
+            <button type="button" onclick="_dmSalvar()"
+                style="background:#1fcc59;border:none;color:#000;border-radius:5px;padding:7px 18px;font-size:12px;font-weight:700;cursor:pointer">Salvar Jogo</button>
+        </div>
+
+        <!-- Lista de jogos manuais -->
+        <div style="border-top:1px solid #1e293b;padding-top:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.08em">JOGOS INSERIDOS MANUALMENTE</div>
+                <button onclick="_dmCarregarLista()" style="background:none;border:none;color:#475569;font-size:10px;cursor:pointer;padding:0">↺ atualizar</button>
+            </div>
+            <div id="dm-lista" style="max-height:260px;overflow-y:auto">
+                <div style="font-size:11px;color:#475569;text-align:center;padding:16px">Carregando...</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -13232,6 +13332,11 @@ function _initUserMenu() {
         const btnHistUsr = document.getElementById('dd-btn-historico-usuarios');
         if (btnHistUsr) btnHistUsr.style.display = 'flex';
     }
+    // 📝 Dados Manuais — master e administrador
+    if (_isMasterUser || _isAdminType) {
+        const btnDM = document.getElementById('dd-btn-dados-manuais');
+        if (btnDM) btnDM.style.display = 'flex';
+    }
     // 💳 Kirvano — master e administrador
     if (_isMasterUser || _isAdminType) {
         const btnKirv = document.getElementById('dd-btn-kirvano');
@@ -18309,6 +18414,128 @@ function _kirvPaginacao(el, total, pp, paginaAtual, fn) {
         }, 280);
     };
 })();
+</script>
+
+<script>
+// ── Dados Manuais ────────────────────────────────────────────────────────────
+async function abrirDadosManuais() {
+    document.getElementById('user-dropdown').style.display = 'none';
+    document.getElementById('modal-dados-manuais').classList.add('aberto');
+
+    // preenche data de hoje por padrão
+    const hoje = new Date();
+    const d = document.getElementById('dm-data');
+    if (d && !d.value) d.value = hoje.toISOString().slice(0, 10);
+    const h = document.getElementById('dm-hora');
+    if (h && !h.value) h.value = '15:00';
+
+    // carrega ligas para datalist
+    try {
+        const r = await fetch('/api/dados-manuais/ligas', { credentials: 'include' });
+        if (r.ok) {
+            const ligas = await r.json();
+            const dl = document.getElementById('dm-ligas-list');
+            if (dl) dl.innerHTML = ligas.map(l => `<option value="${l}">`).join('');
+        }
+    } catch(e) {}
+
+    _dmCarregarLista();
+}
+
+async function _dmSalvar() {
+    const liga    = (document.getElementById('dm-liga')?.value || '').trim();
+    const data    = document.getElementById('dm-data')?.value;
+    const hora    = document.getElementById('dm-hora')?.value || '00:00';
+    const casa    = (document.getElementById('dm-casa')?.value || '').trim();
+    const fora    = (document.getElementById('dm-fora')?.value || '').trim();
+    const gcHT    = document.getElementById('dm-gol-casa-ht')?.value;
+    const gfHT    = document.getElementById('dm-gol-fora-ht')?.value;
+    const gcFT    = document.getElementById('dm-gol-casa-ft')?.value;
+    const gfFT    = document.getElementById('dm-gol-fora-ft')?.value;
+
+    const msg = document.getElementById('dm-msg');
+    const _show = (txt, ok) => {
+        msg.style.display = 'block';
+        msg.style.background = ok ? '#0f2a1a' : '#2a0f0f';
+        msg.style.color = ok ? '#1fcc59' : '#f87171';
+        msg.style.border = '1px solid ' + (ok ? '#1fcc5940' : '#f8717140');
+        msg.textContent = txt;
+    };
+
+    if (!liga)  return _show('Informe a liga.', false);
+    if (!data)  return _show('Informe a data.', false);
+    if (!casa)  return _show('Informe o time da casa.', false);
+    if (!fora)  return _show('Informe o time visitante.', false);
+
+    const data_partida = `${data}T${hora}:00`;
+
+    try {
+        const r = await fetch('/api/dados-manuais/partida', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                liga, data_partida, time_casa: casa, time_fora: fora,
+                gol_casa_ht: gcHT, gol_fora_ht: gfHT,
+                gol_casa: gcFT, gol_fora: gfFT
+            })
+        });
+        const d = await r.json();
+        if (!r.ok) return _show(d.error || 'Erro ao salvar.', false);
+        _show(`Jogo salvo! ${d.mercados_inseridos} mercados derivados.`, true);
+
+        // limpa campos do jogo (liga, data, hora ficam)
+        ['dm-casa','dm-fora'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        ['dm-gol-casa-ht','dm-gol-fora-ht','dm-gol-casa-ft','dm-gol-fora-ft'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '0';
+        });
+        setTimeout(() => { msg.style.display = 'none'; }, 4000);
+        _dmCarregarLista();
+    } catch(e) { _show('Erro de conexão.', false); }
+}
+
+async function _dmCarregarLista() {
+    const el = document.getElementById('dm-lista');
+    if (!el) return;
+    el.innerHTML = '<div style="font-size:11px;color:#475569;text-align:center;padding:16px">Carregando...</div>';
+    try {
+        const r = await fetch('/api/dados-manuais/partidas', { credentials: 'include' });
+        if (!r.ok) { el.innerHTML = '<div style="font-size:11px;color:#f87171;padding:8px">Erro ao carregar.</div>'; return; }
+        const lista = await r.json();
+        if (!lista.length) {
+            el.innerHTML = '<div style="font-size:11px;color:#475569;text-align:center;padding:16px">Nenhum jogo inserido manualmente.</div>';
+            return;
+        }
+        const fmt = dt => dt ? new Date(dt).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+        el.innerHTML = lista.map(j => {
+            const placar_ht = j.gol_casa_ht != null ? `${j.gol_casa_ht}×${j.gol_fora_ht}` : '—';
+            const placar_ft = j.gol_casa != null    ? `${j.gol_casa}×${j.gol_fora}`       : '—';
+            return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #1e293b;font-size:11px">
+                <div style="flex:1;min-width:0">
+                    <div style="color:#e2e8f0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.time_casa} × ${j.time_fora}</div>
+                    <div style="color:#475569;font-size:10px">${j.league_name} · ${fmt(j.start_time_datetime)}</div>
+                </div>
+                <div style="text-align:center;flex-shrink:0">
+                    <div style="color:#60a5fa;font-size:10px">HT ${placar_ht}</div>
+                    <div style="color:#1fcc59;font-weight:700">FT ${placar_ft}</div>
+                </div>
+                <div style="color:#334155;font-size:9px;flex-shrink:0">${j.mercados}mkt</div>
+                <button onclick="_dmExcluir(${j.id})"
+                    style="background:none;border:none;color:#475569;cursor:pointer;font-size:14px;padding:0 4px;flex-shrink:0"
+                    title="Remover" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#475569'">🗑</button>
+            </div>`;
+        }).join('');
+    } catch(e) { el.innerHTML = '<div style="font-size:11px;color:#f87171;padding:8px">Erro de conexão.</div>'; }
+}
+
+async function _dmExcluir(id) {
+    if (!confirm('Remover este jogo e todos os seus mercados?')) return;
+    try {
+        const r = await fetch('/api/dados-manuais/partida/' + id, { method: 'DELETE', credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) { alert(d.error || 'Erro ao remover.'); return; }
+        _dmCarregarLista();
+    } catch(e) { alert('Erro de conexão.'); }
+}
 </script>
 
 </body>

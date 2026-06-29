@@ -2138,6 +2138,112 @@ app.post('/api/usuarios/historico-alteracoes', requireAuth, async (req, res) => 
     }
 });
 
+// ── Dados Manuais — preenchimento de jogos faltantes (master/admin) ──────────
+function _dmCheckAdmin(req, res) {
+    const tipo = ((req.sessionUser || {}).tipo || '').toLowerCase();
+    if (tipo !== 'master' && tipo !== 'admin' && tipo !== 'administrador') {
+        res.status(403).json({ error: 'Acesso negado' });
+        return false;
+    }
+    return true;
+}
+
+app.get('/api/dados-manuais/ligas', requireAuth, async (req, res) => {
+    if (!_dmCheckAdmin(req, res)) return;
+    try {
+        const pool = await connectSQL(getDatabaseConfigFromEnv());
+        const r = await pool.request().query(
+            'SELECT DISTINCT league_name FROM bet365_eventos WHERE league_name IS NOT NULL ORDER BY league_name'
+        );
+        res.json(r.recordset.map(x => x.league_name));
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/dados-manuais/partida', requireAuth, async (req, res) => {
+    if (!_dmCheckAdmin(req, res)) return;
+    const { liga, data_partida, time_casa, time_fora, gol_casa_ht, gol_fora_ht, gol_casa, gol_fora } = req.body;
+    if (!liga || !data_partida || !time_casa || !time_fora ||
+        gol_casa == null || gol_fora == null || gol_casa_ht == null || gol_fora_ht == null)
+        return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+    try {
+        const pool = await connectSQL(getDatabaseConfigFromEnv());
+        const gc = parseInt(gol_casa), gf = parseInt(gol_fora);
+        const gch = parseInt(gol_casa_ht), gfh = parseInt(gol_fora_ht);
+
+        const rEv = await pool.request()
+            .input('league_name', liga)
+            .input('time_casa', time_casa)
+            .input('time_fora', time_fora)
+            .input('dp', new Date(data_partida))
+            .input('gc', gc).input('gf', gf).input('gch', gch).input('gfh', gfh)
+            .query(`INSERT INTO bet365_eventos
+                      (url, league_name, time_casa, time_fora, status, start_time_datetime,
+                       gol_casa, gol_fora, gol_casa_ht, gol_fora_ht, ativo, fonte, data_coleta, data_atualizacao)
+                    OUTPUT INSERTED.id
+                    VALUES ('', @league_name, @time_casa, @time_fora, 'FINALIZADO', @dp,
+                            @gc, @gf, @gch, @gfh, 0, 'manual', GETDATE(), GETDATE())`);
+        const evento_id = rEv.recordset[0].id;
+
+        const cod_ft = gc > gf ? '1' : gc < gf ? '2' : 'X';
+        const cod_ht = gch > gfh ? '1' : gch < gfh ? '2' : 'X';
+        const sel_ft = gc > gf ? time_casa : gc < gf ? time_fora : 'Empate';
+        const sel_ht = gch > gfh ? time_casa : gch < gfh ? time_fora : 'Empate';
+        const total = gc + gf;
+
+        const mercados = [
+            { mercado: 'Resultado Final',                          selecao: sel_ft },
+            { mercado: 'Intervalo - Resultado',                    selecao: sel_ht },
+            { mercado: 'Intervalo/Final',                          selecao: `${cod_ht}/${cod_ft}` },
+            { mercado: 'Total de Gols - Mais de/Menos de 0.5',    selecao: total > 0 ? 'Mais de 0.5'  : 'Menos de 0.5'  },
+            { mercado: 'Total de Gols - Mais de/Menos de 1.5',    selecao: total > 1 ? 'Mais de 1.5'  : 'Menos de 1.5'  },
+            { mercado: 'Total de Gols - Mais de/Menos de 2.5',    selecao: total > 2 ? 'Mais de 2.5'  : 'Menos de 2.5'  },
+            { mercado: 'Total de Gols - Mais de/Menos de 3.5',    selecao: total > 3 ? 'Mais de 3.5'  : 'Menos de 3.5'  },
+            { mercado: 'Ambos Marcam',                             selecao: gc > 0 && gf > 0 ? 'Sim' : 'Não' },
+        ];
+
+        for (const m of mercados) {
+            await pool.request()
+                .input('eid', evento_id).input('liga', liga)
+                .input('tc', time_casa).input('tf', time_fora)
+                .input('dp', new Date(data_partida))
+                .input('mercado', m.mercado).input('selecao', m.selecao)
+                .query(`INSERT INTO bet365_resultados_mercados
+                          (evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga, data_registro)
+                        VALUES (@eid, @liga, @tc, @tf, @dp, @mercado, @selecao, 0, GETDATE())`);
+        }
+
+        res.json({ ok: true, evento_id, mercados_inseridos: mercados.length });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/dados-manuais/partidas', requireAuth, async (req, res) => {
+    if (!_dmCheckAdmin(req, res)) return;
+    try {
+        const pool = await connectSQL(getDatabaseConfigFromEnv());
+        const r = await pool.request().query(`
+            SELECT TOP 200 e.id, e.league_name, e.time_casa, e.time_fora, e.start_time_datetime,
+                e.gol_casa, e.gol_fora, e.gol_casa_ht, e.gol_fora_ht,
+                (SELECT COUNT(*) FROM bet365_resultados_mercados m WHERE m.evento_id = e.id) AS mercados
+            FROM bet365_eventos e
+            WHERE e.fonte = 'manual'
+            ORDER BY e.start_time_datetime DESC
+        `);
+        res.json(r.recordset);
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/dados-manuais/partida/:id', requireAuth, async (req, res) => {
+    if (!_dmCheckAdmin(req, res)) return;
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ error: 'ID inválido' });
+    try {
+        const pool = await connectSQL(getDatabaseConfigFromEnv());
+        await pool.request().input('id', id).query('DELETE FROM bet365_resultados_mercados WHERE evento_id = @id');
+        await pool.request().input('id', id).query("DELETE FROM bet365_eventos WHERE id = @id AND fonte = 'manual'");
+        res.json({ ok: true });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Rota principal para servir o portfolio.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/portifolio.html'));
