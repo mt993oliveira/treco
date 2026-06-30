@@ -2292,6 +2292,35 @@ app.use(express.static(path.join(__dirname, '../frontend'), {
 }));
 
 // ── Chat: garante tabela no banco ───────────────────────────
+// Aplica colunas novas de forma idempotente — seguro repetir em qualquer ambiente
+async function _garantirColunas() {
+    const migrações = [
+        // Feature 1 — IP persistido nas sessões
+        { tabela: 'Usuarios',       coluna: 'sess_token',  ddl: 'ALTER TABLE Usuarios ADD sess_token  NVARCHAR(200) NULL' },
+        { tabela: 'Usuarios',       coluna: 'sess_expira', ddl: 'ALTER TABLE Usuarios ADD sess_expira DATETIME2     NULL' },
+        { tabela: 'Usuarios',       coluna: 'sess_ip',     ddl: 'ALTER TABLE Usuarios ADD sess_ip     NVARCHAR(100) NULL' },
+        // Dados Manuais — origem do registro
+        { tabela: 'bet365_eventos', coluna: 'fonte',       ddl: 'ALTER TABLE bet365_eventos ADD fonte NVARCHAR(20) NULL' },
+    ];
+    try {
+        await connectSQL(getDatabaseConfigFromEnv());
+        const existentes = await sql.query`
+            SELECT TABLE_NAME + '.' + COLUMN_NAME AS chave
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME IN ('Usuarios','bet365_eventos')
+              AND COLUMN_NAME IN ('sess_token','sess_expira','sess_ip','fonte')`;
+        const jaExistem = new Set(existentes.recordset.map(r => r.chave));
+        for (const m of migrações) {
+            const chave = `${m.tabela}.${m.coluna}`;
+            if (!jaExistem.has(chave)) {
+                await sql.query(m.ddl);
+                console.log(`✅ Migração: coluna ${chave} adicionada`);
+            }
+        }
+    } catch(e) { console.warn('⚠️  _garantirColunas:', e.message); }
+}
+_garantirColunas();
+
 async function _garantirTabelaChat() {
     try {
         await connectSQL(getDatabaseConfigFromEnv());
