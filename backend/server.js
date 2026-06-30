@@ -2173,15 +2173,19 @@ app.post('/api/dados-manuais/partida', requireAuth, async (req, res) => {
         const gch = temHT ? parseInt(gol_casa_ht) : null;
         const gfh = temHT ? parseInt(gol_fora_ht) : null;
 
+        // IDs manuais são negativos — nunca conflitam com IDs reais do Bet365
+        const manualId = -(Date.now() % 9000000000000 + 1);
+
         const req2 = pool.request()
+            .input('mid', sql.BigInt, manualId)
             .input('league_name', liga).input('time_casa', time_casa).input('time_fora', time_fora)
             .input('dp', new Date(data_partida)).input('gc', gc).input('gf', gf)
             .input('gch', sql.Int, gch).input('gfh', sql.Int, gfh);
         const rEv = await req2.query(`INSERT INTO bet365_eventos
-                      (url, league_name, time_casa, time_fora, status, start_time_datetime,
+                      (id, url, league_name, time_casa, time_fora, status, start_time_datetime,
                        gol_casa, gol_fora, gol_casa_ht, gol_fora_ht, ativo, fonte, data_coleta, data_atualizacao)
                     OUTPUT INSERTED.id
-                    VALUES ('', @league_name, @time_casa, @time_fora, 'FINALIZADO', @dp,
+                    VALUES (@mid, '', @league_name, @time_casa, @time_fora, 'FINALIZADO', @dp,
                             @gc, @gf, @gch, @gfh, 0, 'manual', GETDATE(), GETDATE())`);
         const evento_id = rEv.recordset[0].id;
 
@@ -2206,15 +2210,19 @@ app.post('/api/dados-manuais/partida', requireAuth, async (req, res) => {
             mercados.push({ mercado: 'Intervalo/Final',        selecao: `${cod_ht}/${cod_ft}` });
         }
 
-        for (const m of mercados) {
+        // IDs de mercados manuais: manualId * 100 - índice (todos negativos)
+        for (let i = 0; i < mercados.length; i++) {
+            const m = mercados[i];
+            const mktId = BigInt(manualId) * 100n - BigInt(i);
             await pool.request()
-                .input('eid', evento_id).input('liga', liga)
-                .input('tc', time_casa).input('tf', time_fora)
+                .input('mid', sql.BigInt, mktId.toString())
+                .input('eid', sql.BigInt, evento_id)
+                .input('liga', liga).input('tc', time_casa).input('tf', time_fora)
                 .input('dp', new Date(data_partida))
                 .input('mercado', m.mercado).input('selecao', m.selecao)
                 .query(`INSERT INTO bet365_resultados_mercados
-                          (evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga, data_registro)
-                        VALUES (@eid, @liga, @tc, @tf, @dp, @mercado, @selecao, 0, GETDATE())`);
+                          (id, evento_id, liga, time_casa, time_fora, data_partida, mercado, selecao, odd_paga, data_registro)
+                        VALUES (@mid, @eid, @liga, @tc, @tf, @dp, @mercado, @selecao, 0, GETDATE())`);
         }
 
         res.json({ ok: true, evento_id, mercados_inseridos: mercados.length });
