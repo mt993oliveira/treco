@@ -680,6 +680,8 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                     userAgent: req.headers['user-agent'] || '',
                     token: sessionToken,
                 });
+                // Garante que a nova sessão não seja derrubada pelo ping imediato
+                forcedLogouts.delete(String(user.Id));
                 // Persiste token no banco — sessão sobrevive restart do PM2
                 sqlConnectionPool.request()
                     .input('token', sessionToken)
