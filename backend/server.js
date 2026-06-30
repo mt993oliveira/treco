@@ -2164,21 +2164,20 @@ app.get('/api/dados-manuais/ligas', requireAuth, async (req, res) => {
 app.post('/api/dados-manuais/partida', requireAuth, async (req, res) => {
     if (!_dmCheckAdmin(req, res)) return;
     const { liga, data_partida, time_casa, time_fora, gol_casa_ht, gol_fora_ht, gol_casa, gol_fora } = req.body;
-    if (!liga || !data_partida || !time_casa || !time_fora ||
-        gol_casa == null || gol_fora == null || gol_casa_ht == null || gol_fora_ht == null)
-        return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+    if (!liga || !data_partida || !time_casa || !time_fora || gol_casa == null || gol_fora == null)
+        return res.status(400).json({ error: 'Liga, data, times e placar final são obrigatórios' });
     try {
         const pool = await connectSQL(getDatabaseConfigFromEnv());
-        const gc = parseInt(gol_casa), gf = parseInt(gol_fora);
-        const gch = parseInt(gol_casa_ht), gfh = parseInt(gol_fora_ht);
+        const gc  = parseInt(gol_casa),  gf  = parseInt(gol_fora);
+        const temHT = gol_casa_ht != null && gol_fora_ht != null;
+        const gch = temHT ? parseInt(gol_casa_ht) : null;
+        const gfh = temHT ? parseInt(gol_fora_ht) : null;
 
-        const rEv = await pool.request()
-            .input('league_name', liga)
-            .input('time_casa', time_casa)
-            .input('time_fora', time_fora)
-            .input('dp', new Date(data_partida))
-            .input('gc', gc).input('gf', gf).input('gch', gch).input('gfh', gfh)
-            .query(`INSERT INTO bet365_eventos
+        const req2 = pool.request()
+            .input('league_name', liga).input('time_casa', time_casa).input('time_fora', time_fora)
+            .input('dp', new Date(data_partida)).input('gc', gc).input('gf', gf)
+            .input('gch', sql.Int, gch).input('gfh', sql.Int, gfh);
+        const rEv = await req2.query(`INSERT INTO bet365_eventos
                       (url, league_name, time_casa, time_fora, status, start_time_datetime,
                        gol_casa, gol_fora, gol_casa_ht, gol_fora_ht, ativo, fonte, data_coleta, data_atualizacao)
                     OUTPUT INSERTED.id
@@ -2187,21 +2186,25 @@ app.post('/api/dados-manuais/partida', requireAuth, async (req, res) => {
         const evento_id = rEv.recordset[0].id;
 
         const cod_ft = gc > gf ? '1' : gc < gf ? '2' : 'X';
-        const cod_ht = gch > gfh ? '1' : gch < gfh ? '2' : 'X';
         const sel_ft = gc > gf ? time_casa : gc < gf ? time_fora : 'Empate';
-        const sel_ht = gch > gfh ? time_casa : gch < gfh ? time_fora : 'Empate';
-        const total = gc + gf;
+        const total  = gc + gf;
 
         const mercados = [
             { mercado: 'Resultado Final',                          selecao: sel_ft },
-            { mercado: 'Intervalo - Resultado',                    selecao: sel_ht },
-            { mercado: 'Intervalo/Final',                          selecao: `${cod_ht}/${cod_ft}` },
             { mercado: 'Total de Gols - Mais de/Menos de 0.5',    selecao: total > 0 ? 'Mais de 0.5'  : 'Menos de 0.5'  },
             { mercado: 'Total de Gols - Mais de/Menos de 1.5',    selecao: total > 1 ? 'Mais de 1.5'  : 'Menos de 1.5'  },
             { mercado: 'Total de Gols - Mais de/Menos de 2.5',    selecao: total > 2 ? 'Mais de 2.5'  : 'Menos de 2.5'  },
             { mercado: 'Total de Gols - Mais de/Menos de 3.5',    selecao: total > 3 ? 'Mais de 3.5'  : 'Menos de 3.5'  },
             { mercado: 'Ambos Marcam',                             selecao: gc > 0 && gf > 0 ? 'Sim' : 'Não' },
         ];
+
+        // Mercados de HT só quando dados disponíveis
+        if (temHT) {
+            const cod_ht = gch > gfh ? '1' : gch < gfh ? '2' : 'X';
+            const sel_ht = gch > gfh ? time_casa : gch < gfh ? time_fora : 'Empate';
+            mercados.push({ mercado: 'Intervalo - Resultado', selecao: sel_ht });
+            mercados.push({ mercado: 'Intervalo/Final',        selecao: `${cod_ht}/${cod_ft}` });
+        }
 
         for (const m of mercados) {
             await pool.request()

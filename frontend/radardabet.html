@@ -1201,10 +1201,14 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
             <div style="grid-column:1/-1">
                 <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">LIGA</label>
-                <input id="dm-liga" type="text" list="dm-ligas-list" placeholder="Ex: Brasileirão Série A"
-                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                <select id="dm-liga-sel" onchange="_dmOnLigaSel(this)"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box;appearance:auto"
                     onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#334155'">
-                <datalist id="dm-ligas-list"></datalist>
+                    <option value="">Carregando ligas...</option>
+                </select>
+                <input id="dm-liga-nova" type="text" placeholder="Digite o nome da liga"
+                    style="display:none;width:100%;margin-top:6px;background:#0f172a;border:1px solid #f59e0b;color:#e2e8f0;border-radius:5px;padding:8px 10px;font-size:12px;outline:none;box-sizing:border-box"
+                    onfocus="this.style.borderColor='#1fcc59'" onblur="this.style.borderColor='#f59e0b'">
             </div>
             <div>
                 <label style="display:block;font-size:10px;font-weight:700;color:#475569;letter-spacing:.06em;margin-bottom:4px">DATA</label>
@@ -1235,8 +1239,13 @@
         <!-- Placares HT e FT lado a lado -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
             <div style="background:#0f172a;border:1px solid #1e3a5f;border-radius:7px;padding:12px">
-                <div style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.08em;margin-bottom:10px;text-align:center">INTERVALO (HT)</div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                    <span style="font-size:9px;font-weight:700;color:#60a5fa;letter-spacing:.08em">INTERVALO (HT)</span>
+                    <button type="button" id="dm-ht-sd-btn" onclick="_dmToggleHtSd()"
+                        style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:4px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer;letter-spacing:.05em"
+                        title="Marcar como sem dados">S/D</button>
+                </div>
+                <div id="dm-ht-inputs" style="display:flex;align-items:center;justify-content:center;gap:10px">
                     <input id="dm-gol-casa-ht" type="number" min="0" max="20" value="0"
                         style="width:52px;text-align:center;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 4px;font-size:18px;font-weight:700;outline:none"
                         onfocus="this.style.borderColor='#60a5fa'" onblur="this.style.borderColor='#334155'">
@@ -1245,6 +1254,7 @@
                         style="width:52px;text-align:center;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:5px;padding:8px 4px;font-size:18px;font-weight:700;outline:none"
                         onfocus="this.style.borderColor='#60a5fa'" onblur="this.style.borderColor='#334155'">
                 </div>
+                <div id="dm-ht-sd-label" style="display:none;text-align:center;color:#475569;font-size:12px;font-weight:700;padding:8px 0;letter-spacing:.06em">SEM DADOS</div>
             </div>
             <div style="background:#0f172a;border:1px solid #1e4a2f;border-radius:7px;padding:12px">
                 <div style="font-size:9px;font-weight:700;color:#1fcc59;letter-spacing:.08em;margin-bottom:10px;text-align:center">RESULTADO FINAL (FT)</div>
@@ -18418,38 +18428,84 @@ function _kirvPaginacao(el, total, pp, paginaAtual, fn) {
 
 <script>
 // ── Dados Manuais ────────────────────────────────────────────────────────────
+let _dmHtSemDados = false;
+
+function _dmToggleHtSd() {
+    _dmHtSemDados = !_dmHtSemDados;
+    const btn    = document.getElementById('dm-ht-sd-btn');
+    const inputs = document.getElementById('dm-ht-inputs');
+    const label  = document.getElementById('dm-ht-sd-label');
+    if (_dmHtSemDados) {
+        btn.style.background    = '#1e3a5f';
+        btn.style.borderColor   = '#60a5fa';
+        btn.style.color         = '#60a5fa';
+        inputs.style.display    = 'none';
+        label.style.display     = 'block';
+    } else {
+        btn.style.background    = '#1e293b';
+        btn.style.borderColor   = '#334155';
+        btn.style.color         = '#94a3b8';
+        inputs.style.display    = 'flex';
+        label.style.display     = 'none';
+    }
+}
+
+function _dmOnLigaSel(sel) {
+    const nova = document.getElementById('dm-liga-nova');
+    if (!nova) return;
+    nova.style.display = sel.value === '__nova__' ? 'block' : 'none';
+    if (sel.value === '__nova__') nova.focus();
+}
+
 async function abrirDadosManuais() {
     document.getElementById('user-dropdown').style.display = 'none';
     document.getElementById('modal-dados-manuais').classList.add('aberto');
 
     // preenche data de hoje por padrão
-    const hoje = new Date();
     const d = document.getElementById('dm-data');
-    if (d && !d.value) d.value = hoje.toISOString().slice(0, 10);
+    if (d && !d.value) d.value = new Date().toISOString().slice(0, 10);
     const h = document.getElementById('dm-hora');
     if (h && !h.value) h.value = '15:00';
 
-    // carrega ligas para datalist
-    try {
-        const r = await fetch('/api/dados-manuais/ligas', { credentials: 'include' });
-        if (r.ok) {
-            const ligas = await r.json();
-            const dl = document.getElementById('dm-ligas-list');
-            if (dl) dl.innerHTML = ligas.map(l => `<option value="${l}">`).join('');
+    // reseta toggle HT
+    if (_dmHtSemDados) _dmToggleHtSd();
+
+    // carrega ligas para select
+    const sel = document.getElementById('dm-liga-sel');
+    if (sel) {
+        sel.innerHTML = '<option value="">Carregando...</option>';
+        try {
+            const r = await fetch('/api/dados-manuais/ligas', { credentials: 'include' });
+            if (r.ok) {
+                const ligas = await r.json();
+                sel.innerHTML =
+                    '<option value="">— Selecione a liga —</option>' +
+                    ligas.map(l => `<option value="${l}">${l}</option>`).join('') +
+                    '<option value="__nova__">+ Nova liga...</option>';
+            } else {
+                sel.innerHTML = '<option value="__nova__">+ Nova liga...</option>';
+            }
+        } catch(e) {
+            sel.innerHTML = '<option value="__nova__">+ Nova liga...</option>';
         }
-    } catch(e) {}
+    }
 
     _dmCarregarLista();
 }
 
 async function _dmSalvar() {
-    const liga    = (document.getElementById('dm-liga')?.value || '').trim();
+    // Liga: select ou campo livre (nova liga)
+    const selEl   = document.getElementById('dm-liga-sel');
+    const novaEl  = document.getElementById('dm-liga-nova');
+    const selVal  = selEl?.value || '';
+    const liga    = (selVal === '__nova__' ? (novaEl?.value || '') : selVal).trim();
+
     const data    = document.getElementById('dm-data')?.value;
     const hora    = document.getElementById('dm-hora')?.value || '00:00';
     const casa    = (document.getElementById('dm-casa')?.value || '').trim();
     const fora    = (document.getElementById('dm-fora')?.value || '').trim();
-    const gcHT    = document.getElementById('dm-gol-casa-ht')?.value;
-    const gfHT    = document.getElementById('dm-gol-fora-ht')?.value;
+    const gcHT    = _dmHtSemDados ? null : document.getElementById('dm-gol-casa-ht')?.value;
+    const gfHT    = _dmHtSemDados ? null : document.getElementById('dm-gol-fora-ht')?.value;
     const gcFT    = document.getElementById('dm-gol-casa-ft')?.value;
     const gfFT    = document.getElementById('dm-gol-fora-ft')?.value;
 
@@ -18483,11 +18539,16 @@ async function _dmSalvar() {
         if (!r.ok) return _show(d.error || 'Erro ao salvar.', false);
         _show(`Jogo salvo! ${d.mercados_inseridos} mercados derivados.`, true);
 
-        // limpa campos do jogo (liga, data, hora ficam)
+        // limpa campos do jogo (data e hora ficam)
+        const _selEl = document.getElementById('dm-liga-sel');
+        if (_selEl) _selEl.value = '';
+        const _novaEl = document.getElementById('dm-liga-nova');
+        if (_novaEl) { _novaEl.value = ''; _novaEl.style.display = 'none'; }
         ['dm-casa','dm-fora'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         ['dm-gol-casa-ht','dm-gol-fora-ht','dm-gol-casa-ft','dm-gol-fora-ft'].forEach(id => {
             const el = document.getElementById(id); if (el) el.value = '0';
         });
+        if (_dmHtSemDados) _dmToggleHtSd();
         setTimeout(() => { msg.style.display = 'none'; }, 4000);
         _dmCarregarLista();
     } catch(e) { _show('Erro de conexão.', false); }
@@ -18507,7 +18568,7 @@ async function _dmCarregarLista() {
         }
         const fmt = dt => dt ? new Date(dt).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
         el.innerHTML = lista.map(j => {
-            const placar_ht = j.gol_casa_ht != null ? `${j.gol_casa_ht}×${j.gol_fora_ht}` : '—';
+            const placar_ht = j.gol_casa_ht != null ? `${j.gol_casa_ht}×${j.gol_fora_ht}` : 'S/D';
             const placar_ft = j.gol_casa != null    ? `${j.gol_casa}×${j.gol_fora}`       : '—';
             return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #1e293b;font-size:11px">
                 <div style="flex:1;min-width:0">
